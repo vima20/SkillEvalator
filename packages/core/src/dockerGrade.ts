@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import crypto from "node:crypto";
 
 export type GradeResult = {
   exitCode: number;
@@ -26,7 +27,11 @@ function copyTestsOnly(taskDir: string, destTaskDir: string): void {
   fs.mkdirSync(testsDst, { recursive: true });
   for (const name of fs.readdirSync(testsSrc)) {
     const src = path.join(testsSrc, name);
-    if (fs.statSync(src).isFile()) {
+    const st = fs.lstatSync(src);
+    if (st.isSymbolicLink()) {
+      throw new Error(`symlink not allowed in tests/: ${name}`);
+    }
+    if (st.isFile()) {
       fs.copyFileSync(src, path.join(testsDst, name));
     }
   }
@@ -70,9 +75,12 @@ export function gradeInDocker(opts: {
     }
 
     const toDocker = (p: string) => p.replace(/\\/g, "/");
+    const containerName = `se-grade-${crypto.randomBytes(6).toString("hex")}`;
 
     const args = [
       "run",
+      "--name",
+      containerName,
       "--rm",
       "--network",
       "none",
@@ -106,20 +114,28 @@ export function gradeInDocker(opts: {
       "/skill/scripts/grade.js",
     ];
 
-    const r = spawnSync("docker", args, {
-      encoding: "utf8",
-      timeout: timeoutMs,
-    });
+    try {
+      const r = spawnSync("docker", args, {
+        encoding: "utf8",
+        timeout: timeoutMs,
+      });
 
-    const summary = [r.stdout, r.stderr, r.error?.message]
-      .filter(Boolean)
-      .join("\n")
-      .slice(0, 2000);
+      const summary = [r.stdout, r.stderr, r.error?.message]
+        .filter(Boolean)
+        .join("\n")
+        .slice(0, 2000);
 
-    if (r.error) {
-      return { exitCode: 1, summary: `docker error: ${r.error.message}` };
+      if (r.error) {
+        return { exitCode: 1, summary: `docker error: ${r.error.message}` };
+      }
+      return { exitCode: r.status ?? 1, summary: summary || `exit ${r.status}` };
+    } finally {
+      // Ensure timeout/killed CLI cannot leave an orphan container.
+      spawnSync("docker", ["rm", "-f", containerName], {
+        encoding: "utf8",
+        timeout: 15_000,
+      });
     }
-    return { exitCode: r.status ?? 1, summary: summary || `exit ${r.status}` };
   });
 }
 

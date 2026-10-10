@@ -6,11 +6,14 @@ import { ZodError, z } from "zod";
 import {
   assertSafeId,
   createJobManifest,
+  isQueuedJobFile,
   listRuns,
   resolveUnder,
   writeJsonFile,
 } from "@skillevalator/core";
 import { jobsDir, resultsDir, skillsDir } from "@/lib/paths";
+
+const MAX_QUEUED_JOBS = 20;
 
 const Body = z.object({
   evalSkillId: z.string().min(1),
@@ -48,6 +51,13 @@ export async function POST(req: Request) {
 
     const dir = jobsDir();
     fs.mkdirSync(dir, { recursive: true });
+    const queuedCount = fs.readdirSync(dir).filter(isQueuedJobFile).length;
+    if (queuedCount >= MAX_QUEUED_JOBS) {
+      return NextResponse.json(
+        { error: `queue full (max ${MAX_QUEUED_JOBS} pending jobs)` },
+        { status: 429 },
+      );
+    }
     const tmp = path.join(dir, `${runId}.tmp.json`);
     const final = path.join(dir, `${runId}.json`);
     writeJsonFile(tmp, job);

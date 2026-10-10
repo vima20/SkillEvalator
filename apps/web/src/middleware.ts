@@ -2,13 +2,18 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Optional shared-secret gate. Set WEB_AUTH_TOKEN in .env to require
- * Authorization: Bearer <token> (or cookie se_auth) for all routes.
- * Combined with binding to 127.0.0.1 for local-only MVP.
+ * Optional shared-secret for /api/* (except /api/auth).
+ * Set WEB_AUTH_TOKEN and unlock the UI via the AuthGate cookie login.
+ * Pages always load; API calls require Bearer or se_auth cookie.
  */
 export function middleware(req: NextRequest) {
   const token = process.env.WEB_AUTH_TOKEN?.trim();
   if (!token) return NextResponse.next();
+
+  const { pathname } = req.nextUrl;
+  if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
+    return NextResponse.next();
+  }
 
   const auth = req.headers.get("authorization");
   if (auth === `Bearer ${token}`) return NextResponse.next();
@@ -20,5 +25,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/api/:path*"],
 };

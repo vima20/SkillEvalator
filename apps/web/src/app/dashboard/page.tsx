@@ -33,8 +33,8 @@ export default function DashboardPage() {
         <p className="eyebrow">Unikie · Overview</p>
         <h1>Dashboard</h1>
         <p>
-          Completed runs for the same skill, task set, and model. Multi-model
-          comparison is out of scope for this MVP.
+          All completed runs (every skill, task set, and model). Grouped
+          multi-model comparison is out of scope for this MVP.
         </p>
       </header>
 

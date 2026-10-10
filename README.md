@@ -17,7 +17,7 @@ or
 .\start.ps1
 ```
 
-Open http://127.0.0.1:30001 (bound to loopback only).
+Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*`; the UI shows an unlock form that sets a cookie.
 
 ## Models
 

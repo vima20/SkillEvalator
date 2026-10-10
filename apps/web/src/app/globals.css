@@ -758,13 +758,11 @@ a.btn {
 }
 
 .details-panel > summary::after {
-  content: "Show";
+  content: "▸";
   float: right;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--text-dim);
 }
 
@@ -773,7 +771,29 @@ a.btn {
 }
 
 .details-panel[open] > summary::after {
-  content: "Hide";
+  content: "▾";
+}
+
+.auth-boot {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.auth-gate {
+  display: grid;
+  place-items: center;
+  min-height: 50vh;
+}
+
+.auth-card {
+  width: min(420px, 100%);
+}
+
+.auth-card h1 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
 }
 
 .details-panel > :not(summary) {

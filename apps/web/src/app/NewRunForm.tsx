@@ -26,12 +26,24 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   const [busy, setBusy] = useState(false);
 
   const selected = skills.find((s) => s.id === evalSkillId) ?? skills[0];
+  const minRepeats = mode === "official" ? OFFICIAL_MIN_REPEATS : 1;
+
+  function selectMode(next: "dry-run" | "official") {
+    setMode(next);
+    if (next === "official") {
+      setRepeats((r) => Math.max(r, OFFICIAL_MIN_REPEATS));
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setMsg("");
     setError(false);
+    const safeRepeats =
+      mode === "official"
+        ? Math.max(repeats, OFFICIAL_MIN_REPEATS)
+        : Math.max(1, repeats);
     try {
       const res = await fetch("/api/runs", {
         method: "POST",
@@ -39,7 +51,7 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
         body: JSON.stringify({
           evalSkillId,
           mode,
-          repeats,
+          repeats: safeRepeats,
         }),
       });
       const data = await res.json();
@@ -73,38 +85,53 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
         </div>
 
         <div className="field">
-          <label htmlFor="githubUrl">Skill GitHub URL</label>
+          <span className="field-label" id="githubUrlLabel">
+            Skill GitHub URL
+          </span>
           {selected?.githubUrl ? (
             <a
-              id="githubUrl"
               className="url-field"
               href={selected.githubUrl}
               target="_blank"
               rel="noreferrer"
+              aria-labelledby="githubUrlLabel"
             >
               {selected.githubUrl}
             </a>
           ) : (
-            <div id="githubUrl" className="url-field url-field-muted">
+            <div
+              className="url-field url-field-muted"
+              aria-labelledby="githubUrlLabel"
+            >
               No GitHub URL in skill manifest
             </div>
           )}
         </div>
 
         <div className="field">
-          <span className="field-label">Mode</span>
-          <div className="segmented" role="group" aria-label="Mode">
+          <span className="field-label" id="modeLabel">
+            Mode
+          </span>
+          <div
+            className="segmented"
+            role="radiogroup"
+            aria-labelledby="modeLabel"
+          >
             <button
               type="button"
+              role="radio"
+              aria-checked={mode === "dry-run"}
               className={mode === "dry-run" ? "is-active" : undefined}
-              onClick={() => setMode("dry-run")}
+              onClick={() => selectMode("dry-run")}
             >
               dry-run
             </button>
             <button
               type="button"
+              role="radio"
+              aria-checked={mode === "official"}
               className={mode === "official" ? "is-active" : undefined}
-              onClick={() => setMode("official")}
+              onClick={() => selectMode("official")}
             >
               official
             </button>
@@ -116,14 +143,15 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
           <input
             id="repeats"
             type="number"
-            min={1}
+            min={minRepeats}
             max={10}
             value={repeats}
             onChange={(e) => setRepeats(Number(e.target.value))}
           />
           {mode === "official" ? (
             <p className="hint">
-              Official mode enforces a minimum of {OFFICIAL_MIN_REPEATS} repeats.
+              Official mode requires at least {OFFICIAL_MIN_REPEATS} repeats
+              (enforced in UI and API).
             </p>
           ) : null}
         </div>
@@ -131,7 +159,15 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
         <button className="btn btn-primary" type="submit" disabled={busy}>
           {busy ? "Queueing…" : "Start run"}
         </button>
-        {msg ? <p className={`msg${error ? " error" : ""}`}>{msg}</p> : null}
+        {msg ? (
+          <p
+            className={`msg${error ? " error" : ""}`}
+            role={error ? "alert" : "status"}
+            aria-live="polite"
+          >
+            {msg}
+          </p>
+        ) : null}
       </form>
 
       <aside className="panel skill-card">

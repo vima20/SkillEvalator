@@ -35,6 +35,10 @@ type Payload = {
 
 const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
 
+function shouldPoll(status: string | undefined, _hasResult: boolean): boolean {
+  return !TERMINAL.has(status ?? "");
+}
+
 export function RunDetailClient({
   runId,
   initial,
@@ -44,7 +48,7 @@ export function RunDetailClient({
 }) {
   const [data, setData] = useState(initial);
   const [polling, setPolling] = useState(
-    !initial.result || !TERMINAL.has(initial.status?.status ?? ""),
+    shouldPoll(initial.status?.status, !!initial.result),
   );
   const [jsonOpen, setJsonOpen] = useState(false);
 
@@ -59,8 +63,7 @@ export function RunDetailClient({
     if (!res.ok) return;
     const next = (await res.json()) as Payload;
     setData(next);
-    const st = next.status?.status ?? "";
-    if (next.result && (TERMINAL.has(st) || st === "")) setPolling(false);
+    if (!shouldPoll(next.status?.status, !!next.result)) setPolling(false);
   }, [runId]);
 
   useEffect(() => {
@@ -144,7 +147,7 @@ export function RunDetailClient({
         ) : null}
       </div>
 
-      {(polling || status === "running" || status === "queued") && (
+      {(status === "running" || status === "queued") && (
         <div className="panel progress-panel">
           <div className="progress-head">
             <strong>

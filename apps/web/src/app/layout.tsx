@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Manrope, Space_Grotesk } from "next/font/google";
+import { AuthGate } from "@/components/AuthGate";
 import { Nav } from "@/components/Nav";
 import "./globals.css";
 
@@ -51,7 +52,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </Link>
             <Nav />
           </header>
-          <main className="main">{children}</main>
+          <main className="main">
+            <AuthGate>{children}</AuthGate>
+          </main>
         </div>
       </body>
     </html>
