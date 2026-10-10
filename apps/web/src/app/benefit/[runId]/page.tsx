@@ -4,6 +4,7 @@ import {
   buildBenefitReport,
   loadRunResult,
 } from "@skillevalator/core";
+import { StarRating } from "@/components/StarRating";
 import { resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
 import { BenefitActions } from "./BenefitActions";
@@ -80,6 +81,20 @@ export default async function BenefitReportPage({
         <h2 className="verdict-headline">{report.verdict.headline}</h2>
         <p className="verdict-decision">{report.verdict.decision}</p>
         <p className="verdict-rationale">{report.verdict.rationale}</p>
+        <StarRating
+          stars={report.rating.stars}
+          grade={report.rating.grade}
+          summary={report.rating.summary}
+        />
+      </section>
+
+      <section className="panel report-section">
+        <h2>Kirjallinen arvio</h2>
+        <div className="written-review">
+          {report.rating.review.split("\n\n").map((para) => (
+            <p key={para.slice(0, 48)}>{para}</p>
+          ))}
+        </div>
       </section>
 
       <div className="panel callout-warn">

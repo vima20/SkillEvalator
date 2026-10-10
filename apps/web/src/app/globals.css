@@ -463,10 +463,76 @@ code {
 }
 
 .verdict-rationale {
-  margin: 0;
+  margin: 0 0 18px;
   max-width: 70ch;
   color: var(--text-muted);
   font-size: 14px;
+}
+
+.star-rating {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.star-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+
+.star-on {
+  color: #f0b429;
+  text-shadow: 0 0 18px rgba(240, 180, 41, 0.35);
+}
+
+.star-off {
+  color: rgba(148, 176, 220, 0.22);
+}
+
+.star-grade {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.star-summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.written-review {
+  display: grid;
+  gap: 12px;
+}
+
+.written-review p {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.stars-inline {
+  white-space: nowrap;
+  color: #f0b429;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+.stars-inline-grade {
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .verdict-use {

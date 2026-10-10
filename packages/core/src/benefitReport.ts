@@ -13,6 +13,19 @@ export type BenefitVerdict = {
   rationale: string;
 };
 
+/** 1–5 star rating plus Finnish letter-style grade and prose review. */
+export type BenefitRating = {
+  stars: 1 | 2 | 3 | 4 | 5;
+  /** Visual string e.g. ★★★★☆ */
+  starsDisplay: string;
+  /** Finnish grade word */
+  grade: string;
+  /** Short Finnish tagline under stars */
+  summary: string;
+  /** Longer written assessment (Finnish) */
+  review: string;
+};
+
 export type BenefitReport = {
   title: string;
   generatedAt: string;
@@ -20,6 +33,7 @@ export type BenefitReport = {
   disclaimer: string;
   decisionQuestion: string;
   verdict: BenefitVerdict;
+  rating: BenefitRating;
   config: {
     runId: string;
     mode: RunResult["mode"];
@@ -67,6 +81,124 @@ const DISCLAIMER =
 
 const DECISION_QUESTION =
   "Kannattaako tätä eval-skilliä käyttää Unikien engineering-työssä tällä mallilla?";
+
+function starsDisplay(n: 1 | 2 | 3 | 4 | 5): string {
+  return "★".repeat(n) + "☆".repeat(5 - n);
+}
+
+function gradeForStars(stars: 1 | 2 | 3 | 4 | 5): string {
+  switch (stars) {
+    case 5:
+      return "Erinomainen";
+    case 4:
+      return "Hyvä";
+    case 3:
+      return "Tyydyttävä";
+    case 2:
+      return "Välttävä";
+    default:
+      return "Heikko";
+  }
+}
+
+/**
+ * Map scorecard + mode into 1–5 stars.
+ * Dry-run is capped at 4 even on a perfect score (official required for 5).
+ */
+export function rateSkill(result: RunResult): BenefitRating {
+  const score = result.score;
+  const status = result.status;
+  const passed = result.perTask.filter((t) => t.score === 1).length;
+  const total = result.perTask.length;
+  const failedTasks = result.perTask
+    .filter((t) => t.score !== 1)
+    .map((t) => t.taskId);
+
+  let stars: 1 | 2 | 3 | 4 | 5 = 1;
+
+  if (status === "cancelled" || status === "budget_stop" || score === null) {
+    stars = 1;
+  } else if (score <= 0) {
+    stars = 1;
+  } else if (score < 0.34) {
+    stars = 2;
+  } else if (score < 0.67) {
+    stars = 3;
+  } else if (score < 1) {
+    stars = 4;
+  } else if (result.mode === "dry-run") {
+    stars = 4;
+  } else {
+    stars = 5;
+  }
+
+  const grade = gradeForStars(stars);
+  const scoreTxt = score === null ? "—" : score.toFixed(2);
+  const modeFi = result.mode === "official" ? "official" : "dry-run";
+
+  let summary: string;
+  let review: string;
+
+  if (status === "cancelled" || status === "budget_stop") {
+    summary = "Ajo keskeytyi — ei luotettavaa arvosanaa.";
+    review = [
+      `Kirjallinen arvio: ${result.evalSkillId} (${result.modelId}, ${modeFi}).`,
+      `Ajo päättyi tilaan ${status}, joten scorecardia ei voida käyttää käyttösuosituksena.`,
+      "Suositus: aja uudelleen ilman cancelia / budjetti­katkoa ja tee official-ajo (≥3 repeats) ennen käyttöönottoa.",
+      "Huom: tämä arvio ei ole KH/Cursor-adoption todiste.",
+    ].join("\n\n");
+  } else if (score === null || score <= 0) {
+    summary = "Skill ei tuottanut yhtään läpäisyä.";
+    review = [
+      `Kirjallinen arvio: ${result.evalSkillId} sai arvosanan ${grade} (${stars}/5).`,
+      `Mallilla ${result.modelId} task set ${result.taskSetId} tuotti scoren ${scoreTxt} (${passed}/${total} taskia).`,
+      failedTasks.length
+        ? `Hylätyt taskit: ${failedTasks.join(", ")}.`
+        : "Yhtään taskia ei läpäissyt.",
+      "Skilliä ei kannata ottaa käyttöön tässä muodossa. Korjaa prompt/fixturet tai vaihda mallia ja aja dry-run uudelleen.",
+      "Huom: tulos ≠ KH-adoption proof.",
+    ].join("\n\n");
+  } else if (score < 1) {
+    summary = "Osittainen läpäisy — ei vielä käyttövalmis.";
+    review = [
+      `Kirjallinen arvio: ${result.evalSkillId} sai arvosanan ${grade} (${stars}/5).`,
+      `Score ${scoreTxt} tarkoittaa, että ${passed}/${total} taskia läpäisi mallilla ${result.modelId} (${modeFi}).`,
+      failedTasks.length
+        ? `Heikot kohdat: ${failedTasks.join(", ")}. Nämä pitää korjata ennen kuin skilliä suositellaan tiimikäyttöön.`
+        : "Läpäisy jäi alle täyden rajan.",
+      result.mode === "dry-run"
+        ? "Dry-run ei ole official-väite. Korjaa virheet ja aja official (≥3 repeats) vasta kun dry-run on clean."
+        : "Official-ajo ei ollut täysi pass. Älä ota skilliä käyttöön ennen kuin score on 1.0.",
+      "Huom: tulos ≠ KH-adoption proof.",
+    ].join("\n\n");
+  } else if (result.mode === "dry-run") {
+    summary = "Lupaava dry-run — official puuttuu vielä.";
+    review = [
+      `Kirjallinen arvio: ${result.evalSkillId} sai arvosanan ${grade} (${stars}/5).`,
+      `Dry-run läpäisi taskit (${passed}/${total}, score ${scoreTxt}) mallilla ${result.modelId}. Tämä on hyvä merkki harnessista ja skillin sisällöstä.`,
+      "Tähtiä ei nosteta viiteen dry-runilla: official-ajo (≥3 repeats, gpt-4.1-mini) tarvitaan ennen käyttöönottosuositusta.",
+      "Seuraava askel: aja mode=official samalla skillillä. Jos sekin on clean, tuomio muuttuu muotoon KÄYTÄ.",
+      "Huom: tulos ≠ KH-adoption proof.",
+    ].join("\n\n");
+  } else {
+    summary = "Official läpäisi — skill sopii käyttöön tällä mallilla.";
+    review = [
+      `Kirjallinen arvio: ${result.evalSkillId} sai arvosanan ${grade} (${stars}/5).`,
+      `Official-ajo score ${scoreTxt} (${passed}/${total} taskia) mallilla ${result.modelId}, task set ${result.taskSetId}, repeats ${result.repeats}.`,
+      `Label ${labelForScore(score, result.scoreSpread ?? 0)}; hajonta ${((result.scoreSpread ?? 0) as number).toFixed(3)}.`,
+      "Harnessin perusteella skill kannattaa ottaa käyttöön tässä model-pairingissa. Pidä silti silmällä kustannusta ja uusia regressioita kun fixtureitä päivitetään.",
+      "Huom: tulos ≠ KH-adoption proof — mittaa vain produce→grade -putkea.",
+    ].join("\n\n");
+  }
+
+  return {
+    stars,
+    starsDisplay: starsDisplay(stars),
+    grade,
+    summary,
+    review,
+  };
+}
 
 /**
  * Official + perfect score → use.
@@ -117,7 +249,6 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
     };
   }
 
-  // official
   if (score < 1) {
     return {
       recommendation: "do_not_use",
@@ -145,6 +276,7 @@ export function buildBenefitReport(result: RunResult): BenefitReport {
     label: labelForScore(t.score),
   }));
   const verdict = decideSkillUse(result);
+  const rating = rateSkill(result);
 
   return {
     title: `Benefit Report · ${result.evalSkillId} · ${result.runId}`,
@@ -152,6 +284,7 @@ export function buildBenefitReport(result: RunResult): BenefitReport {
     disclaimer: DISCLAIMER,
     decisionQuestion: DECISION_QUESTION,
     verdict,
+    rating,
     config: {
       runId: result.runId,
       mode: result.mode,
@@ -205,6 +338,7 @@ export function benefitReportToMarkdown(report: BenefitReport): string {
   const c = report.config;
   const s = report.scorecard;
   const v = report.verdict;
+  const r = report.rating;
   const lines: string[] = [
     `# ${report.title}`,
     "",
@@ -218,6 +352,16 @@ export function benefitReportToMarkdown(report: BenefitReport): string {
     `- Recommendation: \`${v.recommendation}\``,
     "",
     v.rationale,
+    "",
+    "## Tähtiarvio / Rating",
+    "",
+    `${r.starsDisplay}  **${r.stars}/5 · ${r.grade}**`,
+    "",
+    r.summary,
+    "",
+    "### Kirjallinen arvio",
+    "",
+    r.review,
     "",
     "## Disclaimer",
     "",

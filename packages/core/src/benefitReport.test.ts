@@ -70,12 +70,26 @@ describe("decideSkillUse", () => {
 });
 
 describe("benefitReport", () => {
-  it("includes verdict in markdown", () => {
+  it("includes verdict, stars and written review", () => {
     const report = buildBenefitReport(sample());
     expect(report.verdict.recommendation).toBe("inconclusive");
+    expect(report.rating.stars).toBe(4);
+    expect(report.rating.grade).toBe("Hyvä");
+    expect(report.rating.starsDisplay).toBe("★★★★☆");
+    expect(report.rating.review).toMatch(/Kirjallinen arvio/);
     const md = benefitReportToMarkdown(report);
     expect(md).toContain("## Tuomio / Verdict");
+    expect(md).toContain("## Tähtiarvio / Rating");
+    expect(md).toContain("### Kirjallinen arvio");
     expect(md).toContain("INCONCLUSIVE");
     expect(md).toMatch(/not proof of Cursor\/KH/i);
+  });
+
+  it("gives 5 stars only on official pass", () => {
+    const report = buildBenefitReport(
+      sample({ mode: "official", score: 1, modelId: "gpt-4.1-mini", repeats: 3 }),
+    );
+    expect(report.rating.stars).toBe(5);
+    expect(report.rating.grade).toBe("Erinomainen");
   });
 });

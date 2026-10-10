@@ -47,6 +47,7 @@ export default function BenefitIndexPage() {
               <tr>
                 <th>Run</th>
                 <th>Tuomio</th>
+                <th>Arvosana</th>
                 <th>Status</th>
                 <th>Mode</th>
                 <th>Score</th>
@@ -54,7 +55,9 @@ export default function BenefitIndexPage() {
               </tr>
             </thead>
             <tbody>
-              {runs.map((r) => (
+              {runs.map((r) => {
+                const rating = buildBenefitReport(r.result!).rating;
+                return (
                 <tr key={r.runId}>
                   <td>
                     <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
@@ -66,6 +69,12 @@ export default function BenefitIndexPage() {
                         : r.verdict.recommendation === "do_not_use"
                           ? "ÄLÄ KÄYTÄ"
                           : "EI VOIDA TUOMITA"}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="stars-inline" title={`${rating.grade}`}>
+                      {rating.starsDisplay}{" "}
+                      <span className="stars-inline-grade">{rating.grade}</span>
                     </span>
                   </td>
                   <td>
@@ -83,7 +92,8 @@ export default function BenefitIndexPage() {
                     </Link>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
