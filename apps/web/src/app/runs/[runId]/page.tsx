@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { readJsonFile } from "@/lib/json";
 import { resultsDir } from "@/lib/paths";
+import { statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -28,50 +29,64 @@ export default async function RunDetailPage({
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>{runId}</h1>
-      <p>
-        Status: <strong>{status?.status ?? "unknown"}</strong>
-      </p>
+      <header className="page-header">
+        <h1>{runId}</h1>
+        <p>Run status, aggregate score, and per-task grades.</p>
+      </header>
+
+      <div className="meta-row">
+        <span className={statusBadgeClass(status?.status)}>
+          {status?.status ?? "unknown"}
+        </span>
+        {result ? (
+          <>
+            <span className="score">{result.score ?? "—"}</span>
+            <span>
+              Model <code>{result.modelId}</code>
+            </span>
+            <span>
+              Skill <code>{result.evalSkillVersion}</code>
+            </span>
+            <span>
+              Task set <code>{result.taskSetId}</code>
+            </span>
+          </>
+        ) : null}
+      </div>
+
       {result ? (
         <>
-          <p>
-            Score: <strong>{result.score ?? "—"}</strong> · model{" "}
-            <code>{result.modelId}</code> · skill SHA{" "}
-            <code>{result.evalSkillVersion}</code> · taskSet{" "}
-            <code>{result.taskSetId}</code>
-          </p>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th align="left">Task</th>
-                <th align="left">Score</th>
-                <th align="left">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(result.perTask ?? []).map((t) => (
-                <tr key={t.taskId}>
-                  <td>{t.taskId}</td>
-                  <td>{t.score}</td>
-                  <td>{t.status}</td>
+          <div className="panel">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Score</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <pre
-            style={{
-              background: "#1e1e1e",
-              color: "#eee",
-              padding: 12,
-              overflow: "auto",
-              fontSize: 12,
-            }}
-          >
-            {JSON.stringify(result, null, 2)}
-          </pre>
+              </thead>
+              <tbody>
+                {(result.perTask ?? []).map((t) => (
+                  <tr key={t.taskId}>
+                    <td>{t.taskId}</td>
+                    <td>{t.score}</td>
+                    <td>
+                      <span className={statusBadgeClass(t.status)}>{t.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(result.perTask ?? []).length === 0 ? (
+              <p className="empty">No per-task results.</p>
+            ) : null}
+          </div>
+          <pre className="json-block">{JSON.stringify(result, null, 2)}</pre>
         </>
       ) : (
-        <p>Waiting for worker… Refresh shortly.</p>
+        <div className="panel">
+          <p className="empty">Waiting for worker… Refresh shortly.</p>
+        </div>
       )}
     </div>
   );

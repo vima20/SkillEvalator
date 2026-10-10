@@ -1,38 +1,60 @@
 import type { ReactNode } from "react";
+import { Manrope, Space_Grotesk } from "next/font/google";
+import "./globals.css";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+});
+
+const space = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space",
+});
 
 export const metadata = {
-  title: "SkillEvalator",
-  description: "Skills-based AI Evaluator",
+  title: "SkillEvalator · Unikie",
+  description: "Skills-based AI evaluator for Unikie engineering teams",
 };
+
+function BrandMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M9 1.5 16.5 15H1.5L9 1.5Z"
+        fill="none"
+        stroke="white"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M9 6.2 13.2 13.5H4.8L9 6.2Z" fill="white" />
+    </svg>
+  );
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fi">
-      <body
-        style={{
-          margin: 0,
-          fontFamily: "IBM Plex Sans, Segoe UI, sans-serif",
-          background: "#f6f4ef",
-          color: "#1a1a1a",
-        }}
-      >
-        <header
-          style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid #d9d3c7",
-            background: "#efece4",
-          }}
-        >
-          <strong style={{ fontSize: 18 }}>SkillEvalator</strong>
-          <nav style={{ display: "inline-flex", gap: 16, marginLeft: 24 }}>
-            <a href="/">New run</a>
-            <a href="/runs">Runs</a>
-            <a href="/dashboard">Dashboard</a>
-          </nav>
-        </header>
-        <main style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
-          {children}
-        </main>
+    <html lang="fi" className={`${manrope.variable} ${space.variable}`}>
+      <body>
+        <div className="app-shell">
+          <header className="topbar">
+            <a className="brand" href="/">
+              <span className="brand-mark">
+                <BrandMark />
+              </span>
+              <span className="brand-copy">
+                <span className="brand-org">Unikie</span>
+                <span className="brand-product">SkillEvalator</span>
+              </span>
+            </a>
+            <nav className="nav">
+              <a href="/">New run</a>
+              <a href="/runs">Runs</a>
+              <a href="/dashboard">Dashboard</a>
+            </nav>
+          </header>
+          <main className="main">{children}</main>
+        </div>
       </body>
     </html>
   );

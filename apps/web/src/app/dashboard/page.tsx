@@ -39,42 +39,54 @@ export default function DashboardPage() {
     }
   }
 
+  rows.sort((a, b) => b.runId.localeCompare(a.runId));
+
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Dashboard</h1>
-      <p style={{ color: "#444" }}>
-        Compare runs with the same skill + taskSet + model (no multi-model
-        comparison in MVP).
-      </p>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th align="left">Run</th>
-            <th align="left">Mode</th>
-            <th align="left">Model</th>
-            <th align="left">Task set</th>
-            <th align="left">Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.runId}>
-              <td>
-                <a href={`/runs/${r.runId}`}>{r.runId}</a>
-              </td>
-              <td>{r.mode}</td>
-              <td>
-                <code>{r.modelId}</code>
-              </td>
-              <td>
-                <code>{r.taskSetId}</code>
-              </td>
-              <td>{r.score ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {rows.length === 0 ? <p>No completed runs.</p> : null}
+      <header className="page-header">
+        <h1>Dashboard</h1>
+        <p>
+          Compare completed runs with the same skill, task set, and model. Multi-model
+          comparison is out of scope for this MVP.
+        </p>
+      </header>
+
+      <div className="panel">
+        {rows.length === 0 ? (
+          <p className="empty">No completed runs yet.</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Mode</th>
+                <th>Model</th>
+                <th>Task set</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.runId}>
+                  <td>
+                    <a href={`/runs/${r.runId}`}>{r.runId}</a>
+                  </td>
+                  <td>{r.mode}</td>
+                  <td>
+                    <code>{r.modelId}</code>
+                  </td>
+                  <td>
+                    <code>{r.taskSetId}</code>
+                  </td>
+                  <td>
+                    <strong>{r.score ?? "—"}</strong>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

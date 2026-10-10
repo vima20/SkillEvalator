@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { readJsonFile } from "@/lib/json";
 import { resultsDir } from "@/lib/paths";
+import { statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -24,26 +25,39 @@ export default function RunsPage() {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Runs</h1>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th align="left">Run</th>
-            <th align="left">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {runs.map((r) => (
-            <tr key={r.runId}>
-              <td style={{ padding: "8px 0" }}>
-                <a href={`/runs/${r.runId}`}>{r.runId}</a>
-              </td>
-              <td>{r.status ?? "?"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {runs.length === 0 ? <p>No runs yet.</p> : null}
+      <header className="page-header">
+        <h1>Runs</h1>
+        <p>Queued and completed evaluation jobs from the local worker.</p>
+      </header>
+
+      <div className="panel">
+        {runs.length === 0 ? (
+          <p className="empty">No runs yet. Start one from New run.</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {runs.map((r) => (
+                <tr key={r.runId}>
+                  <td>
+                    <a href={`/runs/${r.runId}`}>{r.runId}</a>
+                  </td>
+                  <td>
+                    <span className={statusBadgeClass(r.status)}>
+                      {r.status ?? "unknown"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

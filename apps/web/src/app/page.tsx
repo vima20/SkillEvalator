@@ -7,12 +7,14 @@ export default function NewRunPage() {
   const [mode, setMode] = useState<"dry-run" | "official">("dry-run");
   const [repeats, setRepeats] = useState(1);
   const [msg, setMsg] = useState("");
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setMsg("");
+    setError(false);
     try {
       const res = await fetch("/api/runs", {
         method: "POST",
@@ -28,6 +30,7 @@ export default function NewRunPage() {
       setMsg(`Queued ${data.runId}`);
       window.location.href = `/runs/${data.runId}`;
     } catch (err) {
+      setError(true);
       setMsg(err instanceof Error ? err.message : "error");
     } finally {
       setBusy(false);
@@ -36,60 +39,60 @@ export default function NewRunPage() {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>New evaluation run</h1>
-      <p style={{ color: "#444" }}>
-        Pipeline: model produce → Docker grade vs expected. Dry-run uses{" "}
-        <code>gpt-4o-mini</code>; official uses <code>gpt-4.1-mini</code> and ≥3
-        repeats.
-      </p>
-      <form
-        onSubmit={submit}
-        style={{
-          display: "grid",
-          gap: 12,
-          maxWidth: 480,
-          padding: 16,
-          border: "1px solid #d9d3c7",
-          background: "#fffdf8",
-        }}
-      >
-        <label>
-          Eval skill
+      <header className="page-header">
+        <h1>New evaluation run</h1>
+        <p>
+          Produce with the model, then grade against expected fixtures in Docker.
+          Dry-run uses <code>gpt-4o-mini</code>; official uses{" "}
+          <code>gpt-4.1-mini</code> with at least three repeats.
+        </p>
+      </header>
+
+      <form className="panel form-grid" onSubmit={submit}>
+        <div className="field">
+          <label htmlFor="evalSkillId">Eval skill</label>
           <select
+            id="evalSkillId"
             value={evalSkillId}
             onChange={(e) => setEvalSkillId(e.target.value)}
-            style={{ display: "block", width: "100%", marginTop: 4 }}
           >
             <option value="code-debugging-eval">code-debugging-eval</option>
           </select>
-        </label>
-        <label>
-          Mode
+        </div>
+
+        <div className="field">
+          <label htmlFor="mode">Mode</label>
           <select
+            id="mode"
             value={mode}
             onChange={(e) => setMode(e.target.value as "dry-run" | "official")}
-            style={{ display: "block", width: "100%", marginTop: 4 }}
           >
             <option value="dry-run">dry-run</option>
             <option value="official">official</option>
           </select>
-        </label>
-        <label>
-          Repeats
+        </div>
+
+        <div className="field">
+          <label htmlFor="repeats">Repeats</label>
           <input
+            id="repeats"
             type="number"
             min={1}
             max={10}
             value={repeats}
             onChange={(e) => setRepeats(Number(e.target.value))}
-            style={{ display: "block", width: "100%", marginTop: 4 }}
           />
-        </label>
-        <button type="submit" disabled={busy}>
+          {mode === "official" ? (
+            <p className="hint">Official mode enforces a minimum of 3 repeats.</p>
+          ) : null}
+        </div>
+
+        <button className="btn btn-primary" type="submit" disabled={busy}>
           {busy ? "Queueing…" : "Start run"}
         </button>
       </form>
-      {msg ? <p>{msg}</p> : null}
+
+      {msg ? <p className={`msg${error ? " error" : ""}`}>{msg}</p> : null}
     </div>
   );
 }
