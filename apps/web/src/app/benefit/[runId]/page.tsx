@@ -74,6 +74,15 @@ export default async function BenefitReportPage({
         <BenefitActions runId={runId} markdown={markdown} />
       </header>
 
+      <section className="panel rating-hero">
+        <StarRating
+          stars={report.rating.stars}
+          grade={report.rating.grade}
+          summary={report.rating.summary}
+          display={report.rating.starsDisplay}
+        />
+      </section>
+
       <section
         className={`panel verdict-banner verdict-${report.verdict.recommendation}`}
       >
@@ -81,11 +90,6 @@ export default async function BenefitReportPage({
         <h2 className="verdict-headline">{report.verdict.headline}</h2>
         <p className="verdict-decision">{report.verdict.decision}</p>
         <p className="verdict-rationale">{report.verdict.rationale}</p>
-        <StarRating
-          stars={report.rating.stars}
-          grade={report.rating.grade}
-          summary={report.rating.summary}
-        />
       </section>
 
       <section className="panel report-section">

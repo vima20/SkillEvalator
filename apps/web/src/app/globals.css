@@ -469,42 +469,74 @@ code {
   font-size: 14px;
 }
 
+.rating-hero {
+  padding: 28px 24px;
+  margin-bottom: 18px;
+  text-align: center;
+  border-color: rgba(240, 180, 41, 0.35);
+  background: linear-gradient(
+    180deg,
+    rgba(240, 180, 41, 0.12),
+    rgba(16, 24, 40, 0.95)
+  );
+}
+
 .star-rating {
-  margin-top: 4px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.star-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--warn);
 }
 
 .star-row {
   display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-  font-size: 1.75rem;
-  line-height: 1;
-  letter-spacing: 0.06em;
+  justify-content: center;
+  gap: 10px;
+  margin: 6px 0 4px;
 }
 
-.star-on {
-  color: #f0b429;
-  text-shadow: 0 0 18px rgba(240, 180, 41, 0.35);
+.star-icon {
+  display: block;
+  flex: 0 0 auto;
 }
 
-.star-off {
-  color: rgba(148, 176, 220, 0.22);
+.star-icon-on {
+  color: #f5c542;
+  filter: drop-shadow(0 0 10px rgba(245, 197, 66, 0.45));
+}
+
+.star-icon-off {
+  color: rgba(148, 176, 220, 0.45);
 }
 
 .star-grade {
-  margin: 0 0 4px;
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.star-glyphs {
+  margin-right: 8px;
+  color: #f5c542;
+  letter-spacing: 0.08em;
 }
 
 .star-summary {
   margin: 0;
+  max-width: 48ch;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .written-review {
