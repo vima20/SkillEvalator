@@ -10,6 +10,7 @@
     "build": "npm run build -w @skillevalator/core && npm run build -w @skillevalator/web && npm run build -w @skillevalator/worker",
     "test": "npm run test -w @skillevalator/core",
     "smoke:skills": "npm run build -w @skillevalator/core && node scripts/smoke-skills.mjs",
+    "ci": "npm test && npm run smoke:skills",
     "docker:check": "docker info >nul 2>&1 && echo Docker OK || (echo Docker not available && exit 1)"
   },
   "devDependencies": {
