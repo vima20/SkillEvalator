@@ -15,7 +15,7 @@ import { jobsDir, resultsDir, skillsDir } from "@/lib/paths";
 const Body = z.object({
   evalSkillId: z.string().min(1),
   mode: z.enum(["dry-run", "official"]),
-  repeats: z.number().int().positive().default(1),
+  repeats: z.number().int().positive().max(10).default(1),
 });
 
 export async function GET() {

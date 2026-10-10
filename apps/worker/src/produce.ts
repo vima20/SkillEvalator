@@ -11,8 +11,9 @@ export async function produceArtifact(opts: {
 }): Promise<{ content: string; costUsd: number }> {
   const broken = fs.readFileSync(opts.inputPath, "utf8");
   if (!config.openaiApiKey) {
-    // Without API key, echo broken file (grade should fail) — use FAKE_PRODUCE=known-good in worker env for smoke.
-    return { content: broken, costUsd: 0 };
+    throw new Error(
+      "OPENAI_API_KEY missing; set the key or use FAKE_PRODUCE=known-good for smoke",
+    );
   }
 
   const client = new OpenAI({ apiKey: config.openaiApiKey });
@@ -45,7 +46,8 @@ export async function produceArtifact(opts: {
   content = stripFences(content);
   const inTok = res.usage?.prompt_tokens ?? 0;
   const outTok = res.usage?.completion_tokens ?? 0;
-  const costUsd = (inTok * 0.4 + outTok * 1.6) / 1_000_000;
+  // Approximate gpt-4o-mini-class pricing; cap is advisory for MVP.
+  const costUsd = (inTok * 0.15 + outTok * 0.6) / 1_000_000;
   return { content, costUsd };
 }
 

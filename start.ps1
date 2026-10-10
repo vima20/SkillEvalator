@@ -18,5 +18,5 @@ if (-not (Test-Path .env) -and (Test-Path .env.example)) {
   Write-Host "Created .env from .env.example — set OPENAI_API_KEY before official runs."
 }
 
-Write-Host "Starting SkillEvalator on http://localhost:3000"
+Write-Host "Starting SkillEvalator on http://127.0.0.1:30001"
 npm run dev

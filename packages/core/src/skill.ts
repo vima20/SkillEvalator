@@ -23,7 +23,8 @@ function hashDirFiles(root: string): string {
       const st = fs.statSync(p);
       if (st.isDirectory()) walk(p);
       else {
-        hash.update(p);
+        // Relative path so the same content hashes identically across machines.
+        hash.update(path.relative(root, p).split(path.sep).join("/"));
         hash.update(fs.readFileSync(p));
       }
     }

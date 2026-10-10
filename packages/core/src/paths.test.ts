@@ -33,10 +33,12 @@ describe("assertSafeId / resolveUnder", () => {
 });
 
 describe("normalizeRepeats", () => {
-  it("enforces official minimum", () => {
+  it("enforces official minimum and max cap", () => {
     expect(normalizeRepeats("dry-run", 1)).toBe(1);
     expect(normalizeRepeats("official", 1)).toBe(3);
     expect(normalizeRepeats("official", 5)).toBe(5);
+    expect(normalizeRepeats("dry-run", 100)).toBe(10);
+    expect(normalizeRepeats("official", 100)).toBe(10);
   });
 });
 
@@ -52,7 +54,7 @@ describe("statusBadgeKind", () => {
 });
 
 describe("SkillManifestSchema githubUrl", () => {
-  it("requires a valid github url", async () => {
+  it("requires https url and rejects javascript:", async () => {
     const { SkillManifestSchema } = await import("./schema.js");
     const base = {
       taskSetId: "t",
@@ -61,6 +63,18 @@ describe("SkillManifestSchema githubUrl", () => {
       targetFile: { "bug-01": "sum.js" },
     };
     expect(() => SkillManifestSchema.parse(base)).toThrow();
+    expect(() =>
+      SkillManifestSchema.parse({
+        ...base,
+        githubUrl: "javascript:alert(1)",
+      }),
+    ).toThrow();
+    expect(() =>
+      SkillManifestSchema.parse({
+        ...base,
+        githubUrl: "http://github.com/vima20/SkillEvalator",
+      }),
+    ).toThrow();
     expect(
       SkillManifestSchema.parse({
         ...base,
@@ -68,5 +82,19 @@ describe("SkillManifestSchema githubUrl", () => {
           "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
       }).githubUrl,
     ).toContain("github.com");
+  });
+});
+
+describe("JobManifestSchema runId", () => {
+  it("rejects path traversal runIds", async () => {
+    const { JobManifestSchema } = await import("./schema.js");
+    expect(() =>
+      JobManifestSchema.parse({
+        runId: "../../etc",
+        evalSkillId: "code-debugging-eval",
+        mode: "dry-run",
+        createdAt: new Date().toISOString(),
+      }),
+    ).toThrow();
   });
 });

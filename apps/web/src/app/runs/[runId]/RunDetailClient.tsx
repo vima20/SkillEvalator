@@ -52,11 +52,15 @@ export function RunDetailClient({
     const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
       cache: "no-store",
     });
+    if (res.status === 404) {
+      setPolling(false);
+      return;
+    }
     if (!res.ok) return;
     const next = (await res.json()) as Payload;
     setData(next);
     const st = next.status?.status ?? "";
-    if (next.result && TERMINAL.has(st)) setPolling(false);
+    if (next.result && (TERMINAL.has(st) || st === "")) setPolling(false);
   }, [runId]);
 
   useEffect(() => {

@@ -33,6 +33,17 @@ export default async function RunDetailPage({
     );
   }
 
+  if (!status && !result) {
+    return (
+      <div>
+        <header className="page-header">
+          <h1>Run not found</h1>
+          <p>No status or result exists for this run id.</p>
+        </header>
+      </div>
+    );
+  }
+
   return (
     <RunDetailClient
       runId={runId}

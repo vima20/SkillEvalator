@@ -17,8 +17,24 @@ function withTempDir<T>(prefix: string, fn: (work: string) => T): T {
   }
 }
 
+function copyTestsOnly(taskDir: string, destTaskDir: string): void {
+  const testsSrc = path.join(taskDir, "tests");
+  if (!fs.existsSync(testsSrc)) {
+    throw new Error(`tests missing: ${testsSrc}`);
+  }
+  const testsDst = path.join(destTaskDir, "tests");
+  fs.mkdirSync(testsDst, { recursive: true });
+  for (const name of fs.readdirSync(testsSrc)) {
+    const src = path.join(testsSrc, name);
+    if (fs.statSync(src).isFile()) {
+      fs.copyFileSync(src, path.join(testsDst, name));
+    }
+  }
+}
+
 /**
- * Grade artifact in Docker: node image, no network, mount task + artifact.
+ * Grade artifact in Docker: node image, no network.
+ * Mounts only skill scripts + tests/ + artifact — never expected/known-good/input.
  */
 export function gradeInDocker(opts: {
   skillRoot: string;
@@ -35,8 +51,23 @@ export function gradeInDocker(opts: {
   }
 
   return withTempDir("cde-docker-", (work) => {
-    const artifactName = "artifact.js";
-    fs.copyFileSync(opts.artifactPath, path.join(work, artifactName));
+    const artifactDir = path.join(work, "artifact");
+    const taskStage = path.join(work, "task");
+    fs.mkdirSync(artifactDir, { recursive: true });
+    fs.copyFileSync(opts.artifactPath, path.join(artifactDir, "artifact.js"));
+    try {
+      copyTestsOnly(opts.taskDir, taskStage);
+    } catch (e) {
+      return {
+        exitCode: 1,
+        summary: e instanceof Error ? e.message : "tests missing",
+      };
+    }
+
+    const scriptsDir = path.join(opts.skillRoot, "scripts");
+    if (!fs.existsSync(path.join(scriptsDir, "grade.js"))) {
+      return { exitCode: 1, summary: "grade.js missing" };
+    }
 
     const toDocker = (p: string) => p.replace(/\\/g, "/");
 
@@ -49,18 +80,27 @@ export function gradeInDocker(opts: {
       "256m",
       "--pids-limit",
       "128",
+      "--user",
+      "65534:65534",
+      "--read-only",
+      "--tmpfs",
+      "/tmp:rw,noexec,nosuid,size=64m",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
       "-v",
-      `${toDocker(opts.skillRoot)}:/skill:ro`,
+      `${toDocker(scriptsDir)}:/skill/scripts:ro`,
       "-v",
-      `${toDocker(opts.taskDir)}:/task:ro`,
+      `${toDocker(taskStage)}:/task:ro`,
       "-v",
-      `${toDocker(work)}:/work`,
+      `${toDocker(artifactDir)}:/work:ro`,
       "-e",
       "TASK_DIR=/task",
       "-e",
       `TARGET_FILE=${opts.targetFile}`,
       "-e",
-      `ARTIFACT_PATH=/work/${artifactName}`,
+      "ARTIFACT_PATH=/work/artifact.js",
       image,
       "node",
       "/skill/scripts/grade.js",
@@ -83,7 +123,10 @@ export function gradeInDocker(opts: {
   });
 }
 
-/** Host-side grade for unit tests / CI without Docker when ALLOW_HOST_GRADE=1 */
+/**
+ * Host-side grade for smoke only. Caller must gate with FAKE_PRODUCE=known-good.
+ * Mounts/copies only tests/ — never expected/known-good — and strips env secrets.
+ */
 export function gradeOnHost(opts: {
   skillRoot: string;
   taskDir: string;
@@ -91,16 +134,38 @@ export function gradeOnHost(opts: {
   artifactPath: string;
 }): GradeResult {
   const gradeJs = path.join(opts.skillRoot, "scripts", "grade.js");
-  const r = spawnSync(process.execPath, [gradeJs], {
-    encoding: "utf8",
-    timeout: 20_000,
-    env: {
-      ...process.env,
-      TASK_DIR: opts.taskDir,
-      TARGET_FILE: opts.targetFile,
-      ARTIFACT_PATH: opts.artifactPath,
-    },
+  if (!fs.existsSync(gradeJs)) {
+    return { exitCode: 1, summary: "grade.js missing" };
+  }
+  if (!fs.existsSync(opts.artifactPath)) {
+    return { exitCode: 1, summary: "artifact missing" };
+  }
+
+  return withTempDir("cde-host-", (work) => {
+    try {
+      copyTestsOnly(opts.taskDir, work);
+    } catch (e) {
+      return {
+        exitCode: 1,
+        summary: e instanceof Error ? e.message : "tests missing",
+      };
+    }
+
+    const r = spawnSync(process.execPath, [gradeJs], {
+      encoding: "utf8",
+      timeout: 20_000,
+      env: {
+        PATH: process.env.PATH ?? "",
+        SystemRoot: process.env.SystemRoot,
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+        TMPDIR: process.env.TMPDIR ?? os.tmpdir(),
+        TASK_DIR: work,
+        TARGET_FILE: opts.targetFile,
+        ARTIFACT_PATH: opts.artifactPath,
+      },
+    });
+    const summary = [r.stdout, r.stderr].filter(Boolean).join("\n").slice(0, 2000);
+    return { exitCode: r.status ?? 1, summary };
   });
-  const summary = [r.stdout, r.stderr].filter(Boolean).join("\n").slice(0, 2000);
-  return { exitCode: r.status ?? 1, summary };
 }

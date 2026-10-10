@@ -17,7 +17,7 @@ or
 .\start.ps1
 ```
 
-Open http://localhost:3000
+Open http://127.0.0.1:30001 (bound to loopback only).
 
 ## Models
 
@@ -41,4 +41,4 @@ set ALLOW_HOST_GRADE=1
 npm run dev -w @skillevalator/worker
 ```
 
-(`ALLOW_HOST_GRADE=1` skips Docker for local unit smoke; production path uses Docker.)
+(`ALLOW_HOST_GRADE=1` is honored only with `FAKE_PRODUCE=known-good`. Live produce always uses Docker grade.)

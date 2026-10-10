@@ -31,5 +31,6 @@ export const config = {
   costCapUsd: num("COST_CAP_USD", 5),
   costHardStop: (process.env.COST_HARD_STOP ?? "true") !== "false",
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
+  /** Host grade is only honored together with FAKE_PRODUCE=known-good (see runJob). */
   allowHostGrade: process.env.ALLOW_HOST_GRADE === "1",
 };
