@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
+import { EmptyState } from "@/components/EmptyState";
 import { resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -9,32 +11,63 @@ export default function RunsPage() {
 
   return (
     <div>
-      <header className="page-header">
-        <h1>Runs</h1>
-        <p>Queued and completed evaluation jobs from the local worker.</p>
+      <header className="page-header page-header-row">
+        <div>
+          <p className="eyebrow">History</p>
+          <h1>Runs</h1>
+          <p>Queued and completed evaluation jobs from the local worker.</p>
+        </div>
+        <Link className="btn btn-primary" href="/">
+          New run
+        </Link>
       </header>
 
       <div className="panel">
         {runs.length === 0 ? (
-          <p className="empty">No runs yet. Start one from New run.</p>
+          <EmptyState
+            title="No runs yet"
+            body="Start a dry-run to queue the first evaluation job."
+            actionHref="/"
+            actionLabel="Start a run"
+          />
         ) : (
           <table className="data-table">
             <thead>
               <tr>
                 <th>Run</th>
                 <th>Status</th>
+                <th>Mode</th>
+                <th>Score</th>
+                <th>Skill</th>
               </tr>
             </thead>
             <tbody>
               {runs.map((r) => (
                 <tr key={r.runId}>
                   <td>
-                    <a href={`/runs/${r.runId}`}>{r.runId}</a>
+                    <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
                   </td>
                   <td>
                     <span className={statusBadgeClass(r.status)}>
                       {r.status ?? "unknown"}
                     </span>
+                  </td>
+                  <td>{r.result?.mode ?? "—"}</td>
+                  <td>
+                    <strong>{r.result?.score ?? "—"}</strong>
+                  </td>
+                  <td>
+                    {r.result?.evalSkillGithubUrl ? (
+                      <a
+                        href={r.result.evalSkillGithubUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {r.result.evalSkillId}
+                      </a>
+                    ) : (
+                      <code>{r.result?.evalSkillId ?? "—"}</code>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Manrope, Space_Grotesk } from "next/font/google";
+import { Nav } from "@/components/Nav";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -48,11 +49,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <span className="brand-product">SkillEvalator</span>
               </span>
             </Link>
-            <nav className="nav">
-              <Link href="/">New run</Link>
-              <Link href="/runs">Runs</Link>
-              <Link href="/dashboard">Dashboard</Link>
-            </nav>
+            <Nav />
           </header>
           <main className="main">{children}</main>
         </div>
