@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /** Mirrored from @skillevalator/core OFFICIAL_MIN_REPEATS (API re-normalizes). */
 const OFFICIAL_MIN_REPEATS = 3;
@@ -14,6 +14,18 @@ export type SkillOption = {
   taskCount: number;
 };
 
+type PreflightCheck = { ok: boolean; detail: string };
+
+type Preflight = {
+  ok: boolean;
+  fakeProduce: boolean;
+  checks: {
+    openaiApiKey: PreflightCheck;
+    docker: PreflightCheck;
+    worker: PreflightCheck;
+  };
+};
+
 export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   const router = useRouter();
   const [evalSkillId, setEvalSkillId] = useState(
@@ -24,9 +36,32 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [preflight, setPreflight] = useState<Preflight | null>(null);
+  const [preflightBusy, setPreflightBusy] = useState(false);
 
   const selected = skills.find((s) => s.id === evalSkillId) ?? skills[0];
   const minRepeats = mode === "official" ? OFFICIAL_MIN_REPEATS : 1;
+
+  const refreshPreflight = useCallback(async () => {
+    setPreflightBusy(true);
+    try {
+      const res = await fetch("/api/preflight", { cache: "no-store" });
+      if (!res.ok) return;
+      setPreflight((await res.json()) as Preflight);
+    } catch {
+      /* ignore */
+    } finally {
+      setPreflightBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshPreflight();
+    const id = window.setInterval(() => {
+      void refreshPreflight();
+    }, 8000);
+    return () => window.clearInterval(id);
+  }, [refreshPreflight]);
 
   function selectMode(next: "dry-run" | "official") {
     setMode(next);
@@ -66,9 +101,52 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
     }
   }
 
+  const checks = preflight
+    ? [
+        { id: "key", label: "API key", ...preflight.checks.openaiApiKey },
+        { id: "docker", label: "Docker", ...preflight.checks.docker },
+        { id: "worker", label: "Worker", ...preflight.checks.worker },
+      ]
+    : [];
+
   return (
     <div className="split">
       <form className="panel form-grid" onSubmit={submit}>
+        <div
+          className={`preflight${preflight && !preflight.ok ? " preflight-warn" : ""}`}
+          aria-live="polite"
+        >
+          <div className="preflight-head">
+            <strong>Preflight</strong>
+            <button
+              type="button"
+              className="btn btn-ghost btn-compact"
+              onClick={() => void refreshPreflight()}
+              disabled={preflightBusy}
+            >
+              {preflightBusy ? "Checking…" : "Refresh"}
+            </button>
+          </div>
+          {preflight ? (
+            <ul className="preflight-list">
+              {checks.map((c) => (
+                <li key={c.id} className={c.ok ? "is-ok" : "is-bad"}>
+                  <span className="preflight-label">{c.label}</span>
+                  <span className="preflight-detail">{c.detail}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="hint">Checking Docker, API key, and worker…</p>
+          )}
+          {preflight && !preflight.ok ? (
+            <p className="hint">
+              You can still queue a run, but it may stall or fail until these are
+              green.
+            </p>
+          ) : null}
+        </div>
+
         <div className="field">
           <label htmlFor="evalSkillId">Eval skill</label>
           <select

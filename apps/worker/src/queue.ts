@@ -15,6 +15,18 @@ function ensureDirs() {
   fs.mkdirSync(config.resultsDir, { recursive: true });
 }
 
+/** Soft liveness signal for web preflight (pid + timestamp). */
+function touchHeartbeat(): void {
+  try {
+    writeJsonFile(path.join(config.jobsDir, ".worker"), {
+      pid: process.pid,
+      at: new Date().toISOString(),
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 function listQueued(): string[] {
   return fs
     .readdirSync(config.jobsDir)
@@ -217,10 +229,12 @@ export async function loop() {
   ensureDirs();
   clearDeadLock();
   reclaimOrphanRunningJobs();
+  touchHeartbeat();
   console.log("worker watching", config.jobsDir);
   console.log("skills", config.skillsDir);
   for (;;) {
     try {
+      touchHeartbeat();
       const did = await pollOnce();
       if (!did) await new Promise((r) => setTimeout(r, 1000));
     } catch (e) {
