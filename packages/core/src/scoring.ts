@@ -11,8 +11,19 @@ export function scoreSpread(scores: number[]): number {
   return Math.sqrt(v);
 }
 
-export function labelForScore(score: number | null): "Fail" | "Pass" {
+export type ScoreLabel = "Fail" | "Pass" | "Strong";
+
+/**
+ * Fail: score null or &lt; 1.
+ * Pass: perfect mean score.
+ * Strong: Pass with low repeat spread (≤ 0.05) when spread is provided.
+ */
+export function labelForScore(
+  score: number | null,
+  scoreSpread?: number,
+): ScoreLabel {
   if (score === null || score < 1) return "Fail";
+  if (scoreSpread !== undefined && scoreSpread <= 0.05) return "Strong";
   return "Pass";
 }
 

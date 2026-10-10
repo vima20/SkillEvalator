@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   JobManifest,
   RunResultSchema,
+  buildBenefitReport,
   gradeInDocker,
   gradeOnHost,
   loadSkill,
@@ -155,6 +156,10 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   });
 
   writeJsonFile(path.join(resultDir, "result.json"), result);
+  writeJsonFile(
+    path.join(resultDir, "benefit-report.json"),
+    buildBenefitReport(result),
+  );
   writeJsonFile(statusPath, {
     runId: job.runId,
     status: result.status,

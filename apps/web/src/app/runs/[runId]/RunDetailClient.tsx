@@ -98,6 +98,11 @@ export function RunDetailClient({
             ? "Live updating while the worker processes this run."
             : "Run status, aggregate score, and per-task grades."}
         </p>
+        {result && !polling ? (
+          <p className="hint">
+            <Link href={`/benefit/${runId}`}>Open Benefit Report →</Link>
+          </p>
+        ) : null}
       </header>
 
       <div className="meta-row">

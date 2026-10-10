@@ -11,6 +11,11 @@ const items = [
     label: "Dashboard",
     match: (p: string) => p.startsWith("/dashboard"),
   },
+  {
+    href: "/benefit",
+    label: "Benefit Report",
+    match: (p: string) => p.startsWith("/benefit"),
+  },
 ] as const;
 
 export function Nav() {

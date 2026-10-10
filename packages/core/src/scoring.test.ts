@@ -15,6 +15,8 @@ describe("scoring", () => {
 
   it("labels", () => {
     expect(labelForScore(1)).toBe("Pass");
+    expect(labelForScore(1, 0)).toBe("Strong");
+    expect(labelForScore(1, 0.2)).toBe("Pass");
     expect(labelForScore(0)).toBe("Fail");
     expect(labelForScore(null)).toBe("Fail");
   });
