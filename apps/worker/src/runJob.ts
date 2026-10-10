@@ -64,7 +64,13 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
 
   try {
+    if (fs.existsSync(cancelPath)) {
+      stop = "cancelled";
+      findings.push("cancelled");
+    }
+
     outer: for (let r = 0; r < repeats; r++) {
+      if (stop) break;
       if (config.costHardStop && costUsd >= config.costCapUsd) {
         stop = "budget_stop";
         findings.push("cost hard stop");
@@ -162,13 +168,18 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     const aggregatedPerTask: RunResult["perTask"] = taskIds.map((taskId) => {
       const last = lastByTask.get(taskId);
       const mean = meanScores(scoresByTask.get(taskId) ?? []);
+      let taskStatus: RunResult["perTask"][number]["status"];
+      if (stop === "cancelled") taskStatus = "cancelled";
+      else if (stop === "budget_stop") taskStatus = "budget_stop";
+      else if (mean === 1) taskStatus = "ok";
+      else taskStatus = "failed";
       return {
         taskId,
         artifactRef: last?.artifactRef,
         expectedRef: last?.expectedRef,
         scriptResults: last?.scriptResults ?? [],
-        score: mean,
-        status: mean === 1 ? "ok" : "failed",
+        score: stop ? null : mean,
+        status: taskStatus,
       };
     });
 

@@ -443,6 +443,36 @@ code {
   box-shadow: none;
 }
 
+.btn-danger {
+  margin-top: 0;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid rgba(240, 113, 120, 0.35);
+  box-shadow: none;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(240, 113, 120, 0.22);
+}
+
+.progress-actions {
+  margin-top: 12px;
+  justify-content: space-between;
+}
+
+.progress-actions .hint {
+  margin: 0;
+  flex: 1;
+  min-width: 12rem;
+}
+
+.form-error {
+  margin: 10px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .btn-compact {
   margin-top: 0;
   padding: 8px 14px;

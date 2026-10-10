@@ -51,6 +51,8 @@ export function RunDetailClient({
     shouldPoll(initial.status?.status, !!initial.result),
   );
   const [jsonOpen, setJsonOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
@@ -63,7 +65,10 @@ export function RunDetailClient({
     if (!res.ok) return;
     const next = (await res.json()) as Payload;
     setData(next);
-    if (!shouldPoll(next.status?.status, !!next.result)) setPolling(false);
+    if (!shouldPoll(next.status?.status, !!next.result)) {
+      setPolling(false);
+      setCancelling(false);
+    }
   }, [runId]);
 
   useEffect(() => {
@@ -76,6 +81,34 @@ export function RunDetailClient({
 
   const status = data.status?.status ?? "unknown";
   const result = data.result;
+  const canCancel =
+    (status === "queued" || status === "running") && !cancelling;
+
+  async function onCancel() {
+    if (!canCancel) return;
+    setCancelError(null);
+    setCancelling(true);
+    try {
+      const res = await fetch(
+        `/api/runs/${encodeURIComponent(runId)}/cancel`,
+        { method: "POST" },
+      );
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        status?: string;
+      };
+      if (!res.ok) {
+        setCancelError(body.error ?? "Cancel failed");
+        setCancelling(false);
+        return;
+      }
+      setPolling(true);
+      await refresh();
+    } catch {
+      setCancelError("Cancel failed");
+      setCancelling(false);
+    }
+  }
   const repeat = data.status?.repeat;
   const repeats = data.status?.repeats ?? result?.repeats;
   const progress =
@@ -166,9 +199,26 @@ export function RunDetailClient({
           >
             <div className="progress-fill" style={{ width: `${progress}%` }} />
           </div>
-          <p className="hint">
-            Refresh is automatic. You can leave this page open.
-          </p>
+          <div className="action-row progress-actions">
+            <p className="hint">
+              {cancelling
+                ? "Cancel requested — waiting for the worker to stop."
+                : "Refresh is automatic. You can leave this page open."}
+            </p>
+            <button
+              type="button"
+              className="btn btn-danger btn-compact"
+              disabled={!canCancel}
+              onClick={() => void onCancel()}
+            >
+              {cancelling ? "Cancelling…" : "Cancel run"}
+            </button>
+          </div>
+          {cancelError ? (
+            <p className="form-error" role="alert">
+              {cancelError}
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -243,6 +293,12 @@ export function RunDetailClient({
             <pre className="json-block">{JSON.stringify(result, null, 2)}</pre>
           ) : null}
         </>
+      ) : status === "cancelled" ? (
+        <div className="panel">
+          <p className="empty">
+            Run cancelled before a scorecard was produced.
+          </p>
+        </div>
       ) : (
         <div className="panel">
           <p className="empty">
