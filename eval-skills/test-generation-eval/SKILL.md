@@ -13,4 +13,7 @@ Write a complete **test file** named as specified (`test.js`) that:
 3. Prints `ok` on success (after assertions).
 4. Exits non-zero (throw) if any assertion fails.
 
+Grading runs your tests against a correct subject **and** a broken subject.
+Weak tests that still pass on the broken subject will fail the evaluation.
+
 Return **only** the test file body. Do not explain. Do not wrap in markdown fences.

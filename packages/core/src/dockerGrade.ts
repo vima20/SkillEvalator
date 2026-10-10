@@ -40,7 +40,7 @@ function copyDirFiles(srcDir: string, destDir: string): number {
 /**
  * Stage only non-secret task assets for grading:
  * - tests/ (code-debugging-eval)
- * - subject/ (test-generation-eval module under test)
+ * - subject/ + optional subject-bad/ (test-generation-eval)
  * Never copies expected/, known-good/, known-bad/, or input/.
  */
 function stageTaskForGrade(taskDir: string, destTaskDir: string): void {
@@ -51,6 +51,10 @@ function stageTaskForGrade(taskDir: string, destTaskDir: string): void {
   const subjectCopied = copyDirFiles(
     path.join(taskDir, "subject"),
     path.join(destTaskDir, "subject"),
+  );
+  copyDirFiles(
+    path.join(taskDir, "subject-bad"),
+    path.join(destTaskDir, "subject-bad"),
   );
   if (testsCopied === 0 && subjectCopied === 0) {
     throw new Error("tests/ or subject/ required for grading");
