@@ -114,5 +114,7 @@ export function taskPaths(skill: LoadedSkill, taskId: string) {
     knownGoodPath: path.join(taskDir, "known-good", target),
     knownBadPath: path.join(taskDir, "known-bad", target),
     testsDir: path.join(taskDir, "tests"),
+    /** Optional module-under-test files for skills like test-generation-eval. */
+    subjectDir: path.join(taskDir, "subject"),
   };
 }

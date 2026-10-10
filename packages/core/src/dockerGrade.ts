@@ -18,28 +18,48 @@ function withTempDir<T>(prefix: string, fn: (work: string) => T): T {
   }
 }
 
-function copyTestsOnly(taskDir: string, destTaskDir: string): void {
-  const testsSrc = path.join(taskDir, "tests");
-  if (!fs.existsSync(testsSrc)) {
-    throw new Error(`tests missing: ${testsSrc}`);
-  }
-  const testsDst = path.join(destTaskDir, "tests");
-  fs.mkdirSync(testsDst, { recursive: true });
-  for (const name of fs.readdirSync(testsSrc)) {
-    const src = path.join(testsSrc, name);
+/** Copy regular files only; reject symlinks (grade integrity). */
+function copyDirFiles(srcDir: string, destDir: string): number {
+  if (!fs.existsSync(srcDir)) return 0;
+  fs.mkdirSync(destDir, { recursive: true });
+  let n = 0;
+  for (const name of fs.readdirSync(srcDir)) {
+    const src = path.join(srcDir, name);
     const st = fs.lstatSync(src);
     if (st.isSymbolicLink()) {
-      throw new Error(`symlink not allowed in tests/: ${name}`);
+      throw new Error(`symlink not allowed: ${name}`);
     }
     if (st.isFile()) {
-      fs.copyFileSync(src, path.join(testsDst, name));
+      fs.copyFileSync(src, path.join(destDir, name));
+      n += 1;
     }
+  }
+  return n;
+}
+
+/**
+ * Stage only non-secret task assets for grading:
+ * - tests/ (code-debugging-eval)
+ * - subject/ (test-generation-eval module under test)
+ * Never copies expected/, known-good/, known-bad/, or input/.
+ */
+function stageTaskForGrade(taskDir: string, destTaskDir: string): void {
+  const testsCopied = copyDirFiles(
+    path.join(taskDir, "tests"),
+    path.join(destTaskDir, "tests"),
+  );
+  const subjectCopied = copyDirFiles(
+    path.join(taskDir, "subject"),
+    path.join(destTaskDir, "subject"),
+  );
+  if (testsCopied === 0 && subjectCopied === 0) {
+    throw new Error("tests/ or subject/ required for grading");
   }
 }
 
 /**
  * Grade artifact in Docker: node image, no network.
- * Mounts only skill scripts + tests/ + artifact — never expected/known-good/input.
+ * Mounts only skill scripts + staged tests/subject + artifact.
  */
 export function gradeInDocker(opts: {
   skillRoot: string;
@@ -61,11 +81,11 @@ export function gradeInDocker(opts: {
     fs.mkdirSync(artifactDir, { recursive: true });
     fs.copyFileSync(opts.artifactPath, path.join(artifactDir, "artifact.js"));
     try {
-      copyTestsOnly(opts.taskDir, taskStage);
+      stageTaskForGrade(opts.taskDir, taskStage);
     } catch (e) {
       return {
         exitCode: 1,
-        summary: e instanceof Error ? e.message : "tests missing",
+        summary: e instanceof Error ? e.message : "stage failed",
       };
     }
 
@@ -130,7 +150,6 @@ export function gradeInDocker(opts: {
       }
       return { exitCode: r.status ?? 1, summary: summary || `exit ${r.status}` };
     } finally {
-      // Ensure timeout/killed CLI cannot leave an orphan container.
       spawnSync("docker", ["rm", "-f", containerName], {
         encoding: "utf8",
         timeout: 15_000,
@@ -141,7 +160,6 @@ export function gradeInDocker(opts: {
 
 /**
  * Host-side grade for smoke only. Caller must gate with FAKE_PRODUCE=known-good.
- * Mounts/copies only tests/ — never expected/known-good — and strips env secrets.
  */
 export function gradeOnHost(opts: {
   skillRoot: string;
@@ -159,11 +177,11 @@ export function gradeOnHost(opts: {
 
   return withTempDir("cde-host-", (work) => {
     try {
-      copyTestsOnly(opts.taskDir, work);
+      stageTaskForGrade(opts.taskDir, work);
     } catch (e) {
       return {
         exitCode: 1,
-        summary: e instanceof Error ? e.message : "tests missing",
+        summary: e instanceof Error ? e.message : "stage failed",
       };
     }
 

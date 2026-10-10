@@ -1,0 +1,21 @@
+{
+  "taskSetId": "tge-v1",
+  "githubUrl": "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/test-generation-eval",
+  "taskIds": [
+    "gen-01",
+    "gen-02",
+    "gen-03",
+    "gen-04",
+    "gen-05",
+    "gen-06"
+  ],
+  "dryRunIds": ["gen-01", "gen-02", "gen-03"],
+  "targetFile": {
+    "gen-01": "test.js",
+    "gen-02": "test.js",
+    "gen-03": "test.js",
+    "gen-04": "test.js",
+    "gen-05": "test.js",
+    "gen-06": "test.js"
+  }
+}

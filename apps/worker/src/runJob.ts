@@ -102,6 +102,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
             skillMd: skill.skillMd,
             inputPath: tp.inputPath,
             targetFile: tp.targetFile,
+            subjectDir: tp.subjectDir,
             seed: config.seed + r,
           });
           content = produced.content;

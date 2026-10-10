@@ -28,10 +28,11 @@ Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` 
 
 ## Layout
 
-- `eval-skills/code-debugging-eval` — skill #1 (8 tasks, gold, grade script)
+- `eval-skills/code-debugging-eval` — skill #1 (fix buggy JS, 8 tasks)
+- `eval-skills/test-generation-eval` — skill #2 (write assert tests, 6 tasks)
 - `packages/core` — schema, scoring, skill loader, Docker grade
 - `apps/worker` — file queue + produce/grade
-- `apps/web` — New run / Runs / Dashboard
+- `apps/web` — New run / Runs / Dashboard / Benefit Report
 
 ## Smoke without OpenAI
 

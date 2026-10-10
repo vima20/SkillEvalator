@@ -174,7 +174,8 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
         <p className="eyebrow">Selected skill</p>
         <h2>{selected?.id ?? evalSkillId}</h2>
         <p className="skill-card-body">
-          Pipeline: model produce → Docker/host grade vs expected fixtures.
+          Pipeline: model produce → Docker/host grade (script vs fixtures /
+          subject).
         </p>
         <dl className="meta-list">
           <div>
