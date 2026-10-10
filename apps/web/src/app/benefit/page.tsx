@@ -26,10 +26,10 @@ export default function BenefitIndexPage() {
       </header>
 
       <div className="panel callout-warn">
-        <strong>Kielletty inferenssi</strong>
+        <strong>Forbidden inference</strong>
         <p>
-          Benefit Report -tulos ≠ Cursor/KH skill adoption -todiste. Se mittaa
-          vain produce→grade -putkea lukitulla task setillä.
+          A Benefit Report result is not proof of Cursor/KH skill adoption. It
+          only measures the produce→grade pipeline on a locked task set.
         </p>
       </div>
 
@@ -46,8 +46,8 @@ export default function BenefitIndexPage() {
             <thead>
               <tr>
                 <th>Run</th>
-                <th>Tuomio</th>
-                <th>Arvosana</th>
+                <th>Verdict</th>
+                <th>Rating</th>
                 <th>Status</th>
                 <th>Mode</th>
                 <th>Score</th>
@@ -65,10 +65,10 @@ export default function BenefitIndexPage() {
                   <td>
                     <span className={`verdict-chip verdict-${r.verdict.recommendation}`}>
                       {r.verdict.recommendation === "use"
-                        ? "KÄYTÄ"
+                        ? "USE"
                         : r.verdict.recommendation === "do_not_use"
-                          ? "ÄLÄ KÄYTÄ"
-                          : "EI VOIDA TUOMITA"}
+                          ? "DO NOT USE"
+                          : "INCONCLUSIVE"}
                     </span>
                   </td>
                   <td>

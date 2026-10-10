@@ -60,7 +60,7 @@ describe("decideSkillUse", () => {
       sample({ mode: "official", score: 1, modelId: "gpt-4.1-mini", repeats: 3 }),
     );
     expect(v.recommendation).toBe("use");
-    expect(v.headline).toMatch(/KÄYTÄ/);
+    expect(v.headline).toMatch(/USE/);
   });
 
   it("do not use on failing official", () => {
@@ -74,17 +74,17 @@ describe("benefitReport", () => {
     const report = buildBenefitReport(sample());
     expect(report.verdict.recommendation).toBe("inconclusive");
     expect(report.rating.stars).toBe(4);
-    expect(report.rating.grade).toBe("Hyvä");
+    expect(report.rating.grade).toBe("Good");
     expect(report.rating.starsDisplay).toBe("★★★★☆");
     expect(report.rating.reviewSections.map((s) => s.heading)).toEqual(
-      expect.arrayContaining(["Tulos", "Mitä tämä kertoo", "Suositus", "Rajoite"]),
+      expect.arrayContaining(["Result", "What this shows", "Recommendation", "Limitation"]),
     );
-    expect(report.rating.review).not.toMatch(/^Kirjallinen arvio:/);
+    expect(report.rating.review).not.toMatch(/^Written review:/);
     const md = benefitReportToMarkdown(report);
-    expect(md).toContain("## Tuomio / Verdict");
-    expect(md).toContain("## Tähtiarvio / Rating");
-    expect(md).toContain("## Kirjallinen arvio");
-    expect(md).toContain("### Suositus");
+    expect(md).toContain("## Verdict");
+    expect(md).toContain("## Rating");
+    expect(md).toContain("## Written review");
+    expect(md).toContain("### Recommendation");
     expect(md).toContain("INCONCLUSIVE");
     expect(md).toMatch(/not proof of Cursor\/KH/i);
   });
@@ -94,6 +94,6 @@ describe("benefitReport", () => {
       sample({ mode: "official", score: 1, modelId: "gpt-4.1-mini", repeats: 3 }),
     );
     expect(report.rating.stars).toBe(5);
-    expect(report.rating.grade).toBe("Erinomainen");
+    expect(report.rating.grade).toBe("Excellent");
   });
 });

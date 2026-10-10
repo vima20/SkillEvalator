@@ -86,14 +86,14 @@ export default async function BenefitReportPage({
       <section
         className={`panel verdict-banner verdict-${report.verdict.recommendation}`}
       >
-        <p className="eyebrow">Tuomio</p>
+        <p className="eyebrow">Verdict</p>
         <h2 className="verdict-headline">{report.verdict.headline}</h2>
         <p className="verdict-decision">{report.verdict.decision}</p>
         <p className="verdict-rationale">{report.verdict.rationale}</p>
       </section>
 
       <section className="panel report-section">
-        <h2>Kirjallinen arvio</h2>
+        <h2>Written review</h2>
         <div className="written-review">
           {report.rating.reviewSections.map((section) => (
             <div key={section.heading} className="review-block">

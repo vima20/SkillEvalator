@@ -35,9 +35,9 @@ export function StarRating({
     <div
       className="star-rating"
       role="img"
-      aria-label={`${filled} / 5 tähteä, ${grade}`}
+      aria-label={`${filled} out of 5 stars, ${grade}`}
     >
-      <p className="star-label">Tähtiarvio</p>
+      <p className="star-label">Star rating</p>
       <div className="star-row">
         {Array.from({ length: 5 }, (_, i) => (
           <StarIcon key={i} filled={i < filled} />
