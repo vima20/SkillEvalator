@@ -36,6 +36,14 @@ Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` 
 
 ## Smoke without OpenAI
 
+Harness self-check (known-good pass + known-bad fail for every skill dry-run task):
+
+```bat
+npm run smoke:skills
+```
+
+Worker smoke with fake produce:
+
 ```bat
 set FAKE_PRODUCE=known-good
 set ALLOW_HOST_GRADE=1
