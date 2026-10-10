@@ -1,0 +1,24 @@
+{
+  "taskSetId": "cde-v1",
+  "taskIds": [
+    "bug-01",
+    "bug-02",
+    "bug-03",
+    "bug-04",
+    "bug-05",
+    "bug-06",
+    "bug-07",
+    "bug-08"
+  ],
+  "dryRunIds": ["bug-01", "bug-03", "bug-08"],
+  "targetFile": {
+    "bug-01": "sum.js",
+    "bug-02": "auth.js",
+    "bug-03": "user.js",
+    "bug-04": "fetchUser.js",
+    "bug-05": "cart.js",
+    "bug-06": "parse.js",
+    "bug-07": "counter.js",
+    "bug-08": "safePath.js"
+  }
+}
