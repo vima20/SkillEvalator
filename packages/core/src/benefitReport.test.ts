@@ -76,11 +76,15 @@ describe("benefitReport", () => {
     expect(report.rating.stars).toBe(4);
     expect(report.rating.grade).toBe("Hyvä");
     expect(report.rating.starsDisplay).toBe("★★★★☆");
-    expect(report.rating.review).toMatch(/Kirjallinen arvio/);
+    expect(report.rating.reviewSections.map((s) => s.heading)).toEqual(
+      expect.arrayContaining(["Tulos", "Mitä tämä kertoo", "Suositus", "Rajoite"]),
+    );
+    expect(report.rating.review).not.toMatch(/^Kirjallinen arvio:/);
     const md = benefitReportToMarkdown(report);
     expect(md).toContain("## Tuomio / Verdict");
     expect(md).toContain("## Tähtiarvio / Rating");
-    expect(md).toContain("### Kirjallinen arvio");
+    expect(md).toContain("## Kirjallinen arvio");
+    expect(md).toContain("### Suositus");
     expect(md).toContain("INCONCLUSIVE");
     expect(md).toMatch(/not proof of Cursor\/KH/i);
   });

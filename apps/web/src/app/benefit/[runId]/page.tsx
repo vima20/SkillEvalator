@@ -95,8 +95,11 @@ export default async function BenefitReportPage({
       <section className="panel report-section">
         <h2>Kirjallinen arvio</h2>
         <div className="written-review">
-          {report.rating.review.split("\n\n").map((para) => (
-            <p key={para.slice(0, 48)}>{para}</p>
+          {report.rating.reviewSections.map((section) => (
+            <div key={section.heading} className="review-block">
+              <h3>{section.heading}</h3>
+              <p>{section.body}</p>
+            </div>
           ))}
         </div>
       </section>

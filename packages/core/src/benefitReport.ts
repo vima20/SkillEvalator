@@ -13,6 +13,11 @@ export type BenefitVerdict = {
   rationale: string;
 };
 
+export type ReviewSection = {
+  heading: string;
+  body: string;
+};
+
 /** 1–5 star rating plus Finnish letter-style grade and prose review. */
 export type BenefitRating = {
   stars: 1 | 2 | 3 | 4 | 5;
@@ -22,7 +27,9 @@ export type BenefitRating = {
   grade: string;
   /** Short Finnish tagline under stars */
   summary: string;
-  /** Longer written assessment (Finnish) */
+  /** Structured written assessment for UI */
+  reviewSections: ReviewSection[];
+  /** Flat prose for Markdown export */
   review: string;
 };
 
@@ -134,68 +141,137 @@ export function rateSkill(result: RunResult): BenefitRating {
 
   const grade = gradeForStars(stars);
   const scoreTxt = score === null ? "—" : score.toFixed(2);
-  const modeFi = result.mode === "official" ? "official" : "dry-run";
+  const spread = result.scoreSpread ?? 0;
+  const label = score === null ? "Fail" : labelForScore(score, spread);
+  const costTxt = `$${result.costUsd.toFixed(4)}`;
+  const latencyTxt = `${Math.round(result.latencyMs / 1000)} s`;
 
   let summary: string;
-  let review: string;
+  let reviewSections: ReviewSection[];
 
   if (status === "cancelled" || status === "budget_stop") {
     summary = "Ajo keskeytyi — ei luotettavaa arvosanaa.";
-    review = [
-      `Kirjallinen arvio: ${result.evalSkillId} (${result.modelId}, ${modeFi}).`,
-      `Ajo päättyi tilaan ${status}, joten scorecardia ei voida käyttää käyttösuosituksena.`,
-      "Suositus: aja uudelleen ilman cancelia / budjetti­katkoa ja tee official-ajo (≥3 repeats) ennen käyttöönottoa.",
-      "Huom: tämä arvio ei ole KH/Cursor-adoption todiste.",
-    ].join("\n\n");
+    reviewSections = [
+      {
+        heading: "Tilanne",
+        body: `${result.evalSkillId} -ajo (${result.modelId}) päättyi tilaan ${status}. Scorecardia ei ehditty muodostaa loppuun, joten käyttösuositusta ei voida antaa.`,
+      },
+      {
+        heading: "Miksi tämä ei riitä",
+        body:
+          status === "cancelled"
+            ? "Cancel katkaisi putken kesken. Osittaiset artefaktit eivät kerro, läpäisisikö skill koko task setin."
+            : "Kustannuskatko (budget_stop) pysäytti ajon. Null-score ei ole negatiivinen tulos eikä positiivinen — se on puuttuva mittaus.",
+      },
+      {
+        heading: "Suositus",
+        body: "Aja uudelleen ilman keskeytystä. Kun dry-run on clean, tee official (≥3 repeats) ennen kuin skilliä tarjotaan tiimille.",
+      },
+    ];
   } else if (score === null || score <= 0) {
     summary = "Skill ei tuottanut yhtään läpäisyä.";
-    review = [
-      `Kirjallinen arvio: ${result.evalSkillId} sai arvosanan ${grade} (${stars}/5).`,
-      `Mallilla ${result.modelId} task set ${result.taskSetId} tuotti scoren ${scoreTxt} (${passed}/${total} taskia).`,
-      failedTasks.length
-        ? `Hylätyt taskit: ${failedTasks.join(", ")}.`
-        : "Yhtään taskia ei läpäissyt.",
-      "Skilliä ei kannata ottaa käyttöön tässä muodossa. Korjaa prompt/fixturet tai vaihda mallia ja aja dry-run uudelleen.",
-      "Huom: tulos ≠ KH-adoption proof.",
-    ].join("\n\n");
+    reviewSections = [
+      {
+        heading: "Tulos",
+        body: `${result.evalSkillId} sai arvosanan ${grade} (${stars}/5). Mallilla ${result.modelId} task set ${result.taskSetId} tuotti scoren ${scoreTxt} — ${passed}/${total || "0"} taskia läpäisi.`,
+      },
+      {
+        heading: "Missä meni pieleen",
+        body: failedTasks.length
+          ? `Kaikki arvioidut taskit jäivät vajaiksi. Erityisesti: ${failedTasks.join(", ")}. Malli ei tuottanut gradea läpäisevää korjausta, tai skillin ohje/fixturet eivät ohjaa oikeaan suuntaan.`
+          : "Yhtään taskia ei läpäissyt. Putki toimi teknisesti, mutta produce→grade -ketju ei tuottanut hyväksyttävää tulosta.",
+      },
+      {
+        heading: "Suositus",
+        body: "Älä ota skilliä käyttöön. Tutki hylätyt artefaktit, tiukenna SKILL.md-ohjeistusta tai fixtureitä, ja toista dry-run kunnes score on 1.0.",
+      },
+    ];
   } else if (score < 1) {
     summary = "Osittainen läpäisy — ei vielä käyttövalmis.";
-    review = [
-      `Kirjallinen arvio: ${result.evalSkillId} sai arvosanan ${grade} (${stars}/5).`,
-      `Score ${scoreTxt} tarkoittaa, että ${passed}/${total} taskia läpäisi mallilla ${result.modelId} (${modeFi}).`,
-      failedTasks.length
-        ? `Heikot kohdat: ${failedTasks.join(", ")}. Nämä pitää korjata ennen kuin skilliä suositellaan tiimikäyttöön.`
-        : "Läpäisy jäi alle täyden rajan.",
-      result.mode === "dry-run"
-        ? "Dry-run ei ole official-väite. Korjaa virheet ja aja official (≥3 repeats) vasta kun dry-run on clean."
-        : "Official-ajo ei ollut täysi pass. Älä ota skilliä käyttöön ennen kuin score on 1.0.",
-      "Huom: tulos ≠ KH-adoption proof.",
-    ].join("\n\n");
+    const failList = failedTasks.length
+      ? `Hylätyt taskit (${failedTasks.length}): ${failedTasks.join(", ")}.`
+      : "Osa taskeista jäi vajaiksi.";
+    reviewSections = [
+      {
+        heading: "Tulos",
+        body: `${result.evalSkillId} sai arvosanan ${grade} (${stars}/5). Score ${scoreTxt} tarkoittaa ${passed}/${total} läpäisyä mallilla ${result.modelId} (${result.mode}). Kesto ${latencyTxt}, kustannus ${costTxt}.`,
+      },
+      {
+        heading: "Analyysi",
+        body: `${failList} Osittainen läpäisy näyttää, että skill/malli osuu osaan tapauksista, mutta ei ole vielä luotettava koko setissä. Tiimikäytössä tämä tarkoittaa satunnaisia regressioita juuri niissä bugityypeissä, joissa grade nyt failaa.`,
+      },
+      {
+        heading: "Suositus",
+        body:
+          result.mode === "dry-run"
+            ? "Älä etene officialiin ennen kuin dry-run on täysin clean (score 1.0). Korjaa heikot taskit ensin — muuten official vain vahvistaa saman vajaan kuvan kalliimmalla."
+            : "Älä ota skilliä käyttöön. Official-ajo vaatii score 1.0. Korjaa failaavat taskit ja aja official uudelleen (≥3 repeats).",
+      },
+    ];
   } else if (result.mode === "dry-run") {
     summary = "Lupaava dry-run — official puuttuu vielä.";
-    review = [
-      `Kirjallinen arvio: ${result.evalSkillId} sai arvosanan ${grade} (${stars}/5).`,
-      `Dry-run läpäisi taskit (${passed}/${total}, score ${scoreTxt}) mallilla ${result.modelId}. Tämä on hyvä merkki harnessista ja skillin sisällöstä.`,
-      "Tähtiä ei nosteta viiteen dry-runilla: official-ajo (≥3 repeats, gpt-4.1-mini) tarvitaan ennen käyttöönottosuositusta.",
-      "Seuraava askel: aja mode=official samalla skillillä. Jos sekin on clean, tuomio muuttuu muotoon KÄYTÄ.",
-      "Huom: tulos ≠ KH-adoption proof.",
-    ].join("\n\n");
+    reviewSections = [
+      {
+        heading: "Tulos",
+        body: `${result.evalSkillId} suoriutui dry-runista puhtaasti: ${passed}/${total} taskia läpäisi mallilla ${result.modelId} (score ${scoreTxt}). Arvosana ${grade} (${stars}/5). Kesto ${latencyTxt}, kustannus ${costTxt}.`,
+      },
+      {
+        heading: "Mitä tämä kertoo",
+        body: `Task setin dry-run-osajoukko (${result.taskIds.join(", ")}) ja skillin ohjeistus näyttävät toimivan yhteen: malli tuotti gradea läpäisevät korjaukset. Se on vahva signaali harnessista ja skillin sisällöstä — ei vielä signaali tuotantokäytöstä.`,
+      },
+      {
+        heading: "Miksi ei 5/5 tai KÄYTÄ",
+        body: "Dry-run käyttää tarkoituksella kevyempää mallia ja vain osaa taskeista. Siksi tähtiä ei nosteta viiteen eikä tuomiota muuteta muotoon KÄYTÄ ennen official-ajoa (≥3 repeats, lukittu official-malli, koko task set).",
+      },
+      {
+        heading: "Suositus",
+        body: "Jatka official-ajoon samalla skillillä. Jos officialkin on clean, suositus nousee muotoon KÄYTÄ. Älä jaa skilliä tiimille pelkän dry-runin perusteella.",
+      },
+    ];
   } else {
     summary = "Official läpäisi — skill sopii käyttöön tällä mallilla.";
-    review = [
-      `Kirjallinen arvio: ${result.evalSkillId} sai arvosanan ${grade} (${stars}/5).`,
-      `Official-ajo score ${scoreTxt} (${passed}/${total} taskia) mallilla ${result.modelId}, task set ${result.taskSetId}, repeats ${result.repeats}.`,
-      `Label ${labelForScore(score, result.scoreSpread ?? 0)}; hajonta ${((result.scoreSpread ?? 0) as number).toFixed(3)}.`,
-      "Harnessin perusteella skill kannattaa ottaa käyttöön tässä model-pairingissa. Pidä silti silmällä kustannusta ja uusia regressioita kun fixtureitä päivitetään.",
-      "Huom: tulos ≠ KH-adoption proof — mittaa vain produce→grade -putkea.",
-    ].join("\n\n");
+    reviewSections = [
+      {
+        heading: "Tulos",
+        body: `${result.evalSkillId} läpäisi official-arvioinnin arvosanalla ${grade} (${stars}/5). Score ${scoreTxt}, label ${label}, hajonta ${spread.toFixed(3)}. Malli ${result.modelId}, task set ${result.taskSetId}, ${passed}/${total} taskia, repeats ${result.repeats}. Kesto ${latencyTxt}, kustannus ${costTxt}.`,
+      },
+      {
+        heading: "Mitä tämä kertoo",
+        body: "Lukittu official-asetus tuotti täyden läpäisyn. Skillin prompt, fixturet ja grade-skriptit muodostavat toimivan ketjun tälle mallille — juuri sen, mitä MVP Benefit Reportilta vaaditaan käyttösuositukseen.",
+      },
+      {
+        heading: "Suositus",
+        body: `Ota ${result.evalSkillId} käyttöön yhdessä ${result.modelId}:n kanssa. Seuraa kustannusta ja aja regressio uudelleen, kun fixtureitä tai SKILL.md:tä muutetaan.`,
+      },
+      {
+        heading: "Rajoite",
+        body: "Mittaus koskee vain produce→grade -putkea. Se ei ole todiste Cursor/KH-skillien adoptoinnista organisaatiossa.",
+      },
+    ];
   }
+
+  // Shared closing note unless official pass already has Rajoite section
+  if (
+    status !== "cancelled" &&
+    status !== "budget_stop" &&
+    !(result.mode === "official" && score === 1)
+  ) {
+    reviewSections.push({
+      heading: "Rajoite",
+      body: "Tämä arvio mittaa vain harness-läpäisyä (produce→grade). Se ei ole todiste Cursor/KH-skillien adoptoinnista.",
+    });
+  }
+
+  const review = reviewSections
+    .map((s) => `**${s.heading}.** ${s.body}`)
+    .join("\n\n");
 
   return {
     stars,
     starsDisplay: starsDisplay(stars),
     grade,
     summary,
+    reviewSections,
     review,
   };
 }
@@ -359,10 +435,9 @@ export function benefitReportToMarkdown(report: BenefitReport): string {
     "",
     r.summary,
     "",
-    "### Kirjallinen arvio",
+    "## Kirjallinen arvio",
     "",
-    r.review,
-    "",
+    ...r.reviewSections.flatMap((s) => [`### ${s.heading}`, "", s.body, ""]),
     "## Disclaimer",
     "",
     report.disclaimer,

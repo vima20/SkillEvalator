@@ -541,15 +541,24 @@ code {
 
 .written-review {
   display: grid;
-  gap: 12px;
+  gap: 18px;
 }
 
-.written-review p {
+.review-block h3 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.review-block p {
   margin: 0;
   max-width: 72ch;
   color: var(--text-muted);
   font-size: 15px;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .stars-inline {
