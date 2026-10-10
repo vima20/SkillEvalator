@@ -11,7 +11,7 @@ export function scoreSpread(scores: number[]): number {
   return Math.sqrt(v);
 }
 
-export function labelForScore(score: number | null): "Fail" | "Pass" | "Strong" {
+export function labelForScore(score: number | null): "Fail" | "Pass" {
   if (score === null || score < 1) return "Fail";
   return "Pass";
 }

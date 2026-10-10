@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   JobManifest,
+  RunResultSchema,
   gradeInDocker,
   gradeOnHost,
   loadSkill,
@@ -9,15 +10,12 @@ import {
   taskPaths,
   meanScores,
   aggregateRepeats,
+  normalizeRepeats,
+  writeJsonFile,
   type RunResult,
 } from "@skillevalator/core";
 import { config } from "./config.js";
 import { produceArtifact } from "./produce.js";
-
-function writeJson(p: string, data: unknown) {
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(data, null, 2), "utf8");
-}
 
 export async function runJob(job: JobManifest): Promise<RunResult> {
   const startedAt = new Date().toISOString();
@@ -26,7 +24,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const modelId =
     job.modelId ??
     (job.mode === "official" ? config.modelOfficial : config.modelDryRun);
-  const repeats = job.mode === "official" ? Math.max(job.repeats, 3) : job.repeats;
+  const repeats = normalizeRepeats(job.mode, job.repeats);
 
   const resultDir = path.join(config.resultsDir, job.runId);
   fs.mkdirSync(resultDir, { recursive: true });
@@ -35,24 +33,29 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const findings: string[] = [];
   const repeatScores: number[] = [];
   let lastPerTask: RunResult["perTask"] = [];
+  let stop: "cancelled" | "budget_stop" | null = null;
 
   const statusPath = path.join(resultDir, "status.json");
+  const cancelPath = path.join(config.jobsDir, `${job.runId}.cancel`);
 
-  for (let r = 0; r < repeats; r++) {
+  outer: for (let r = 0; r < repeats; r++) {
     if (config.costHardStop && costUsd >= config.costCapUsd) {
+      stop = "budget_stop";
       findings.push("cost hard stop");
       break;
     }
 
     const perTask: RunResult["perTask"] = [];
     for (const taskId of taskIds) {
-      if (fs.existsSync(path.join(config.jobsDir, `${job.runId}.cancel`))) {
+      if (fs.existsSync(cancelPath)) {
+        stop = "cancelled";
         findings.push("cancelled");
-        break;
+        break outer;
       }
       if (config.costHardStop && costUsd >= config.costCapUsd) {
+        stop = "budget_stop";
         findings.push("cost hard stop");
-        break;
+        break outer;
       }
 
       const tp = taskPaths(skill, taskId);
@@ -94,7 +97,9 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         taskId,
         artifactRef: artifactPath,
         expectedRef: tp.expectedPath,
-        scriptResults: [{ name: "grade", exitCode: grade.exitCode, summary: grade.summary }],
+        scriptResults: [
+          { name: "grade", exitCode: grade.exitCode, summary: grade.summary },
+        ],
         score: ok ? 1 : 0,
         status: ok ? "ok" : "failed",
       });
@@ -105,7 +110,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     const m = meanScores(scores);
     if (m !== null) repeatScores.push(m);
 
-    writeJson(statusPath, {
+    writeJsonFile(statusPath, {
       runId: job.runId,
       status: "running",
       repeat: r + 1,
@@ -119,10 +124,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       ? aggregateRepeats(repeatScores)
       : { score: 0, scoreSpread: 0 };
 
-  const cancelled = findings.includes("cancelled");
-  const budget = findings.includes("cost hard stop");
-
-  const result: RunResult = {
+  const result = RunResultSchema.parse({
     runId: job.runId,
     evalSkillId: skill.id,
     evalSkillVersion: skill.version,
@@ -139,19 +141,23 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     aggregate: "mean",
     scoreSpread: agg.scoreSpread,
     perTask: lastPerTask,
-    score: cancelled || budget ? null : agg.score,
+    score: stop ? null : agg.score,
     subscores: {},
     rationale: "",
     findings,
     costUsd,
     latencyMs: Date.now() - Date.parse(startedAt),
-    status: cancelled ? "cancelled" : budget ? "budget_stop" : "ok",
+    status: stop ?? "ok",
     startedAt,
     finishedAt: new Date().toISOString(),
     mode: job.mode,
-  };
+  });
 
-  writeJson(path.join(resultDir, "result.json"), result);
-  writeJson(statusPath, { runId: job.runId, status: result.status, costUsd });
+  writeJsonFile(path.join(resultDir, "result.json"), result);
+  writeJsonFile(statusPath, {
+    runId: job.runId,
+    status: result.status,
+    costUsd,
+  });
   return result;
 }

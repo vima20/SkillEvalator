@@ -1,6 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { JobManifestSchema, type JobManifest } from "@skillevalator/core";
+import {
+  JobManifestSchema,
+  type JobManifest,
+  isQueuedJobFile,
+  readJsonFileAs,
+} from "@skillevalator/core";
 import { config } from "./config.js";
 import { runJob } from "./runJob.js";
 
@@ -12,7 +17,7 @@ function ensureDirs() {
 function listQueued(): string[] {
   return fs
     .readdirSync(config.jobsDir)
-    .filter((f) => f.endsWith(".json") && !f.endsWith(".running.json"))
+    .filter(isQueuedJobFile)
     .map((f) => path.join(config.jobsDir, f))
     .sort();
 }
@@ -25,9 +30,7 @@ function claim(jobPath: string): JobManifest | null {
     return null;
   }
   try {
-    const text = fs.readFileSync(running, "utf8").replace(/^\uFEFF/, "");
-    const raw = JSON.parse(text);
-    return JobManifestSchema.parse(raw);
+    return readJsonFileAs(JobManifestSchema, running);
   } catch (e) {
     fs.renameSync(running, jobPath.replace(/\.json$/, ".failed.json"));
     console.error("invalid job", e);

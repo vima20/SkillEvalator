@@ -1,6 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
-import { readJsonFile } from "@/lib/json";
+import { loadRunResult, loadRunStatus } from "@skillevalator/core";
 import { resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -12,20 +10,28 @@ export default async function RunDetailPage({
   params: Promise<{ runId: string }>;
 }) {
   const { runId } = await params;
-  const dir = path.join(resultsDir(), runId);
-  const statusPath = path.join(dir, "status.json");
-  const resultPath = path.join(dir, "result.json");
-  const status = fs.existsSync(statusPath)
-    ? readJsonFile<{ status?: string }>(statusPath)
-    : null;
-  type Result = {
-    score: number | null;
-    modelId: string;
-    evalSkillVersion: string;
-    taskSetId: string;
-    perTask?: Array<{ taskId: string; score: number; status: string }>;
-  };
-  const result = fs.existsSync(resultPath) ? readJsonFile<Result>(resultPath) : null;
+  let status: ReturnType<typeof loadRunStatus> = null;
+  let result: ReturnType<typeof loadRunResult> = null;
+  let invalid = false;
+
+  try {
+    const root = resultsDir();
+    status = loadRunStatus(root, runId);
+    result = loadRunResult(root, runId);
+  } catch {
+    invalid = true;
+  }
+
+  if (invalid) {
+    return (
+      <div>
+        <header className="page-header">
+          <h1>Invalid run</h1>
+          <p>The run id is not allowed.</p>
+        </header>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -66,7 +72,7 @@ export default async function RunDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {(result.perTask ?? []).map((t) => (
+                {result.perTask.map((t) => (
                   <tr key={t.taskId}>
                     <td>{t.taskId}</td>
                     <td>{t.score}</td>
@@ -77,7 +83,7 @@ export default async function RunDetailPage({
                 ))}
               </tbody>
             </table>
-            {(result.perTask ?? []).length === 0 ? (
+            {result.perTask.length === 0 ? (
               <p className="empty">No per-task results.</p>
             ) : null}
           </div>

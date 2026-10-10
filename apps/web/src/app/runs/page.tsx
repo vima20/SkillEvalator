@@ -1,27 +1,11 @@
-import fs from "node:fs";
-import path from "node:path";
-import { readJsonFile } from "@/lib/json";
+import { listRuns } from "@skillevalator/core";
 import { resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
 export default function RunsPage() {
-  const root = resultsDir();
-  const runs: Array<{ runId: string; status?: string }> = [];
-  if (fs.existsSync(root)) {
-    for (const id of fs.readdirSync(root)) {
-      const sp = path.join(root, id, "status.json");
-      if (!fs.existsSync(sp)) continue;
-      try {
-        const status = readJsonFile<{ status?: string }>(sp);
-        runs.push({ runId: id, status: status.status });
-      } catch {
-        /* skip corrupt */
-      }
-    }
-  }
-  runs.sort((a, b) => b.runId.localeCompare(a.runId));
+  const runs = listRuns(resultsDir());
 
   return (
     <div>

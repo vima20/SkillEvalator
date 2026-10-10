@@ -1,5 +1,30 @@
 import { z } from "zod";
 
+export const TaskStatusSchema = z.enum([
+  "ok",
+  "failed",
+  "cancelled",
+  "budget_stop",
+]);
+
+export const RunStatusSchema = z.enum([
+  "ok",
+  "failed",
+  "cancelled",
+  "budget_stop",
+  "running",
+  "queued",
+]);
+
+export const SkillManifestSchema = z.object({
+  taskSetId: z.string().min(1),
+  taskIds: z.array(z.string().min(1)).min(1),
+  dryRunIds: z.array(z.string().min(1)).min(1),
+  targetFile: z.record(z.string().min(1)),
+});
+
+export type SkillManifest = z.output<typeof SkillManifestSchema>;
+
 export const ScriptResultSchema = z.object({
   name: z.string(),
   exitCode: z.number(),
@@ -12,7 +37,7 @@ export const PerTaskResultSchema = z.object({
   expectedRef: z.string().optional(),
   scriptResults: z.array(ScriptResultSchema),
   score: z.number().min(0).max(1).nullable(),
-  status: z.enum(["ok", "failed", "cancelled", "budget_stop"]),
+  status: TaskStatusSchema,
 });
 
 export const RunResultSchema = z.object({
@@ -41,21 +66,21 @@ export const RunResultSchema = z.object({
   findings: z.array(z.string()).default([]),
   costUsd: z.number().nonnegative().default(0),
   latencyMs: z.number().nonnegative().default(0),
-  status: z.enum(["ok", "failed", "cancelled", "budget_stop", "running", "queued"]),
+  status: RunStatusSchema,
   startedAt: z.string(),
   finishedAt: z.string().optional(),
   mode: z.enum(["dry-run", "official"]),
 });
 
-export type RunResult = z.infer<typeof RunResultSchema>;
+export type RunResult = z.output<typeof RunResultSchema>;
 
 export const JobManifestSchema = z.object({
-  runId: z.string(),
-  evalSkillId: z.string(),
+  runId: z.string().min(1),
+  evalSkillId: z.string().min(1),
   mode: z.enum(["dry-run", "official"]),
   modelId: z.string().optional(),
   repeats: z.number().int().positive().default(1),
   createdAt: z.string(),
 });
 
-export type JobManifest = z.infer<typeof JobManifestSchema>;
+export type JobManifest = z.output<typeof JobManifestSchema>;

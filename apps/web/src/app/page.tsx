@@ -1,8 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+/** Mirrored from @skillevalator/core OFFICIAL_MIN_REPEATS (API re-normalizes). */
+const OFFICIAL_MIN_REPEATS = 3;
+
 export default function NewRunPage() {
+  const router = useRouter();
   const [evalSkillId, setEvalSkillId] = useState("code-debugging-eval");
   const [mode, setMode] = useState<"dry-run" | "official">("dry-run");
   const [repeats, setRepeats] = useState(1);
@@ -22,13 +27,13 @@ export default function NewRunPage() {
         body: JSON.stringify({
           evalSkillId,
           mode,
-          repeats: mode === "official" ? Math.max(repeats, 3) : repeats,
+          repeats,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "failed");
       setMsg(`Queued ${data.runId}`);
-      window.location.href = `/runs/${data.runId}`;
+      router.push(`/runs/${data.runId}`);
     } catch (err) {
       setError(true);
       setMsg(err instanceof Error ? err.message : "error");
@@ -44,7 +49,7 @@ export default function NewRunPage() {
         <p>
           Produce with the model, then grade against expected fixtures in Docker.
           Dry-run uses <code>gpt-4o-mini</code>; official uses{" "}
-          <code>gpt-4.1-mini</code> with at least three repeats.
+          <code>gpt-4.1-mini</code> with at least {OFFICIAL_MIN_REPEATS} repeats.
         </p>
       </header>
 
@@ -83,7 +88,9 @@ export default function NewRunPage() {
             onChange={(e) => setRepeats(Number(e.target.value))}
           />
           {mode === "official" ? (
-            <p className="hint">Official mode enforces a minimum of 3 repeats.</p>
+            <p className="hint">
+              Official mode enforces a minimum of {OFFICIAL_MIN_REPEATS} repeats.
+            </p>
           ) : null}
         </div>
 

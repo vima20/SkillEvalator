@@ -21,22 +21,33 @@ function main() {
     process.exit(1);
   }
 
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), "cde-grade-"));
   const testsSrc = path.join(taskDir, "tests");
-  const destFile = path.join(work, targetFile);
-  fs.copyFileSync(artifactPath, destFile);
-  for (const name of fs.readdirSync(testsSrc)) {
-    fs.copyFileSync(path.join(testsSrc, name), path.join(work, name));
+  if (!fs.existsSync(testsSrc)) {
+    console.error("tests missing:", testsSrc);
+    process.exit(1);
   }
 
-  const r = spawnSync(process.execPath, ["test.js"], {
-    cwd: work,
-    encoding: "utf8",
-    timeout: 15000,
-  });
-  if (r.stdout) process.stdout.write(r.stdout);
-  if (r.stderr) process.stderr.write(r.stderr);
-  process.exit(r.status === 0 ? 0 : 1);
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "cde-grade-"));
+  let exitCode = 1;
+  try {
+    const destFile = path.join(work, targetFile);
+    fs.copyFileSync(artifactPath, destFile);
+    for (const name of fs.readdirSync(testsSrc)) {
+      fs.copyFileSync(path.join(testsSrc, name), path.join(work, name));
+    }
+
+    const r = spawnSync(process.execPath, ["test.js"], {
+      cwd: work,
+      encoding: "utf8",
+      timeout: 15000,
+    });
+    if (r.stdout) process.stdout.write(r.stdout);
+    if (r.stderr) process.stderr.write(r.stderr);
+    exitCode = r.status === 0 ? 0 : 1;
+  } finally {
+    fs.rmSync(work, { recursive: true, force: true });
+  }
+  process.exit(exitCode);
 }
 
 main();

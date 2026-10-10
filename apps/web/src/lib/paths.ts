@@ -1,22 +1,25 @@
 import path from "node:path";
+import { findRepoRoot, resolveDataPaths } from "@skillevalator/core";
+
+function root(): string {
+  // Prefer walking up from cwd (apps/web when next runs) or parent.
+  return findRepoRoot(path.resolve(process.cwd()));
+}
+
+const data = () => resolveDataPaths(root());
 
 export function repoRoot(): string {
-  // apps/web -> repo root
-  return path.resolve(process.cwd(), "../..");
+  return root();
 }
 
 export function jobsDir(): string {
-  return path.resolve(process.env.JOBS_DIR ?? path.join(repoRoot(), "data/jobs"));
+  return data().jobsDir;
 }
 
 export function resultsDir(): string {
-  return path.resolve(
-    process.env.RESULTS_DIR ?? path.join(repoRoot(), "data/results"),
-  );
+  return data().resultsDir;
 }
 
 export function skillsDir(): string {
-  return path.resolve(
-    process.env.EVAL_SKILLS_DIR ?? path.join(repoRoot(), "eval-skills"),
-  );
+  return data().skillsDir;
 }

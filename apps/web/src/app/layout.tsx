@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
@@ -38,7 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <div className="app-shell">
           <header className="topbar">
-            <a className="brand" href="/">
+            <Link className="brand" href="/">
               <span className="brand-mark">
                 <BrandMark />
               </span>
@@ -46,11 +47,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <span className="brand-org">Unikie</span>
                 <span className="brand-product">SkillEvalator</span>
               </span>
-            </a>
+            </Link>
             <nav className="nav">
-              <a href="/">New run</a>
-              <a href="/runs">Runs</a>
-              <a href="/dashboard">Dashboard</a>
+              <Link href="/">New run</Link>
+              <Link href="/runs">Runs</Link>
+              <Link href="/dashboard">Dashboard</Link>
             </nav>
           </header>
           <main className="main">{children}</main>

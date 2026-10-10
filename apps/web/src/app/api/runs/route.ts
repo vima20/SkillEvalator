@@ -2,7 +2,14 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { ZodError, z } from "zod";
+import {
+  assertSafeId,
+  createJobManifest,
+  listRuns,
+  resolveUnder,
+  writeJsonFile,
+} from "@skillevalator/core";
 import { jobsDir, resultsDir, skillsDir } from "@/lib/paths";
 
 const Body = z.object({
@@ -12,49 +19,55 @@ const Body = z.object({
 });
 
 export async function GET() {
-  const root = resultsDir();
-  if (!fs.existsSync(root)) return NextResponse.json({ runs: [] });
-  const runs = fs
-    .readdirSync(root)
-    .filter((d) => fs.existsSync(path.join(root, d, "status.json")))
-    .map((id) => {
-      const status = JSON.parse(
-        fs.readFileSync(path.join(root, id, "status.json"), "utf8"),
-      );
-      return { runId: id, ...status };
-    })
-    .sort((a, b) => String(b.runId).localeCompare(String(a.runId)));
+  const runs = listRuns(resultsDir()).map(({ runId, status, result }) => ({
+    runId,
+    status,
+    score: result?.score ?? null,
+    modelId: result?.modelId,
+    mode: result?.mode,
+  }));
   return NextResponse.json({ runs });
 }
 
 export async function POST(req: Request) {
-  const body = Body.parse(await req.json());
-  const skillPath = path.join(skillsDir(), body.evalSkillId);
-  if (!fs.existsSync(skillPath)) {
-    return NextResponse.json({ error: "unknown skill" }, { status: 400 });
+  try {
+    const body = Body.parse(await req.json());
+    const evalSkillId = assertSafeId(body.evalSkillId, "evalSkillId");
+    const skillPath = resolveUnder(skillsDir(), evalSkillId);
+    if (!fs.existsSync(skillPath)) {
+      return NextResponse.json({ error: "unknown skill" }, { status: 400 });
+    }
+
+    const runId = `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
+    const job = createJobManifest({
+      runId,
+      evalSkillId,
+      mode: body.mode,
+      repeats: body.repeats,
+    });
+
+    const dir = jobsDir();
+    fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, `${runId}.tmp.json`);
+    const final = path.join(dir, `${runId}.json`);
+    writeJsonFile(tmp, job);
+    fs.renameSync(tmp, final);
+
+    writeJsonFile(path.join(resultsDir(), runId, "status.json"), {
+      runId,
+      status: "queued",
+    });
+
+    return NextResponse.json({ runId });
+  } catch (err) {
+    if (err instanceof ZodError) {
+      return NextResponse.json(
+        { error: "invalid request", details: err.flatten() },
+        { status: 400 },
+      );
+    }
+    const message = err instanceof Error ? err.message : "error";
+    const status = message.startsWith("invalid ") ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
-
-  const runId = `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
-  const job = {
-    runId,
-    evalSkillId: body.evalSkillId,
-    mode: body.mode,
-    repeats: body.mode === "official" ? Math.max(body.repeats, 3) : body.repeats,
-    createdAt: new Date().toISOString(),
-  };
-
-  const dir = jobsDir();
-  fs.mkdirSync(dir, { recursive: true });
-  const tmp = path.join(dir, `${runId}.tmp.json`);
-  const final = path.join(dir, `${runId}.json`);
-  fs.writeFileSync(tmp, JSON.stringify(job, null, 2), "utf8");
-  fs.renameSync(tmp, final);
-
-  fs.mkdirSync(path.join(resultsDir(), runId), { recursive: true });
-  fs.writeFileSync(
-    path.join(resultsDir(), runId, "status.json"),
-    JSON.stringify({ runId, status: "queued" }, null, 2),
-  );
-
-  return NextResponse.json({ runId });
 }
