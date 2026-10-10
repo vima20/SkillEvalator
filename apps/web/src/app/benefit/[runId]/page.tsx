@@ -4,6 +4,7 @@ import {
   buildBenefitReport,
   loadRunResult,
 } from "@skillevalator/core";
+import { EmptyState } from "@/components/EmptyState";
 import { StarRating } from "@/components/StarRating";
 import { resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
@@ -30,9 +31,17 @@ export default async function BenefitReportPage({
     return (
       <div>
         <header className="page-header">
+          <p className="eyebrow">Unikie · Benefit Report</p>
           <h1>Invalid run</h1>
-          <p>The run id is not allowed.</p>
         </header>
+        <div className="panel">
+          <EmptyState
+            title="Run id not allowed"
+            body="The run id failed validation. Use a run from the Benefit Report list."
+            actionHref="/benefit"
+            actionLabel="Back to Benefit Report"
+          />
+        </div>
       </div>
     );
   }
@@ -47,11 +56,15 @@ export default async function BenefitReportPage({
             {runId}
           </p>
           <h1>Report not ready</h1>
-          <p>This run has no result.json yet. Wait for the worker to finish.</p>
         </header>
-        <Link className="btn btn-primary" href={`/runs/${runId}`}>
-          Open run
-        </Link>
+        <div className="panel">
+          <EmptyState
+            title="No result yet"
+            body="This run has no result.json yet. Wait for the worker to finish, then refresh."
+            actionHref={`/runs/${runId}`}
+            actionLabel="Open run"
+          />
+        </div>
       </div>
     );
   }
@@ -79,7 +92,6 @@ export default async function BenefitReportPage({
           stars={report.rating.stars}
           grade={report.rating.grade}
           summary={report.rating.summary}
-          display={report.rating.starsDisplay}
         />
       </section>
 
@@ -138,7 +150,39 @@ export default async function BenefitReportPage({
       </div>
 
       <section className="panel report-section">
-        <h2>Config</h2>
+        <h2>Scorecard</h2>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Task</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Label</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.scorecard.perTask.map((t) => (
+                <tr key={t.taskId}>
+                  <td>
+                    <code>{t.taskId}</code>
+                  </td>
+                  <td>{t.score ?? "—"}</td>
+                  <td>
+                    <span className={statusBadgeClass(t.status)}>{t.status}</span>
+                  </td>
+                  <td>
+                    <strong>{t.label}</strong>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <details className="panel report-section details-panel">
+        <summary>Config</summary>
         <dl className="meta-list">
           <div>
             <dt>Mode</dt>
@@ -200,40 +244,10 @@ export default async function BenefitReportPage({
             </div>
           ) : null}
         </dl>
-      </section>
+      </details>
 
-      <section className="panel report-section">
-        <h2>Scorecard</h2>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Task</th>
-              <th>Score</th>
-              <th>Status</th>
-              <th>Label</th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.scorecard.perTask.map((t) => (
-              <tr key={t.taskId}>
-                <td>
-                  <code>{t.taskId}</code>
-                </td>
-                <td>{t.score ?? "—"}</td>
-                <td>
-                  <span className={statusBadgeClass(t.status)}>{t.status}</span>
-                </td>
-                <td>
-                  <strong>{t.label}</strong>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <section className="panel report-section">
-        <h2>Harness checks</h2>
+      <details className="panel report-section details-panel">
+        <summary>Harness checks</summary>
         <p>{report.harnessChecks.note}</p>
         <ul className="bullet-list">
           <li>
@@ -245,19 +259,19 @@ export default async function BenefitReportPage({
             {report.harnessChecks.knownBadSupported ? "yes" : "no"}
           </li>
         </ul>
-      </section>
+      </details>
 
-      <section className="panel report-section">
-        <h2>Constraints</h2>
+      <details className="panel report-section details-panel">
+        <summary>Constraints</summary>
         <ul className="bullet-list">
           {report.constraints.map((c) => (
             <li key={c}>{c}</li>
           ))}
         </ul>
-      </section>
+      </details>
 
-      <section className="panel report-section">
-        <h2>Cost</h2>
+      <details className="panel report-section details-panel">
+        <summary>Cost</summary>
         <dl className="meta-list">
           <div>
             <dt>Status</dt>
@@ -284,7 +298,7 @@ export default async function BenefitReportPage({
             </dd>
           </div>
         </dl>
-      </section>
+      </details>
     </div>
   );
 }

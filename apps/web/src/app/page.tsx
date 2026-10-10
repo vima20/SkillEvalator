@@ -1,4 +1,5 @@
 import { listSkills } from "@skillevalator/core";
+import { EmptyState } from "@/components/EmptyState";
 import { skillsDir } from "@/lib/paths";
 import { NewRunForm } from "./NewRunForm";
 
@@ -10,7 +11,7 @@ export default function NewRunPage() {
   return (
     <div>
       <header className="page-header">
-        <p className="eyebrow">Evaluation pipeline</p>
+        <p className="eyebrow">Unikie · Evaluation pipeline</p>
         <h1>New evaluation run</h1>
         <p>
           Produce with the model, then grade against expected fixtures. Dry-run
@@ -21,9 +22,12 @@ export default function NewRunPage() {
 
       {skills.length === 0 ? (
         <div className="panel">
-          <p className="empty">
-            No eval skills found under <code>eval-skills/</code>.
-          </p>
+          <EmptyState
+            title="No eval skills found"
+            body="Add a skill under eval-skills/ with fixtures/manifest.json, then refresh this page."
+            actionHref="https://github.com/vima20/SkillEvalator/tree/main/eval-skills"
+            actionLabel="Open eval-skills on GitHub"
+          />
         </div>
       ) : (
         <NewRunForm skills={skills} />

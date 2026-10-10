@@ -10,14 +10,17 @@ export function BenefitActions({
   markdown: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function copyMd() {
+    setError(null);
     try {
       await navigator.clipboard.writeText(markdown);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+      setError("Could not copy — use Download .md instead.");
     }
   }
 
@@ -33,6 +36,7 @@ export function BenefitActions({
       >
         Download .md
       </a>
+      {error ? <p className="msg error">{error}</p> : null}
     </div>
   );
 }

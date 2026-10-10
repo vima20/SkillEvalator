@@ -30,7 +30,7 @@ export default function DashboardPage() {
   return (
     <div>
       <header className="page-header">
-        <p className="eyebrow">Overview</p>
+        <p className="eyebrow">Unikie · Overview</p>
         <h1>Dashboard</h1>
         <p>
           Completed runs for the same skill, task set, and model. Multi-model
@@ -39,7 +39,7 @@ export default function DashboardPage() {
       </header>
 
       {rows.length > 0 ? (
-        <div className="stat-strip">
+        <div className="stat-strip stat-strip-3">
           <div className="stat">
             <span className="stat-label">Completed</span>
             <span className="stat-value">{rows.length}</span>
@@ -68,46 +68,48 @@ export default function DashboardPage() {
             actionLabel="Start a run"
           />
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Run</th>
-                <th>Mode</th>
-                <th>Model</th>
-                <th>Task set</th>
-                <th>GitHub</th>
-                <th>Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.runId}>
-                  <td>
-                    <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
-                  </td>
-                  <td>{r.mode}</td>
-                  <td>
-                    <code>{r.modelId}</code>
-                  </td>
-                  <td>
-                    <code>{r.taskSetId}</code>
-                  </td>
-                  <td>
-                    {r.githubUrl ? (
-                      <a href={r.githubUrl} target="_blank" rel="noreferrer">
-                        {r.skillId}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td>
-                    <strong>{r.score ?? "—"}</strong>
-                  </td>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Run</th>
+                  <th>Mode</th>
+                  <th>Model</th>
+                  <th>Task set</th>
+                  <th>GitHub</th>
+                  <th>Score</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.runId}>
+                    <td>
+                      <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
+                    </td>
+                    <td>{r.mode}</td>
+                    <td>
+                      <code>{r.modelId}</code>
+                    </td>
+                    <td>
+                      <code>{r.taskSetId}</code>
+                    </td>
+                    <td>
+                      {r.githubUrl ? (
+                        <a href={r.githubUrl} target="_blank" rel="noreferrer">
+                          {r.skillId}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
+                      <strong>{r.score ?? "—"}</strong>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

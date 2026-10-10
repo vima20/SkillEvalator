@@ -92,7 +92,7 @@ export function RunDetailClient({
     <div>
       <header className="page-header">
         <p className="eyebrow">
-          <Link href="/runs">Runs</Link>
+          <Link href="/runs">Unikie · Runs</Link>
           <span aria-hidden="true"> / </span>
           <span>{runId}</span>
         </p>
@@ -153,7 +153,14 @@ export function RunDetailClient({
             </strong>
             <span>{progress}%</span>
           </div>
-          <div className="progress-track" aria-hidden="true">
+          <div
+            className="progress-track"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress}
+            aria-label="Run progress"
+          >
             <div className="progress-fill" style={{ width: `${progress}%` }} />
           </div>
           <p className="hint">
@@ -190,33 +197,36 @@ export function RunDetailClient({
           </div>
 
           <div className="panel">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Task</th>
-                  <th>Score</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.perTask.map((t) => (
-                  <tr key={t.taskId}>
-                    <td>
-                      <code>{t.taskId}</code>
-                    </td>
-                    <td>{t.score}</td>
-                    <td>
-                      <span className={statusBadgeClass(t.status)}>
-                        {t.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
             {result.perTask.length === 0 ? (
               <p className="empty">No per-task results.</p>
-            ) : null}
+            ) : (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Task</th>
+                      <th>Score</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.perTask.map((t) => (
+                      <tr key={t.taskId}>
+                        <td>
+                          <code>{t.taskId}</code>
+                        </td>
+                        <td>{t.score}</td>
+                        <td>
+                          <span className={statusBadgeClass(t.status)}>
+                            {t.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <button

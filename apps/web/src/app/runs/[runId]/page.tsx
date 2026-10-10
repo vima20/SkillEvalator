@@ -1,4 +1,5 @@
 import { loadRunResult, loadRunStatus } from "@skillevalator/core";
+import { EmptyState } from "@/components/EmptyState";
 import { resultsDir } from "@/lib/paths";
 import { RunDetailClient } from "./RunDetailClient";
 
@@ -26,9 +27,17 @@ export default async function RunDetailPage({
     return (
       <div>
         <header className="page-header">
+          <p className="eyebrow">Unikie · Runs</p>
           <h1>Invalid run</h1>
-          <p>The run id is not allowed.</p>
         </header>
+        <div className="panel">
+          <EmptyState
+            title="Run id not allowed"
+            body="The run id failed validation. Pick a run from the list."
+            actionHref="/runs"
+            actionLabel="Back to runs"
+          />
+        </div>
       </div>
     );
   }
@@ -37,9 +46,17 @@ export default async function RunDetailPage({
     return (
       <div>
         <header className="page-header">
+          <p className="eyebrow">Unikie · Runs</p>
           <h1>Run not found</h1>
-          <p>No status or result exists for this run id.</p>
         </header>
+        <div className="panel">
+          <EmptyState
+            title="No status or result"
+            body="Nothing exists for this run id yet. Start a new evaluation or open an existing run."
+            actionHref="/"
+            actionLabel="Start a run"
+          />
+        </div>
       </div>
     );
   }

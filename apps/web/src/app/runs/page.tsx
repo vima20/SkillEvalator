@@ -13,7 +13,7 @@ export default function RunsPage() {
     <div>
       <header className="page-header page-header-row">
         <div>
-          <p className="eyebrow">History</p>
+          <p className="eyebrow">Unikie · History</p>
           <h1>Runs</h1>
           <p>Queued and completed evaluation jobs from the local worker.</p>
         </div>
@@ -31,48 +31,50 @@ export default function RunsPage() {
             actionLabel="Start a run"
           />
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Run</th>
-                <th>Status</th>
-                <th>Mode</th>
-                <th>Score</th>
-                <th>Skill</th>
-              </tr>
-            </thead>
-            <tbody>
-              {runs.map((r) => (
-                <tr key={r.runId}>
-                  <td>
-                    <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
-                  </td>
-                  <td>
-                    <span className={statusBadgeClass(r.status)}>
-                      {r.status ?? "unknown"}
-                    </span>
-                  </td>
-                  <td>{r.result?.mode ?? "—"}</td>
-                  <td>
-                    <strong>{r.result?.score ?? "—"}</strong>
-                  </td>
-                  <td>
-                    {r.result?.evalSkillGithubUrl ? (
-                      <a
-                        href={r.result.evalSkillGithubUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {r.result.evalSkillId}
-                      </a>
-                    ) : (
-                      <code>{r.result?.evalSkillId ?? "—"}</code>
-                    )}
-                  </td>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Run</th>
+                  <th>Status</th>
+                  <th>Mode</th>
+                  <th>Score</th>
+                  <th>Skill</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr key={r.runId}>
+                    <td>
+                      <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
+                    </td>
+                    <td>
+                      <span className={statusBadgeClass(r.status)}>
+                        {r.status ?? "unknown"}
+                      </span>
+                    </td>
+                    <td>{r.result?.mode ?? "—"}</td>
+                    <td>
+                      <strong>{r.result?.score ?? "—"}</strong>
+                    </td>
+                    <td>
+                      {r.result?.evalSkillGithubUrl ? (
+                        <a
+                          href={r.result.evalSkillGithubUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {r.result.evalSkillId}
+                        </a>
+                      ) : (
+                        <code>{r.result?.evalSkillId ?? "—"}</code>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

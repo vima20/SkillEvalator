@@ -22,13 +22,10 @@ export function StarRating({
   stars,
   grade,
   summary,
-  display,
 }: {
   stars: number;
   grade: string;
   summary?: string;
-  /** e.g. ★★★★☆ from the report */
-  display?: string;
 }) {
   const filled = Math.max(0, Math.min(5, Math.round(stars)));
   return (
@@ -44,7 +41,6 @@ export function StarRating({
         ))}
       </div>
       <p className="star-grade">
-        {display ? <span className="star-glyphs">{display}</span> : null}{" "}
         <strong>
           {filled}/5 · {grade}
         </strong>

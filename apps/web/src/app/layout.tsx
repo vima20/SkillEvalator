@@ -15,32 +15,32 @@ const space = Space_Grotesk({
 });
 
 export const metadata = {
-  title: "SkillEvalator · Unikie",
+  title: "Unikie SkillEvalator",
   description: "Skills-based AI evaluator for Unikie engineering teams",
 };
 
 function BrandMark() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
       <path
-        d="M9 1.5 16.5 15H1.5L9 1.5Z"
+        d="M11 2.2 19.5 18.2H2.5L11 2.2Z"
         fill="none"
         stroke="white"
-        strokeWidth="1.6"
+        strokeWidth="1.7"
         strokeLinejoin="round"
       />
-      <path d="M9 6.2 13.2 13.5H4.8L9 6.2Z" fill="white" />
+      <path d="M11 7.4 15.6 16.2H6.4L11 7.4Z" fill="white" />
     </svg>
   );
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fi" className={`${manrope.variable} ${space.variable}`}>
+    <html lang="en" className={`${manrope.variable} ${space.variable}`}>
       <body>
         <div className="app-shell">
           <header className="topbar">
-            <Link className="brand" href="/">
+            <Link className="brand" href="/" aria-label="Unikie SkillEvalator home">
               <span className="brand-mark">
                 <BrandMark />
               </span>
