@@ -1,5 +1,6 @@
 {
   "taskSetId": "cde-v1",
+  "githubUrl": "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
   "taskIds": [
     "bug-01",
     "bug-02",

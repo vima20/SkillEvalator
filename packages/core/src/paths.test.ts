@@ -50,3 +50,23 @@ describe("statusBadgeKind", () => {
     expect(statusBadgeKind("mystery")).toBe("wait");
   });
 });
+
+describe("SkillManifestSchema githubUrl", () => {
+  it("requires a valid github url", async () => {
+    const { SkillManifestSchema } = await import("./schema.js");
+    const base = {
+      taskSetId: "t",
+      taskIds: ["bug-01"],
+      dryRunIds: ["bug-01"],
+      targetFile: { "bug-01": "sum.js" },
+    };
+    expect(() => SkillManifestSchema.parse(base)).toThrow();
+    expect(
+      SkillManifestSchema.parse({
+        ...base,
+        githubUrl:
+          "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+      }).githubUrl,
+    ).toContain("github.com");
+  });
+});

@@ -61,6 +61,35 @@ export function loadSkill(skillsDir: string, skillId: string): LoadedSkill {
   };
 }
 
+export type SkillSummary = {
+  id: string;
+  githubUrl: string;
+  taskSetId: string;
+  dryRunCount: number;
+  taskCount: number;
+};
+
+/** List eval skills that have a valid fixtures/manifest.json. */
+export function listSkills(skillsDir: string): SkillSummary[] {
+  if (!fs.existsSync(skillsDir)) return [];
+  const out: SkillSummary[] = [];
+  for (const name of fs.readdirSync(skillsDir).sort()) {
+    try {
+      const skill = loadSkill(skillsDir, name);
+      out.push({
+        id: skill.id,
+        githubUrl: skill.manifest.githubUrl,
+        taskSetId: skill.manifest.taskSetId,
+        dryRunCount: skill.manifest.dryRunIds.length,
+        taskCount: skill.manifest.taskIds.length,
+      });
+    } catch {
+      /* skip non-skill dirs / invalid manifests */
+    }
+  }
+  return out;
+}
+
 export function taskIdsForMode(
   skill: LoadedSkill,
   mode: "dry-run" | "official",

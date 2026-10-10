@@ -46,15 +46,21 @@ export type DataPaths = {
   resultsDir: string;
 };
 
+/** Resolve env path relative to repoRoot (not process.cwd), so web/worker agree. */
+function resolveFromRepo(repoRoot: string, value: string | undefined, fallback: string): string {
+  if (!value || value.trim() === "") return path.resolve(repoRoot, fallback);
+  return path.isAbsolute(value) ? path.resolve(value) : path.resolve(repoRoot, value);
+}
+
 export function resolveDataPaths(
   repoRoot: string,
   env: NodeJS.ProcessEnv = process.env,
 ): DataPaths {
   return {
     repoRoot,
-    skillsDir: path.resolve(env.EVAL_SKILLS_DIR ?? path.join(repoRoot, "eval-skills")),
-    jobsDir: path.resolve(env.JOBS_DIR ?? path.join(repoRoot, "data/jobs")),
-    resultsDir: path.resolve(env.RESULTS_DIR ?? path.join(repoRoot, "data/results")),
+    skillsDir: resolveFromRepo(repoRoot, env.EVAL_SKILLS_DIR, "eval-skills"),
+    jobsDir: resolveFromRepo(repoRoot, env.JOBS_DIR, "data/jobs"),
+    resultsDir: resolveFromRepo(repoRoot, env.RESULTS_DIR, "data/results"),
   };
 }
 

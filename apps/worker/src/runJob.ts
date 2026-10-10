@@ -128,6 +128,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     runId: job.runId,
     evalSkillId: skill.id,
     evalSkillVersion: skill.version,
+    evalSkillGithubUrl: skill.manifest.githubUrl,
     taskSetId: skill.manifest.taskSetId,
     taskIds,
     pipeline: { produce: "model", grade: "docker_script" },

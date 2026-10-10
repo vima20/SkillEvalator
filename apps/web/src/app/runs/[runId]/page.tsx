@@ -51,11 +51,24 @@ export default async function RunDetailPage({
               Model <code>{result.modelId}</code>
             </span>
             <span>
-              Skill <code>{result.evalSkillVersion}</code>
+              Skill <code>{result.evalSkillId}</code>{" "}
+              <code>{result.evalSkillVersion}</code>
             </span>
             <span>
               Task set <code>{result.taskSetId}</code>
             </span>
+            {result.evalSkillGithubUrl ? (
+              <span>
+                GitHub{" "}
+                <a
+                  href={result.evalSkillGithubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {result.evalSkillGithubUrl}
+                </a>
+              </span>
+            ) : null}
           </>
         ) : null}
       </div>

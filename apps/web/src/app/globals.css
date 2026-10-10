@@ -249,6 +249,22 @@ code {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.url-field {
+  display: block;
+  word-break: break-all;
+  padding: 11px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--accent-hover);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.url-field:hover {
+  color: #7eb0ff;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

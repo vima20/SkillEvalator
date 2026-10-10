@@ -18,6 +18,8 @@ export const RunStatusSchema = z.enum([
 
 export const SkillManifestSchema = z.object({
   taskSetId: z.string().min(1),
+  /** Canonical GitHub URL for the skill directory (tree or blob). */
+  githubUrl: z.string().url(),
   taskIds: z.array(z.string().min(1)).min(1),
   dryRunIds: z.array(z.string().min(1)).min(1),
   targetFile: z.record(z.string().min(1)),
@@ -44,6 +46,8 @@ export const RunResultSchema = z.object({
   runId: z.string(),
   evalSkillId: z.string(),
   evalSkillVersion: z.string(),
+  /** GitHub URL of the skill at run time (from skill manifest). */
+  evalSkillGithubUrl: z.string().url().optional(),
   taskSetId: z.string(),
   taskIds: z.array(z.string()),
   pipeline: z.object({

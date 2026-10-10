@@ -13,6 +13,7 @@ export default function DashboardPage() {
         modelId: r.result.modelId,
         taskSetId: r.result.taskSetId,
         mode: r.result.mode,
+        githubUrl: r.result.evalSkillGithubUrl,
       },
     ];
   });
@@ -38,6 +39,7 @@ export default function DashboardPage() {
                 <th>Mode</th>
                 <th>Model</th>
                 <th>Task set</th>
+                <th>GitHub</th>
                 <th>Score</th>
               </tr>
             </thead>
@@ -53,6 +55,15 @@ export default function DashboardPage() {
                   </td>
                   <td>
                     <code>{r.taskSetId}</code>
+                  </td>
+                  <td>
+                    {r.githubUrl ? (
+                      <a href={r.githubUrl} target="_blank" rel="noreferrer">
+                        skill
+                      </a>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td>
                     <strong>{r.score ?? "—"}</strong>
