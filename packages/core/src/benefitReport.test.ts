@@ -96,4 +96,22 @@ describe("benefitReport", () => {
     expect(report.rating.stars).toBe(5);
     expect(report.rating.grade).toBe("Excellent");
   });
+
+  it("counts soft-pass tasks (>= 0.8) as passed", () => {
+    const report = buildBenefitReport(
+      sample({
+        score: 0.9,
+        perTask: [
+          {
+            taskId: "bug-01",
+            scriptResults: [],
+            score: 0.9,
+            status: "ok",
+          },
+        ],
+      }),
+    );
+    expect(report.scorecard.tasksPassed).toBe(1);
+    expect(report.rating.review).toMatch(/1\/1 passes/);
+  });
 });

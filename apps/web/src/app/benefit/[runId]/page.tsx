@@ -2,12 +2,15 @@ import Link from "next/link";
 import {
   benefitReportToMarkdown,
   buildBenefitReport,
+  healRunOrphansFs,
   loadRunResult,
+  syncStatusFromResult,
 } from "@skillevalator/core";
 import { BenefitPending } from "@/components/BenefitPending";
 import { EmptyState } from "@/components/EmptyState";
 import { StarRating } from "@/components/StarRating";
-import { resultsDir } from "@/lib/paths";
+import { isPidAlive } from "@/lib/healOrphans";
+import { jobsDir, resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
 import { BenefitActions } from "./BenefitActions";
 
@@ -20,10 +23,14 @@ export default async function BenefitReportPage({
 }) {
   const { runId } = await params;
   let result: ReturnType<typeof loadRunResult> = null;
+  let runStatus: string | undefined;
   let invalid = false;
 
   try {
-    result = loadRunResult(resultsDir(), runId);
+    const root = resultsDir();
+    healRunOrphansFs(jobsDir(), root, runId, isPidAlive);
+    result = loadRunResult(root, runId);
+    runStatus = syncStatusFromResult(root, runId)?.status;
   } catch {
     invalid = true;
   }
@@ -58,7 +65,7 @@ export default async function BenefitReportPage({
           </p>
           <h1>Report not ready</h1>
         </header>
-        <BenefitPending runId={runId} />
+        <BenefitPending runId={runId} status={runStatus} />
       </div>
     );
   }

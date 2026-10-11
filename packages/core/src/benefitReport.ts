@@ -1,5 +1,10 @@
+import { PASS_SCORE_FLOOR } from "./diffScore.js";
 import type { RunResult } from "./schema.js";
 import { labelForScore, type ScoreLabel } from "./scoring.js";
+
+function taskPassedSoft(score: number | null | undefined): boolean {
+  return typeof score === "number" && score >= PASS_SCORE_FLOOR;
+}
 
 /** Harness recommendation: should Unikie use this skill (for this model/mode)? */
 export type SkillUseVerdict = "use" | "do_not_use" | "inconclusive";
@@ -115,10 +120,10 @@ function gradeForStars(stars: 1 | 2 | 3 | 4 | 5): string {
 export function rateSkill(result: RunResult): BenefitRating {
   const score = result.score;
   const status = result.status;
-  const passed = result.perTask.filter((t) => t.score === 1).length;
+  const passed = result.perTask.filter((t) => taskPassedSoft(t.score)).length;
   const total = result.perTask.length;
   const failedTasks = result.perTask
-    .filter((t) => t.score !== 1)
+    .filter((t) => !taskPassedSoft(t.score))
     .map((t) => t.taskId);
 
   let stars: 1 | 2 | 3 | 4 | 5 = 1;
@@ -399,7 +404,7 @@ export function buildBenefitReport(result: RunResult): BenefitReport {
       label,
       score: result.score,
       scoreSpread: spread,
-      tasksPassed: perTask.filter((t) => t.score === 1).length,
+      tasksPassed: perTask.filter((t) => taskPassedSoft(t.score)).length,
       tasksTotal: perTask.length,
       perTask,
     },
