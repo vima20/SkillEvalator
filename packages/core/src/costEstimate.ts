@@ -11,8 +11,26 @@ const RATES: Record<string, ModelRate> = {
 
 const DEFAULT_RATE = RATES["gpt-4o-mini"]!;
 
+function rateForModel(modelId: string): ModelRate {
+  return RATES[modelId] ?? DEFAULT_RATE;
+}
+
+/** Actual USD from token usage using the same rate table as estimates. */
+export function costFromTokenUsage(
+  modelId: string,
+  promptTokens: number,
+  completionTokens: number,
+): number {
+  const rate = rateForModel(modelId);
+  const inTok = Math.max(0, promptTokens);
+  const outTok = Math.max(0, completionTokens);
+  const usd =
+    (inTok * rate.inputPerMTok + outTok * rate.outputPerMTok) / 1_000_000;
+  return Math.round(usd * 1_000_000) / 1_000_000;
+}
+
 export function estimateCallCostUsd(modelId: string): number {
-  const rate = RATES[modelId] ?? DEFAULT_RATE;
+  const rate = rateForModel(modelId);
   return (
     (ASSUMED_INPUT_TOKENS * rate.inputPerMTok +
       ASSUMED_OUTPUT_TOKENS * rate.outputPerMTok) /

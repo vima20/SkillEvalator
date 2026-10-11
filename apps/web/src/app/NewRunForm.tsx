@@ -8,6 +8,8 @@ import { estimateRunCostUsd } from "@/lib/costEstimate";
 const OFFICIAL_MIN_REPEATS = 3;
 const MODEL_DRY_RUN = "gpt-4o-mini";
 const MODEL_OFFICIAL = "gpt-4.1-mini";
+/** Mirrors worker default COST_CAP_USD (env may override). */
+const DEFAULT_COST_CAP_USD = 5;
 
 export type SkillOption = {
   id: string;
@@ -264,8 +266,8 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
             {safeRepeatsPreview} repeats · <code>{modelPreview}</code>).
           </p>
           <p className="hint">
-            Rough preview from typical token sizes — not a bill. Grade/Docker
-            time is free; OpenAI usage is what costs.
+            Rough preview from typical token sizes — not a bill. Worker hard-stop
+            defaults to ${DEFAULT_COST_CAP_USD} USD. Grade/Docker time is free.
           </p>
         </div>
 

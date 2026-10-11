@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { estimateCallCostUsd, estimateRunCostUsd } from "./costEstimate.js";
+import {
+  costFromTokenUsage,
+  estimateCallCostUsd,
+  estimateRunCostUsd,
+} from "./costEstimate.js";
+
+describe("costFromTokenUsage", () => {
+  it("prices gpt-4.1-mini higher than gpt-4o-mini for same tokens", () => {
+    const mini = costFromTokenUsage("gpt-4o-mini", 1000, 500);
+    const official = costFromTokenUsage("gpt-4.1-mini", 1000, 500);
+    expect(official).toBeGreaterThan(mini);
+    expect(mini).toBeCloseTo((1000 * 0.15 + 500 * 0.6) / 1_000_000, 8);
+    expect(official).toBeCloseTo((1000 * 0.4 + 500 * 1.6) / 1_000_000, 8);
+  });
+
+  it("falls back to mini rates for unknown models", () => {
+    expect(costFromTokenUsage("unknown-model", 1000, 0)).toBe(
+      costFromTokenUsage("gpt-4o-mini", 1000, 0),
+    );
+  });
+});
 
 describe("estimateRunCostUsd", () => {
   it("scales with tasks and repeats", () => {

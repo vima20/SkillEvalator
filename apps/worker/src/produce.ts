@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
+import { costFromTokenUsage } from "@skillevalator/core";
 import { config } from "./config.js";
 
 export class ProduceCancelledError extends Error {
@@ -107,7 +108,7 @@ export async function produceArtifact(opts: {
     content = stripFences(content);
     const inTok = res.usage?.prompt_tokens ?? 0;
     const outTok = res.usage?.completion_tokens ?? 0;
-    const costUsd = (inTok * 0.15 + outTok * 0.6) / 1_000_000;
+    const costUsd = costFromTokenUsage(opts.modelId, inTok, outTok);
     return { content, costUsd };
   } catch (err) {
     if (
