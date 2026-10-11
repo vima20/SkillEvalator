@@ -4,7 +4,9 @@ import {
   JobManifestSchema,
   type JobManifest,
   cleanupOrphanQueuedFs,
+  cleanupOrphanRunningStatusFs,
   formatRunError,
+  formatWorkerPidRecord,
   isQueuedJobFile,
   readJsonFileAs,
   reclaimOrphanRunningJobsFs,
@@ -198,7 +200,11 @@ export async function pollOnce(): Promise<boolean> {
     job = claim(jobPath);
     if (!job) return false;
     running = jobPath.replace(/\.json$/, ".running.json");
-    fs.writeFileSync(workerPidPath(running), String(process.pid), "utf8");
+    fs.writeFileSync(
+      workerPidPath(running),
+      formatWorkerPidRecord({ pid: process.pid, runId: job.runId }),
+      "utf8",
+    );
   } finally {
     // Release before produce/grade so long official runs cannot stale-steal the lock.
     releaseLock(lock);
@@ -228,11 +234,22 @@ export async function loop() {
   clearDeadLock();
   reclaimOrphanRunningJobs();
   const orphanQ = cleanupOrphanQueuedFs(config.jobsDir, config.resultsDir);
-  if (orphanQ.removedTmp.length || orphanQ.failedStatuses.length) {
+  const orphanR = cleanupOrphanRunningStatusFs(
+    config.jobsDir,
+    config.resultsDir,
+  );
+  if (
+    orphanQ.removedTmp.length ||
+    orphanQ.failedStatuses.length ||
+    orphanR.synced.length ||
+    orphanR.failedStatuses.length
+  ) {
     console.warn(
       "cleaned orphan queue state",
       `tmp=${orphanQ.removedTmp.length}`,
       `queued=${orphanQ.failedStatuses.length}`,
+      `runningSynced=${orphanR.synced.length}`,
+      `runningFailed=${orphanR.failedStatuses.length}`,
     );
   }
   touchHeartbeat();
