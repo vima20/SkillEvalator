@@ -11,9 +11,40 @@ const StatusFileSchema = z.object({
   costUsd: z.number().optional(),
   repeat: z.number().optional(),
   repeats: z.number().optional(),
+  /** Short worker/UI-facing failure reason when no result.json exists. */
+  error: z.string().max(800).optional(),
+  errorCode: z.string().max(64).optional(),
 });
 
 export type RunStatusFile = z.infer<typeof StatusFileSchema>;
+
+/** Normalize thrown errors for status.json (no huge stacks). */
+export function formatRunError(err: unknown): {
+  error: string;
+  errorCode?: string;
+} {
+  if (err && typeof err === "object") {
+    const e = err as {
+      message?: string;
+      status?: number;
+      code?: string;
+      error?: { message?: string; code?: string; type?: string };
+    };
+    const msg =
+      e.error?.message?.trim() ||
+      (typeof e.message === "string" ? e.message.trim() : "") ||
+      String(err);
+    const code =
+      e.error?.code ||
+      e.code ||
+      (typeof e.status === "number" ? `http_${e.status}` : undefined);
+    return {
+      error: msg.slice(0, 800),
+      ...(code ? { errorCode: String(code).slice(0, 64) } : {}),
+    };
+  }
+  return { error: String(err).slice(0, 800) };
+}
 
 export type RunListItem = {
   runId: string;

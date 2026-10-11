@@ -25,6 +25,8 @@ type StatusFile = {
   repeat?: number;
   repeats?: number;
   costUsd?: number;
+  error?: string;
+  errorCode?: string;
 };
 
 type Payload = {
@@ -302,10 +304,24 @@ export function RunDetailClient({
       ) : status === "failed" ? (
         <div className="panel">
           <p className="empty">
-            Run failed before a scorecard was produced. Check the worker log —
-            common causes are missing OpenAI credits (HTTP 429) or Docker grade
-            errors.
+            Run failed before a scorecard was produced.
           </p>
+          {data.status?.error ? (
+            <p className="form-error" role="alert">
+              {data.status.errorCode ? (
+                <>
+                  <code>{data.status.errorCode}</code>
+                  {" — "}
+                </>
+              ) : null}
+              {data.status.error}
+            </p>
+          ) : (
+            <p className="hint">
+              No error detail was recorded. Check the worker log (common:
+              OpenAI credits / HTTP 429, or Docker grade failures).
+            </p>
+          )}
         </div>
       ) : (
         <div className="panel">

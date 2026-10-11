@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   JobManifestSchema,
   type JobManifest,
+  formatRunError,
   isQueuedJobFile,
   readJsonFileAs,
   writeJsonFile,
@@ -152,17 +153,20 @@ function claim(jobPath: string): JobManifest | null {
   } catch (e) {
     fs.renameSync(running, jobPath.replace(/\.json$/, ".failed.json"));
     const runId = runIdFromJobPath(jobPath);
-    if (runId) markStatusFailed(runId);
+    if (runId) markStatusFailed(runId, e);
     console.error("invalid job", e);
     return null;
   }
 }
 
-function markStatusFailed(runId: string) {
+function markStatusFailed(runId: string, err?: unknown) {
   try {
+    const formatted = err !== undefined ? formatRunError(err) : undefined;
     writeJsonFile(path.join(config.resultsDir, runId, "status.json"), {
       runId,
       status: "failed",
+      ...(formatted?.error ? { error: formatted.error } : {}),
+      ...(formatted?.errorCode ? { errorCode: formatted.errorCode } : {}),
     });
   } catch {
     /* ignore */
@@ -202,14 +206,14 @@ export async function pollOnce(): Promise<boolean> {
       // Job may have been reclaimed; keep result if already written.
       const resultPath = path.join(config.resultsDir, job.runId, "result.json");
       if (!fs.existsSync(resultPath)) {
-        markStatusFailed(job.runId);
+        markStatusFailed(job.runId, e);
         throw e;
       }
       console.warn("could not rename to .done (result present)", job.runId, e);
     }
   } catch (e) {
     console.error(e);
-    markStatusFailed(job.runId);
+    markStatusFailed(job.runId, e);
     try {
       fs.renameSync(running, jobPath.replace(/\.json$/, ".failed.json"));
     } catch {
