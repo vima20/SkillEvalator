@@ -286,6 +286,12 @@ export function reclaimOrphanRunningJobsFs(
 export const STALE_TMP_JOB_MS = 60_000;
 
 /**
+ * status.json is written before the job file during enqueue — wait this long
+ * before treating a queued status without a job as orphaned.
+ */
+export const QUEUED_ENQUEUE_GRACE_MS = 30_000;
+
+/**
  * Heal one run stuck at queued with no job / tmp file.
  * Returns failed | noop.
  */
@@ -293,6 +299,7 @@ export function healOrphanQueuedStatusFs(
   jobsDir: string,
   resultsDir: string,
   runId: string,
+  opts?: { nowMs?: number; graceMs?: number },
 ): "failed" | "noop" {
   if (!/^run_[A-Za-z0-9._-]+$/.test(runId)) return "noop";
   const statusPath = path.join(resultsDir, runId, "status.json");
@@ -314,6 +321,16 @@ export function healOrphanQueuedStatusFs(
     fs.existsSync(path.join(jobsDir, `${runId}.running.json`)) ||
     fs.existsSync(path.join(jobsDir, `${runId}.tmp.json`));
   if (hasJob) return "noop";
+
+  // Enqueue race: status lands before job; do not fail a brand-new status.
+  const nowMs = opts?.nowMs ?? Date.now();
+  const graceMs = opts?.graceMs ?? QUEUED_ENQUEUE_GRACE_MS;
+  try {
+    const age = nowMs - fs.statSync(statusPath).mtimeMs;
+    if (age < graceMs) return "noop";
+  } catch {
+    return "noop";
+  }
 
   writeJsonFile(statusPath, {
     runId,

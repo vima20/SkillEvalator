@@ -327,15 +327,18 @@ describe("cleanupOrphanQueuedFs", () => {
     const resultsDir = path.join(root, "results");
     fs.mkdirSync(jobsDir, { recursive: true });
     const runId = "run_100_orphanq";
-    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+    const statusPath = path.join(resultsDir, runId, "status.json");
+    writeJsonFile(statusPath, {
       runId,
       status: "queued",
     });
+    const past = new Date(Date.now() - 120_000);
+    fs.utimesSync(statusPath, past, past);
 
     const out = cleanupOrphanQueuedFs(jobsDir, resultsDir);
     expect(out.failedStatuses).toEqual([runId]);
     const status = JSON.parse(
-      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+      fs.readFileSync(statusPath, "utf8"),
     ) as { status: string; errorCode?: string };
     expect(status.status).toBe("failed");
     expect(status.errorCode).toBe("orphan_queued");
@@ -436,18 +439,35 @@ describe("healOrphanQueuedStatusFs", () => {
     const resultsDir = path.join(root, "results");
     fs.mkdirSync(jobsDir, { recursive: true });
     const runId = "run_100_singleq";
-    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+    const statusPath = path.join(resultsDir, runId, "status.json");
+    writeJsonFile(statusPath, {
       runId,
       status: "queued",
     });
+    const past = new Date(Date.now() - 120_000);
+    fs.utimesSync(statusPath, past, past);
 
     expect(healOrphanQueuedStatusFs(jobsDir, resultsDir, runId)).toBe(
       "failed",
     );
     const status = JSON.parse(
-      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+      fs.readFileSync(statusPath, "utf8"),
     ) as { errorCode?: string };
     expect(status.errorCode).toBe("orphan_queued");
+  });
+
+  it("is noop during enqueue grace when job file is not yet written", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_freshq";
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "queued",
+    });
+
+    expect(healOrphanQueuedStatusFs(jobsDir, resultsDir, runId)).toBe("noop");
   });
 
   it("is noop when queued job file exists", () => {
