@@ -1,3 +1,5 @@
+import { DIFF_STRONG_MAX, PASS_SCORE_FLOOR } from "./diffScore.js";
+
 export function meanScores(scores: Array<number | null>): number | null {
   const nums = scores.filter((s): s is number => typeof s === "number");
   if (nums.length === 0) return null;
@@ -13,17 +15,35 @@ export function scoreSpread(scores: number[]): number {
 
 export type ScoreLabel = "Fail" | "Pass" | "Strong";
 
+export type LabelScoreOpts = {
+  scoreSpread?: number;
+  /** Mean normalized edit distance vs expected (0 = identical). */
+  meanDiffRatio?: number;
+};
+
 /**
- * Fail: score null or &lt; 1.
- * Pass: perfect mean score.
- * Strong: Pass with low repeat spread (≤ 0.05) when spread is provided.
+ * Fail: score null or below pass floor.
+ * Pass: grade-level pass (soft score ≥ floor).
+ * Strong: near-perfect score, low repeat spread, and small mean diff vs expected.
  */
 export function labelForScore(
   score: number | null,
-  scoreSpread?: number,
+  spreadOrOpts?: number | LabelScoreOpts,
 ): ScoreLabel {
-  if (score === null || score < 1) return "Fail";
-  if (scoreSpread !== undefined && scoreSpread <= 0.05) return "Strong";
+  const opts: LabelScoreOpts =
+    typeof spreadOrOpts === "number"
+      ? { scoreSpread: spreadOrOpts }
+      : (spreadOrOpts ?? {});
+
+  if (score === null || score < PASS_SCORE_FLOOR) return "Fail";
+
+  // Strong needs an explicit low repeat-spread signal (same as before).
+  const spreadOk =
+    opts.scoreSpread !== undefined && opts.scoreSpread <= 0.05;
+  const diffOk =
+    opts.meanDiffRatio === undefined ||
+    opts.meanDiffRatio <= DIFF_STRONG_MAX;
+  if (score >= 0.99 && spreadOk && diffOk) return "Strong";
   return "Pass";
 }
 

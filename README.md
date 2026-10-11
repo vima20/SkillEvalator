@@ -19,6 +19,8 @@ or
 
 Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*`; the UI shows an unlock form that sets a cookie.
 
+CI: `npm run ci` runs unit tests, `typecheck`, and `smoke:skills`. New Run shows a rough produce-cost estimate; Runs can clear terminal jobs older than 7 days.
+
 ## Models
 
 | Mode | Model |

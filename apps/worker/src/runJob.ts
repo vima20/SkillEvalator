@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   JobManifest,
+  PASS_SCORE_FLOOR,
   RunResultSchema,
   assertSafeId,
   buildBenefitReport,
@@ -14,12 +15,14 @@ import {
   aggregateRepeats,
   normalizeRepeats,
   resolveUnder,
+  scoreFromGradeAndDiff,
+  textDiffRatio,
   writeJsonFile,
   type RunResult,
 } from "@skillevalator/core";
 import { config } from "./config.js";
 import { touchHeartbeat } from "./heartbeat.js";
-import { produceArtifact } from "./produce.js";
+import { ProduceCancelledError, produceArtifact } from "./produce.js";
 
 function toRepoRelative(absPath: string): string {
   return path.relative(config.repoRoot, absPath).split(path.sep).join("/");
@@ -118,19 +121,38 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         if (process.env.FAKE_PRODUCE === "known-good") {
           content = fs.readFileSync(tp.knownGoodPath, "utf8");
         } else {
-          const produced = await produceArtifact({
-            modelId,
-            skillMd: skill.skillMd,
-            inputPath: tp.inputPath,
-            targetFile: tp.targetFile,
-            subjectDir: tp.subjectDir,
-            seed: config.seed + r,
-          });
-          content = produced.content;
-          produceCost = produced.costUsd;
+          try {
+            const produced = await produceArtifact({
+              modelId,
+              skillMd: skill.skillMd,
+              inputPath: tp.inputPath,
+              targetFile: tp.targetFile,
+              subjectDir: tp.subjectDir,
+              seed: config.seed + r,
+              cancelPath,
+            });
+            content = produced.content;
+            produceCost = produced.costUsd;
+          } catch (e) {
+            if (
+              e instanceof ProduceCancelledError ||
+              fs.existsSync(cancelPath)
+            ) {
+              stop = "cancelled";
+              if (!findings.includes("cancelled")) findings.push("cancelled");
+              break outer;
+            }
+            throw e;
+          }
         }
         fs.writeFileSync(artifactPath, content, "utf8");
         costUsd += produceCost;
+
+        if (fs.existsSync(cancelPath)) {
+          stop = "cancelled";
+          if (!findings.includes("cancelled")) findings.push("cancelled");
+          break outer;
+        }
 
         const grade = hostGrade
           ? gradeOnHost({
@@ -156,6 +178,19 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         }
 
         const ok = grade.exitCode === 0 && !stop;
+        let diffRatio: number | undefined;
+        if (ok && fs.existsSync(tp.expectedPath)) {
+          try {
+            const expected = fs.readFileSync(tp.expectedPath, "utf8");
+            diffRatio = textDiffRatio(content, expected);
+          } catch {
+            diffRatio = undefined;
+          }
+        }
+        const soft = scoreFromGradeAndDiff(
+          ok,
+          diffRatio === undefined ? null : diffRatio,
+        );
         const row: RunResult["perTask"][number] = {
           taskId,
           artifactRef: toRepoRelative(artifactPath),
@@ -167,13 +202,14 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
               summary: grade.summary,
             },
           ],
-          score: ok ? 1 : 0,
+          score: soft,
           status: ok ? "ok" : "failed",
+          ...(diffRatio !== undefined ? { diffRatio } : {}),
         };
         perTask.push(row);
         lastByTask.set(taskId, row);
         const arr = scoresByTask.get(taskId) ?? [];
-        arr.push(ok ? 1 : 0);
+        arr.push(soft);
         scoresByTask.set(taskId, arr);
       }
 
@@ -201,7 +237,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       let taskStatus: RunResult["perTask"][number]["status"];
       if (stop === "cancelled") taskStatus = "cancelled";
       else if (stop === "budget_stop") taskStatus = "budget_stop";
-      else if (mean === 1) taskStatus = "ok";
+      else if (mean !== null && mean >= PASS_SCORE_FLOOR) taskStatus = "ok";
       else taskStatus = "failed";
       return {
         taskId,
@@ -210,12 +246,23 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         scriptResults: last?.scriptResults ?? [],
         score: stop ? null : mean,
         status: taskStatus,
+        ...(last?.diffRatio !== undefined
+          ? { diffRatio: last.diffRatio }
+          : {}),
       };
     });
 
+    const diffVals = aggregatedPerTask
+      .map((t) => t.diffRatio)
+      .filter((d): d is number => typeof d === "number");
+    const meanDiffRatio =
+      diffVals.length > 0
+        ? diffVals.reduce((a, b) => a + b, 0) / diffVals.length
+        : undefined;
+
     let status: RunResult["status"];
     if (stop) status = stop;
-    else if (agg.score < 1) status = "failed";
+    else if (agg.score < PASS_SCORE_FLOOR) status = "failed";
     else status = "ok";
 
     const result = RunResultSchema.parse({
@@ -240,7 +287,9 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       scoreSpread: agg.scoreSpread,
       perTask: aggregatedPerTask,
       score: stop ? null : agg.score,
-      subscores: {},
+      subscores: {
+        ...(meanDiffRatio !== undefined ? { meanDiffRatio } : {}),
+      },
       rationale: "",
       findings,
       costUsd,

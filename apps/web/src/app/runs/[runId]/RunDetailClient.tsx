@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { statusBadgeClass } from "@/lib/status";
 
-type PerTask = { taskId: string; score: number | null; status: string };
+type PerTask = {
+  taskId: string;
+  score: number | null;
+  status: string;
+  diffRatio?: number;
+};
 
 type Result = {
   score: number | null;
@@ -126,6 +131,7 @@ export function RunDetailClient({
     (status === "failed" ||
       status === "cancelled" ||
       status === "budget_stop") &&
+    data.status?.errorCode !== "insufficient_quota" &&
     !retrying;
 
   async function onRetry() {
@@ -328,6 +334,7 @@ export function RunDetailClient({
                     <tr>
                       <th>Task</th>
                       <th>Score</th>
+                      <th>Diff</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -338,6 +345,11 @@ export function RunDetailClient({
                           <code>{t.taskId}</code>
                         </td>
                         <td>{t.score}</td>
+                        <td>
+                          {typeof t.diffRatio === "number"
+                            ? `${(t.diffRatio * 100).toFixed(1)}%`
+                            : "—"}
+                        </td>
                         <td>
                           <span className={statusBadgeClass(t.status)}>
                             {t.status}
@@ -387,6 +399,12 @@ export function RunDetailClient({
           <p className="empty">
             Run failed before a scorecard was produced.
           </p>
+          {data.status?.errorCode === "insufficient_quota" ? (
+            <p className="form-error credit-alert" role="alert">
+              Ei credittejä / no OpenAI credits — lisää billing-saldo ennen
+              uudelleenajoa. Retry is blocked until credits are available.
+            </p>
+          ) : null}
           {data.status?.error ? (
             <p className="form-error" role="alert">
               {data.status.errorCode ? (

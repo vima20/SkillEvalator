@@ -63,6 +63,8 @@ export const PerTaskResultSchema = z.object({
   scriptResults: z.array(ScriptResultSchema),
   score: z.number().min(0).max(1).nullable(),
   status: TaskStatusSchema,
+  /** Normalized edit distance vs expected (0 = identical); omit when N/A. */
+  diffRatio: z.number().min(0).max(1).optional(),
 });
 
 export const RunResultSchema = z.object({

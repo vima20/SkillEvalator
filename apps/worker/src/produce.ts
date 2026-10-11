@@ -3,6 +3,14 @@ import path from "node:path";
 import OpenAI from "openai";
 import { config } from "./config.js";
 
+export class ProduceCancelledError extends Error {
+  code = "cancelled" as const;
+  constructor() {
+    super("produce cancelled");
+    this.name = "ProduceCancelledError";
+  }
+}
+
 export async function produceArtifact(opts: {
   modelId: string;
   skillMd: string;
@@ -10,12 +18,18 @@ export async function produceArtifact(opts: {
   targetFile: string;
   subjectDir?: string;
   seed?: number;
+  /** When this file appears, abort the in-flight OpenAI request. */
+  cancelPath?: string;
 }): Promise<{ content: string; costUsd: number }> {
   const input = fs.readFileSync(opts.inputPath, "utf8");
   if (!config.openaiApiKey) {
     throw new Error(
       "OPENAI_API_KEY missing; set the key or use FAKE_PRODUCE=known-good for smoke",
     );
+  }
+
+  if (opts.cancelPath && fs.existsSync(opts.cancelPath)) {
+    throw new ProduceCancelledError();
   }
 
   const subjectBlocks: string[] = [];
@@ -53,7 +67,22 @@ export async function produceArtifact(opts: {
   ].join("\n");
 
   const controller = new AbortController();
+  let cancelRequested = false;
   const timer = setTimeout(() => controller.abort(), config.openaiTimeoutMs);
+  const cancelPoll =
+    opts.cancelPath != null
+      ? setInterval(() => {
+          if (opts.cancelPath && fs.existsSync(opts.cancelPath)) {
+            cancelRequested = true;
+            try {
+              controller.abort();
+            } catch {
+              /* ignore */
+            }
+          }
+        }, 250)
+      : null;
+
   try {
     const res = await client.chat.completions.create(
       {
@@ -82,6 +111,12 @@ export async function produceArtifact(opts: {
     return { content, costUsd };
   } catch (err) {
     if (
+      cancelRequested ||
+      (opts.cancelPath && fs.existsSync(opts.cancelPath))
+    ) {
+      throw new ProduceCancelledError();
+    }
+    if (
       err &&
       typeof err === "object" &&
       "name" in err &&
@@ -94,6 +129,7 @@ export async function produceArtifact(opts: {
     throw err;
   } finally {
     clearTimeout(timer);
+    if (cancelPoll) clearInterval(cancelPoll);
   }
 }
 

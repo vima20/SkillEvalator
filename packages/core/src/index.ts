@@ -9,3 +9,5 @@ export * from "./status.js";
 export * from "./results.js";
 export * from "./benefitReport.js";
 export * from "./jobQueueFs.js";
+export * from "./diffScore.js";
+export * from "./costEstimate.js";

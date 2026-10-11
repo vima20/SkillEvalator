@@ -142,7 +142,14 @@ export function rateSkill(result: RunResult): BenefitRating {
   const grade = gradeForStars(stars);
   const scoreTxt = score === null ? "—" : score.toFixed(2);
   const spread = result.scoreSpread ?? 0;
-  const label = score === null ? "Fail" : labelForScore(score, spread);
+  const meanDiffRatio = result.subscores?.meanDiffRatio;
+  const label =
+    score === null
+      ? "Fail"
+      : labelForScore(score, {
+          scoreSpread: spread,
+          ...(typeof meanDiffRatio === "number" ? { meanDiffRatio } : {}),
+        });
   const costTxt = `$${result.costUsd.toFixed(4)}`;
   const latencyTxt = `${Math.round(result.latencyMs / 1000)} s`;
 
@@ -325,31 +332,44 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
     };
   }
 
-  if (score < 1) {
+  if (score < 0.99) {
     return {
       recommendation: "do_not_use",
-      headline: "DO NOT USE — official failed",
-      decision: "DO NOT USE — official evaluation failed",
-      rationale: `Official score ${score.toFixed(2)} < 1 on task set ${result.taskSetId}. Do not use this skill with ${result.modelId} until it reaches a full pass.`,
+      headline: "DO NOT USE — official not Strong",
+      decision: "DO NOT USE — official evaluation below full expected match",
+      rationale: `Official score ${score.toFixed(2)} < 0.99 on task set ${result.taskSetId} (tests may pass but output still drifts from expected). Do not use this skill with ${result.modelId} until it reaches a near-perfect score.`,
     };
   }
 
+  const meanDiff = result.subscores?.meanDiffRatio;
   return {
     recommendation: "use",
     headline: "USE — official passed",
     decision: "USE — official evaluation passed",
-    rationale: `Official run scored ${score.toFixed(2)} (${labelForScore(score, result.scoreSpread ?? 0)}) on ${result.taskSetId} with ${result.modelId}. Harness supports using this skill for this pairing. Still not KH-adoption proof.`,
+    rationale: `Official run scored ${score.toFixed(2)} (${labelForScore(score, {
+      scoreSpread: result.scoreSpread ?? 0,
+      ...(typeof meanDiff === "number" ? { meanDiffRatio: meanDiff } : {}),
+    })}) on ${result.taskSetId} with ${result.modelId}. Harness supports using this skill for this pairing. Still not KH-adoption proof.`,
   };
 }
 
 export function buildBenefitReport(result: RunResult): BenefitReport {
   const spread = result.scoreSpread ?? 0;
-  const label = labelForScore(result.score, spread);
+  const meanDiffRatio = result.subscores?.meanDiffRatio;
+  const labelOpts = {
+    scoreSpread: spread,
+    ...(typeof meanDiffRatio === "number" ? { meanDiffRatio } : {}),
+  };
+  const label = labelForScore(result.score, labelOpts);
   const perTask = result.perTask.map((t) => ({
     taskId: t.taskId,
     score: t.score,
     status: t.status,
-    label: labelForScore(t.score),
+    label: labelForScore(t.score, {
+      ...(typeof t.diffRatio === "number"
+        ? { meanDiffRatio: t.diffRatio, scoreSpread: 0 }
+        : {}),
+    }),
   }));
   const verdict = decideSkillUse(result);
   const rating = rateSkill(result);

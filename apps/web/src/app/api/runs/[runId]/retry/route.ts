@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import {
   JobManifestSchema,
   assertSafeId,
+  isNonRetryableErrorCode,
   loadRunResult,
   loadRunStatus,
   readJsonFile,
@@ -48,6 +49,18 @@ export async function POST(
     if (!RETRYABLE.has(current)) {
       return NextResponse.json(
         { error: `cannot retry status ${current}` },
+        { status: 409 },
+      );
+    }
+    if (isNonRetryableErrorCode(status.errorCode)) {
+      return NextResponse.json(
+        {
+          error:
+            status.errorCode === "insufficient_quota"
+              ? "No OpenAI credits remaining — add billing credits before retrying (not auto-retried)."
+              : `Cannot retry error ${status.errorCode}`,
+          errorCode: status.errorCode,
+        },
         { status: 409 },
       );
     }

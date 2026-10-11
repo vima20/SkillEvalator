@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
+import { ClearOldRuns } from "@/components/ClearOldRuns";
 import { EmptyState } from "@/components/EmptyState";
 import { resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
@@ -24,9 +25,12 @@ export default function RunsPage() {
           <h1>Runs</h1>
           <p>Queued and completed evaluation jobs from the local worker.</p>
         </div>
-        <Link className="btn btn-primary" href="/">
-          New run
-        </Link>
+        <div className="page-header-actions">
+          <ClearOldRuns />
+          <Link className="btn btn-primary" href="/">
+            New run
+          </Link>
+        </div>
       </header>
 
       <div className="panel">

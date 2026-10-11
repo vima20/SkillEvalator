@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readJsonFile, readJsonFileAs } from "./fsJson.js";
+import { readJsonFile, readJsonFileAs, writeJsonFile } from "./fsJson.js";
 import { assertSafeId, resolveUnder } from "./paths.js";
 import { RunResultSchema, type RunResult } from "./schema.js";
 import { z } from "zod";
@@ -18,6 +18,25 @@ const StatusFileSchema = z.object({
 
 export type RunStatusFile = z.infer<typeof StatusFileSchema>;
 
+/** Error codes that should not be auto-retried (billing / account). */
+export const NON_RETRYABLE_ERROR_CODES = new Set([
+  "insufficient_quota",
+  "billing_not_active",
+  "billing_hard_limit_reached",
+  "account_deactivated",
+]);
+
+function looksLikeNoCredits(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes("insufficient") ||
+    m.includes("quota") ||
+    m.includes("credit") ||
+    m.includes("billing") ||
+    m.includes("exceeded your current quota")
+  );
+}
+
 /** Normalize thrown errors for status.json (no huge stacks). */
 export function formatRunError(err: unknown): {
   error: string;
@@ -28,22 +47,57 @@ export function formatRunError(err: unknown): {
       message?: string;
       status?: number;
       code?: string;
+      name?: string;
       error?: { message?: string; code?: string; type?: string };
     };
-    const msg =
+
+    if (
+      e.name === "ProduceCancelledError" ||
+      e.code === "cancelled" ||
+      (typeof e.message === "string" &&
+        e.message.toLowerCase().includes("produce cancelled"))
+    ) {
+      return { error: "Cancelled during produce", errorCode: "cancelled" };
+    }
+
+    let msg =
       e.error?.message?.trim() ||
       (typeof e.message === "string" ? e.message.trim() : "") ||
       String(err);
-    const code =
+    let code =
       e.error?.code ||
       e.code ||
       (typeof e.status === "number" ? `http_${e.status}` : undefined);
+
+    if (
+      e.status === 429 ||
+      code === "insufficient_quota" ||
+      code === "rate_limit_exceeded" ||
+      looksLikeNoCredits(msg)
+    ) {
+      if (looksLikeNoCredits(msg) || code === "insufficient_quota") {
+        code = "insufficient_quota";
+        msg =
+          "No OpenAI credits remaining. Add billing credits before retrying.";
+      } else if (code === "rate_limit_exceeded" || e.status === 429) {
+        code = code === "insufficient_quota" ? code : "rate_limit_exceeded";
+        if (code === "rate_limit_exceeded") {
+          msg =
+            "OpenAI rate limit (429). Wait a moment, then retry manually — no automatic backoff.";
+        }
+      }
+    }
+
     return {
       error: msg.slice(0, 800),
       ...(code ? { errorCode: String(code).slice(0, 64) } : {}),
     };
   }
   return { error: String(err).slice(0, 800) };
+}
+
+export function isNonRetryableErrorCode(code: string | undefined): boolean {
+  return Boolean(code && NON_RETRYABLE_ERROR_CODES.has(code));
 }
 
 export type RunListItem = {
@@ -110,4 +164,91 @@ export function listRuns(resultsDir: string): RunListItem[] {
       result: loadRunResult(resultsDir, runId),
     };
   });
+}
+
+const TERMINAL_PURGE = new Set([
+  "ok",
+  "failed",
+  "cancelled",
+  "budget_stop",
+]);
+
+function removeJobArtifacts(jobsDir: string, runId: string): void {
+  const suffixes = [
+    ".json",
+    ".running.json",
+    ".done.json",
+    ".failed.json",
+    ".cancelled.json",
+    ".tmp.json",
+    ".cancel",
+    ".worker.pid",
+  ];
+  for (const s of suffixes) {
+    try {
+      fs.unlinkSync(path.join(jobsDir, `${runId}${s}`));
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/**
+ * Delete terminal runs older than `olderThanMs` (by status.json mtime).
+ * Never touches queued/running jobs.
+ */
+export function purgeTerminalRunsFs(
+  resultsDir: string,
+  jobsDir: string,
+  opts: { olderThanMs: number },
+): { removed: string[] } {
+  const removed: string[] = [];
+  const cutoff = Date.now() - Math.max(0, opts.olderThanMs);
+  if (!fs.existsSync(resultsDir)) return { removed };
+
+  for (const runId of listRunIds(resultsDir)) {
+    const statusPath = path.join(resultsDir, runId, "status.json");
+    let status = "unknown";
+    try {
+      const raw = StatusFileSchema.parse(readJsonFile(statusPath));
+      status = raw.status ?? "unknown";
+    } catch {
+      continue;
+    }
+    if (!TERMINAL_PURGE.has(status)) continue;
+
+    let mtime = 0;
+    try {
+      mtime = fs.statSync(statusPath).mtimeMs;
+    } catch {
+      continue;
+    }
+    if (mtime > cutoff) continue;
+
+    try {
+      fs.rmSync(path.join(resultsDir, runId), { recursive: true, force: true });
+      removeJobArtifacts(jobsDir, runId);
+      removed.push(runId);
+    } catch {
+      /* ignore one failure */
+    }
+  }
+  return { removed };
+}
+
+/** Write a marker that cleanup ran (optional audit). */
+export function recordPurgeAudit(
+  resultsDir: string,
+  removed: string[],
+): void {
+  if (removed.length === 0) return;
+  try {
+    writeJsonFile(path.join(resultsDir, ".last-purge.json"), {
+      at: new Date().toISOString(),
+      removedCount: removed.length,
+      removed: removed.slice(0, 200),
+    });
+  } catch {
+    /* ignore */
+  }
 }

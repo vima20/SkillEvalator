@@ -24,5 +24,8 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Skill harness smoke
         run: npm run smoke:skills

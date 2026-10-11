@@ -1,10 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { estimateRunCostUsd } from "@/lib/costEstimate";
 
 /** Mirrored from @skillevalator/core OFFICIAL_MIN_REPEATS (API re-normalizes). */
 const OFFICIAL_MIN_REPEATS = 3;
+const MODEL_DRY_RUN = "gpt-4o-mini";
+const MODEL_OFFICIAL = "gpt-4.1-mini";
 
 export type SkillOption = {
   id: string;
@@ -41,6 +44,24 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
 
   const selected = skills.find((s) => s.id === evalSkillId) ?? skills[0];
   const minRepeats = mode === "official" ? OFFICIAL_MIN_REPEATS : 1;
+  const safeRepeatsPreview =
+    mode === "official"
+      ? Math.max(repeats, OFFICIAL_MIN_REPEATS)
+      : Math.max(1, repeats);
+  const taskCountPreview =
+    mode === "official"
+      ? (selected?.taskCount ?? 0)
+      : (selected?.dryRunCount ?? 0);
+  const modelPreview = mode === "official" ? MODEL_OFFICIAL : MODEL_DRY_RUN;
+  const costPreview = useMemo(
+    () =>
+      estimateRunCostUsd({
+        taskCount: taskCountPreview,
+        repeats: safeRepeatsPreview,
+        modelId: modelPreview,
+      }),
+    [taskCountPreview, safeRepeatsPreview, modelPreview],
+  );
 
   const refreshPreflight = useCallback(async () => {
     setPreflightBusy(true);
@@ -232,6 +253,20 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
               (enforced in UI and API).
             </p>
           ) : null}
+        </div>
+
+        <div className="cost-estimate" aria-live="polite">
+          <strong>Estimated cost</strong>
+          <p>
+            ~${costPreview.estimatedUsd.toFixed(4)} for {costPreview.calls}{" "}
+            produce call
+            {costPreview.calls === 1 ? "" : "s"} ({taskCountPreview} tasks ×{" "}
+            {safeRepeatsPreview} repeats · <code>{modelPreview}</code>).
+          </p>
+          <p className="hint">
+            Rough preview from typical token sizes — not a bill. Grade/Docker
+            time is free; OpenAI usage is what costs.
+          </p>
         </div>
 
         <button className="btn btn-primary" type="submit" disabled={busy}>
