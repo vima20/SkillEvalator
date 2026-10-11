@@ -6,6 +6,7 @@ import {
   formatRunError,
   isNonRetryableErrorCode,
   purgeTerminalRunsFs,
+  syncStatusFromResult,
 } from "./results.js";
 import { writeJsonFile } from "./fsJson.js";
 
@@ -59,6 +60,53 @@ describe("isNonRetryableErrorCode", () => {
   it("blocks quota", () => {
     expect(isNonRetryableErrorCode("insufficient_quota")).toBe(true);
     expect(isNonRetryableErrorCode("rate_limit_exceeded")).toBe(false);
+  });
+});
+
+describe("syncStatusFromResult", () => {
+  it("heals running status when terminal result exists", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-sync-"));
+    temps.push(root);
+    const runId = "run_100_syncok";
+    writeJsonFile(path.join(root, runId, "status.json"), {
+      runId,
+      status: "running",
+    });
+    writeJsonFile(path.join(root, runId, "result.json"), {
+      runId,
+      evalSkillId: "code-debugging-eval",
+      evalSkillVersion: "abc",
+      evalSkillGithubUrl:
+        "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+      taskSetId: "cde-v1",
+      taskIds: ["bug-01"],
+      pipeline: { produce: "model", grade: "docker_script" },
+      modelId: "gpt-4o-mini",
+      decoding: { temperature: 0, top_p: 1 },
+      repeats: 1,
+      aggregate: "mean",
+      perTask: [
+        {
+          taskId: "bug-01",
+          scriptResults: [],
+          score: 1,
+          status: "ok",
+        },
+      ],
+      score: 1,
+      subscores: {},
+      rationale: "",
+      findings: [],
+      costUsd: 0.02,
+      latencyMs: 50,
+      status: "ok",
+      startedAt: "2026-01-01T00:00:00.000Z",
+      mode: "dry-run",
+    });
+
+    const st = syncStatusFromResult(root, runId);
+    expect(st?.status).toBe("ok");
+    expect(st?.costUsd).toBe(0.02);
   });
 });
 

@@ -43,7 +43,9 @@ type Payload = {
 
 const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
 
-function shouldPoll(status: string | undefined, _hasResult: boolean): boolean {
+function shouldPoll(status: string | undefined, hasResult: boolean): boolean {
+  // result.json means the scorecard is final — stop even if status.json lagged.
+  if (hasResult) return false;
   return !TERMINAL.has(status ?? "");
 }
 

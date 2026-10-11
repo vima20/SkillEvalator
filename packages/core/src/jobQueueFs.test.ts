@@ -42,20 +42,59 @@ describe("decideOrphanRunningAction", () => {
 });
 
 describe("reclaimOrphanRunningJobsFs", () => {
-  it("finalizes completed orphan instead of requeue", () => {
+  it("finalizes completed orphan and syncs status from result", () => {
     const root = tmpRoot();
     const jobsDir = path.join(root, "jobs");
     const resultsDir = path.join(root, "results");
     fs.mkdirSync(jobsDir, { recursive: true });
     const runId = "run_100_abcd1234";
     fs.writeFileSync(path.join(jobsDir, `${runId}.running.json`), "{}");
-    writeJsonFile(path.join(resultsDir, runId, "result.json"), { ok: true });
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "running",
+    });
+    writeJsonFile(path.join(resultsDir, runId, "result.json"), {
+      runId,
+      evalSkillId: "code-debugging-eval",
+      evalSkillVersion: "abc",
+      evalSkillGithubUrl:
+        "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+      taskSetId: "cde-v1",
+      taskIds: ["bug-01"],
+      pipeline: { produce: "model", grade: "docker_script" },
+      modelId: "gpt-4o-mini",
+      decoding: { temperature: 0, top_p: 1 },
+      repeats: 1,
+      aggregate: "mean",
+      perTask: [
+        {
+          taskId: "bug-01",
+          scriptResults: [],
+          score: 1,
+          status: "ok",
+        },
+      ],
+      score: 1,
+      subscores: {},
+      rationale: "",
+      findings: [],
+      costUsd: 0.01,
+      latencyMs: 100,
+      status: "ok",
+      startedAt: "2026-01-01T00:00:00.000Z",
+      mode: "dry-run",
+    });
 
     const out = reclaimOrphanRunningJobsFs(jobsDir, resultsDir, () => false);
     expect(out.finalized).toEqual([`${runId}.running.json`]);
     expect(out.failed).toEqual([]);
     expect(fs.existsSync(path.join(jobsDir, `${runId}.done.json`))).toBe(true);
     expect(fs.existsSync(path.join(jobsDir, `${runId}.json`))).toBe(false);
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { status: string; costUsd?: number };
+    expect(status.status).toBe("ok");
+    expect(status.costUsd).toBe(0.01);
   });
 
   it("fails incomplete orphan without requeue", () => {

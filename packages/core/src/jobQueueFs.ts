@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { writeJsonFile } from "./fsJson.js";
+import { syncStatusFromResult } from "./results.js";
 
 export type OrphanRunningAction =
   | "skip_alive"
@@ -104,6 +105,7 @@ export function reclaimOrphanRunningJobsFs(
     if (action === "skip_alive") continue;
     if (action === "finalize_done") {
       finalizeRunningJob(running, "done");
+      if (runId) syncStatusFromResult(resultsDir, runId);
       finalized.push(name);
       continue;
     }

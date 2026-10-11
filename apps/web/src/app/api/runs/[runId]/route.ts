@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { loadRunResult, loadRunStatus } from "@skillevalator/core";
+import {
+  loadRunResult,
+  syncStatusFromResult,
+} from "@skillevalator/core";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +14,8 @@ export async function GET(
   try {
     const { runId } = await ctx.params;
     const root = resultsDir();
-    const status = loadRunStatus(root, runId);
     const result = loadRunResult(root, runId);
+    const status = syncStatusFromResult(root, runId);
     if (!status && !result) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }

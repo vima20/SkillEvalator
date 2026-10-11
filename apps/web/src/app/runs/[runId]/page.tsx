@@ -1,4 +1,8 @@
-import { loadRunResult, loadRunStatus } from "@skillevalator/core";
+import {
+  loadRunResult,
+  loadRunStatus,
+  syncStatusFromResult,
+} from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { resultsDir } from "@/lib/paths";
 import { RunDetailClient } from "./RunDetailClient";
@@ -17,8 +21,8 @@ export default async function RunDetailPage({
 
   try {
     const root = resultsDir();
-    status = loadRunStatus(root, runId);
     result = loadRunResult(root, runId);
+    status = syncStatusFromResult(root, runId);
   } catch {
     invalid = true;
   }

@@ -153,6 +153,40 @@ export function loadRunResult(
   }
 }
 
+const TERMINAL_RUN_STATUS = new Set([
+  "ok",
+  "failed",
+  "cancelled",
+  "budget_stop",
+]);
+
+/**
+ * If result.json exists with a terminal status but status.json is still
+ * queued/running, rewrite status.json to match (heals orphan finalize race).
+ * Returns the (possibly updated) status file, or null if no status/result.
+ */
+export function syncStatusFromResult(
+  resultsDir: string,
+  runId: string,
+): RunStatusFile | null {
+  const result = loadRunResult(resultsDir, runId);
+  const current = loadRunStatus(resultsDir, runId);
+  if (!result) return current;
+  if (!TERMINAL_RUN_STATUS.has(result.status)) return current;
+
+  if (current?.status && TERMINAL_RUN_STATUS.has(current.status)) {
+    return current;
+  }
+
+  const next: RunStatusFile = {
+    runId,
+    status: result.status,
+    costUsd: result.costUsd,
+  };
+  writeJsonFile(path.join(runDir(resultsDir, runId), "status.json"), next);
+  return next;
+}
+
 export function listRuns(resultsDir: string): RunListItem[] {
   return listRunIds(resultsDir).map((runId) => {
     const st = loadRunStatus(resultsDir, runId);
