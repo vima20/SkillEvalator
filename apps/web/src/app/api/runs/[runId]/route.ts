@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import {
+  healOrphanActiveStatusFs,
   loadRunResult,
   syncStatusFromResult,
 } from "@skillevalator/core";
-import { resultsDir } from "@/lib/paths";
+import { jobsDir, resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export async function GET(
   try {
     const { runId } = await ctx.params;
     const root = resultsDir();
+    healOrphanActiveStatusFs(jobsDir(), root, runId);
     const result = loadRunResult(root, runId);
     const status = syncStatusFromResult(root, runId);
     if (!status && !result) {

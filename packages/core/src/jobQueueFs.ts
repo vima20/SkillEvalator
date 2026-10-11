@@ -274,8 +274,57 @@ export function cleanupOrphanQueuedFs(
   return { failedStatuses, removedTmp };
 }
 
+/** Mid-run statuses that can get stuck without a backing job file. */
+const ORPHAN_ACTIVE_STATUS = new Set(["running", "cancel_requested"]);
+
 /**
- * Heal status.json stuck at running with no job file (and optional result sync).
+ * Heal one run stuck at running/cancel_requested with no job file.
+ * Returns synced | failed | noop.
+ */
+export function healOrphanActiveStatusFs(
+  jobsDir: string,
+  resultsDir: string,
+  runId: string,
+): "synced" | "failed" | "noop" {
+  if (!/^run_[A-Za-z0-9._-]+$/.test(runId)) return "noop";
+  const statusPath = path.join(resultsDir, runId, "status.json");
+  if (!fs.existsSync(statusPath)) return "noop";
+
+  let status = "unknown";
+  try {
+    const raw = JSON.parse(fs.readFileSync(statusPath, "utf8")) as {
+      status?: string;
+    };
+    status = raw.status ?? "unknown";
+  } catch {
+    return "noop";
+  }
+  if (!ORPHAN_ACTIVE_STATUS.has(status)) return "noop";
+
+  const hasJob =
+    fs.existsSync(path.join(jobsDir, `${runId}.json`)) ||
+    fs.existsSync(path.join(jobsDir, `${runId}.running.json`));
+  if (hasJob) return "noop";
+
+  const hasResult = fs.existsSync(path.join(resultsDir, runId, "result.json"));
+  if (hasResult) {
+    syncStatusFromResult(resultsDir, runId);
+    return "synced";
+  }
+
+  writeJsonFile(statusPath, {
+    runId,
+    status: "failed",
+    error:
+      "Orphaned active status (no job file). Use Retry for a new run.",
+    errorCode: "orphan_running",
+  });
+  return "failed";
+}
+
+/**
+ * Heal status.json stuck at running/cancel_requested with no job file
+ * (and optional result sync).
  */
 export function cleanupOrphanRunningStatusFs(
   jobsDir: string,
@@ -288,41 +337,9 @@ export function cleanupOrphanRunningStatusFs(
 
   for (const runId of fs.readdirSync(resultsDir)) {
     if (!/^run_[A-Za-z0-9._-]+$/.test(runId)) continue;
-    const statusPath = path.join(resultsDir, runId, "status.json");
-    if (!fs.existsSync(statusPath)) continue;
-    let status = "unknown";
-    try {
-      const raw = JSON.parse(fs.readFileSync(statusPath, "utf8")) as {
-        status?: string;
-      };
-      status = raw.status ?? "unknown";
-    } catch {
-      continue;
-    }
-    if (status !== "running") continue;
-
-    const hasJob =
-      fs.existsSync(path.join(jobsDir, `${runId}.json`)) ||
-      fs.existsSync(path.join(jobsDir, `${runId}.running.json`));
-    if (hasJob) continue;
-
-    const hasResult = fs.existsSync(
-      path.join(resultsDir, runId, "result.json"),
-    );
-    if (hasResult) {
-      syncStatusFromResult(resultsDir, runId);
-      synced.push(runId);
-      continue;
-    }
-
-    writeJsonFile(statusPath, {
-      runId,
-      status: "failed",
-      error:
-        "Orphaned running status (no job file). Use Retry for a new run.",
-      errorCode: "orphan_running",
-    });
-    failedStatuses.push(runId);
+    const action = healOrphanActiveStatusFs(jobsDir, resultsDir, runId);
+    if (action === "synced") synced.push(runId);
+    else if (action === "failed") failedStatuses.push(runId);
   }
 
   return { synced, failedStatuses };

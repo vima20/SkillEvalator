@@ -320,4 +320,57 @@ describe("cleanupOrphanRunningStatusFs", () => {
     ) as { status: string };
     expect(status.status).toBe("ok");
   });
+
+  it("fails orphan cancel_requested with no job file", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_stuckcancel";
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "cancel_requested",
+    });
+
+    const out = cleanupOrphanRunningStatusFs(jobsDir, resultsDir);
+    expect(out.failedStatuses).toEqual([runId]);
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { status: string; errorCode?: string };
+    expect(status.status).toBe("failed");
+    expect(status.errorCode).toBe("orphan_running");
+  });
+
+  it("syncs cancel_requested when cancelled result exists without job", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_cancelresult";
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "cancel_requested",
+    });
+    writeJsonFile(path.join(resultsDir, runId, "result.json"), {
+      ...sampleResult(runId),
+      score: null,
+      status: "cancelled",
+      findings: ["cancelled"],
+      perTask: [
+        {
+          taskId: "bug-01",
+          scriptResults: [],
+          score: null,
+          status: "cancelled",
+        },
+      ],
+    });
+
+    const out = cleanupOrphanRunningStatusFs(jobsDir, resultsDir);
+    expect(out.synced).toEqual([runId]);
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { status: string };
+    expect(status.status).toBe("cancelled");
+  });
 });
