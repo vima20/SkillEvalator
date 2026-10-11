@@ -7,7 +7,9 @@ import {
   cleanupOrphanRunningStatusFs,
   decideOrphanRunningAction,
   formatWorkerPidRecord,
+  healAllOrphansFs,
   healOrphanQueuedStatusFs,
+  healRunOrphansFs,
   heartbeatOwnsRunFs,
   parseWorkerPidRecord,
   reclaimOrphanRunningJobsFs,
@@ -279,6 +281,60 @@ describe("cleanupOrphanQueuedFs", () => {
 
     const out = cleanupOrphanQueuedFs(jobsDir, resultsDir);
     expect(out.failedStatuses).toEqual([]);
+  });
+});
+
+describe("healAllOrphansFs / healRunOrphansFs", () => {
+  it("reclaims dead .running.json so active status can fail", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_webreclaim";
+    fs.writeFileSync(path.join(jobsDir, `${runId}.running.json`), "{}");
+    fs.writeFileSync(
+      path.join(jobsDir, `${runId}.worker.pid`),
+      formatWorkerPidRecord({ pid: 4242, runId }),
+    );
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "running",
+    });
+
+    healAllOrphansFs(jobsDir, resultsDir, () => false);
+
+    expect(fs.existsSync(path.join(jobsDir, `${runId}.running.json`))).toBe(
+      false,
+    );
+    expect(fs.existsSync(path.join(jobsDir, `${runId}.failed.json`))).toBe(
+      true,
+    );
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { status: string; errorCode?: string };
+    expect(status.status).toBe("failed");
+    expect(status.errorCode).toBe("orphan_running");
+  });
+
+  it("healRunOrphansFs reclaims before per-run active heal", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_runreclaim";
+    fs.writeFileSync(path.join(jobsDir, `${runId}.running.json`), "{}");
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "cancel_requested",
+    });
+
+    healRunOrphansFs(jobsDir, resultsDir, runId, () => false);
+
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { status: string; errorCode?: string };
+    expect(status.status).toBe("failed");
+    expect(status.errorCode).toBe("orphan_running");
   });
 });
 

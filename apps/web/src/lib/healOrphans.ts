@@ -1,13 +1,17 @@
-import {
-  cleanupOrphanQueuedFs,
-  cleanupOrphanRunningStatusFs,
-} from "@skillevalator/core";
+import { healAllOrphansFs } from "@skillevalator/core";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
-/** Heal orphan queued/running/cancel_requested statuses before listing runs. */
+export function isPidAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Heal orphan queued/running/cancel_requested + reclaim dead .running jobs. */
 export function healOrphanStatuses(): void {
-  const jobs = jobsDir();
-  const results = resultsDir();
-  cleanupOrphanQueuedFs(jobs, results);
-  cleanupOrphanRunningStatusFs(jobs, results);
+  healAllOrphansFs(jobsDir(), resultsDir(), isPidAlive);
 }

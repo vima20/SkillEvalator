@@ -5,6 +5,7 @@ import {
   syncStatusFromResult,
 } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
+import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { RunDetailClient } from "./RunDetailClient";
 
@@ -22,7 +23,7 @@ export default async function RunDetailPage({
 
   try {
     const root = resultsDir();
-    healRunOrphansFs(jobsDir(), root, runId);
+    healRunOrphansFs(jobsDir(), root, runId, isPidAlive);
     result = loadRunResult(root, runId);
     status = syncStatusFromResult(root, runId);
   } catch {

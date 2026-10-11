@@ -4,6 +4,7 @@ import {
   loadRunResult,
   syncStatusFromResult,
 } from "@skillevalator/core";
+import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export async function GET(
   try {
     const { runId } = await ctx.params;
     const root = resultsDir();
-    healRunOrphansFs(jobsDir(), root, runId);
+    healRunOrphansFs(jobsDir(), root, runId, isPidAlive);
     const result = loadRunResult(root, runId);
     const status = syncStatusFromResult(root, runId);
     if (!status && !result) {

@@ -250,12 +250,30 @@ export function healOrphanQueuedStatusFs(
   return "failed";
 }
 
+/**
+ * Full orphan heal for web/worker idle paths:
+ * reclaim dead .running jobs first, then queued/active status cleanup.
+ */
+export function healAllOrphansFs(
+  jobsDir: string,
+  resultsDir: string,
+  isPidAlive: (pid: number) => boolean,
+): void {
+  reclaimOrphanRunningJobsFs(jobsDir, resultsDir, isPidAlive);
+  cleanupOrphanQueuedFs(jobsDir, resultsDir);
+  cleanupOrphanRunningStatusFs(jobsDir, resultsDir);
+}
+
 /** Heal queued + running/cancel_requested orphans for one run. */
 export function healRunOrphansFs(
   jobsDir: string,
   resultsDir: string,
   runId: string,
+  isPidAlive: (pid: number) => boolean,
 ): void {
+  // Reclaim may remove a dead .running.json that would otherwise block
+  // healOrphanActiveStatusFs (hasJob → noop).
+  reclaimOrphanRunningJobsFs(jobsDir, resultsDir, isPidAlive);
   healOrphanQueuedStatusFs(jobsDir, resultsDir, runId);
   healOrphanActiveStatusFs(jobsDir, resultsDir, runId);
 }
