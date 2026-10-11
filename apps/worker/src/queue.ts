@@ -10,6 +10,7 @@ import {
   isQueuedJobFile,
   readJsonFileAs,
   reclaimOrphanRunningJobsFs,
+  syncStatusFromResult,
   writeJsonFile,
 } from "@skillevalator/core";
 import { config } from "./config.js";
@@ -218,11 +219,13 @@ export async function pollOnce(): Promise<boolean> {
     finalizeRunningJob(running, "done");
   } catch (e) {
     console.error(e);
-    markStatusFailed(job.runId, e);
     if (fs.existsSync(resultJsonPath(job.runId))) {
-      // Result written then later step failed — do not re-run produce.
+      // Result written then later step failed — trust result.json, do not
+      // stamp failed over an already-terminal ok/cancelled/budget_stop.
+      syncStatusFromResult(config.resultsDir, job.runId);
       finalizeRunningJob(running, "done");
     } else {
+      markStatusFailed(job.runId, e);
       finalizeRunningJob(running, "failed");
     }
   }
