@@ -24,6 +24,14 @@ function loadStatus(root: string, id: string): string | undefined {
   return (JSON.parse(fs.readFileSync(p, "utf8")) as { status?: string }).status;
 }
 
+function writeLiveWorker(jobs: string, pid = 42): void {
+  writeJsonFile(path.join(jobs, ".worker"), {
+    pid,
+    at: new Date().toISOString(),
+    busy: false,
+  });
+}
+
 describe("shouldReuseRetry", () => {
   it("reuses fresh queued child", () => {
     expect(
@@ -57,7 +65,7 @@ describe("shouldReuseRetry", () => {
 });
 
 describe("isRetryChildLive", () => {
-  it("requires a queued job file", () => {
+  it("requires a queued job file and a live worker heartbeat", () => {
     const jobs = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-jobs-"));
     temps.push(jobs);
     const child = "run_100_childbbb";
@@ -66,16 +74,65 @@ describe("isRetryChildLive", () => {
         jobsDir: jobs,
         childRunId: child,
         childStatus: "queued",
+        isPidAlive: () => true,
       }),
     ).toBe(false);
+
     fs.writeFileSync(path.join(jobs, `${child}.json`), "{}");
     expect(
       isRetryChildLive({
         jobsDir: jobs,
         childRunId: child,
         childStatus: "queued",
+        isPidAlive: () => true,
+      }),
+    ).toBe(false);
+
+    writeLiveWorker(jobs);
+    expect(
+      isRetryChildLive({
+        jobsDir: jobs,
+        childRunId: child,
+        childStatus: "queued",
+        isPidAlive: () => true,
       }),
     ).toBe(true);
+  });
+
+  it("rejects queued when worker PID is dead", () => {
+    const jobs = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-jobs-"));
+    temps.push(jobs);
+    const child = "run_100_childdead";
+    fs.writeFileSync(path.join(jobs, `${child}.json`), "{}");
+    writeLiveWorker(jobs, 99);
+    expect(
+      isRetryChildLive({
+        jobsDir: jobs,
+        childRunId: child,
+        childStatus: "queued",
+        isPidAlive: () => false,
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects queued when heartbeat is stale", () => {
+    const jobs = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-jobs-"));
+    temps.push(jobs);
+    const child = "run_100_childstale";
+    fs.writeFileSync(path.join(jobs, `${child}.json`), "{}");
+    writeJsonFile(path.join(jobs, ".worker"), {
+      pid: 42,
+      at: new Date(Date.now() - 60_000).toISOString(),
+      busy: false,
+    });
+    expect(
+      isRetryChildLive({
+        jobsDir: jobs,
+        childRunId: child,
+        childStatus: "queued",
+        isPidAlive: () => true,
+      }),
+    ).toBe(false);
   });
 
   it("rejects running without live heartbeat ownership", () => {
@@ -99,7 +156,7 @@ describe("isRetryChildLive", () => {
 });
 
 describe("findReusableRetryRunId", () => {
-  it("returns child run when marker is valid and job is live", () => {
+  it("returns child run when marker is valid and job + worker are live", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-"));
     const jobs = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-jobs-"));
     temps.push(root, jobs);
@@ -115,12 +172,13 @@ describe("findReusableRetryRunId", () => {
       status: "queued",
     });
     fs.writeFileSync(path.join(jobs, `${child}.json`), "{}");
+    writeLiveWorker(jobs);
 
     const reused = findReusableRetryRunId(
       root,
       from,
       (id) => loadStatus(root, id),
-      { jobsDir: jobs },
+      { jobsDir: jobs, isPidAlive: () => true },
     );
     expect(reused).toBe(child);
   });
@@ -136,10 +194,34 @@ describe("findReusableRetryRunId", () => {
       runId: child,
       status: "queued",
     });
+    writeLiveWorker(jobs);
 
     expect(
       findReusableRetryRunId(root, from, (id) => loadStatus(root, id), {
         jobsDir: jobs,
+        isPidAlive: () => true,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null when queued job exists but worker is dead", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-"));
+    const jobs = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-jobs-"));
+    temps.push(root, jobs);
+    const from = "run_100_fromaaaa";
+    const child = "run_100_childdeadw";
+    saveRetryMarker(root, from, child);
+    writeJsonFile(path.join(root, child, "status.json"), {
+      runId: child,
+      status: "queued",
+    });
+    fs.writeFileSync(path.join(jobs, `${child}.json`), "{}");
+    writeLiveWorker(jobs);
+
+    expect(
+      findReusableRetryRunId(root, from, (id) => loadStatus(root, id), {
+        jobsDir: jobs,
+        isPidAlive: () => false,
       }),
     ).toBeNull();
   });

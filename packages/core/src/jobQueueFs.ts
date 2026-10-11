@@ -6,6 +6,9 @@ import { syncStatusFromResult } from "./results.js";
 /** Match web preflight busy stale window — heartbeat older than this cannot own a run. */
 export const WORKER_HEARTBEAT_BUSY_STALE_MS = 15 * 60_000;
 
+/** Match web preflight idle stale window. */
+export const WORKER_HEARTBEAT_IDLE_STALE_MS = 20_000;
+
 export type OrphanRunningAction =
   | "skip_alive"
   | "finalize_done"
@@ -92,7 +95,54 @@ export function heartbeatOwnsRunFs(
       return raw.runId === runId;
     }
     // Fresh heartbeat without runId: only trust briefly (between tasks).
-    return nowMs - at <= 20_000;
+    return nowMs - at <= WORKER_HEARTBEAT_IDLE_STALE_MS;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True when jobsDir/.worker has a live PID and a fresh timestamp
+ * (same windows as web preflight).
+ */
+export function isWorkerHeartbeatLive(
+  jobsDir: string,
+  opts?: {
+    nowMs?: number;
+    isPidAlive?: (pid: number) => boolean;
+    idleStaleMs?: number;
+    busyStaleMs?: number;
+  },
+): boolean {
+  const nowMs = opts?.nowMs ?? Date.now();
+  const idleStaleMs = opts?.idleStaleMs ?? WORKER_HEARTBEAT_IDLE_STALE_MS;
+  const busyStaleMs = opts?.busyStaleMs ?? WORKER_HEARTBEAT_BUSY_STALE_MS;
+  const isPidAlive =
+    opts?.isPidAlive ??
+    ((pid: number) => {
+      if (!Number.isInteger(pid) || pid <= 0) return false;
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+  const hbPath = path.join(jobsDir, ".worker");
+  if (!fs.existsSync(hbPath)) return false;
+  try {
+    const raw = JSON.parse(fs.readFileSync(hbPath, "utf8")) as {
+      pid?: unknown;
+      at?: unknown;
+      busy?: unknown;
+    };
+    const pid = Number(raw.pid);
+    if (!isPidAlive(pid)) return false;
+    const at = typeof raw.at === "string" ? Date.parse(raw.at) : NaN;
+    if (!Number.isFinite(at)) return false;
+    const staleLimit = raw.busy ? busyStaleMs : idleStaleMs;
+    return nowMs - at <= staleLimit;
   } catch {
     return false;
   }

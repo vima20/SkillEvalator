@@ -12,6 +12,7 @@ import {
   saveRetryMarker,
 } from "@skillevalator/core";
 import { enqueueRun } from "@/lib/enqueueRun";
+import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +90,7 @@ export async function POST(
       root,
       runId,
       (childId) => loadRunStatus(root, childId)?.status,
-      { jobsDir: jobsDir() },
+      { jobsDir: jobsDir(), isPidAlive },
     );
     if (reused) {
       return NextResponse.json({

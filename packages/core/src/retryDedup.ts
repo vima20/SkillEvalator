@@ -3,6 +3,7 @@ import path from "node:path";
 import { writeJsonFile } from "./fsJson.js";
 import {
   heartbeatOwnsRunFs,
+  isWorkerHeartbeatLive,
   parseWorkerPidRecord,
 } from "./jobQueueFs.js";
 import { assertSafeId, resolveUnder } from "./paths.js";
@@ -63,10 +64,15 @@ export function isRetryChildLive(opts: {
   const isPidAlive = opts.isPidAlive ?? defaultIsPidAlive;
 
   if (status === "queued") {
-    return (
+    const hasJob =
       fs.existsSync(path.join(opts.jobsDir, `${id}.json`)) ||
-      fs.existsSync(path.join(opts.jobsDir, `${id}.tmp.json`))
-    );
+      fs.existsSync(path.join(opts.jobsDir, `${id}.tmp.json`));
+    if (!hasJob) return false;
+    // Job file alone is not enough — worker may be dead while status stays queued.
+    return isWorkerHeartbeatLive(opts.jobsDir, {
+      nowMs,
+      isPidAlive,
+    });
   }
 
   const runningPath = path.join(opts.jobsDir, `${id}.running.json`);
