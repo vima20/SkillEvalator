@@ -436,11 +436,15 @@ code {
 }
 
 .btn-ghost {
-  margin-top: 14px;
   color: var(--text);
   background: transparent;
   border: 1px solid var(--border-strong);
   box-shadow: none;
+}
+
+.panel > .btn-ghost,
+.skill-card > .btn-ghost {
+  margin-top: 14px;
 }
 
 .btn-danger {
@@ -1092,7 +1096,7 @@ a.btn {
 .page-header-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
 }
 
@@ -1108,7 +1112,7 @@ a.btn {
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--panel) 88%, var(--accent) 12%);
+  background: color-mix(in srgb, var(--bg-panel) 88%, var(--accent) 12%);
 }
 
 .cost-estimate strong {
@@ -1193,6 +1197,30 @@ a.btn {
   background: linear-gradient(90deg, var(--accent), #5aa0ff);
   box-shadow: 0 0 18px var(--accent-glow);
   transition: width 0.4s ease;
+}
+
+.progress-track.is-indeterminate .progress-fill {
+  width: 36%;
+  transition: none;
+  animation: progress-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.run-title {
+  font-size: clamp(1.15rem, 2.5vw, 1.6rem);
+  word-break: break-all;
+}
+
+.page-header-actions .btn-ghost {
+  margin-top: 0;
 }
 
 .badge-live::after {

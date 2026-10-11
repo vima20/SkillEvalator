@@ -44,7 +44,6 @@ type Payload = {
 const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
 
 function shouldPoll(status: string | undefined, hasResult: boolean): boolean {
-  // result.json means the scorecard is final — stop even if status.json lagged.
   if (hasResult) return false;
   return !TERMINAL.has(status ?? "");
 }
@@ -53,22 +52,26 @@ function RetryActions({
   canRetry,
   retrying,
   retryError,
+  blockedReason,
   onRetry,
 }: {
   canRetry: boolean;
   retrying: boolean;
   retryError: string | null;
+  blockedReason?: string | null;
   onRetry: () => void;
 }) {
   return (
     <div className="action-row progress-actions" style={{ marginTop: 14 }}>
-      <p className="hint">
-        Queues a new run with the same skill, mode, and repeats.
+      <p className="hint" id="retry-hint">
+        {blockedReason ??
+          "Queues a new run with the same skill, mode, and repeats."}
       </p>
       <button
         type="button"
         className="btn btn-primary btn-compact"
         disabled={!canRetry}
+        aria-describedby="retry-hint"
         onClick={onRetry}
       >
         {retrying ? "Retrying…" : "Retry run"}
@@ -94,26 +97,46 @@ export function RunDetailClient({
   const [polling, setPolling] = useState(
     shouldPoll(initial.status?.status, !!initial.result),
   );
+  const [pollError, setPollError] = useState<string | null>(null);
   const [jsonOpen, setJsonOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const [refreshBusy, setRefreshBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
-      cache: "no-store",
-    });
-    if (res.status === 404) {
+    try {
+      const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
+        cache: "no-store",
+      });
+      if (res.status === 404) {
+        setPolling(false);
+        setPollError("Run not found.");
+        return;
+      }
+      if (res.status === 401) {
+        setPolling(false);
+        setPollError("Unauthorized — unlock with WEB_AUTH_TOKEN, then refresh.");
+        return;
+      }
+      if (!res.ok) {
+        setPolling(false);
+        setPollError(`Could not refresh run status (HTTP ${res.status}).`);
+        return;
+      }
+      setPollError(null);
+      const next = (await res.json()) as Payload;
+      setData(next);
+      if (!shouldPoll(next.status?.status, !!next.result)) {
+        setPolling(false);
+        setCancelling(false);
+      } else {
+        setPolling(true);
+      }
+    } catch {
       setPolling(false);
-      return;
-    }
-    if (!res.ok) return;
-    const next = (await res.json()) as Payload;
-    setData(next);
-    if (!shouldPoll(next.status?.status, !!next.result)) {
-      setPolling(false);
-      setCancelling(false);
+      setPollError("Network error while refreshing run status.");
     }
   }, [runId]);
 
@@ -128,12 +151,13 @@ export function RunDetailClient({
   const status = data.status?.status ?? "unknown";
   const result = data.result;
   const canCancel =
-    (status === "queued" || status === "running") && !cancelling;
+    (status === "queued" || status === "running") && !cancelling && !pollError;
+  const quotaBlocked = data.status?.errorCode === "insufficient_quota";
   const canRetry =
     (status === "failed" ||
       status === "cancelled" ||
       status === "budget_stop") &&
-    data.status?.errorCode !== "insufficient_quota" &&
+    !quotaBlocked &&
     !retrying;
 
   async function onRetry() {
@@ -186,16 +210,23 @@ export function RunDetailClient({
       setCancelling(false);
     }
   }
+
+  async function onManualRefresh() {
+    setRefreshBusy(true);
+    setPollError(null);
+    await refresh();
+    setRefreshBusy(false);
+  }
+
   const repeat = data.status?.repeat;
   const repeats = data.status?.repeats ?? result?.repeats;
+  const isQueued = status === "queued";
   const progress =
     status === "running" && repeat && repeats
       ? Math.min(100, Math.round((repeat / repeats) * 100))
-      : status === "queued"
-        ? 8
-        : result
-          ? 100
-          : 0;
+      : result
+        ? 100
+        : 0;
 
   const passed =
     result?.perTask.filter((t) => t.status === "ok").length ?? 0;
@@ -209,12 +240,24 @@ export function RunDetailClient({
           <span aria-hidden="true"> / </span>
           <span>{runId}</span>
         </p>
-        <h1>{runId}</h1>
+        <h1 className="run-title">{runId}</h1>
         <p>
-          {polling
-            ? "Live updating while the worker processes this run."
-            : "Run status, aggregate score, and per-task grades."}
+          {pollError
+            ? "Live updates paused."
+            : polling
+              ? "Live updating while the worker processes this run."
+              : "Run status, aggregate score, and per-task grades."}
         </p>
+        <div className="action-row" style={{ marginTop: 10 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-compact"
+            disabled={refreshBusy}
+            onClick={() => void onManualRefresh()}
+          >
+            {refreshBusy ? "Refreshing…" : "Refresh"}
+          </button>
+        </div>
         {result && !polling ? (
           <p className="hint">
             <Link href={`/benefit/${runId}`}>Open Benefit Report →</Link>
@@ -222,13 +265,24 @@ export function RunDetailClient({
         ) : null}
       </header>
 
+      {pollError ? (
+        <p className="form-error" role="alert">
+          {pollError}
+        </p>
+      ) : null}
+
       <div className="meta-row">
         <span
-          className={`${statusBadgeClass(status)}${polling ? " badge-live" : ""}`}
+          className={`${statusBadgeClass(status)}${polling && !pollError ? " badge-live" : ""}`}
         >
           {status}
         </span>
-        {result ? <span className="score">{result.score ?? "—"}</span> : null}
+        {result ? (
+          <span className="score" title="Aggregate score">
+            <span className="stat-label">Score </span>
+            {result.score ?? "—"}
+          </span>
+        ) : null}
         {result ? (
           <>
             <span>
@@ -257,24 +311,30 @@ export function RunDetailClient({
         ) : null}
       </div>
 
-      {(status === "running" || status === "queued") && (
+      {(status === "running" || status === "queued") && !pollError && (
         <div className="panel progress-panel">
           <div className="progress-head">
             <strong>
-              {status === "queued" ? "Queued" : "Running"}
-              {repeat && repeats ? ` · repeat ${repeat}/${repeats}` : ""}
+              {isQueued ? "Queued — waiting for worker" : "Running"}
+              {!isQueued && repeat && repeats
+                ? ` · repeat ${repeat}/${repeats}`
+                : ""}
             </strong>
-            <span>{progress}%</span>
+            <span>{isQueued ? "…" : `${progress}%`}</span>
           </div>
           <div
-            className="progress-track"
+            className={`progress-track${isQueued ? " is-indeterminate" : ""}`}
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={progress}
-            aria-label="Run progress"
+            aria-valuenow={isQueued ? undefined : progress}
+            aria-busy={isQueued || undefined}
+            aria-label={isQueued ? "Queued, waiting for worker" : "Run progress"}
           >
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
+            <div
+              className="progress-fill"
+              style={isQueued ? undefined : { width: `${progress}%` }}
+            />
           </div>
           <div className="action-row progress-actions">
             <p className="hint">
@@ -375,11 +435,19 @@ export function RunDetailClient({
           {jsonOpen ? (
             <pre className="json-block">{JSON.stringify(result, null, 2)}</pre>
           ) : null}
-          {canRetry ? (
+          {status === "failed" ||
+          status === "cancelled" ||
+          status === "budget_stop" ||
+          canRetry ? (
             <RetryActions
               canRetry={canRetry}
               retrying={retrying}
               retryError={retryError}
+              blockedReason={
+                quotaBlocked
+                  ? "Retry blocked: no OpenAI credits. Add billing credits first."
+                  : null
+              }
               onRetry={() => void onRetry()}
             />
           ) : null}
@@ -401,10 +469,10 @@ export function RunDetailClient({
           <p className="empty">
             Run failed before a scorecard was produced.
           </p>
-          {data.status?.errorCode === "insufficient_quota" ? (
+          {quotaBlocked ? (
             <p className="form-error credit-alert" role="alert">
-              Ei credittejä / no OpenAI credits — lisää billing-saldo ennen
-              uudelleenajoa. Retry is blocked until credits are available.
+              No OpenAI credits remaining. Add billing credits before retrying.
+              Retry is blocked until credits are available.
             </p>
           ) : null}
           {data.status?.error ? (
@@ -427,6 +495,11 @@ export function RunDetailClient({
             canRetry={canRetry}
             retrying={retrying}
             retryError={retryError}
+            blockedReason={
+              quotaBlocked
+                ? "Retry blocked: no OpenAI credits. Add billing credits first."
+                : null
+            }
             onRetry={() => void onRetry()}
           />
         </div>
@@ -444,7 +517,11 @@ export function RunDetailClient({
         <div className="panel">
           <p className="empty">
             Waiting for worker to pick up this job…
-            {polling ? "" : " Try refreshing."}
+            {pollError
+              ? " Live updates paused — use Refresh."
+              : polling
+                ? ""
+                : " Use Refresh to check again."}
           </p>
         </div>
       )}

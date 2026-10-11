@@ -2,6 +2,10 @@ import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { ClearOldRuns } from "@/components/ClearOldRuns";
 import { EmptyState } from "@/components/EmptyState";
+import {
+  RunsAutoRefresh,
+  runIsActive,
+} from "@/components/RunsAutoRefresh";
 import { resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -16,6 +20,7 @@ function shortError(msg: string | undefined, max = 72): string | null {
 
 export default function RunsPage() {
   const runs = listRuns(resultsDir());
+  const hasActive = runs.some((r) => runIsActive(r.status));
 
   return (
     <div>
@@ -26,6 +31,7 @@ export default function RunsPage() {
           <p>Queued and completed evaluation jobs from the local worker.</p>
         </div>
         <div className="page-header-actions">
+          <RunsAutoRefresh hasActive={hasActive} />
           <ClearOldRuns />
           <Link className="btn btn-primary" href="/">
             New run
@@ -57,13 +63,16 @@ export default function RunsPage() {
               <tbody>
                 {runs.map((r) => {
                   const err = shortError(r.error);
+                  const active = runIsActive(r.status);
                   return (
                     <tr key={r.runId}>
                       <td>
                         <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
                       </td>
                       <td>
-                        <span className={statusBadgeClass(r.status)}>
+                        <span
+                          className={`${statusBadgeClass(r.status)}${active ? " badge-live" : ""}`}
+                        >
                           {r.status ?? "unknown"}
                         </span>
                       </td>

@@ -43,13 +43,15 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   const [busy, setBusy] = useState(false);
   const [preflight, setPreflight] = useState<Preflight | null>(null);
   const [preflightBusy, setPreflightBusy] = useState(false);
+  const [preflightError, setPreflightError] = useState<string | null>(null);
 
   const selected = skills.find((s) => s.id === evalSkillId) ?? skills[0];
   const minRepeats = mode === "official" ? OFFICIAL_MIN_REPEATS : 1;
+  const repeatsSafe = Number.isFinite(repeats) ? repeats : minRepeats;
   const safeRepeatsPreview =
     mode === "official"
-      ? Math.max(repeats, OFFICIAL_MIN_REPEATS)
-      : Math.max(1, repeats);
+      ? Math.max(repeatsSafe, OFFICIAL_MIN_REPEATS)
+      : Math.max(1, repeatsSafe);
   const taskCountPreview =
     mode === "official"
       ? (selected?.taskCount ?? 0)
@@ -69,10 +71,14 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
     setPreflightBusy(true);
     try {
       const res = await fetch("/api/preflight", { cache: "no-store" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setPreflightError(`Preflight failed (HTTP ${res.status}).`);
+        return;
+      }
+      setPreflightError(null);
       setPreflight((await res.json()) as Preflight);
     } catch {
-      /* ignore */
+      setPreflightError("Preflight network error — is the web server up?");
     } finally {
       setPreflightBusy(false);
     }
@@ -100,8 +106,8 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
     setError(false);
     const safeRepeats =
       mode === "official"
-        ? Math.max(repeats, OFFICIAL_MIN_REPEATS)
-        : Math.max(1, repeats);
+        ? Math.max(repeatsSafe, OFFICIAL_MIN_REPEATS)
+        : Math.max(1, repeatsSafe);
     try {
       const res = await fetch("/api/runs", {
         method: "POST",
@@ -150,7 +156,11 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
               {preflightBusy ? "Checking…" : "Refresh"}
             </button>
           </div>
-          {preflight ? (
+          {preflightError ? (
+            <p className="form-error" role="alert">
+              {preflightError}
+            </p>
+          ) : preflight ? (
             <ul className="preflight-list">
               {checks.map((c) => (
                 <li key={c.id} className={c.ok ? "is-ok" : "is-bad"}>
@@ -246,8 +256,11 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
             type="number"
             min={minRepeats}
             max={10}
-            value={repeats}
-            onChange={(e) => setRepeats(Number(e.target.value))}
+            value={Number.isFinite(repeats) ? repeats : ""}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              setRepeats(Number.isFinite(n) ? n : Number.NaN);
+            }}
           />
           {mode === "official" ? (
             <p className="hint">
