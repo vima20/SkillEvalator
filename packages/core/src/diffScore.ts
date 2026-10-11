@@ -4,13 +4,8 @@ export const DIFF_STRONG_MAX = 0.08;
 /** Below this soft score a task/run is treated as Fail. */
 export const PASS_SCORE_FLOOR = 0.8;
 
-/**
- * Normalized Levenshtein distance in [0, 1] (0 = identical).
- * Caps work for large files via length-limited comparison.
- */
-export function textDiffRatio(a: string, b: string, maxChars = 8_000): number {
-  const left = a.replace(/\r\n/g, "\n").slice(0, maxChars);
-  const right = b.replace(/\r\n/g, "\n").slice(0, maxChars);
+/** Normalized Levenshtein distance in [0, 1] for already-sliced windows. */
+function windowDiffRatio(left: string, right: string): number {
   if (left === right) return 0;
   const n = left.length;
   const m = right.length;
@@ -30,6 +25,37 @@ export function textDiffRatio(a: string, b: string, maxChars = 8_000): number {
     [prev, cur] = [cur, prev];
   }
   return prev[m]! / Math.max(n, m);
+}
+
+/**
+ * Normalized Levenshtein distance in [0, 1] (0 = identical).
+ * Caps work for large files via length-limited windows, but takes the
+ * max of prefix, suffix, and length mismatch so a long identical head
+ * cannot hide a divergent tail (or length) as a perfect match.
+ */
+export function textDiffRatio(a: string, b: string, maxChars = 8_000): number {
+  const aFull = a.replace(/\r\n/g, "\n");
+  const bFull = b.replace(/\r\n/g, "\n");
+  if (aFull === bFull) return 0;
+
+  const prefix = windowDiffRatio(
+    aFull.slice(0, maxChars),
+    bFull.slice(0, maxChars),
+  );
+
+  const truncated =
+    aFull.length > maxChars || bFull.length > maxChars;
+  if (!truncated) return prefix;
+
+  const suffix = windowDiffRatio(
+    aFull.slice(-maxChars),
+    bFull.slice(-maxChars),
+  );
+  const lengthMismatch =
+    Math.abs(aFull.length - bFull.length) /
+    Math.max(aFull.length, bFull.length, 1);
+
+  return Math.max(prefix, suffix, lengthMismatch);
 }
 
 /**
