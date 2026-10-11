@@ -247,15 +247,21 @@ describe("cleanupOrphanQueuedFs", () => {
     expect(status.errorCode).toBe("orphan_queued");
   });
 
-  it("removes stale tmp job files", () => {
+  it("removes only aged tmp job files", () => {
     const root = tmpRoot();
     const jobsDir = path.join(root, "jobs");
     const resultsDir = path.join(root, "results");
     fs.mkdirSync(jobsDir, { recursive: true });
-    fs.writeFileSync(path.join(jobsDir, "run_100_tmpx.tmp.json"), "{}");
+    const fresh = path.join(jobsDir, "run_100_tmpfresh.tmp.json");
+    const old = path.join(jobsDir, "run_100_tmpx.tmp.json");
+    fs.writeFileSync(fresh, "{}");
+    fs.writeFileSync(old, "{}");
+    const past = new Date(Date.now() - 120_000);
+    fs.utimesSync(old, past, past);
 
     const out = cleanupOrphanQueuedFs(jobsDir, resultsDir);
     expect(out.removedTmp).toEqual(["run_100_tmpx.tmp.json"]);
+    expect(fs.existsSync(fresh)).toBe(true);
   });
 
   it("leaves legitimate queued jobs alone", () => {

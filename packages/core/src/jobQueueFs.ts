@@ -208,15 +208,21 @@ export function reclaimOrphanRunningJobsFs(
   return { finalized, failed };
 }
 
+/** Only delete enqueue tmp files older than this (avoid racing live writes). */
+export const STALE_TMP_JOB_MS = 60_000;
+
 /**
  * Fix status.json stuck at queued when no job file exists; remove stale .tmp.json.
  */
 export function cleanupOrphanQueuedFs(
   jobsDir: string,
   resultsDir: string,
+  opts?: { nowMs?: number; staleTmpMs?: number },
 ): { failedStatuses: string[]; removedTmp: string[] } {
   const failedStatuses: string[] = [];
   const removedTmp: string[] = [];
+  const nowMs = opts?.nowMs ?? Date.now();
+  const staleTmpMs = opts?.staleTmpMs ?? STALE_TMP_JOB_MS;
   fs.mkdirSync(jobsDir, { recursive: true });
   fs.mkdirSync(resultsDir, { recursive: true });
 
@@ -224,6 +230,8 @@ export function cleanupOrphanQueuedFs(
     if (!name.endsWith(".tmp.json")) continue;
     const p = path.join(jobsDir, name);
     try {
+      const age = nowMs - fs.statSync(p).mtimeMs;
+      if (age < staleTmpMs) continue;
       fs.unlinkSync(p);
       removedTmp.push(name);
     } catch {

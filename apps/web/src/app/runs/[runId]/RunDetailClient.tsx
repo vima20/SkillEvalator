@@ -150,8 +150,12 @@ export function RunDetailClient({
 
   const status = data.status?.status ?? "unknown";
   const result = data.result;
+  const cancelRequested = status === "cancel_requested";
   const canCancel =
-    (status === "queued" || status === "running") && !cancelling && !pollError;
+    (status === "queued" || status === "running") &&
+    !cancelling &&
+    !cancelRequested &&
+    !pollError;
   const quotaBlocked = data.status?.errorCode === "insufficient_quota";
   const canRetry =
     (status === "failed" ||
@@ -311,34 +315,55 @@ export function RunDetailClient({
         ) : null}
       </div>
 
-      {(status === "running" || status === "queued") && !pollError && (
+      {(status === "running" ||
+        status === "queued" ||
+        cancelRequested) &&
+        !pollError && (
         <div className="panel progress-panel">
           <div className="progress-head">
             <strong>
-              {isQueued ? "Queued — waiting for worker" : "Running"}
-              {!isQueued && repeat && repeats
+              {cancelRequested
+                ? "Cancel requested — stopping worker"
+                : isQueued
+                  ? "Queued — waiting for worker"
+                  : "Running"}
+              {!isQueued && !cancelRequested && repeat && repeats
                 ? ` · repeat ${repeat}/${repeats}`
                 : ""}
             </strong>
-            <span>{isQueued ? "…" : `${progress}%`}</span>
+            <span>
+              {isQueued || cancelRequested ? "…" : `${progress}%`}
+            </span>
           </div>
           <div
-            className={`progress-track${isQueued ? " is-indeterminate" : ""}`}
+            className={`progress-track${isQueued || cancelRequested ? " is-indeterminate" : ""}`}
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={isQueued ? undefined : progress}
-            aria-busy={isQueued || undefined}
-            aria-label={isQueued ? "Queued, waiting for worker" : "Run progress"}
+            aria-valuenow={
+              isQueued || cancelRequested ? undefined : progress
+            }
+            aria-busy={isQueued || cancelRequested || undefined}
+            aria-label={
+              cancelRequested
+                ? "Cancel requested"
+                : isQueued
+                  ? "Queued, waiting for worker"
+                  : "Run progress"
+            }
           >
             <div
               className="progress-fill"
-              style={isQueued ? undefined : { width: `${progress}%` }}
+              style={
+                isQueued || cancelRequested
+                  ? undefined
+                  : { width: `${progress}%` }
+              }
             />
           </div>
           <div className="action-row progress-actions">
             <p className="hint">
-              {cancelling
+              {cancelling || cancelRequested
                 ? "Cancel requested — waiting for the worker to stop."
                 : "Refresh is automatic. You can leave this page open."}
             </p>

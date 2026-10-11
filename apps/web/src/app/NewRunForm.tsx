@@ -227,11 +227,25 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
             className="segmented"
             role="radiogroup"
             aria-labelledby="modeLabel"
+            onKeyDown={(e) => {
+              if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+              e.preventDefault();
+              const next =
+                e.key === "ArrowRight"
+                  ? mode === "dry-run"
+                    ? "official"
+                    : "dry-run"
+                  : mode === "official"
+                    ? "dry-run"
+                    : "official";
+              selectMode(next);
+            }}
           >
             <button
               type="button"
               role="radio"
               aria-checked={mode === "dry-run"}
+              tabIndex={mode === "dry-run" ? 0 : -1}
               className={mode === "dry-run" ? "is-active" : undefined}
               onClick={() => selectMode("dry-run")}
             >
@@ -241,6 +255,7 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
               type="button"
               role="radio"
               aria-checked={mode === "official"}
+              tabIndex={mode === "official" ? 0 : -1}
               className={mode === "official" ? "is-active" : undefined}
               onClick={() => selectMode("official")}
             >

@@ -11,7 +11,7 @@ import { jobsDir, resultsDir } from "@/lib/paths";
 export const dynamic = "force-dynamic";
 
 const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
-const CANCELLABLE = new Set(["queued", "running"]);
+const CANCELLABLE = new Set(["queued", "running", "cancel_requested"]);
 
 export async function POST(
   _req: Request,
@@ -50,6 +50,15 @@ export async function POST(
 
     const dir = jobsDir();
     fs.mkdirSync(dir, { recursive: true });
+    if (current === "cancel_requested") {
+      return NextResponse.json({
+        runId,
+        ok: true,
+        already: true,
+        status: "cancel_requested",
+      });
+    }
+
     const cancelPath = path.join(dir, `${runId}.cancel`);
     fs.writeFileSync(cancelPath, `${new Date().toISOString()}\n`, "utf8");
 
@@ -66,6 +75,20 @@ export async function POST(
       } catch {
         /* claimed concurrently — worker honors .cancel */
       }
+    }
+
+    if (!immediate) {
+      writeJsonFile(path.join(root, runId, "status.json"), {
+        runId,
+        status: "cancel_requested",
+        ...(typeof status.costUsd === "number"
+          ? { costUsd: status.costUsd }
+          : {}),
+        ...(typeof status.repeat === "number" ? { repeat: status.repeat } : {}),
+        ...(typeof status.repeats === "number"
+          ? { repeats: status.repeats }
+          : {}),
+      });
     }
 
     return NextResponse.json({

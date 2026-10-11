@@ -536,7 +536,7 @@ code {
 }
 
 .preflight-list li.is-bad .preflight-label {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .preflight-detail {

@@ -8,6 +8,7 @@ export function statusBadgeKind(status?: string | null): StatusBadgeKind {
       return "ok";
     case "running":
     case "queued":
+    case "cancel_requested":
       return "run";
     case "failed":
     case "cancelled":
