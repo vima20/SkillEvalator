@@ -4,10 +4,12 @@ import { NextResponse } from "next/server";
 import {
   JobManifestSchema,
   assertSafeId,
+  findReusableRetryRunId,
   isNonRetryableErrorCode,
   loadRunResult,
   loadRunStatus,
   readJsonFile,
+  saveRetryMarker,
 } from "@skillevalator/core";
 import { enqueueRun } from "@/lib/enqueueRun";
 import { jobsDir, resultsDir } from "@/lib/paths";
@@ -83,6 +85,18 @@ export async function POST(
       );
     }
 
+    const reused = findReusableRetryRunId(root, runId, (childId) => {
+      return loadRunStatus(root, childId)?.status;
+    });
+    if (reused) {
+      return NextResponse.json({
+        ok: true,
+        runId: reused,
+        fromRunId: runId,
+        reused: true,
+      });
+    }
+
     const queued = enqueueRun({
       evalSkillId,
       mode,
@@ -96,10 +110,13 @@ export async function POST(
       );
     }
 
+    saveRetryMarker(root, runId, queued.runId);
+
     return NextResponse.json({
       ok: true,
       runId: queued.runId,
       fromRunId: runId,
+      reused: false,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
