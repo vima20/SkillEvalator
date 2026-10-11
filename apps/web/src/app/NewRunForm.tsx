@@ -100,7 +100,7 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
       setRepeats((r) => Math.max(r, OFFICIAL_MIN_REPEATS));
     }
     if (focus) {
-      queue Promise.resolve().then(() => {
+      void Promise.resolve().then(() => {
         (next === "official" ? officialModeRef : dryRunModeRef).current?.focus();
       });
     }
