@@ -70,6 +70,10 @@ function checkDocker(): Check {
   }
 }
 
+const WORKER_IDLE_STALE_MS = 20_000;
+/** While busy grading/producing, allow a longer gap before declaring dead. */
+const WORKER_BUSY_STALE_MS = 15 * 60_000;
+
 function checkWorker(dir: string): Check {
   const hb = path.join(dir, ".worker");
   if (!fs.existsSync(hb)) {
@@ -82,19 +86,30 @@ function checkWorker(dir: string): Check {
     const raw = JSON.parse(fs.readFileSync(hb, "utf8")) as {
       pid?: number;
       at?: string;
+      busy?: boolean;
+      runId?: string;
     };
     const pid = Number(raw.pid);
     const at = raw.at ? Date.parse(raw.at) : NaN;
+    const busy = Boolean(raw.busy);
+    const age = Number.isFinite(at) ? Date.now() - at : Number.POSITIVE_INFINITY;
     if (!isPidAlive(pid)) {
       return {
         ok: false,
         detail: "Worker heartbeat PID is dead — restart the worker",
       };
     }
-    if (!Number.isFinite(at) || Date.now() - at > 15_000) {
+    const staleLimit = busy ? WORKER_BUSY_STALE_MS : WORKER_IDLE_STALE_MS;
+    if (age > staleLimit) {
       return {
         ok: false,
         detail: "Worker heartbeat is stale — restart the worker",
+      };
+    }
+    if (busy && raw.runId) {
+      return {
+        ok: true,
+        detail: `Worker busy on ${raw.runId} (pid ${pid})`,
       };
     }
     return { ok: true, detail: `Worker alive (pid ${pid})` };

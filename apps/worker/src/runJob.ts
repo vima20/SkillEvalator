@@ -18,6 +18,7 @@ import {
   type RunResult,
 } from "@skillevalator/core";
 import { config } from "./config.js";
+import { touchHeartbeat } from "./heartbeat.js";
 import { produceArtifact } from "./produce.js";
 
 function toRepoRelative(absPath: string): string {
@@ -63,6 +64,11 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const statusPath = path.join(resultDir, "status.json");
   const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
 
+  const heartbeatTimer = setInterval(() => {
+    touchHeartbeat({ busy: true, runId });
+  }, 5_000);
+  touchHeartbeat({ busy: true, runId });
+
   try {
     writeJsonFile(statusPath, {
       runId,
@@ -87,6 +93,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
 
       const perTask: RunResult["perTask"] = [];
       for (const taskId of taskIds) {
+        touchHeartbeat({ busy: true, runId });
         if (fs.existsSync(cancelPath)) {
           stop = "cancelled";
           findings.push("cancelled");
@@ -241,6 +248,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     });
     return result;
   } finally {
+    clearInterval(heartbeatTimer);
+    touchHeartbeat();
     try {
       fs.unlinkSync(cancelPath);
     } catch {

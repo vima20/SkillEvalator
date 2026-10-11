@@ -9,23 +9,12 @@ import {
   writeJsonFile,
 } from "@skillevalator/core";
 import { config } from "./config.js";
+import { touchHeartbeat } from "./heartbeat.js";
 import { runJob } from "./runJob.js";
 
 function ensureDirs() {
   fs.mkdirSync(config.jobsDir, { recursive: true });
   fs.mkdirSync(config.resultsDir, { recursive: true });
-}
-
-/** Soft liveness signal for web preflight (pid + timestamp). */
-function touchHeartbeat(): void {
-  try {
-    writeJsonFile(path.join(config.jobsDir, ".worker"), {
-      pid: process.pid,
-      at: new Date().toISOString(),
-    });
-  } catch {
-    /* ignore */
-  }
 }
 
 function listQueued(): string[] {
