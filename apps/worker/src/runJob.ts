@@ -6,7 +6,7 @@ import {
   RunResultSchema,
   assertSafeId,
   buildBenefitReport,
-  estimateCallCostUsd,
+  estimateCallCostUsdForCap,
   gradeInDocker,
   gradeOnHost,
   liveRunStatusForProgress,
@@ -137,7 +137,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         if (fakeProduce) {
           content = fs.readFileSync(tp.knownGoodPath, "utf8");
         } else {
-          const nextCallUsd = estimateCallCostUsd(modelId);
+          const nextCallUsd = estimateCallCostUsdForCap(modelId);
           if (
             config.costHardStop &&
             wouldExceedCostCap({
@@ -181,6 +181,19 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         }
         fs.writeFileSync(artifactPath, content, "utf8");
         costUsd += produceCost;
+
+        if (
+          config.costHardStop &&
+          costUsd >= config.costCapUsd
+        ) {
+          stop = "budget_stop";
+          if (!findings.includes("cost hard stop")) {
+            findings.push("cost hard stop");
+          }
+          if (!findings.includes("cost cap reached after produce")) {
+            findings.push("cost cap reached after produce");
+          }
+        }
 
         if (fs.existsSync(cancelPath)) {
           stop = "cancelled";

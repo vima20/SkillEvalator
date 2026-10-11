@@ -7,6 +7,15 @@ export const TaskStatusSchema = z.enum([
   "budget_stop",
 ]);
 
+/** Terminal outcomes written to result.json. */
+export const TerminalRunStatusSchema = z.enum([
+  "ok",
+  "failed",
+  "cancelled",
+  "budget_stop",
+]);
+
+/** status.json mid-run + terminal (includes cancel_requested progress). */
 export const RunStatusSchema = z.enum([
   "ok",
   "failed",
@@ -14,6 +23,7 @@ export const RunStatusSchema = z.enum([
   "budget_stop",
   "running",
   "queued",
+  "cancel_requested",
 ]);
 
 /** Safe id: no path separators or traversal (matches paths.assertSafeId). */
@@ -95,7 +105,7 @@ export const RunResultSchema = z.object({
   findings: z.array(z.string()).default([]),
   costUsd: z.number().nonnegative().default(0),
   latencyMs: z.number().nonnegative().default(0),
-  status: RunStatusSchema,
+  status: TerminalRunStatusSchema,
   startedAt: z.string(),
   finishedAt: z.string().optional(),
   mode: z.enum(["dry-run", "official"]),

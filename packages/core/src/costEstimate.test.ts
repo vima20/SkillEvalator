@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  COST_PRECHECK_SAFETY,
   costFromTokenUsage,
   estimateCallCostUsd,
+  estimateCallCostUsdForCap,
   estimateRunCostUsd,
   wouldExceedCostCap,
 } from "./costEstimate.js";
@@ -64,6 +66,16 @@ describe("estimateRunCostUsd", () => {
   it("prices official model higher than dry-run default", () => {
     expect(estimateCallCostUsd("gpt-4.1-mini")).toBeGreaterThan(
       estimateCallCostUsd("gpt-4o-mini"),
+    );
+  });
+});
+
+describe("estimateCallCostUsdForCap", () => {
+  it("inflates the UI estimate by the safety factor", () => {
+    const base = estimateCallCostUsd("gpt-4o-mini");
+    expect(estimateCallCostUsdForCap("gpt-4o-mini")).toBeCloseTo(
+      base * COST_PRECHECK_SAFETY,
+      10,
     );
   });
 });

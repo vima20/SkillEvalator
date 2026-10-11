@@ -2,6 +2,12 @@
 const ASSUMED_INPUT_TOKENS = 1_800;
 const ASSUMED_OUTPUT_TOKENS = 900;
 
+/**
+ * Inflate pre-produce estimates so a large real call is less likely to
+ * blow past COST_CAP_USD before the hard-stop can react.
+ */
+export const COST_PRECHECK_SAFETY = 1.5;
+
 type ModelRate = { inputPerMTok: number; outputPerMTok: number };
 
 const RATES: Record<string, ModelRate> = {
@@ -36,6 +42,11 @@ export function estimateCallCostUsd(modelId: string): number {
       ASSUMED_OUTPUT_TOKENS * rate.outputPerMTok) /
     1_000_000
   );
+}
+
+/** Conservative per-call estimate for worker cost-cap pre-check. */
+export function estimateCallCostUsdForCap(modelId: string): number {
+  return estimateCallCostUsd(modelId) * COST_PRECHECK_SAFETY;
 }
 
 /**
