@@ -28,7 +28,8 @@ Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` 
 
 ## Layout
 
-- `eval-skills/code-debugging-eval` — skill #1 (fix buggy JS, 8 tasks)
+- `eval-skills/code-debugging-eval` — skill #1 minimal prompt (fix buggy JS, task set `cde-v1`)
+- `eval-skills/code-debugging-eval-checklist` — alternate prompt on the same `cde-v1` tasks (dashboard comparison)
 - `eval-skills/test-generation-eval` — skill #2 (write assert tests, 6 tasks; adversarial subject-bad)
 - `packages/core` — schema, scoring, skill loader, Docker grade
 - `apps/worker` — file queue + produce/grade

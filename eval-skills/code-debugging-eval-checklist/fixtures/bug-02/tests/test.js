@@ -1,0 +1,10 @@
+﻿const assert = require("assert");
+const { canLogin } = require("./auth.js");
+const admin = { role: "admin", password: "x", active: false };
+const user = { role: "user", password: "y", active: true };
+const inactive = { role: "user", password: "y", active: false };
+assert.strictEqual(canLogin(admin, "x"), true);
+assert.strictEqual(admin.role, "admin");
+assert.strictEqual(canLogin(user, "y"), true);
+assert.strictEqual(canLogin(inactive, "y"), false);
+console.log("ok");
