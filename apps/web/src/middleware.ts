@@ -3,8 +3,8 @@ import type { NextRequest } from "next/server";
 
 /**
  * Optional shared-secret for /api/* (except /api/auth).
- * Set WEB_AUTH_TOKEN and unlock the UI via the AuthGate cookie login.
- * Pages always load; API calls require Bearer or se_auth cookie.
+ * Set WEB_AUTH_TOKEN only when you want API gating; leave empty for local open use.
+ * Pages always load without a token.
  */
 export function middleware(req: NextRequest) {
   const token = process.env.WEB_AUTH_TOKEN?.trim();

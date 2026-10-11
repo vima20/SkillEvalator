@@ -33,7 +33,11 @@ export async function produceArtifact(opts: {
     }
   }
 
-  const client = new OpenAI({ apiKey: config.openaiApiKey });
+  const client = new OpenAI({
+    apiKey: config.openaiApiKey,
+    timeout: config.openaiTimeoutMs,
+    maxRetries: 0,
+  });
   const prompt = [
     opts.skillMd.trim(),
     "",
@@ -48,27 +52,49 @@ export async function produceArtifact(opts: {
     `Return only the complete ${opts.targetFile} source. No markdown fences. No explanation.`,
   ].join("\n");
 
-  const res = await client.chat.completions.create({
-    model: opts.modelId,
-    temperature: config.temperature,
-    top_p: config.topP,
-    ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
-    messages: [
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.openaiTimeoutMs);
+  try {
+    const res = await client.chat.completions.create(
       {
-        role: "system",
-        content:
-          "You complete coding evaluation tasks. Follow the skill instructions exactly. Output only the requested source file body.",
+        model: opts.modelId,
+        temperature: config.temperature,
+        top_p: config.topP,
+        max_tokens: config.maxOutputTokens,
+        ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
+        messages: [
+          {
+            role: "system",
+            content:
+              "You complete coding evaluation tasks. Follow the skill instructions exactly. Output only the requested source file body.",
+          },
+          { role: "user", content: prompt },
+        ],
       },
-      { role: "user", content: prompt },
-    ],
-  });
+      { signal: controller.signal },
+    );
 
-  let content = res.choices[0]?.message?.content ?? "";
-  content = stripFences(content);
-  const inTok = res.usage?.prompt_tokens ?? 0;
-  const outTok = res.usage?.completion_tokens ?? 0;
-  const costUsd = (inTok * 0.15 + outTok * 0.6) / 1_000_000;
-  return { content, costUsd };
+    let content = res.choices[0]?.message?.content ?? "";
+    content = stripFences(content);
+    const inTok = res.usage?.prompt_tokens ?? 0;
+    const outTok = res.usage?.completion_tokens ?? 0;
+    const costUsd = (inTok * 0.15 + outTok * 0.6) / 1_000_000;
+    return { content, costUsd };
+  } catch (err) {
+    if (
+      err &&
+      typeof err === "object" &&
+      "name" in err &&
+      (err as { name?: string }).name === "AbortError"
+    ) {
+      throw new Error(
+        `OpenAI request timed out after ${config.openaiTimeoutMs}ms`,
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function stripFences(s: string): string {

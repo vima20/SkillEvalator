@@ -31,6 +31,10 @@ export const config = {
   costCapUsd: num("COST_CAP_USD", 5),
   costHardStop: (process.env.COST_HARD_STOP ?? "true") !== "false",
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
+  /** Per-request SDK timeout (ms). */
+  openaiTimeoutMs: num("OPENAI_TIMEOUT_MS", 120_000),
+  /** Cap completion size so one call cannot run unbounded. */
+  maxOutputTokens: num("MODEL_MAX_OUTPUT_TOKENS", 4096),
   /** Host grade is only honored together with FAKE_PRODUCE=known-good (see runJob). */
   allowHostGrade: process.env.ALLOW_HOST_GRADE === "1",
 };
