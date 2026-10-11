@@ -38,6 +38,22 @@ export function estimateCallCostUsd(modelId: string): number {
   );
 }
 
+/**
+ * True when the next produce call is expected to push total spend past the cap.
+ * Used as a pre-flight guard before OpenAI (actual usage may still overrun).
+ */
+export function wouldExceedCostCap(opts: {
+  spentUsd: number;
+  nextCallUsd: number;
+  capUsd: number;
+}): boolean {
+  const spent = Math.max(0, opts.spentUsd);
+  const next = Math.max(0, opts.nextCallUsd);
+  const cap = Math.max(0, opts.capUsd);
+  if (spent >= cap) return true;
+  return spent + next > cap;
+}
+
 export function estimateRunCostUsd(opts: {
   taskCount: number;
   repeats: number;

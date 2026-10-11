@@ -6,6 +6,7 @@ import {
   RunResultSchema,
   assertSafeId,
   buildBenefitReport,
+  estimateCallCostUsd,
   gradeInDocker,
   gradeOnHost,
   loadSkill,
@@ -17,6 +18,7 @@ import {
   resolveUnder,
   scoreFromGradeAndDiff,
   textDiffRatio,
+  wouldExceedCostCap,
   writeJsonFile,
   type RunResult,
 } from "@skillevalator/core";
@@ -104,7 +106,9 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         }
         if (config.costHardStop && costUsd >= config.costCapUsd) {
           stop = "budget_stop";
-          findings.push("cost hard stop");
+          if (!findings.includes("cost hard stop")) {
+            findings.push("cost hard stop");
+          }
           break outer;
         }
 
@@ -118,9 +122,28 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
 
         let content: string;
         let produceCost = 0;
-        if (process.env.FAKE_PRODUCE === "known-good") {
+        const fakeProduce = process.env.FAKE_PRODUCE === "known-good";
+        if (fakeProduce) {
           content = fs.readFileSync(tp.knownGoodPath, "utf8");
         } else {
+          const nextCallUsd = estimateCallCostUsd(modelId);
+          if (
+            config.costHardStop &&
+            wouldExceedCostCap({
+              spentUsd: costUsd,
+              nextCallUsd,
+              capUsd: config.costCapUsd,
+            })
+          ) {
+            stop = "budget_stop";
+            if (!findings.includes("cost hard stop")) {
+              findings.push("cost hard stop");
+            }
+            if (!findings.includes("cost pre-check blocked produce")) {
+              findings.push("cost pre-check blocked produce");
+            }
+            break outer;
+          }
           try {
             const produced = await produceArtifact({
               modelId,

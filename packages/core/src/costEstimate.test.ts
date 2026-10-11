@@ -3,7 +3,28 @@ import {
   costFromTokenUsage,
   estimateCallCostUsd,
   estimateRunCostUsd,
+  wouldExceedCostCap,
 } from "./costEstimate.js";
+
+describe("wouldExceedCostCap", () => {
+  it("blocks when spent already at cap", () => {
+    expect(
+      wouldExceedCostCap({ spentUsd: 5, nextCallUsd: 0.01, capUsd: 5 }),
+    ).toBe(true);
+  });
+
+  it("blocks when projected spend would pass cap", () => {
+    expect(
+      wouldExceedCostCap({ spentUsd: 4.9, nextCallUsd: 0.2, capUsd: 5 }),
+    ).toBe(true);
+  });
+
+  it("allows when projected spend stays within cap", () => {
+    expect(
+      wouldExceedCostCap({ spentUsd: 0.01, nextCallUsd: 0.01, capUsd: 5 }),
+    ).toBe(false);
+  });
+});
 
 describe("costFromTokenUsage", () => {
   it("prices gpt-4.1-mini higher than gpt-4o-mini for same tokens", () => {
