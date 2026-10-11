@@ -4,6 +4,7 @@ import {
   buildBenefitReport,
   loadRunResult,
 } from "@skillevalator/core";
+import { BenefitPending } from "@/components/BenefitPending";
 import { EmptyState } from "@/components/EmptyState";
 import { StarRating } from "@/components/StarRating";
 import { resultsDir } from "@/lib/paths";
@@ -57,14 +58,7 @@ export default async function BenefitReportPage({
           </p>
           <h1>Report not ready</h1>
         </header>
-        <div className="panel">
-          <EmptyState
-            title="No result yet"
-            body="This run has no result.json yet. Wait for the worker to finish, then refresh."
-            actionHref={`/runs/${runId}`}
-            actionLabel="Open run"
-          />
-        </div>
+        <BenefitPending runId={runId} />
       </div>
     );
   }

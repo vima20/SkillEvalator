@@ -142,6 +142,18 @@ code {
   color: var(--text-muted);
 }
 
+.topbar-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topbar-end .auth-lock-btn {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
 .nav {
   display: flex;
   align-items: center;
@@ -1342,8 +1354,13 @@ a.btn {
     font-size: 1.2rem;
   }
 
-  .nav {
+  .topbar-end {
     width: 100%;
+  }
+
+  .nav {
+    flex: 1;
+    min-width: 0;
     overflow-x: auto;
   }
 

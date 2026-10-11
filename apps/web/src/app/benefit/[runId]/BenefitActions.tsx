@@ -36,7 +36,11 @@ export function BenefitActions({
       >
         Download .md
       </a>
-      {error ? <p className="msg error">{error}</p> : null}
+      {error ? (
+        <p className="msg error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

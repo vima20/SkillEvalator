@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import { AuthGate } from "@/components/AuthGate";
+import { AuthLock } from "@/components/AuthLock";
 import { Nav } from "@/components/Nav";
 import "./globals.css";
 
@@ -50,7 +51,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <span className="brand-product">SkillEvalator</span>
               </span>
             </Link>
-            <Nav />
+            <div className="topbar-end">
+              <Nav />
+              <AuthLock />
+            </div>
           </header>
           <main className="main">
             <AuthGate>{children}</AuthGate>
