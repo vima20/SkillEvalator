@@ -1,19 +1,8 @@
-import { randomUUID } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
-import {
-  assertSafeId,
-  createJobManifest,
-  isQueuedJobFile,
-  listRuns,
-  resolveUnder,
-  writeJsonFile,
-} from "@skillevalator/core";
-import { jobsDir, resultsDir, skillsDir } from "@/lib/paths";
-
-const MAX_QUEUED_JOBS = 20;
+import { listRuns } from "@skillevalator/core";
+import { enqueueRun } from "@/lib/enqueueRun";
+import { resultsDir } from "@/lib/paths";
 
 const Body = z.object({
   evalSkillId: z.string().min(1),
@@ -35,40 +24,18 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
-    const evalSkillId = assertSafeId(body.evalSkillId, "evalSkillId");
-    const skillPath = resolveUnder(skillsDir(), evalSkillId);
-    if (!fs.existsSync(skillPath)) {
-      return NextResponse.json({ error: "unknown skill" }, { status: 400 });
-    }
-
-    const runId = `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
-    const job = createJobManifest({
-      runId,
-      evalSkillId,
+    const queued = enqueueRun({
+      evalSkillId: body.evalSkillId,
       mode: body.mode,
       repeats: body.repeats,
     });
-
-    const dir = jobsDir();
-    fs.mkdirSync(dir, { recursive: true });
-    const queuedCount = fs.readdirSync(dir).filter(isQueuedJobFile).length;
-    if (queuedCount >= MAX_QUEUED_JOBS) {
+    if (!queued.ok) {
       return NextResponse.json(
-        { error: `queue full (max ${MAX_QUEUED_JOBS} pending jobs)` },
-        { status: 429 },
+        { error: queued.error },
+        { status: queued.status },
       );
     }
-    const tmp = path.join(dir, `${runId}.tmp.json`);
-    const final = path.join(dir, `${runId}.json`);
-    writeJsonFile(tmp, job);
-    fs.renameSync(tmp, final);
-
-    writeJsonFile(path.join(resultsDir(), runId, "status.json"), {
-      runId,
-      status: "queued",
-    });
-
-    return NextResponse.json({ runId });
+    return NextResponse.json({ runId: queued.runId });
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json(

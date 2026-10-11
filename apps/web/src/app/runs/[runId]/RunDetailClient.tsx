@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -41,6 +42,39 @@ function shouldPoll(status: string | undefined, _hasResult: boolean): boolean {
   return !TERMINAL.has(status ?? "");
 }
 
+function RetryActions({
+  canRetry,
+  retrying,
+  retryError,
+  onRetry,
+}: {
+  canRetry: boolean;
+  retrying: boolean;
+  retryError: string | null;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="action-row progress-actions" style={{ marginTop: 14 }}>
+      <p className="hint">
+        Queues a new run with the same skill, mode, and repeats.
+      </p>
+      <button
+        type="button"
+        className="btn btn-primary btn-compact"
+        disabled={!canRetry}
+        onClick={onRetry}
+      >
+        {retrying ? "Retrying…" : "Retry run"}
+      </button>
+      {retryError ? (
+        <p className="form-error" role="alert">
+          {retryError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function RunDetailClient({
   runId,
   initial,
@@ -48,6 +82,7 @@ export function RunDetailClient({
   runId: string;
   initial: Payload;
 }) {
+  const router = useRouter();
   const [data, setData] = useState(initial);
   const [polling, setPolling] = useState(
     shouldPoll(initial.status?.status, !!initial.result),
@@ -55,6 +90,8 @@ export function RunDetailClient({
   const [jsonOpen, setJsonOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
@@ -85,6 +122,36 @@ export function RunDetailClient({
   const result = data.result;
   const canCancel =
     (status === "queued" || status === "running") && !cancelling;
+  const canRetry =
+    (status === "failed" ||
+      status === "cancelled" ||
+      status === "budget_stop") &&
+    !retrying;
+
+  async function onRetry() {
+    if (!canRetry) return;
+    setRetryError(null);
+    setRetrying(true);
+    try {
+      const res = await fetch(
+        `/api/runs/${encodeURIComponent(runId)}/retry`,
+        { method: "POST" },
+      );
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        runId?: string;
+      };
+      if (!res.ok || !body.runId) {
+        setRetryError(body.error ?? "Retry failed");
+        setRetrying(false);
+        return;
+      }
+      router.push(`/runs/${body.runId}`);
+    } catch {
+      setRetryError("Retry failed");
+      setRetrying(false);
+    }
+  }
 
   async function onCancel() {
     if (!canCancel) return;
@@ -294,12 +361,26 @@ export function RunDetailClient({
           {jsonOpen ? (
             <pre className="json-block">{JSON.stringify(result, null, 2)}</pre>
           ) : null}
+          {canRetry ? (
+            <RetryActions
+              canRetry={canRetry}
+              retrying={retrying}
+              retryError={retryError}
+              onRetry={() => void onRetry()}
+            />
+          ) : null}
         </>
       ) : status === "cancelled" ? (
         <div className="panel">
           <p className="empty">
             Run cancelled before a scorecard was produced.
           </p>
+          <RetryActions
+            canRetry={canRetry}
+            retrying={retrying}
+            retryError={retryError}
+            onRetry={() => void onRetry()}
+          />
         </div>
       ) : status === "failed" ? (
         <div className="panel">
@@ -322,6 +403,22 @@ export function RunDetailClient({
               OpenAI credits / HTTP 429, or Docker grade failures).
             </p>
           )}
+          <RetryActions
+            canRetry={canRetry}
+            retrying={retrying}
+            retryError={retryError}
+            onRetry={() => void onRetry()}
+          />
+        </div>
+      ) : status === "budget_stop" && !result ? (
+        <div className="panel">
+          <p className="empty">Run stopped by cost budget before completion.</p>
+          <RetryActions
+            canRetry={canRetry}
+            retrying={retrying}
+            retryError={retryError}
+            onRetry={() => void onRetry()}
+          />
         </div>
       ) : (
         <div className="panel">
