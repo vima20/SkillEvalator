@@ -9,6 +9,7 @@ import {
   estimateCallCostUsd,
   gradeInDocker,
   gradeOnHost,
+  liveRunStatusForProgress,
   loadSkill,
   taskIdsForMode,
   taskPaths,
@@ -75,21 +76,29 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   touchHeartbeat({ busy: true, runId });
 
   try {
-    writeJsonFile(statusPath, {
-      runId,
-      status: "running",
-      repeat: 0,
-      repeats,
-      costUsd: 0,
-    });
-
     if (fs.existsSync(cancelPath)) {
       stop = "cancelled";
       findings.push("cancelled");
     }
 
+    writeJsonFile(statusPath, {
+      runId,
+      status: liveRunStatusForProgress({
+        stop,
+        cancelFilePresent: fs.existsSync(cancelPath),
+      }),
+      repeat: 0,
+      repeats,
+      costUsd: 0,
+    });
+
     outer: for (let r = 0; r < repeats; r++) {
       if (stop) break;
+      if (fs.existsSync(cancelPath)) {
+        stop = "cancelled";
+        if (!findings.includes("cancelled")) findings.push("cancelled");
+        break;
+      }
       if (config.costHardStop && costUsd >= config.costCapUsd) {
         stop = "budget_stop";
         findings.push("cost hard stop");
@@ -99,9 +108,10 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       const perTask: RunResult["perTask"] = [];
       for (const taskId of taskIds) {
         touchHeartbeat({ busy: true, runId });
+        if (stop) break outer;
         if (fs.existsSync(cancelPath)) {
           stop = "cancelled";
-          findings.push("cancelled");
+          if (!findings.includes("cancelled")) findings.push("cancelled");
           break outer;
         }
         if (config.costHardStop && costUsd >= config.costCapUsd) {
@@ -198,6 +208,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         ) {
           stop = "cancelled";
           if (!findings.includes("cancelled")) findings.push("cancelled");
+          break outer;
         }
 
         const ok = grade.exitCode === 0 && !stop;
@@ -239,13 +250,18 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         scoresByTask.set(taskId, arr);
       }
 
+      if (stop) break;
+
       const scores = perTask.map((t) => t.score);
       const m = meanScores(scores);
       if (m !== null) repeatScores.push(m);
 
       writeJsonFile(statusPath, {
         runId,
-        status: "running",
+        status: liveRunStatusForProgress({
+          stop,
+          cancelFilePresent: fs.existsSync(cancelPath),
+        }),
         repeat: r + 1,
         repeats,
         costUsd,
