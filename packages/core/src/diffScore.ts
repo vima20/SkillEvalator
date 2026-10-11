@@ -34,14 +34,16 @@ export function textDiffRatio(a: string, b: string, maxChars = 8_000): number {
 
 /**
  * Soft score from grade pass/fail + closeness to expected.
- * Fail → 0. Pass → 0.8…1.0 (closer to expected → higher).
+ * Fail → 0. Pass with measured diff → 0.8…1.0 (closer → higher).
+ * Pass without a usable diff (null / non-finite) → PASS_SCORE_FLOOR only —
+ * missing expected is not treated as identical-to-expected.
  */
 export function scoreFromGradeAndDiff(
   gradeOk: boolean,
   diffRatio: number | null,
 ): number {
   if (!gradeOk) return 0;
-  if (diffRatio === null || !Number.isFinite(diffRatio)) return 1;
+  if (diffRatio === null || !Number.isFinite(diffRatio)) return PASS_SCORE_FLOOR;
   const closeness = 1 - Math.min(1, Math.max(0, diffRatio));
   return Math.round((PASS_SCORE_FLOOR + (1 - PASS_SCORE_FLOOR) * closeness) * 1000) /
     1000;

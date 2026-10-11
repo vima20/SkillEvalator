@@ -37,8 +37,9 @@ describe("scoreFromGradeAndDiff", () => {
     expect(s).toBe(0.8);
   });
 
-  it("treats null diff as full pass", () => {
-    expect(scoreFromGradeAndDiff(true, null)).toBe(1);
+  it("treats null / non-finite diff as pass floor, not full credit", () => {
+    expect(scoreFromGradeAndDiff(true, null)).toBe(0.8);
+    expect(scoreFromGradeAndDiff(true, Number.NaN)).toBe(0.8);
   });
 
   it("strong threshold is tight", () => {

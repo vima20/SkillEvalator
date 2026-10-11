@@ -208,6 +208,9 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
             diffRatio = textDiffRatio(content, expected);
           } catch {
             diffRatio = undefined;
+            if (!findings.includes("expected read failed")) {
+              findings.push("expected read failed");
+            }
           }
         }
         const soft = scoreFromGradeAndDiff(
