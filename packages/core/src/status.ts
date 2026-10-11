@@ -18,6 +18,20 @@ export function liveRunStatusForProgress(opts: {
   return "running";
 }
 
+/**
+ * Final stop after the produce/grade loop.
+ * A late .cancel file must win over a would-be ok / budget_stop finish.
+ */
+export function resolveFinalRunStop(opts: {
+  stop: "cancelled" | "budget_stop" | null;
+  cancelFilePresent: boolean;
+}): "cancelled" | "budget_stop" | null {
+  if (opts.stop === "cancelled" || opts.cancelFilePresent) {
+    return "cancelled";
+  }
+  return opts.stop;
+}
+
 export function statusBadgeKind(status?: string | null): StatusBadgeKind {
   switch (status) {
     case "ok":

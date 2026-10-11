@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { liveRunStatusForProgress, statusBadgeKind } from "./status.js";
+import {
+  liveRunStatusForProgress,
+  resolveFinalRunStop,
+  statusBadgeKind,
+} from "./status.js";
 
 describe("liveRunStatusForProgress", () => {
   it("stays running when idle", () => {
@@ -27,6 +31,38 @@ describe("liveRunStatusForProgress", () => {
         cancelFilePresent: false,
       }),
     ).toBe("running");
+  });
+});
+
+describe("resolveFinalRunStop", () => {
+  it("keeps null when no cancel file", () => {
+    expect(
+      resolveFinalRunStop({ stop: null, cancelFilePresent: false }),
+    ).toBeNull();
+  });
+
+  it("turns late cancel into cancelled", () => {
+    expect(
+      resolveFinalRunStop({ stop: null, cancelFilePresent: true }),
+    ).toBe("cancelled");
+  });
+
+  it("lets cancel win over budget_stop", () => {
+    expect(
+      resolveFinalRunStop({
+        stop: "budget_stop",
+        cancelFilePresent: true,
+      }),
+    ).toBe("cancelled");
+  });
+
+  it("preserves budget_stop without cancel", () => {
+    expect(
+      resolveFinalRunStop({
+        stop: "budget_stop",
+        cancelFilePresent: false,
+      }),
+    ).toBe("budget_stop");
   });
 });
 

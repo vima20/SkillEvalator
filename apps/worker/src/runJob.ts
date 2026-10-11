@@ -11,6 +11,7 @@ import {
   gradeOnHost,
   liveRunStatusForProgress,
   loadSkill,
+  resolveFinalRunStop,
   taskIdsForMode,
   taskPaths,
   meanScores,
@@ -266,6 +267,14 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         repeats,
         costUsd,
       });
+    }
+
+    stop = resolveFinalRunStop({
+      stop,
+      cancelFilePresent: fs.existsSync(cancelPath),
+    });
+    if (stop === "cancelled" && !findings.includes("cancelled")) {
+      findings.push("cancelled");
     }
 
     const agg =
