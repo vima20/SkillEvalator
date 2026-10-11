@@ -3,9 +3,11 @@ import path from "node:path";
 import {
   JobManifestSchema,
   type JobManifest,
+  cleanupOrphanQueuedFs,
   formatRunError,
   isQueuedJobFile,
   readJsonFileAs,
+  reclaimOrphanRunningJobsFs,
   writeJsonFile,
 } from "@skillevalator/core";
 import { config } from "./config.js";
@@ -132,38 +134,16 @@ function finalizeRunningJob(
  */
 export function reclaimOrphanRunningJobs(): void {
   ensureDirs();
-  for (const name of fs.readdirSync(config.jobsDir)) {
-    if (!name.endsWith(".running.json")) continue;
-    const running = path.join(config.jobsDir, name);
-    const pidFile = workerPidPath(running);
-    if (fs.existsSync(pidFile)) {
-      try {
-        const pid = Number(fs.readFileSync(pidFile, "utf8").trim());
-        if (isPidAlive(pid)) continue;
-      } catch {
-        /* treat as orphan */
-      }
-    }
-
-    const runId = runIdFromJobPath(running);
-    if (runId && fs.existsSync(resultJsonPath(runId))) {
-      finalizeRunningJob(running, "done");
-      console.warn("finalized orphan completed job (result present)", name);
-      continue;
-    }
-
-    const queued = running.replace(/\.running\.json$/, ".json");
-    try {
-      fs.renameSync(running, queued);
-      try {
-        fs.unlinkSync(pidFile);
-      } catch {
-        /* ignore */
-      }
-      console.warn("requeued orphan", name);
-    } catch (e) {
-      console.error("failed to reclaim", name, e);
-    }
+  const { finalized, requeued } = reclaimOrphanRunningJobsFs(
+    config.jobsDir,
+    config.resultsDir,
+    isPidAlive,
+  );
+  for (const name of finalized) {
+    console.warn("finalized orphan completed job (result present)", name);
+  }
+  for (const name of requeued) {
+    console.warn("requeued orphan", name);
   }
 }
 
@@ -244,6 +224,14 @@ export async function loop() {
   ensureDirs();
   clearDeadLock();
   reclaimOrphanRunningJobs();
+  const orphanQ = cleanupOrphanQueuedFs(config.jobsDir, config.resultsDir);
+  if (orphanQ.removedTmp.length || orphanQ.failedStatuses.length) {
+    console.warn(
+      "cleaned orphan queue state",
+      `tmp=${orphanQ.removedTmp.length}`,
+      `queued=${orphanQ.failedStatuses.length}`,
+    );
+  }
   touchHeartbeat();
   console.log("worker watching", config.jobsDir);
   console.log("skills", config.skillsDir);

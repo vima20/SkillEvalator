@@ -132,15 +132,30 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         fs.writeFileSync(artifactPath, content, "utf8");
         costUsd += produceCost;
 
-        const gradeFn = hostGrade ? gradeOnHost : gradeInDocker;
-        const grade = gradeFn({
-          skillRoot: skill.root,
-          taskDir: tp.taskDir,
-          targetFile: tp.targetFile,
-          artifactPath,
-        });
+        const grade = hostGrade
+          ? gradeOnHost({
+              skillRoot: skill.root,
+              taskDir: tp.taskDir,
+              targetFile: tp.targetFile,
+              artifactPath,
+            })
+          : await gradeInDocker({
+              skillRoot: skill.root,
+              taskDir: tp.taskDir,
+              targetFile: tp.targetFile,
+              artifactPath,
+              cancelPath,
+            });
 
-        const ok = grade.exitCode === 0;
+        if (
+          grade.summary.includes("cancelled during docker grade") ||
+          fs.existsSync(cancelPath)
+        ) {
+          stop = "cancelled";
+          if (!findings.includes("cancelled")) findings.push("cancelled");
+        }
+
+        const ok = grade.exitCode === 0 && !stop;
         const row: RunResult["perTask"][number] = {
           taskId,
           artifactRef: toRepoRelative(artifactPath),

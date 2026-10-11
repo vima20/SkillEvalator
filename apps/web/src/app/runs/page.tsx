@@ -6,6 +6,13 @@ import { statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
+function shortError(msg: string | undefined, max = 72): string | null {
+  if (!msg) return null;
+  const one = msg.replace(/\s+/g, " ").trim();
+  if (!one) return null;
+  return one.length > max ? `${one.slice(0, max - 1)}…` : one;
+}
+
 export default function RunsPage() {
   const runs = listRuns(resultsDir());
 
@@ -37,41 +44,59 @@ export default function RunsPage() {
                 <tr>
                   <th>Run</th>
                   <th>Status</th>
+                  <th>Error</th>
                   <th>Mode</th>
                   <th>Score</th>
                   <th>Skill</th>
                 </tr>
               </thead>
               <tbody>
-                {runs.map((r) => (
-                  <tr key={r.runId}>
-                    <td>
-                      <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
-                    </td>
-                    <td>
-                      <span className={statusBadgeClass(r.status)}>
-                        {r.status ?? "unknown"}
-                      </span>
-                    </td>
-                    <td>{r.result?.mode ?? "—"}</td>
-                    <td>
-                      <strong>{r.result?.score ?? "—"}</strong>
-                    </td>
-                    <td>
-                      {r.result?.evalSkillGithubUrl ? (
-                        <a
-                          href={r.result.evalSkillGithubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {r.result.evalSkillId}
-                        </a>
-                      ) : (
-                        <code>{r.result?.evalSkillId ?? "—"}</code>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {runs.map((r) => {
+                  const err = shortError(r.error);
+                  return (
+                    <tr key={r.runId}>
+                      <td>
+                        <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
+                      </td>
+                      <td>
+                        <span className={statusBadgeClass(r.status)}>
+                          {r.status ?? "unknown"}
+                        </span>
+                      </td>
+                      <td>
+                        {err ? (
+                          <span className="run-error-snip" title={r.error}>
+                            {r.errorCode ? (
+                              <>
+                                <code>{r.errorCode}</code>{" "}
+                              </>
+                            ) : null}
+                            {err}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>{r.result?.mode ?? "—"}</td>
+                      <td>
+                        <strong>{r.result?.score ?? "—"}</strong>
+                      </td>
+                      <td>
+                        {r.result?.evalSkillGithubUrl ? (
+                          <a
+                            href={r.result.evalSkillGithubUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {r.result.evalSkillId}
+                          </a>
+                        ) : (
+                          <code>{r.result?.evalSkillId ?? "—"}</code>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

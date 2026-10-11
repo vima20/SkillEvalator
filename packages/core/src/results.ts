@@ -49,6 +49,8 @@ export function formatRunError(err: unknown): {
 export type RunListItem = {
   runId: string;
   status?: string;
+  error?: string;
+  errorCode?: string;
   result: RunResult | null;
 };
 
@@ -98,9 +100,14 @@ export function loadRunResult(
 }
 
 export function listRuns(resultsDir: string): RunListItem[] {
-  return listRunIds(resultsDir).map((runId) => ({
-    runId,
-    status: loadRunStatus(resultsDir, runId)?.status,
-    result: loadRunResult(resultsDir, runId),
-  }));
+  return listRunIds(resultsDir).map((runId) => {
+    const st = loadRunStatus(resultsDir, runId);
+    return {
+      runId,
+      status: st?.status,
+      error: st?.error,
+      errorCode: st?.errorCode,
+      result: loadRunResult(resultsDir, runId),
+    };
+  });
 }

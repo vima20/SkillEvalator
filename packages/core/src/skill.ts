@@ -10,20 +10,25 @@ export type { SkillManifest };
 export type LoadedSkill = {
   id: string;
   root: string;
+  /** Directory that contains per-task folders (bug-01, …). */
+  fixturesRoot: string;
   version: string;
   manifest: SkillManifest;
   skillMd: string;
 };
 
+const SKIP_SKILL_DIRS = new Set(["tasksets", "node_modules"]);
+
 function hashDirFiles(root: string): string {
   const hash = crypto.createHash("sha256");
   const walk = (dir: string) => {
+    if (!fs.existsSync(dir)) return;
     for (const name of fs.readdirSync(dir).sort()) {
       const p = path.join(dir, name);
-      const st = fs.statSync(p);
+      const st = fs.lstatSync(p);
+      if (st.isSymbolicLink()) continue;
       if (st.isDirectory()) walk(p);
-      else {
-        // Relative path so the same content hashes identically across machines.
+      else if (st.isFile()) {
         hash.update(path.relative(root, p).split(path.sep).join("/"));
         hash.update(fs.readFileSync(p));
       }
@@ -31,6 +36,21 @@ function hashDirFiles(root: string): string {
   };
   walk(root);
   return hash.digest("hex").slice(0, 16);
+}
+
+function resolveFixturesRoot(
+  skillsDir: string,
+  skillRoot: string,
+  manifest: SkillManifest,
+): string {
+  if (manifest.taskSetDir) {
+    const shared = resolveUnder(skillsDir, "tasksets", manifest.taskSetDir);
+    if (!fs.existsSync(shared)) {
+      throw new Error(`shared task set not found: tasksets/${manifest.taskSetDir}`);
+    }
+    return shared;
+  }
+  return path.join(skillRoot, "fixtures");
 }
 
 function loadSkillFromRoot(skillsDir: string, skillId: string): LoadedSkill {
@@ -50,13 +70,27 @@ function loadSkillFromRoot(skillsDir: string, skillId: string): LoadedSkill {
       throw new Error(`dryRunId not in taskIds: ${taskId}`);
     }
   }
+  const fixturesRoot = resolveFixturesRoot(skillsDir, root, manifest);
+  for (const taskId of manifest.taskIds) {
+    const safe = assertSafeId(taskId, "taskId");
+    if (!fs.existsSync(resolveUnder(fixturesRoot, safe))) {
+      throw new Error(`task fixtures missing: ${safe}`);
+    }
+  }
   const skillMd = fs.existsSync(skillMdPath)
     ? fs.readFileSync(skillMdPath, "utf8")
     : "";
+  const version = crypto
+    .createHash("sha256")
+    .update(hashDirFiles(root))
+    .update(hashDirFiles(fixturesRoot))
+    .digest("hex")
+    .slice(0, 16);
   return {
     id,
     root,
-    version: hashDirFiles(root),
+    fixturesRoot,
+    version,
     manifest,
     skillMd,
   };
@@ -96,7 +130,7 @@ export function listSkills(skillsDir: string | string[]): SkillSummary[] {
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) continue;
     for (const name of fs.readdirSync(dir).sort()) {
-      if (seen.has(name)) continue;
+      if (SKIP_SKILL_DIRS.has(name) || seen.has(name)) continue;
       try {
         const skill = loadSkillFromRoot(dir, name);
         seen.add(name);
@@ -124,7 +158,7 @@ export function taskIdsForMode(
 
 export function taskPaths(skill: LoadedSkill, taskId: string) {
   const safeTask = assertSafeId(taskId, "taskId");
-  const taskDir = resolveUnder(skill.root, "fixtures", safeTask);
+  const taskDir = resolveUnder(skill.fixturesRoot, safeTask);
   const target = skill.manifest.targetFile[safeTask];
   if (!target) throw new Error(`No targetFile for ${safeTask}`);
   if (target.includes("..") || /[\\/]/.test(target)) {

@@ -35,6 +35,12 @@ const HttpsUrlSchema = z
 
 export const SkillManifestSchema = z.object({
   taskSetId: z.string().min(1),
+  /**
+   * Optional shared task-set folder under eval-skills/tasksets/<id>/.
+   * When set, task fixtures (bug-01, …) live there; skill keeps only
+   * fixtures/manifest.json + SKILL.md + scripts.
+   */
+  taskSetDir: SafeIdSchema.optional(),
   /** Canonical GitHub URL for the skill directory (tree or blob). */
   githubUrl: HttpsUrlSchema,
   taskIds: z.array(z.string().min(1)).min(1),

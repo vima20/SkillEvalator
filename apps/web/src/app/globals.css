@@ -1080,6 +1080,15 @@ a.btn {
   margin: 0 0 14px;
 }
 
+.run-error-snip {
+  display: inline-block;
+  max-width: 18rem;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
 @media (max-width: 720px) {
   .impl-compare-list li {
     grid-template-columns: auto 1fr;

@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -13,6 +13,18 @@ function withTempDir<T>(prefix: string, fn: (work: string) => T): T {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   try {
     return fn(work);
+  } finally {
+    fs.rmSync(work, { recursive: true, force: true });
+  }
+}
+
+async function withTempDirAsync<T>(
+  prefix: string,
+  fn: (work: string) => Promise<T>,
+): Promise<T> {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  try {
+    return await fn(work);
   } finally {
     fs.rmSync(work, { recursive: true, force: true });
   }
@@ -61,25 +73,45 @@ function stageTaskForGrade(taskDir: string, destTaskDir: string): void {
   }
 }
 
+function killContainer(containerName: string): void {
+  spawnSync("docker", ["rm", "-f", containerName], {
+    encoding: "utf8",
+    timeout: 15_000,
+    windowsHide: true,
+  });
+}
+
+/** Pure helper for mid-grade abort reason (unit-tested). */
+export function decideDockerGradeAbort(opts: {
+  cancelRequested: boolean;
+  timedOut: boolean;
+}): "cancel" | "timeout" | null {
+  if (opts.cancelRequested) return "cancel";
+  if (opts.timedOut) return "timeout";
+  return null;
+}
+
 /**
  * Grade artifact in Docker: node image, no network.
- * Mounts only skill scripts + staged tests/subject + artifact.
+ * When cancelPath appears, force-removes the container mid-grade.
  */
-export function gradeInDocker(opts: {
+export async function gradeInDocker(opts: {
   skillRoot: string;
   taskDir: string;
   targetFile: string;
   artifactPath: string;
   image?: string;
   timeoutMs?: number;
-}): GradeResult {
+  /** If this file appears, kill the grade container immediately. */
+  cancelPath?: string;
+}): Promise<GradeResult> {
   const image = opts.image ?? "node:22-bookworm-slim";
   const timeoutMs = opts.timeoutMs ?? 60_000;
   if (!fs.existsSync(opts.artifactPath)) {
     return { exitCode: 1, summary: "artifact missing" };
   }
 
-  return withTempDir("cde-docker-", (work) => {
+  return withTempDirAsync("cde-docker-", async (work) => {
     const artifactDir = path.join(work, "artifact");
     const taskStage = path.join(work, "task");
     fs.mkdirSync(artifactDir, { recursive: true });
@@ -138,27 +170,84 @@ export function gradeInDocker(opts: {
       "/skill/scripts/grade.js",
     ];
 
-    try {
-      const r = spawnSync("docker", args, {
-        encoding: "utf8",
-        timeout: timeoutMs,
+    return await new Promise<GradeResult>((resolve) => {
+      let settled = false;
+      let cancelled = false;
+      let timedOut = false;
+      let stdout = "";
+      let stderr = "";
+
+      const child = spawn("docker", args, {
+        windowsHide: true,
+      });
+      child.stdout?.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString("utf8");
+      });
+      child.stderr?.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString("utf8");
       });
 
-      const summary = [r.stdout, r.stderr, r.error?.message]
-        .filter(Boolean)
-        .join("\n")
-        .slice(0, 2000);
+      const finish = (result: GradeResult) => {
+        if (settled) return;
+        settled = true;
+        clearInterval(poll);
+        clearTimeout(timer);
+        killContainer(containerName);
+        resolve(result);
+      };
 
-      if (r.error) {
-        return { exitCode: 1, summary: `docker error: ${r.error.message}` };
-      }
-      return { exitCode: r.status ?? 1, summary: summary || `exit ${r.status}` };
-    } finally {
-      spawnSync("docker", ["rm", "-f", containerName], {
-        encoding: "utf8",
-        timeout: 15_000,
+      const poll = setInterval(() => {
+        if (opts.cancelPath && fs.existsSync(opts.cancelPath)) {
+          cancelled = true;
+          try {
+            child.kill("SIGTERM");
+          } catch {
+            /* ignore */
+          }
+          killContainer(containerName);
+        }
+      }, 400);
+
+      const timer = setTimeout(() => {
+        timedOut = true;
+        try {
+          child.kill("SIGTERM");
+        } catch {
+          /* ignore */
+        }
+        killContainer(containerName);
+      }, timeoutMs);
+
+      child.on("error", (err) => {
+        finish({ exitCode: 1, summary: `docker error: ${err.message}` });
       });
-    }
+
+      child.on("close", (code) => {
+        const abort = decideDockerGradeAbort({
+          cancelRequested: cancelled,
+          timedOut,
+        });
+        if (abort === "cancel") {
+          finish({
+            exitCode: 1,
+            summary: "cancelled during docker grade",
+          });
+          return;
+        }
+        if (abort === "timeout") {
+          finish({ exitCode: 1, summary: "docker grade timeout" });
+          return;
+        }
+        const summary = [stdout, stderr]
+          .filter(Boolean)
+          .join("\n")
+          .slice(0, 2000);
+        finish({
+          exitCode: code ?? 1,
+          summary: summary || `exit ${code}`,
+        });
+      });
+    });
   });
 }
 
