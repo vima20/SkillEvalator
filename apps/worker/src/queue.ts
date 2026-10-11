@@ -130,11 +130,11 @@ function finalizeRunningJob(
 
 /**
  * Reclaim .running jobs only when their worker PID is missing or dead.
- * If result.json already exists, finalize as .done (never re-queue — avoids double spend).
+ * Completed (result.json) → .done. Incomplete → .failed (never re-queue).
  */
 export function reclaimOrphanRunningJobs(): void {
   ensureDirs();
-  const { finalized, requeued } = reclaimOrphanRunningJobsFs(
+  const { finalized, failed } = reclaimOrphanRunningJobsFs(
     config.jobsDir,
     config.resultsDir,
     isPidAlive,
@@ -142,8 +142,11 @@ export function reclaimOrphanRunningJobs(): void {
   for (const name of finalized) {
     console.warn("finalized orphan completed job (result present)", name);
   }
-  for (const name of requeued) {
-    console.warn("requeued orphan", name);
+  for (const name of failed) {
+    console.warn(
+      "failed orphan mid-run (not requeued — use Retry for a new run)",
+      name,
+    );
   }
 }
 

@@ -34,10 +34,10 @@ describe("decideOrphanRunningAction", () => {
       decideOrphanRunningAction({ pidAlive: false, hasResult: true }),
     ).toBe("finalize_done");
   });
-  it("requeues incomplete orphans", () => {
+  it("fails incomplete orphans instead of requeue", () => {
     expect(
       decideOrphanRunningAction({ pidAlive: null, hasResult: false }),
-    ).toBe("requeue");
+    ).toBe("fail_orphan");
   });
 });
 
@@ -53,22 +53,35 @@ describe("reclaimOrphanRunningJobsFs", () => {
 
     const out = reclaimOrphanRunningJobsFs(jobsDir, resultsDir, () => false);
     expect(out.finalized).toEqual([`${runId}.running.json`]);
-    expect(out.requeued).toEqual([]);
+    expect(out.failed).toEqual([]);
     expect(fs.existsSync(path.join(jobsDir, `${runId}.done.json`))).toBe(true);
     expect(fs.existsSync(path.join(jobsDir, `${runId}.json`))).toBe(false);
   });
 
-  it("requeues incomplete orphan", () => {
+  it("fails incomplete orphan without requeue", () => {
     const root = tmpRoot();
     const jobsDir = path.join(root, "jobs");
     const resultsDir = path.join(root, "results");
     fs.mkdirSync(jobsDir, { recursive: true });
     const runId = "run_100_deadbeef";
     fs.writeFileSync(path.join(jobsDir, `${runId}.running.json`), "{}");
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "running",
+    });
 
     const out = reclaimOrphanRunningJobsFs(jobsDir, resultsDir, () => false);
-    expect(out.requeued).toEqual([`${runId}.running.json`]);
-    expect(fs.existsSync(path.join(jobsDir, `${runId}.json`))).toBe(true);
+    expect(out.failed).toEqual([`${runId}.running.json`]);
+    expect(out.finalized).toEqual([]);
+    expect(fs.existsSync(path.join(jobsDir, `${runId}.failed.json`))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.join(jobsDir, `${runId}.json`))).toBe(false);
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { status: string; errorCode?: string };
+    expect(status.status).toBe("failed");
+    expect(status.errorCode).toBe("orphan_running");
   });
 
   it("skips alive worker pid", () => {
@@ -83,7 +96,7 @@ describe("reclaimOrphanRunningJobsFs", () => {
 
     const out = reclaimOrphanRunningJobsFs(jobsDir, resultsDir, () => true);
     expect(out.finalized).toEqual([]);
-    expect(out.requeued).toEqual([]);
+    expect(out.failed).toEqual([]);
     expect(fs.existsSync(running)).toBe(true);
   });
 });

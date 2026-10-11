@@ -2,7 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { writeJsonFile } from "./fsJson.js";
 
-export type OrphanRunningAction = "skip_alive" | "finalize_done" | "requeue";
+export type OrphanRunningAction =
+  | "skip_alive"
+  | "finalize_done"
+  /** Incomplete orphan: fail instead of requeue (avoids OpenAI double-spend). */
+  | "fail_orphan";
 
 /** Pure decision helper for orphan .running jobs (unit-tested). */
 export function decideOrphanRunningAction(opts: {
@@ -11,7 +15,7 @@ export function decideOrphanRunningAction(opts: {
 }): OrphanRunningAction {
   if (opts.pidAlive === true) return "skip_alive";
   if (opts.hasResult) return "finalize_done";
-  return "requeue";
+  return "fail_orphan";
 }
 
 function workerPidPath(runningJobPath: string): string {
@@ -51,18 +55,30 @@ function finalizeRunningJob(
   }
 }
 
+function markOrphanRunningFailed(resultsDir: string, runId: string): void {
+  const statusPath = path.join(resultsDir, runId, "status.json");
+  writeJsonFile(statusPath, {
+    runId,
+    status: "failed",
+    error:
+      "Worker died mid-run; job was not re-queued to avoid duplicate OpenAI spend. Use Retry for a new run.",
+    errorCode: "orphan_running",
+  });
+}
+
 /**
  * Reclaim .running jobs when worker PID is dead/missing.
- * Never re-queue when result.json already exists.
+ * - result.json present → finalize .done (never re-queue)
+ * - incomplete → finalize .failed + status orphan_running (never re-queue)
  */
 export function reclaimOrphanRunningJobsFs(
   jobsDir: string,
   resultsDir: string,
   isPidAlive: (pid: number) => boolean,
-): { finalized: string[]; requeued: string[] } {
+): { finalized: string[]; failed: string[] } {
   const finalized: string[] = [];
-  const requeued: string[] = [];
-  if (!fs.existsSync(jobsDir)) return { finalized, requeued };
+  const failed: string[] = [];
+  if (!fs.existsSync(jobsDir)) return { finalized, failed };
 
   for (const name of fs.readdirSync(jobsDir)) {
     if (!name.endsWith(".running.json")) continue;
@@ -91,20 +107,12 @@ export function reclaimOrphanRunningJobsFs(
       finalized.push(name);
       continue;
     }
-    const queued = running.replace(/\.running\.json$/, ".json");
-    try {
-      fs.renameSync(running, queued);
-      try {
-        fs.unlinkSync(pidFile);
-      } catch {
-        /* ignore */
-      }
-      requeued.push(name);
-    } catch {
-      /* ignore */
-    }
+    // fail_orphan — never requeue incomplete runs (double spend).
+    finalizeRunningJob(running, "failed");
+    if (runId) markOrphanRunningFailed(resultsDir, runId);
+    failed.push(name);
   }
-  return { finalized, requeued };
+  return { finalized, failed };
 }
 
 /**
