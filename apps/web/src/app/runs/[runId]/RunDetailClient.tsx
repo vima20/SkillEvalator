@@ -24,6 +24,8 @@ type Result = {
   costUsd?: number;
   latencyMs?: number;
   repeats?: number;
+  findings?: string[];
+  status?: string;
 };
 
 type StatusFile = {
@@ -410,6 +412,17 @@ export function RunDetailClient({
               </span>
             </div>
           </div>
+
+          {result.findings && result.findings.length > 0 ? (
+            <div className="panel findings-panel">
+              <h2 className="findings-title">Findings</h2>
+              <ul className="findings-list">
+                {result.findings.map((f, i) => (
+                  <li key={`${i}-${f}`}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="panel">
             {result.perTask.length === 0 ? (

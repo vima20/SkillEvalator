@@ -300,7 +300,10 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
           ) : null}
         </div>
 
-        <div className="cost-estimate" aria-live="polite">
+        <div
+          className={`cost-estimate${costPreview.estimatedUsd > DEFAULT_COST_CAP_USD ? " cost-estimate-over" : ""}`}
+          aria-live="polite"
+        >
           <strong>Estimated cost</strong>
           <p>
             ~${costPreview.estimatedUsd.toFixed(4)} for {costPreview.calls}{" "}
@@ -308,10 +311,18 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
             {costPreview.calls === 1 ? "" : "s"} ({taskCountPreview} tasks ×{" "}
             {safeRepeatsPreview} repeats · <code>{modelPreview}</code>).
           </p>
-          <p className="hint">
-            Rough preview from typical token sizes — not a bill. Worker hard-stop
-            defaults to ${DEFAULT_COST_CAP_USD} USD. Grade/Docker time is free.
-          </p>
+          {costPreview.estimatedUsd > DEFAULT_COST_CAP_USD ? (
+            <p className="form-error" role="status">
+              Estimate exceeds the default ${DEFAULT_COST_CAP_USD} USD hard-stop
+              — the worker may end with budget_stop before all tasks finish.
+            </p>
+          ) : (
+            <p className="hint">
+              Rough preview from typical token sizes — not a bill. Worker
+              hard-stop defaults to ${DEFAULT_COST_CAP_USD} USD. Grade/Docker
+              time is free.
+            </p>
+          )}
         </div>
 
         <button className="btn btn-primary" type="submit" disabled={busy}>

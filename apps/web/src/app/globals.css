@@ -1135,6 +1135,28 @@ a.btn {
   background: color-mix(in srgb, var(--bg-panel) 88%, var(--accent) 12%);
 }
 
+.cost-estimate-over {
+  border-color: rgba(240, 180, 41, 0.45);
+  background: var(--warn-soft);
+}
+
+.findings-panel .findings-title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.findings-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.findings-list li + li {
+  margin-top: 4px;
+}
+
 .cost-estimate strong {
   display: block;
   margin-bottom: 4px;
