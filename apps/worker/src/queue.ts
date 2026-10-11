@@ -17,6 +17,9 @@ import { config } from "./config.js";
 import { touchHeartbeat } from "./heartbeat.js";
 import { runJob } from "./runJob.js";
 
+/** Periodic orphan reclaim while idle (startup also heals once). */
+const ORPHAN_HEAL_INTERVAL_MS = 60_000;
+
 function ensureDirs() {
   fs.mkdirSync(config.jobsDir, { recursive: true });
   fs.mkdirSync(config.resultsDir, { recursive: true });
@@ -153,6 +156,30 @@ export function reclaimOrphanRunningJobs(): void {
   }
 }
 
+function healOrphansNow(): void {
+  ensureDirs();
+  reclaimOrphanRunningJobs();
+  const orphanQ = cleanupOrphanQueuedFs(config.jobsDir, config.resultsDir);
+  const orphanR = cleanupOrphanRunningStatusFs(
+    config.jobsDir,
+    config.resultsDir,
+  );
+  if (
+    orphanQ.removedTmp.length ||
+    orphanQ.failedStatuses.length ||
+    orphanR.synced.length ||
+    orphanR.failedStatuses.length
+  ) {
+    console.warn(
+      "cleaned orphan queue state",
+      `tmp=${orphanQ.removedTmp.length}`,
+      `queued=${orphanQ.failedStatuses.length}`,
+      `runningSynced=${orphanR.synced.length}`,
+      `runningFailed=${orphanR.failedStatuses.length}`,
+    );
+  }
+}
+
 function claim(jobPath: string): JobManifest | null {
   const running = jobPath.replace(/\.json$/, ".running.json");
   try {
@@ -235,26 +262,8 @@ export async function pollOnce(): Promise<boolean> {
 export async function loop() {
   ensureDirs();
   clearDeadLock();
-  reclaimOrphanRunningJobs();
-  const orphanQ = cleanupOrphanQueuedFs(config.jobsDir, config.resultsDir);
-  const orphanR = cleanupOrphanRunningStatusFs(
-    config.jobsDir,
-    config.resultsDir,
-  );
-  if (
-    orphanQ.removedTmp.length ||
-    orphanQ.failedStatuses.length ||
-    orphanR.synced.length ||
-    orphanR.failedStatuses.length
-  ) {
-    console.warn(
-      "cleaned orphan queue state",
-      `tmp=${orphanQ.removedTmp.length}`,
-      `queued=${orphanQ.failedStatuses.length}`,
-      `runningSynced=${orphanR.synced.length}`,
-      `runningFailed=${orphanR.failedStatuses.length}`,
-    );
-  }
+  healOrphansNow();
+  let lastOrphanHealMs = Date.now();
   touchHeartbeat();
   console.log("worker watching", config.jobsDir);
   console.log("skills", config.skillsDir);
@@ -262,7 +271,14 @@ export async function loop() {
     try {
       touchHeartbeat();
       const did = await pollOnce();
-      if (!did) await new Promise((r) => setTimeout(r, 1000));
+      if (!did) {
+        const now = Date.now();
+        if (now - lastOrphanHealMs >= ORPHAN_HEAL_INTERVAL_MS) {
+          lastOrphanHealMs = now;
+          healOrphansNow();
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
     } catch (e) {
       console.error("poll error", e);
       await new Promise((r) => setTimeout(r, 2000));

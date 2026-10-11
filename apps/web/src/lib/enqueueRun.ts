@@ -51,15 +51,17 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
     modelId: input.modelId,
   });
 
-  const tmp = path.join(dir, `${runId}.tmp.json`);
-  const final = path.join(dir, `${runId}.json`);
-  writeJsonFile(tmp, job);
-  fs.renameSync(tmp, final);
-
+  // status.json first so listRuns can see the run; if we crash before the
+  // job file lands, orphan-queued heal marks it failed (no ghost job).
   writeJsonFile(path.join(resultsDir(), runId, "status.json"), {
     runId,
     status: "queued",
   });
+
+  const tmp = path.join(dir, `${runId}.tmp.json`);
+  const final = path.join(dir, `${runId}.json`);
+  writeJsonFile(tmp, job);
+  fs.renameSync(tmp, final);
 
   return { ok: true, runId };
 }

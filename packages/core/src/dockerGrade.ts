@@ -9,6 +9,20 @@ export type GradeResult = {
   summary: string;
 };
 
+/**
+ * Host path for Docker Desktop bind mounts.
+ * Windows `C:\foo` → `/c/foo` (also accepts already-posix paths).
+ */
+export function toDockerBindPath(hostPath: string): string {
+  const resolved = path.resolve(hostPath);
+  const forward = resolved.replace(/\\/g, "/");
+  const drive = /^([A-Za-z]):\/(.*)$/.exec(forward);
+  if (drive) {
+    return `/${drive[1]!.toLowerCase()}/${drive[2]!}`;
+  }
+  return forward;
+}
+
 function withTempDir<T>(prefix: string, fn: (work: string) => T): T {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   try {
@@ -130,7 +144,6 @@ export async function gradeInDocker(opts: {
       return { exitCode: 1, summary: "grade.js missing" };
     }
 
-    const toDocker = (p: string) => p.replace(/\\/g, "/");
     const containerName = `se-grade-${crypto.randomBytes(6).toString("hex")}`;
 
     const args = [
@@ -154,11 +167,11 @@ export async function gradeInDocker(opts: {
       "--security-opt",
       "no-new-privileges",
       "-v",
-      `${toDocker(scriptsDir)}:/skill/scripts:ro`,
+      `${toDockerBindPath(scriptsDir)}:/skill/scripts:ro`,
       "-v",
-      `${toDocker(taskStage)}:/task:ro`,
+      `${toDockerBindPath(taskStage)}:/task:ro`,
       "-v",
-      `${toDocker(artifactDir)}:/work:ro`,
+      `${toDockerBindPath(artifactDir)}:/work:ro`,
       "-e",
       "TASK_DIR=/task",
       "-e",
