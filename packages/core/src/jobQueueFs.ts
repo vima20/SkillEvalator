@@ -9,6 +9,12 @@ export const WORKER_HEARTBEAT_BUSY_STALE_MS = 15 * 60_000;
 /** Match web preflight idle stale window. */
 export const WORKER_HEARTBEAT_IDLE_STALE_MS = 20_000;
 
+/**
+ * After claim writes .running.json + .worker.pid, allow a short window
+ * before heartbeat has runId — avoid web heal failing a just-started job.
+ */
+export const RUNNING_CLAIM_GRACE_MS = 30_000;
+
 export type OrphanRunningAction =
   | "skip_alive"
   | "finalize_done"
@@ -27,9 +33,13 @@ export function decideOrphanRunningAction(opts: {
   hasResult: boolean;
   /** .worker heartbeat proves this PID still owns this runId. */
   heartbeatOwnsRun: boolean;
+  /** Fresh claim — skip fail until heartbeat can catch up. */
+  withinClaimGrace?: boolean;
 }): OrphanRunningAction {
   // PID alone is not enough (OS PID reuse); require heartbeat ownership.
   if (opts.pidAlive === true && opts.heartbeatOwnsRun) return "skip_alive";
+  // Claim→first heartbeat race: pid alive and files just written.
+  if (opts.pidAlive === true && opts.withinClaimGrace) return "skip_alive";
   if (opts.hasResult) return "finalize_done";
   return "fail_orphan";
 }
@@ -70,7 +80,9 @@ export function formatWorkerPidRecord(rec: WorkerPidRecord): string {
 }
 
 /**
- * True when jobsDir/.worker is fresh, same pid, and runId matches (or unset busy).
+ * True when jobsDir/.worker is fresh, same pid, and runId matches.
+ * Idle heartbeats without runId never own a specific run (avoids PID-reuse
+ * skip_alive that leaves zombie .running.json stuck).
  */
 export function heartbeatOwnsRunFs(
   jobsDir: string,
@@ -91,11 +103,8 @@ export function heartbeatOwnsRunFs(
     if (Number(raw.pid) !== pid) return false;
     const at = typeof raw.at === "string" ? Date.parse(raw.at) : NaN;
     if (!Number.isFinite(at) || nowMs - at > staleMs) return false;
-    if (typeof raw.runId === "string" && raw.runId.length > 0) {
-      return raw.runId === runId;
-    }
-    // Fresh heartbeat without runId: only trust briefly (between tasks).
-    return nowMs - at <= WORKER_HEARTBEAT_IDLE_STALE_MS;
+    if (typeof raw.runId !== "string" || raw.runId.length === 0) return false;
+    return raw.runId === runId;
   } catch {
     return false;
   }
@@ -236,6 +245,20 @@ export function reclaimOrphanRunningJobsFs(
       pidAlive = false;
     }
 
+    let withinClaimGrace = false;
+    if (pidAlive === true) {
+      try {
+        const runningAge = Date.now() - fs.statSync(running).mtimeMs;
+        const pidAge = fs.existsSync(pidFile)
+          ? Date.now() - fs.statSync(pidFile).mtimeMs
+          : Number.POSITIVE_INFINITY;
+        withinClaimGrace =
+          Math.min(runningAge, pidAge) < RUNNING_CLAIM_GRACE_MS;
+      } catch {
+        withinClaimGrace = false;
+      }
+    }
+
     const hasResult = Boolean(
       runId && fs.existsSync(path.join(resultsDir, runId, "result.json")),
     );
@@ -243,6 +266,7 @@ export function reclaimOrphanRunningJobsFs(
       pidAlive,
       hasResult,
       heartbeatOwnsRun,
+      withinClaimGrace,
     });
     if (action === "skip_alive") continue;
     if (action === "finalize_done") {

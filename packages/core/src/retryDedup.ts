@@ -124,6 +124,52 @@ export function saveRetryMarker(
   } satisfies RetryMarker);
 }
 
+function retryLockPath(resultsDir: string, fromRunId: string): string {
+  return path.join(
+    resolveUnder(resultsDir, assertSafeId(fromRunId, "runId")),
+    "retry-enqueue.lock",
+  );
+}
+
+/**
+ * Exclusive lock so concurrent Retry POSTs cannot each enqueue a paid run.
+ * Stale locks older than RETRY_DEDUP_WINDOW_MS are stolen.
+ */
+export function tryAcquireRetryEnqueueLock(
+  resultsDir: string,
+  fromRunId: string,
+  nowMs = Date.now(),
+): boolean {
+  const lockPath = retryLockPath(resultsDir, fromRunId);
+  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+  try {
+    fs.writeFileSync(lockPath, String(nowMs), { flag: "wx" });
+    return true;
+  } catch {
+    try {
+      const age = nowMs - fs.statSync(lockPath).mtimeMs;
+      if (age > RETRY_DEDUP_WINDOW_MS) {
+        fs.writeFileSync(lockPath, String(nowMs));
+        return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+}
+
+export function releaseRetryEnqueueLock(
+  resultsDir: string,
+  fromRunId: string,
+): void {
+  try {
+    fs.unlinkSync(retryLockPath(resultsDir, fromRunId));
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * If a recent retry child is still queued/running and live on disk, return its runId.
  * Caller supplies child status loader to keep this free of listRuns coupling.

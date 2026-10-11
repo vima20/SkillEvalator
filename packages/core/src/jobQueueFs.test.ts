@@ -102,6 +102,17 @@ describe("decideOrphanRunningAction", () => {
       }),
     ).toBe("fail_orphan");
   });
+
+  it("skips during claim grace when pid is alive", () => {
+    expect(
+      decideOrphanRunningAction({
+        pidAlive: true,
+        hasResult: false,
+        heartbeatOwnsRun: false,
+        withinClaimGrace: true,
+      }),
+    ).toBe("skip_alive");
+  });
 });
 
 describe("parseWorkerPidRecord", () => {
@@ -129,6 +140,18 @@ describe("heartbeatOwnsRunFs", () => {
     expect(heartbeatOwnsRunFs(jobsDir, "run_100_own", 99)).toBe(true);
     expect(heartbeatOwnsRunFs(jobsDir, "run_100_other", 99)).toBe(false);
     expect(heartbeatOwnsRunFs(jobsDir, "run_100_own", 100)).toBe(false);
+  });
+
+  it("does not own a run when heartbeat has no runId", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    writeJsonFile(path.join(jobsDir, ".worker"), {
+      pid: 99,
+      at: new Date().toISOString(),
+      busy: false,
+    });
+    expect(heartbeatOwnsRunFs(jobsDir, "run_100_zombie", 99)).toBe(false);
   });
 });
 
@@ -202,14 +225,82 @@ describe("reclaimOrphanRunningJobsFs", () => {
     expect(fs.existsSync(running)).toBe(true);
   });
 
+  it("fails zombie .running when pid alive but idle heartbeat has no runId", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_idlehb";
+    const running = path.join(jobsDir, `${runId}.running.json`);
+    fs.writeFileSync(running, "{}");
+    fs.writeFileSync(
+      path.join(jobsDir, `${runId}.worker.pid`),
+      formatWorkerPidRecord({ pid: 12345, runId }),
+    );
+    // Backdate past claim grace so reclaim may fail the orphan.
+    const past = new Date(Date.now() - 120_000);
+    fs.utimesSync(running, past, past);
+    fs.utimesSync(path.join(jobsDir, `${runId}.worker.pid`), past, past);
+    writeJsonFile(path.join(jobsDir, ".worker"), {
+      pid: 12345,
+      at: new Date().toISOString(),
+      busy: false,
+    });
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "running",
+    });
+
+    const out = reclaimOrphanRunningJobsFs(jobsDir, resultsDir, () => true);
+    expect(out.failed).toEqual([`${runId}.running.json`]);
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { errorCode?: string };
+    expect(status.errorCode).toBe("orphan_running");
+  });
+
+  it("skips fresh claim before heartbeat has runId", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_claimgrace";
+    fs.writeFileSync(path.join(jobsDir, `${runId}.running.json`), "{}");
+    fs.writeFileSync(
+      path.join(jobsDir, `${runId}.worker.pid`),
+      formatWorkerPidRecord({ pid: 55, runId }),
+    );
+    writeJsonFile(path.join(jobsDir, ".worker"), {
+      pid: 55,
+      at: new Date().toISOString(),
+      busy: false,
+    });
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "running",
+    });
+
+    const out = reclaimOrphanRunningJobsFs(jobsDir, resultsDir, () => true);
+    expect(out.failed).toEqual([]);
+    expect(out.finalized).toEqual([]);
+    expect(fs.existsSync(path.join(jobsDir, `${runId}.running.json`))).toBe(
+      true,
+    );
+  });
+
   it("fails when pid is alive but heartbeat is for another process (PID reuse)", () => {
     const root = tmpRoot();
     const jobsDir = path.join(root, "jobs");
     const resultsDir = path.join(root, "results");
     fs.mkdirSync(jobsDir, { recursive: true });
     const runId = "run_100_pidreuse";
-    fs.writeFileSync(path.join(jobsDir, `${runId}.running.json`), "{}");
-    fs.writeFileSync(path.join(jobsDir, `${runId}.worker.pid`), "12345");
+    const running = path.join(jobsDir, `${runId}.running.json`);
+    const pidFile = path.join(jobsDir, `${runId}.worker.pid`);
+    fs.writeFileSync(running, "{}");
+    fs.writeFileSync(pidFile, "12345");
+    const past = new Date(Date.now() - 120_000);
+    fs.utimesSync(running, past, past);
+    fs.utimesSync(pidFile, past, past);
     writeJsonFile(path.join(jobsDir, ".worker"), {
       pid: 99999,
       at: new Date().toISOString(),

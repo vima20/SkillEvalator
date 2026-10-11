@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   findReusableRetryRunId,
   isRetryChildLive,
+  releaseRetryEnqueueLock,
   saveRetryMarker,
   shouldReuseRetry,
+  tryAcquireRetryEnqueueLock,
 } from "./retryDedup.js";
 import { writeJsonFile } from "./fsJson.js";
 
@@ -31,6 +33,21 @@ function writeLiveWorker(jobs: string, pid = 42): void {
     busy: false,
   });
 }
+
+describe("tryAcquireRetryEnqueueLock", () => {
+  it("allows only one holder; releases for the next", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-lock-"));
+    temps.push(root);
+    const from = "run_100_fromlock";
+    fs.mkdirSync(path.join(root, from), { recursive: true });
+
+    expect(tryAcquireRetryEnqueueLock(root, from)).toBe(true);
+    expect(tryAcquireRetryEnqueueLock(root, from)).toBe(false);
+    releaseRetryEnqueueLock(root, from);
+    expect(tryAcquireRetryEnqueueLock(root, from)).toBe(true);
+    releaseRetryEnqueueLock(root, from);
+  });
+});
 
 describe("shouldReuseRetry", () => {
   it("reuses fresh queued child", () => {

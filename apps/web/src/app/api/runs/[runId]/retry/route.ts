@@ -9,7 +9,9 @@ import {
   loadRunResult,
   loadRunStatus,
   readJsonFile,
+  releaseRetryEnqueueLock,
   saveRetryMarker,
+  tryAcquireRetryEnqueueLock,
 } from "@skillevalator/core";
 import { enqueueRun } from "@/lib/enqueueRun";
 import { isPidAlive } from "@/lib/healOrphans";
@@ -86,12 +88,11 @@ export async function POST(
       );
     }
 
-    const reused = findReusableRetryRunId(
-      root,
-      runId,
-      (childId) => loadRunStatus(root, childId)?.status,
-      { jobsDir: jobsDir(), isPidAlive },
-    );
+    const loadChild = (childId: string) =>
+      loadRunStatus(root, childId)?.status;
+    const dedupOpts = { jobsDir: jobsDir(), isPidAlive };
+
+    const reused = findReusableRetryRunId(root, runId, loadChild, dedupOpts);
     if (reused) {
       return NextResponse.json({
         ok: true,
@@ -101,27 +102,63 @@ export async function POST(
       });
     }
 
-    const queued = enqueueRun({
-      evalSkillId,
-      mode,
-      repeats,
-      modelId,
-    });
-    if (!queued.ok) {
+    if (!tryAcquireRetryEnqueueLock(root, runId)) {
+      const raced = findReusableRetryRunId(root, runId, loadChild, dedupOpts);
+      if (raced) {
+        return NextResponse.json({
+          ok: true,
+          runId: raced,
+          fromRunId: runId,
+          reused: true,
+        });
+      }
       return NextResponse.json(
-        { error: queued.error },
-        { status: queued.status },
+        { error: "retry already in progress — try again shortly" },
+        { status: 409 },
       );
     }
 
-    saveRetryMarker(root, runId, queued.runId);
+    try {
+      // Re-check under lock in case another request just enqueued.
+      const reusedUnderLock = findReusableRetryRunId(
+        root,
+        runId,
+        loadChild,
+        dedupOpts,
+      );
+      if (reusedUnderLock) {
+        return NextResponse.json({
+          ok: true,
+          runId: reusedUnderLock,
+          fromRunId: runId,
+          reused: true,
+        });
+      }
 
-    return NextResponse.json({
-      ok: true,
-      runId: queued.runId,
-      fromRunId: runId,
-      reused: false,
-    });
+      const queued = enqueueRun({
+        evalSkillId,
+        mode,
+        repeats,
+        modelId,
+      });
+      if (!queued.ok) {
+        return NextResponse.json(
+          { error: queued.error },
+          { status: queued.status },
+        );
+      }
+
+      saveRetryMarker(root, runId, queued.runId);
+
+      return NextResponse.json({
+        ok: true,
+        runId: queued.runId,
+        fromRunId: runId,
+        reused: false,
+      });
+    } finally {
+      releaseRetryEnqueueLock(root, runId);
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
     const code = message.startsWith("invalid ") ? 400 : 500;
