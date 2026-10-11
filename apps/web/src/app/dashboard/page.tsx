@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
+import {
+  RunsAutoRefresh,
+  runIsActive,
+} from "@/components/RunsAutoRefresh";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +35,9 @@ function mean(scores: number[]): number | null {
 }
 
 export default function DashboardPage() {
-  const rows: Row[] = listRuns(resultsDir()).flatMap((r) => {
+  const allRuns = listRuns(resultsDir());
+  const hasActive = allRuns.some((r) => runIsActive(r.status));
+  const rows: Row[] = allRuns.flatMap((r) => {
     if (!r.result) return [];
     return [
       {
@@ -67,14 +73,19 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <header className="page-header">
-        <p className="eyebrow">Unikie · Overview</p>
-        <h1>Dashboard</h1>
-        <p>
-          Runs grouped by task set and model so you can compare different
-          implementations of the same skill. Cross-model bake-off is out of
-          scope for this MVP.
-        </p>
+      <header className="page-header page-header-row">
+        <div>
+          <p className="eyebrow">Unikie · Overview</p>
+          <h1>Dashboard</h1>
+          <p>
+            Runs grouped by task set and model so you can compare different
+            implementations of the same skill. Cross-model bake-off is out of
+            scope for this MVP.
+          </p>
+        </div>
+        <div className="page-header-actions">
+          <RunsAutoRefresh hasActive={hasActive} />
+        </div>
       </header>
 
       {rows.length > 0 ? (

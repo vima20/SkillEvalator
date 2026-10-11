@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { estimateRunCostUsd } from "@/lib/costEstimate";
 
 /** Mirrored from @skillevalator/core OFFICIAL_MIN_REPEATS (API re-normalizes). */
@@ -44,6 +44,8 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   const [preflight, setPreflight] = useState<Preflight | null>(null);
   const [preflightBusy, setPreflightBusy] = useState(false);
   const [preflightError, setPreflightError] = useState<string | null>(null);
+  const dryRunModeRef = useRef<HTMLButtonElement>(null);
+  const officialModeRef = useRef<HTMLButtonElement>(null);
 
   const selected = skills.find((s) => s.id === evalSkillId) ?? skills[0];
   const minRepeats = mode === "official" ? OFFICIAL_MIN_REPEATS : 1;
@@ -92,10 +94,15 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
     return () => window.clearInterval(id);
   }, [refreshPreflight]);
 
-  function selectMode(next: "dry-run" | "official") {
+  function selectMode(next: "dry-run" | "official", focus = false) {
     setMode(next);
     if (next === "official") {
       setRepeats((r) => Math.max(r, OFFICIAL_MIN_REPEATS));
+    }
+    if (focus) {
+      queue Promise.resolve().then(() => {
+        (next === "official" ? officialModeRef : dryRunModeRef).current?.focus();
+      });
     }
   }
 
@@ -244,10 +251,11 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
                   : mode === "official"
                     ? "dry-run"
                     : "official";
-              selectMode(next);
+              selectMode(next, true);
             }}
           >
             <button
+              ref={dryRunModeRef}
               type="button"
               role="radio"
               aria-checked={mode === "dry-run"}
@@ -258,6 +266,7 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
               dry-run
             </button>
             <button
+              ref={officialModeRef}
               type="button"
               role="radio"
               aria-checked={mode === "official"}

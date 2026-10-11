@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
-import { costFromTokenUsage } from "@skillevalator/core";
+import { costFromTokenUsage, stripCodeFences } from "@skillevalator/core";
 import { config } from "./config.js";
 
 export class ProduceCancelledError extends Error {
@@ -105,7 +105,7 @@ export async function produceArtifact(opts: {
     );
 
     let content = res.choices[0]?.message?.content ?? "";
-    content = stripFences(content);
+    content = stripCodeFences(content);
     const inTok = res.usage?.prompt_tokens ?? 0;
     const outTok = res.usage?.completion_tokens ?? 0;
     const costUsd = costFromTokenUsage(opts.modelId, inTok, outTok);
@@ -132,10 +132,4 @@ export async function produceArtifact(opts: {
     clearTimeout(timer);
     if (cancelPoll) clearInterval(cancelPoll);
   }
-}
-
-function stripFences(s: string): string {
-  const m = s.match(/```(?:javascript|js)?\s*([\s\S]*?)```/i);
-  if (m) return m[1].trim() + "\n";
-  return s.trim() + "\n";
 }
