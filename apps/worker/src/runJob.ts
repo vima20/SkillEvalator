@@ -33,7 +33,7 @@ function useHostGrade(): boolean {
 export async function runJob(job: JobManifest): Promise<RunResult> {
   const runId = assertSafeId(job.runId, "runId");
   const startedAt = new Date().toISOString();
-  const skill = loadSkill(config.skillsDir, job.evalSkillId);
+  const skill = loadSkill(config.skillsDirs, job.evalSkillId);
   const taskIds = taskIdsForMode(skill, job.mode);
   const allowedModels = new Set([config.modelDryRun, config.modelOfficial]);
   const modelId =

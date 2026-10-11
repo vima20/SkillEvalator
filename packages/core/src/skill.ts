@@ -33,7 +33,7 @@ function hashDirFiles(root: string): string {
   return hash.digest("hex").slice(0, 16);
 }
 
-export function loadSkill(skillsDir: string, skillId: string): LoadedSkill {
+function loadSkillFromRoot(skillsDir: string, skillId: string): LoadedSkill {
   const id = assertSafeId(skillId, "evalSkillId");
   const root = resolveUnder(skillsDir, id);
   if (!fs.existsSync(root)) throw new Error(`Skill not found: ${id}`);
@@ -62,6 +62,24 @@ export function loadSkill(skillsDir: string, skillId: string): LoadedSkill {
   };
 }
 
+/** Load a skill from one directory or the first match across several roots. */
+export function loadSkill(
+  skillsDir: string | string[],
+  skillId: string,
+): LoadedSkill {
+  const dirs = Array.isArray(skillsDir) ? skillsDir : [skillsDir];
+  const id = assertSafeId(skillId, "evalSkillId");
+  const errors: string[] = [];
+  for (const dir of dirs) {
+    try {
+      return loadSkillFromRoot(dir, id);
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : String(e));
+    }
+  }
+  throw new Error(errors[0] ?? `Skill not found: ${id}`);
+}
+
 export type SkillSummary = {
   id: string;
   githubUrl: string;
@@ -71,21 +89,27 @@ export type SkillSummary = {
 };
 
 /** List eval skills that have a valid fixtures/manifest.json. */
-export function listSkills(skillsDir: string): SkillSummary[] {
-  if (!fs.existsSync(skillsDir)) return [];
+export function listSkills(skillsDir: string | string[]): SkillSummary[] {
+  const dirs = Array.isArray(skillsDir) ? skillsDir : [skillsDir];
+  const seen = new Set<string>();
   const out: SkillSummary[] = [];
-  for (const name of fs.readdirSync(skillsDir).sort()) {
-    try {
-      const skill = loadSkill(skillsDir, name);
-      out.push({
-        id: skill.id,
-        githubUrl: skill.manifest.githubUrl,
-        taskSetId: skill.manifest.taskSetId,
-        dryRunCount: skill.manifest.dryRunIds.length,
-        taskCount: skill.manifest.taskIds.length,
-      });
-    } catch {
-      /* skip non-skill dirs / invalid manifests */
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const name of fs.readdirSync(dir).sort()) {
+      if (seen.has(name)) continue;
+      try {
+        const skill = loadSkillFromRoot(dir, name);
+        seen.add(name);
+        out.push({
+          id: skill.id,
+          githubUrl: skill.manifest.githubUrl,
+          taskSetId: skill.manifest.taskSetId,
+          dryRunCount: skill.manifest.dryRunIds.length,
+          taskCount: skill.manifest.taskIds.length,
+        });
+      } catch {
+        /* skip non-skill dirs / invalid manifests */
+      }
     }
   }
   return out;

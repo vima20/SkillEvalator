@@ -473,6 +473,45 @@ code {
   font-weight: 600;
 }
 
+.import-box {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(12, 18, 32, 0.65);
+}
+
+.import-box .hint {
+  margin: 0 0 12px;
+}
+
+.import-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.import-row input {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.import-box .msg {
+  margin-top: 10px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .preflight {
   padding: 14px 16px;
   border: 1px solid var(--border);

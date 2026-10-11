@@ -42,9 +42,16 @@ export function resolveUnder(root: string, ...segments: string[]): string {
 export type DataPaths = {
   repoRoot: string;
   skillsDir: string;
+  /** GitHub-imported skills (not committed). */
+  importedSkillsDir: string;
   jobsDir: string;
   resultsDir: string;
 };
+
+/** Bundled + imported skill roots (imported last so local ids win on conflict). */
+export function skillsSearchDirs(data: DataPaths): string[] {
+  return [data.skillsDir, data.importedSkillsDir];
+}
 
 /** Resolve env path relative to repoRoot (not process.cwd), so web/worker agree. */
 function resolveFromRepo(repoRoot: string, value: string | undefined, fallback: string): string {
@@ -59,6 +66,11 @@ export function resolveDataPaths(
   return {
     repoRoot,
     skillsDir: resolveFromRepo(repoRoot, env.EVAL_SKILLS_DIR, "eval-skills"),
+    importedSkillsDir: resolveFromRepo(
+      repoRoot,
+      env.IMPORTED_SKILLS_DIR,
+      "data/imported-skills",
+    ),
     jobsDir: resolveFromRepo(repoRoot, env.JOBS_DIR, "data/jobs"),
     resultsDir: resolveFromRepo(repoRoot, env.RESULTS_DIR, "data/results"),
   };

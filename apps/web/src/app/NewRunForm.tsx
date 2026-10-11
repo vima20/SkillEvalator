@@ -28,8 +28,9 @@ type Preflight = {
 
 export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   const router = useRouter();
+  const [skillOptions, setSkillOptions] = useState(skills);
   const [evalSkillId, setEvalSkillId] = useState(
-    skills[0]?.id ?? "code-debugging-eval",
+    skills[0]?.id ?? "",
   );
   const [mode, setMode] = useState<"dry-run" | "official">("dry-run");
   const [repeats, setRepeats] = useState(1);
@@ -38,9 +39,68 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   const [busy, setBusy] = useState(false);
   const [preflight, setPreflight] = useState<Preflight | null>(null);
   const [preflightBusy, setPreflightBusy] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const [importError, setImportError] = useState(false);
 
-  const selected = skills.find((s) => s.id === evalSkillId) ?? skills[0];
+  useEffect(() => {
+    setSkillOptions(skills);
+    if (skills.length > 0 && !skills.some((s) => s.id === evalSkillId)) {
+      setEvalSkillId(skills[0]!.id);
+    }
+  }, [skills, evalSkillId]);
+
+  const selected =
+    skillOptions.find((s) => s.id === evalSkillId) ?? skillOptions[0];
   const minRepeats = mode === "official" ? OFFICIAL_MIN_REPEATS : 1;
+
+  async function refreshSkills(preferId?: string) {
+    const res = await fetch("/api/skills", { cache: "no-store" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { skills: SkillOption[] };
+    setSkillOptions(data.skills);
+    if (preferId && data.skills.some((s) => s.id === preferId)) {
+      setEvalSkillId(preferId);
+    } else if (
+      data.skills.length > 0 &&
+      !data.skills.some((s) => s.id === evalSkillId)
+    ) {
+      setEvalSkillId(data.skills[0]!.id);
+    }
+  }
+
+  async function onImport(e: React.FormEvent) {
+    e.preventDefault();
+    setImportBusy(true);
+    setImportMsg("");
+    setImportError(false);
+    try {
+      const res = await fetch("/api/skills/import", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        skills?: Array<{ id: string }>;
+        ref?: string;
+        repo?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "import failed");
+      const count = data.skills?.length ?? 0;
+      setImportMsg(
+        `Imported ${count} skill${count === 1 ? "" : "s"} from ${data.repo}@${data.ref}`,
+      );
+      await refreshSkills(data.skills?.[0]?.id);
+      router.refresh();
+    } catch (err) {
+      setImportError(true);
+      setImportMsg(err instanceof Error ? err.message : "import failed");
+    } finally {
+      setImportBusy(false);
+    }
+  }
 
   const refreshPreflight = useCallback(async () => {
     setPreflightBusy(true);
@@ -112,6 +172,49 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   return (
     <div className="split">
       <form className="panel form-grid" onSubmit={submit}>
+        <div className="import-box">
+          <div className="preflight-head">
+            <strong>Import from GitHub</strong>
+          </div>
+          <p className="hint">
+            Paste any public github.com repo or{" "}
+            <code>owner/repo@ref/path</code>. Discovers SkillEvalator skills (
+            <code>fixtures/manifest.json</code>) and adds them for runs /
+            dashboard comparison.
+          </p>
+          <div className="import-row">
+            <label className="sr-only" htmlFor="importUrl">
+              GitHub URL
+            </label>
+            <input
+              id="importUrl"
+              type="text"
+              placeholder="https://github.com/org/repo/tree/main/eval-skills"
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              disabled={importBusy}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              className="btn btn-ghost btn-compact"
+              disabled={importBusy || !importUrl.trim()}
+              onClick={(e) => void onImport(e)}
+            >
+              {importBusy ? "Importing…" : "Import"}
+            </button>
+          </div>
+          {importMsg ? (
+            <p
+              className={`msg${importError ? " error" : ""}`}
+              role={importError ? "alert" : "status"}
+            >
+              {importMsg}
+            </p>
+          ) : null}
+        </div>
+
         <div
           className={`preflight${preflight && !preflight.ok ? " preflight-warn" : ""}`}
           aria-live="polite"
@@ -149,17 +252,24 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
 
         <div className="field">
           <label htmlFor="evalSkillId">Eval skill</label>
-          <select
-            id="evalSkillId"
-            value={evalSkillId}
-            onChange={(e) => setEvalSkillId(e.target.value)}
-          >
-            {skills.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.id}
-              </option>
-            ))}
-          </select>
+          {skillOptions.length === 0 ? (
+            <p className="hint">
+              No skills yet — import a GitHub repo above or add one under{" "}
+              <code>eval-skills/</code>.
+            </p>
+          ) : (
+            <select
+              id="evalSkillId"
+              value={evalSkillId}
+              onChange={(e) => setEvalSkillId(e.target.value)}
+            >
+              {skillOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.id}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="field">
@@ -234,7 +344,11 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
           ) : null}
         </div>
 
-        <button className="btn btn-primary" type="submit" disabled={busy}>
+        <button
+          className="btn btn-primary"
+          type="submit"
+          disabled={busy || skillOptions.length === 0 || !evalSkillId}
+        >
           {busy ? "Queueing…" : "Start run"}
         </button>
         {msg ? (

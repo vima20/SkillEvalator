@@ -30,9 +30,16 @@ Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` 
 
 - `eval-skills/code-debugging-eval` — skill #1 (fix buggy JS, 8 tasks)
 - `eval-skills/test-generation-eval` — skill #2 (write assert tests, 6 tasks; adversarial subject-bad)
+- `data/imported-skills/` — skills imported from public GitHub repos (UI: New run → Import)
 - `packages/core` — schema, scoring, skill loader, Docker grade
 - `apps/worker` — file queue + produce/grade
 - `apps/web` — New run / Runs / Dashboard / Benefit Report
+
+## Import skills from any GitHub repo
+
+On **New evaluation run**, paste a public `github.com` URL (or `owner/repo@ref/path`). The importer downloads the archive, finds SkillEvalator packages (`fixtures/manifest.json`), and installs them under `data/imported-skills/` so they can be run and compared on the dashboard (same `taskSetId` → implementation leaderboard).
+
+Plain Agent Skills that only have `SKILL.md` (no eval harness) cannot be graded yet.
 
 ## Smoke without OpenAI
 

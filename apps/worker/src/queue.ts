@@ -231,7 +231,7 @@ export async function loop() {
   reclaimOrphanRunningJobs();
   touchHeartbeat();
   console.log("worker watching", config.jobsDir);
-  console.log("skills", config.skillsDir);
+  console.log("skills", config.skillsDirs.join(" | "));
   for (;;) {
     try {
       touchHeartbeat();
