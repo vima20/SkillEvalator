@@ -1,11 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import {
-  findRepoRoot,
-  resolveDataPaths,
-  skillsSearchDirs,
-} from "@skillevalator/core";
+import { findRepoRoot, resolveDataPaths } from "@skillevalator/core";
 
 const repoRoot = findRepoRoot(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.."),
@@ -25,8 +21,6 @@ function num(name: string, fallback: number): number {
 export const config = {
   repoRoot,
   skillsDir: data.skillsDir,
-  importedSkillsDir: data.importedSkillsDir,
-  skillsDirs: skillsSearchDirs(data),
   jobsDir: data.jobsDir,
   resultsDir: data.resultsDir,
   modelDryRun: process.env.MODEL_DRY_RUN ?? "gpt-4o-mini",

@@ -8,4 +8,3 @@ export * from "./job.js";
 export * from "./status.js";
 export * from "./results.js";
 export * from "./benefitReport.js";
-export * from "./githubSkillImport.js";

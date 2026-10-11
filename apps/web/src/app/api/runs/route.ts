@@ -8,10 +8,10 @@ import {
   createJobManifest,
   isQueuedJobFile,
   listRuns,
-  loadSkill,
+  resolveUnder,
   writeJsonFile,
 } from "@skillevalator/core";
-import { allSkillsDirs, jobsDir, resultsDir } from "@/lib/paths";
+import { jobsDir, resultsDir, skillsDir } from "@/lib/paths";
 
 const MAX_QUEUED_JOBS = 20;
 
@@ -36,9 +36,8 @@ export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
     const evalSkillId = assertSafeId(body.evalSkillId, "evalSkillId");
-    try {
-      loadSkill(allSkillsDirs(), evalSkillId);
-    } catch {
+    const skillPath = resolveUnder(skillsDir(), evalSkillId);
+    if (!fs.existsSync(skillPath)) {
       return NextResponse.json({ error: "unknown skill" }, { status: 400 });
     }
 

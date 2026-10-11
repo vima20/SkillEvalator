@@ -1,9 +1,5 @@
 import path from "node:path";
-import {
-  findRepoRoot,
-  resolveDataPaths,
-  skillsSearchDirs,
-} from "@skillevalator/core";
+import { findRepoRoot, resolveDataPaths } from "@skillevalator/core";
 
 function root(): string {
   // Prefer walking up from cwd (apps/web when next runs) or parent.
@@ -26,12 +22,4 @@ export function resultsDir(): string {
 
 export function skillsDir(): string {
   return data().skillsDir;
-}
-
-export function importedSkillsDir(): string {
-  return data().importedSkillsDir;
-}
-
-export function allSkillsDirs(): string[] {
-  return skillsSearchDirs(data());
 }
