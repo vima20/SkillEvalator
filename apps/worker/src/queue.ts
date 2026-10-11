@@ -108,9 +108,38 @@ function clearDeadLock(): void {
   }
 }
 
+function resultJsonPath(runId: string): string {
+  return path.join(config.resultsDir, runId, "result.json");
+}
+
+/** Move .running → .done/.failed; drop pid file. Never leave a completed job as .running. */
+function finalizeRunningJob(
+  runningPath: string,
+  outcome: "done" | "failed",
+): void {
+  const target = runningPath.replace(/\.running\.json$/, `.${outcome}.json`);
+  const pidFile = workerPidPath(runningPath);
+  try {
+    if (fs.existsSync(runningPath)) {
+      if (fs.existsSync(target)) {
+        fs.unlinkSync(runningPath);
+      } else {
+        fs.renameSync(runningPath, target);
+      }
+    }
+  } catch (e) {
+    console.error("finalize job file failed", runningPath, outcome, e);
+  }
+  try {
+    fs.unlinkSync(pidFile);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
- * Re-queue .running jobs only when their worker PID is missing or dead.
- * Avoids stealing a live official run from another (or same) worker.
+ * Reclaim .running jobs only when their worker PID is missing or dead.
+ * If result.json already exists, finalize as .done (never re-queue — avoids double spend).
  */
 export function reclaimOrphanRunningJobs(): void {
   ensureDirs();
@@ -126,6 +155,14 @@ export function reclaimOrphanRunningJobs(): void {
         /* treat as orphan */
       }
     }
+
+    const runId = runIdFromJobPath(running);
+    if (runId && fs.existsSync(resultJsonPath(runId))) {
+      finalizeRunningJob(running, "done");
+      console.warn("finalized orphan completed job (result present)", name);
+      continue;
+    }
+
     const queued = running.replace(/\.running\.json$/, ".json");
     try {
       fs.renameSync(running, queued);
@@ -200,30 +237,15 @@ export async function pollOnce(): Promise<boolean> {
   try {
     console.log("running", job.runId);
     await runJob(job);
-    try {
-      fs.renameSync(running, jobPath.replace(/\.json$/, ".done.json"));
-    } catch (e) {
-      // Job may have been reclaimed; keep result if already written.
-      const resultPath = path.join(config.resultsDir, job.runId, "result.json");
-      if (!fs.existsSync(resultPath)) {
-        markStatusFailed(job.runId, e);
-        throw e;
-      }
-      console.warn("could not rename to .done (result present)", job.runId, e);
-    }
+    finalizeRunningJob(running, "done");
   } catch (e) {
     console.error(e);
     markStatusFailed(job.runId, e);
-    try {
-      fs.renameSync(running, jobPath.replace(/\.json$/, ".failed.json"));
-    } catch {
-      /* ignore */
-    }
-  } finally {
-    try {
-      fs.unlinkSync(workerPidPath(running));
-    } catch {
-      /* ignore */
+    if (fs.existsSync(resultJsonPath(job.runId))) {
+      // Result written then later step failed — do not re-run produce.
+      finalizeRunningJob(running, "done");
+    } else {
+      finalizeRunningJob(running, "failed");
     }
   }
   return true;

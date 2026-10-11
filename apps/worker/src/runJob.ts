@@ -64,6 +64,14 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
 
   try {
+    writeJsonFile(statusPath, {
+      runId,
+      status: "running",
+      repeat: 0,
+      repeats,
+      costUsd: 0,
+    });
+
     if (fs.existsSync(cancelPath)) {
       stop = "cancelled";
       findings.push("cancelled");
