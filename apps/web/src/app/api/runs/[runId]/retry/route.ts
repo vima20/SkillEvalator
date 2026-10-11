@@ -85,9 +85,12 @@ export async function POST(
       );
     }
 
-    const reused = findReusableRetryRunId(root, runId, (childId) => {
-      return loadRunStatus(root, childId)?.status;
-    });
+    const reused = findReusableRetryRunId(
+      root,
+      runId,
+      (childId) => loadRunStatus(root, childId)?.status,
+      { jobsDir: jobsDir() },
+    );
     if (reused) {
       return NextResponse.json({
         ok: true,
