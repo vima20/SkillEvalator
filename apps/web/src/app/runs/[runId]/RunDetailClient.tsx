@@ -299,6 +299,14 @@ export function RunDetailClient({
             Run cancelled before a scorecard was produced.
           </p>
         </div>
+      ) : status === "failed" ? (
+        <div className="panel">
+          <p className="empty">
+            Run failed before a scorecard was produced. Check the worker log —
+            common causes are missing OpenAI credits (HTTP 429) or Docker grade
+            errors.
+          </p>
+        </div>
       ) : (
         <div className="panel">
           <p className="empty">
