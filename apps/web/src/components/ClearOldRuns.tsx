@@ -51,7 +51,7 @@ export function ClearOldRuns() {
       </button>
       {msg ? (
         <p
-          className={`hint${error ? " form-error" : ""}`}
+          className={error ? "form-error" : "clear-runs-ok"}
           role={error ? "alert" : "status"}
         >
           {msg}

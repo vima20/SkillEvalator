@@ -1120,6 +1120,14 @@ a.btn {
   max-width: 16rem;
 }
 
+.clear-runs-ok {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+  text-align: right;
+}
+
 .cost-estimate {
   padding: 12px 14px;
   border: 1px solid var(--border);

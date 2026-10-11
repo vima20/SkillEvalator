@@ -101,6 +101,12 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (preflight && !preflight.ok) {
+      const ok = window.confirm(
+        "Preflight is not green (API key, Docker, or worker). Queue this run anyway?",
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     setMsg("");
     setError(false);

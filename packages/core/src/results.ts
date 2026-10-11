@@ -26,14 +26,18 @@ export const NON_RETRYABLE_ERROR_CODES = new Set([
   "account_deactivated",
 ]);
 
+/** Narrow credit/billing detection — avoid blocking retries on vague "quota" text. */
 function looksLikeNoCredits(msg: string): boolean {
   const m = msg.toLowerCase();
   return (
-    m.includes("insufficient") ||
-    m.includes("quota") ||
-    m.includes("credit") ||
-    m.includes("billing") ||
-    m.includes("exceeded your current quota")
+    m.includes("insufficient_quota") ||
+    m.includes("no credits") ||
+    m.includes("credits remaining") ||
+    m.includes("credit balance") ||
+    m.includes("exceeded your current quota") ||
+    m.includes("billing_not_active") ||
+    m.includes("billing_hard_limit") ||
+    (m.includes("billing") && m.includes("hard limit"))
   );
 }
 
@@ -69,23 +73,24 @@ export function formatRunError(err: unknown): {
       e.code ||
       (typeof e.status === "number" ? `http_${e.status}` : undefined);
 
-    if (
-      e.status === 429 ||
+    // Prefer explicit API codes; only use message heuristics when code is absent/generic.
+    const noCredits =
       code === "insufficient_quota" ||
+      code === "billing_not_active" ||
+      code === "billing_hard_limit_reached" ||
+      looksLikeNoCredits(msg);
+    const rateLimited =
       code === "rate_limit_exceeded" ||
-      looksLikeNoCredits(msg)
-    ) {
-      if (looksLikeNoCredits(msg) || code === "insufficient_quota") {
-        code = "insufficient_quota";
-        msg =
-          "No OpenAI credits remaining. Add billing credits before retrying.";
-      } else if (code === "rate_limit_exceeded" || e.status === 429) {
-        code = code === "insufficient_quota" ? code : "rate_limit_exceeded";
-        if (code === "rate_limit_exceeded") {
-          msg =
-            "OpenAI rate limit (429). Wait a moment, then retry manually — no automatic backoff.";
-        }
-      }
+      (e.status === 429 && !noCredits);
+
+    if (noCredits && code !== "rate_limit_exceeded") {
+      code = code?.startsWith("billing_") ? code : "insufficient_quota";
+      msg =
+        "No OpenAI credits remaining. Add billing credits before retrying.";
+    } else if (rateLimited) {
+      code = "rate_limit_exceeded";
+      msg =
+        "OpenAI rate limit (429). Wait a moment, then retry manually — no automatic backoff.";
     }
 
     return {

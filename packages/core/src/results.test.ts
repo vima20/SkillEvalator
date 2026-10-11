@@ -42,6 +42,18 @@ describe("formatRunError", () => {
     expect(formatted.error.toLowerCase()).toContain("rate limit");
   });
 
+  it("does not treat vague quota wording as no-credits", () => {
+    const formatted = formatRunError({
+      status: 429,
+      message: "Please check your quota dashboard",
+      error: {
+        message: "Please check your quota dashboard",
+        code: "rate_limit_exceeded",
+      },
+    });
+    expect(formatted.errorCode).toBe("rate_limit_exceeded");
+  });
+
   it("falls back to Error.message", () => {
     const formatted = formatRunError(new Error("boom"));
     expect(formatted.error).toBe("boom");
