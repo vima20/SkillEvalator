@@ -212,6 +212,55 @@ export function reclaimOrphanRunningJobsFs(
 export const STALE_TMP_JOB_MS = 60_000;
 
 /**
+ * Heal one run stuck at queued with no job / tmp file.
+ * Returns failed | noop.
+ */
+export function healOrphanQueuedStatusFs(
+  jobsDir: string,
+  resultsDir: string,
+  runId: string,
+): "failed" | "noop" {
+  if (!/^run_[A-Za-z0-9._-]+$/.test(runId)) return "noop";
+  const statusPath = path.join(resultsDir, runId, "status.json");
+  if (!fs.existsSync(statusPath)) return "noop";
+
+  let status = "unknown";
+  try {
+    const raw = JSON.parse(fs.readFileSync(statusPath, "utf8")) as {
+      status?: string;
+    };
+    status = raw.status ?? "unknown";
+  } catch {
+    return "noop";
+  }
+  if (status !== "queued") return "noop";
+
+  const hasJob =
+    fs.existsSync(path.join(jobsDir, `${runId}.json`)) ||
+    fs.existsSync(path.join(jobsDir, `${runId}.running.json`)) ||
+    fs.existsSync(path.join(jobsDir, `${runId}.tmp.json`));
+  if (hasJob) return "noop";
+
+  writeJsonFile(statusPath, {
+    runId,
+    status: "failed",
+    error: "orphaned queued status (job file missing)",
+    errorCode: "orphan_queued",
+  });
+  return "failed";
+}
+
+/** Heal queued + running/cancel_requested orphans for one run. */
+export function healRunOrphansFs(
+  jobsDir: string,
+  resultsDir: string,
+  runId: string,
+): void {
+  healOrphanQueuedStatusFs(jobsDir, resultsDir, runId);
+  healOrphanActiveStatusFs(jobsDir, resultsDir, runId);
+}
+
+/**
  * Fix status.json stuck at queued when no job file exists; remove stale .tmp.json.
  */
 export function cleanupOrphanQueuedFs(
@@ -243,32 +292,9 @@ export function cleanupOrphanQueuedFs(
 
   for (const runId of fs.readdirSync(resultsDir)) {
     if (!/^run_[A-Za-z0-9._-]+$/.test(runId)) continue;
-    const statusPath = path.join(resultsDir, runId, "status.json");
-    if (!fs.existsSync(statusPath)) continue;
-    let status = "unknown";
-    try {
-      const raw = JSON.parse(fs.readFileSync(statusPath, "utf8")) as {
-        status?: string;
-      };
-      status = raw.status ?? "unknown";
-    } catch {
-      continue;
+    if (healOrphanQueuedStatusFs(jobsDir, resultsDir, runId) === "failed") {
+      failedStatuses.push(runId);
     }
-    if (status !== "queued") continue;
-
-    const hasJob =
-      fs.existsSync(path.join(jobsDir, `${runId}.json`)) ||
-      fs.existsSync(path.join(jobsDir, `${runId}.running.json`)) ||
-      fs.existsSync(path.join(jobsDir, `${runId}.tmp.json`));
-    if (hasJob) continue;
-
-    writeJsonFile(statusPath, {
-      runId,
-      status: "failed",
-      error: "orphaned queued status (job file missing)",
-      errorCode: "orphan_queued",
-    });
-    failedStatuses.push(runId);
   }
 
   return { failedStatuses, removedTmp };

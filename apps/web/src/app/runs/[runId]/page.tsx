@@ -1,10 +1,11 @@
 import {
+  healRunOrphansFs,
   loadRunResult,
   loadRunStatus,
   syncStatusFromResult,
 } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
-import { resultsDir } from "@/lib/paths";
+import { jobsDir, resultsDir } from "@/lib/paths";
 import { RunDetailClient } from "./RunDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function RunDetailPage({
 
   try {
     const root = resultsDir();
+    healRunOrphansFs(jobsDir(), root, runId);
     result = loadRunResult(root, runId);
     status = syncStatusFromResult(root, runId);
   } catch {

@@ -7,6 +7,7 @@ import {
   cleanupOrphanRunningStatusFs,
   decideOrphanRunningAction,
   formatWorkerPidRecord,
+  healOrphanQueuedStatusFs,
   heartbeatOwnsRunFs,
   parseWorkerPidRecord,
   reclaimOrphanRunningJobsFs,
@@ -278,6 +279,43 @@ describe("cleanupOrphanQueuedFs", () => {
 
     const out = cleanupOrphanQueuedFs(jobsDir, resultsDir);
     expect(out.failedStatuses).toEqual([]);
+  });
+});
+
+describe("healOrphanQueuedStatusFs", () => {
+  it("fails a single orphan queued run", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_singleq";
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "queued",
+    });
+
+    expect(healOrphanQueuedStatusFs(jobsDir, resultsDir, runId)).toBe(
+      "failed",
+    );
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { errorCode?: string };
+    expect(status.errorCode).toBe("orphan_queued");
+  });
+
+  it("is noop when queued job file exists", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_liveq";
+    fs.writeFileSync(path.join(jobsDir, `${runId}.json`), "{}");
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "queued",
+    });
+
+    expect(healOrphanQueuedStatusFs(jobsDir, resultsDir, runId)).toBe("noop");
   });
 });
 

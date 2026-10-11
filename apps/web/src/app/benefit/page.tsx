@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { buildBenefitReport, listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
+import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 
 export default function BenefitIndexPage() {
+  healOrphanStatuses();
   const runs = listRuns(resultsDir())
     .filter((r) => r.result)
     .map((r) => {

@@ -5,6 +5,7 @@ import {
   RunsAutoRefresh,
   runIsActive,
 } from "@/components/RunsAutoRefresh";
+import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ function mean(scores: number[]): number | null {
 }
 
 export default function DashboardPage() {
+  healOrphanStatuses();
   const allRuns = listRuns(resultsDir());
   const hasActive = allRuns.some((r) => runIsActive(r.status));
   const rows: Row[] = allRuns.flatMap((r) => {

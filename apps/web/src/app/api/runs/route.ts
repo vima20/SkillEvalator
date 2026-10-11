@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
 import { listRuns } from "@skillevalator/core";
 import { enqueueRun } from "@/lib/enqueueRun";
+import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 
 const Body = z.object({
@@ -11,6 +12,7 @@ const Body = z.object({
 });
 
 export async function GET() {
+  healOrphanStatuses();
   const runs = listRuns(resultsDir()).map(({ runId, status, result }) => ({
     runId,
     status,

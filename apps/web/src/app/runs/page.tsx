@@ -6,6 +6,7 @@ import {
   RunsAutoRefresh,
   runIsActive,
 } from "@/components/RunsAutoRefresh";
+import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -19,6 +20,7 @@ function shortError(msg: string | undefined, max = 72): string | null {
 }
 
 export default function RunsPage() {
+  healOrphanStatuses();
   const runs = listRuns(resultsDir());
   const hasActive = runs.some((r) => runIsActive(r.status));
 

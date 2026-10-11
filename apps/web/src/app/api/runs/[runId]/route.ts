@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  healOrphanActiveStatusFs,
+  healRunOrphansFs,
   loadRunResult,
   syncStatusFromResult,
 } from "@skillevalator/core";
@@ -15,7 +15,7 @@ export async function GET(
   try {
     const { runId } = await ctx.params;
     const root = resultsDir();
-    healOrphanActiveStatusFs(jobsDir(), root, runId);
+    healRunOrphansFs(jobsDir(), root, runId);
     const result = loadRunResult(root, runId);
     const status = syncStatusFromResult(root, runId);
     if (!status && !result) {
