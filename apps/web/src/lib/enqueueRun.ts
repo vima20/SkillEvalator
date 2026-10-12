@@ -18,11 +18,36 @@ export type EnqueueInput = {
   mode: JobManifest["mode"];
   repeats?: number;
   modelId?: string;
+  role?: JobManifest["role"];
+  evaluationId?: string;
 };
 
 export type EnqueueResult =
   | { ok: true; runId: string }
   | { ok: false; status: number; error: string };
+
+export type EnqueuePairResult =
+  | {
+      ok: true;
+      evaluationId: string;
+      baselineRunId: string;
+      candidateRunId: string;
+    }
+  | { ok: false; status: number; error: string };
+
+function queueSlotsNeeded(n: number): EnqueueResult | null {
+  const dir = jobsDir();
+  fs.mkdirSync(dir, { recursive: true });
+  const queuedCount = fs.readdirSync(dir).filter(isQueuedJobFile).length;
+  if (queuedCount + n > MAX_QUEUED_JOBS) {
+    return {
+      ok: false,
+      status: 429,
+      error: `queue full (max ${MAX_QUEUED_JOBS} pending jobs)`,
+    };
+  }
+  return null;
+}
 
 export function enqueueRun(input: EnqueueInput): EnqueueResult {
   const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
@@ -31,16 +56,12 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
     return { ok: false, status: 400, error: "unknown skill" };
   }
 
-  const dir = jobsDir();
-  fs.mkdirSync(dir, { recursive: true });
-  const queuedCount = fs.readdirSync(dir).filter(isQueuedJobFile).length;
-  if (queuedCount >= MAX_QUEUED_JOBS) {
-    return {
-      ok: false,
-      status: 429,
-      error: `queue full (max ${MAX_QUEUED_JOBS} pending jobs)`,
-    };
-  }
+  const full = queueSlotsNeeded(1);
+  if (full) return full;
+
+  const evaluationId = input.evaluationId
+    ? assertSafeId(input.evaluationId, "evaluationId")
+    : undefined;
 
   const runId = `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
   const job = createJobManifest({
@@ -49,6 +70,8 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
     mode: input.mode,
     repeats: input.repeats,
     modelId: input.modelId,
+    role: input.role ?? "candidate",
+    evaluationId,
   });
 
   // status.json first so listRuns can see the run; if we crash before the
@@ -58,10 +81,72 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
     status: "queued",
   });
 
+  const dir = jobsDir();
   const tmp = path.join(dir, `${runId}.tmp.json`);
   const final = path.join(dir, `${runId}.json`);
   writeJsonFile(tmp, job);
   fs.renameSync(tmp, final);
 
   return { ok: true, runId };
+}
+
+/**
+ * Unikie paired evaluation: baseline (neutral prompt) + candidate (SKILL.md)
+ * share one evaluationId for Comparison view.
+ */
+export function enqueueEvaluationPair(input: {
+  evalSkillId: string;
+  mode: JobManifest["mode"];
+  repeats?: number;
+  modelId?: string;
+}): EnqueuePairResult {
+  const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
+  const skillPath = resolveUnder(skillsDir(), evalSkillId);
+  if (!fs.existsSync(skillPath)) {
+    return { ok: false, status: 400, error: "unknown skill" };
+  }
+
+  const full = queueSlotsNeeded(2);
+  if (full) return full;
+
+  const evaluationId = `eval_${Date.now()}_${randomUUID().slice(0, 8)}`;
+
+  const baseline = enqueueRun({
+    ...input,
+    evalSkillId,
+    role: "baseline",
+    evaluationId,
+  });
+  if (!baseline.ok) return baseline;
+
+  // Tiny delay so runIds stay unique under Date.now() collisions.
+  const candidate = enqueueRun({
+    ...input,
+    evalSkillId,
+    role: "candidate",
+    evaluationId,
+  });
+  if (!candidate.ok) {
+    return {
+      ok: false,
+      status: candidate.status,
+      error: `candidate enqueue failed after baseline ${baseline.runId}: ${candidate.error}`,
+    };
+  }
+
+  writeJsonFile(path.join(resultsDir(), evaluationId, "evaluation.json"), {
+    evaluationId,
+    evalSkillId,
+    mode: input.mode,
+    baselineRunId: baseline.runId,
+    candidateRunId: candidate.runId,
+    createdAt: new Date().toISOString(),
+  });
+
+  return {
+    ok: true,
+    evaluationId,
+    baselineRunId: baseline.runId,
+    candidateRunId: candidate.runId,
+  };
 }

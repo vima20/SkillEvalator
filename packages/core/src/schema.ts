@@ -53,12 +53,25 @@ export const SkillManifestSchema = z.object({
   taskSetDir: SafeIdSchema.optional(),
   /** Canonical GitHub URL for the skill directory (tree or blob). */
   githubUrl: HttpsUrlSchema,
+  /** Pinned source commit (Unikie Capture: repo + commit). */
+  commit: z
+    .string()
+    .regex(/^[0-9a-f]{7,40}$/i, "git commit sha")
+    .optional(),
+  /** SPDX or short license label for the candidate package. */
+  license: z.string().min(1).max(120).default("UNLICENSED"),
+  /** Runtime / tooling dependencies declared for adoption review. */
+  dependencies: z.array(z.string().min(1).max(120)).default([]),
   taskIds: z.array(z.string().min(1)).min(1),
   dryRunIds: z.array(z.string().min(1)).min(1),
   targetFile: z.record(z.string().min(1)),
 });
 
 export type SkillManifest = z.output<typeof SkillManifestSchema>;
+
+/** Unikie role within a paired baseline↔candidate evaluation. */
+export const EvalRoleSchema = z.enum(["baseline", "candidate"]);
+export type EvalRole = z.output<typeof EvalRoleSchema>;
 
 export const ScriptResultSchema = z.object({
   name: z.string(),
@@ -77,12 +90,29 @@ export const PerTaskResultSchema = z.object({
   diffRatio: z.number().min(0).max(1).optional(),
 });
 
+/** Capture block persisted on every run (Unikie Find/Capture). */
+export const RunCaptureSchema = z.object({
+  githubUrl: HttpsUrlSchema.optional(),
+  commit: z.string().optional(),
+  license: z.string().optional(),
+  dependencies: z.array(z.string()).default([]),
+  skillVersion: z.string(),
+  role: EvalRoleSchema,
+});
+
+export type RunCapture = z.output<typeof RunCaptureSchema>;
+
 export const RunResultSchema = z.object({
   runId: z.string(),
   evalSkillId: z.string(),
   evalSkillVersion: z.string(),
   /** GitHub URL of the skill at run time (from skill manifest). */
   evalSkillGithubUrl: HttpsUrlSchema.optional(),
+  /** Unikie Capture metadata (repo, commit, license, deps, role). */
+  capture: RunCaptureSchema.optional(),
+  /** Shared id linking baseline + candidate runs. */
+  evaluationId: SafeIdSchema.optional(),
+  role: EvalRoleSchema.default("candidate"),
   taskSetId: z.string(),
   taskIds: z.array(z.string()),
   pipeline: z.object({
@@ -119,6 +149,10 @@ export const JobManifestSchema = z.object({
   mode: z.enum(["dry-run", "official"]),
   modelId: z.string().optional(),
   repeats: z.number().int().positive().max(10).default(1),
+  /** baseline = neutral prompt; candidate = skill SKILL.md. */
+  role: EvalRoleSchema.default("candidate"),
+  /** Links baseline and candidate jobs in one Unikie evaluation. */
+  evaluationId: SafeIdSchema.optional(),
   createdAt: z.string(),
 });
 

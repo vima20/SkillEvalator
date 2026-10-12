@@ -12,9 +12,17 @@ export class ProduceCancelledError extends Error {
   }
 }
 
+/** Unikie baseline: same model/tasks, no skill SKILL.md (neutral KH-style prompt). */
+export const BASELINE_NEUTRAL_PROMPT = `You are a coding assistant helping with a small JavaScript task.
+Fix or complete the requested file so it behaves correctly.
+Return only the complete source for the output file. No markdown fences. No explanation.`;
+
 export async function produceArtifact(opts: {
   modelId: string;
+  /** Candidate skill prompt; ignored when role is baseline. */
   skillMd: string;
+  /** baseline = neutral prompt; candidate = skillMd. */
+  role?: "baseline" | "candidate";
   inputPath: string;
   targetFile: string;
   subjectDir?: string;
@@ -48,13 +56,19 @@ export async function produceArtifact(opts: {
     }
   }
 
+  const role = opts.role ?? "candidate";
+  const instruction =
+    role === "baseline"
+      ? BASELINE_NEUTRAL_PROMPT
+      : opts.skillMd.trim() || BASELINE_NEUTRAL_PROMPT;
+
   const client = new OpenAI({
     apiKey: config.openaiApiKey,
     timeout: config.openaiTimeoutMs,
     maxRetries: 0,
   });
   const prompt = [
-    opts.skillMd.trim(),
+    instruction,
     "",
     `Output file name: ${opts.targetFile}`,
     "",
@@ -85,6 +99,10 @@ export async function produceArtifact(opts: {
       : null;
 
   try {
+    const systemContent =
+      role === "baseline"
+        ? "You complete coding evaluation tasks using only the neutral instructions. Output only the requested source file body."
+        : "You complete coding evaluation tasks. Follow the skill instructions exactly. Output only the requested source file body.";
     const res = await client.chat.completions.create(
       {
         model: opts.modelId,
@@ -95,8 +113,7 @@ export async function produceArtifact(opts: {
         messages: [
           {
             role: "system",
-            content:
-              "You complete coding evaluation tasks. Follow the skill instructions exactly. Output only the requested source file body.",
+            content: systemContent,
           },
           { role: "user", content: prompt },
         ],

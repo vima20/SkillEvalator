@@ -18,6 +18,8 @@ export function createJobManifest(input: {
   mode: JobManifest["mode"];
   repeats?: number;
   modelId?: string;
+  role?: JobManifest["role"];
+  evaluationId?: string;
   createdAt?: string;
 }): JobManifest {
   return JobManifestSchema.parse({
@@ -26,6 +28,8 @@ export function createJobManifest(input: {
     mode: input.mode,
     modelId: input.modelId,
     repeats: normalizeRepeats(input.mode, input.repeats ?? 1),
+    role: input.role ?? "candidate",
+    evaluationId: input.evaluationId,
     createdAt: input.createdAt ?? new Date().toISOString(),
   });
 }

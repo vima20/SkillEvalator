@@ -120,6 +120,9 @@ export type SkillSummary = {
   taskSetId: string;
   dryRunCount: number;
   taskCount: number;
+  commit?: string;
+  license: string;
+  dependencies: string[];
 };
 
 /** List eval skills that have a valid fixtures/manifest.json. */
@@ -140,6 +143,9 @@ export function listSkills(skillsDir: string | string[]): SkillSummary[] {
           taskSetId: skill.manifest.taskSetId,
           dryRunCount: skill.manifest.dryRunIds.length,
           taskCount: skill.manifest.taskIds.length,
+          commit: skill.manifest.commit,
+          license: skill.manifest.license,
+          dependencies: skill.manifest.dependencies,
         });
       } catch {
         /* skip non-skill dirs / invalid manifests */

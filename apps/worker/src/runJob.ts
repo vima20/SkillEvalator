@@ -159,6 +159,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
             const produced = await produceArtifact({
               modelId,
               skillMd: skill.skillMd,
+              role: job.role ?? "candidate",
               inputPath: tp.inputPath,
               targetFile: tp.targetFile,
               subjectDir: tp.subjectDir,
@@ -329,11 +330,22 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     else if (agg.score < PASS_SCORE_FLOOR) status = "failed";
     else status = "ok";
 
+    const role = job.role ?? "candidate";
     const result = RunResultSchema.parse({
       runId,
       evalSkillId: skill.id,
       evalSkillVersion: skill.version,
       evalSkillGithubUrl: skill.manifest.githubUrl,
+      capture: {
+        githubUrl: skill.manifest.githubUrl,
+        commit: skill.manifest.commit,
+        license: skill.manifest.license,
+        dependencies: skill.manifest.dependencies,
+        skillVersion: skill.version,
+        role,
+      },
+      evaluationId: job.evaluationId,
+      role,
       taskSetId: skill.manifest.taskSetId,
       taskIds,
       pipeline: {
@@ -354,7 +366,10 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       subscores: {
         ...(meanDiffRatio !== undefined ? { meanDiffRatio } : {}),
       },
-      rationale: "",
+      rationale:
+        role === "baseline"
+          ? "Baseline run: neutral prompt (no skill SKILL.md)."
+          : "",
       findings,
       costUsd,
       latencyMs: Date.now() - Date.parse(startedAt),
