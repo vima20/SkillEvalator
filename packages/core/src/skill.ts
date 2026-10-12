@@ -80,12 +80,31 @@ function loadSkillFromRoot(
       throw new Error(`dryRunId not in taskIds: ${taskId}`);
     }
   }
+  // Imported skills must use shared tasksets/ — private fixtures enable self-cert.
+  const isImported = fs.existsSync(path.join(root, ".import.json"));
+  if (isImported && !manifest.taskSetDir) {
+    throw new Error(
+      `imported skill ${id} must declare taskSetDir (shared tasksets/)`,
+    );
+  }
   const fixturesRoot = resolveFixturesRoot(
     skillsDir,
     root,
     manifest,
     tasksetSearchDirs,
   );
+  if (isImported) {
+    const fixturesResolved = path.resolve(fixturesRoot);
+    const rootResolved = path.resolve(root);
+    if (
+      fixturesResolved === rootResolved ||
+      fixturesResolved.startsWith(rootResolved + path.sep)
+    ) {
+      throw new Error(
+        `imported skill ${id}: fixtures must resolve outside the import tree`,
+      );
+    }
+  }
   for (const taskId of manifest.taskIds) {
     const safe = assertSafeId(taskId, "taskId");
     if (!fs.existsSync(resolveUnder(fixturesRoot, safe))) {

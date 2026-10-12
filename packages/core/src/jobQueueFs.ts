@@ -194,9 +194,39 @@ function finalizeRunningJob(
   }
 }
 
+function readStatusPrior(statusPath: string): Record<string, unknown> {
+  try {
+    if (!fs.existsSync(statusPath)) return {};
+    return JSON.parse(fs.readFileSync(statusPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+  } catch {
+    return {};
+  }
+}
+
+function pairingFieldsFromPrior(prior: Record<string, unknown>): {
+  role?: "baseline" | "candidate";
+  evaluationId?: string;
+  costUsd?: number;
+} {
+  return {
+    ...(prior.role === "baseline" || prior.role === "candidate"
+      ? { role: prior.role }
+      : {}),
+    ...(typeof prior.evaluationId === "string"
+      ? { evaluationId: prior.evaluationId }
+      : {}),
+    ...(typeof prior.costUsd === "number" ? { costUsd: prior.costUsd } : {}),
+  };
+}
+
 function markOrphanRunningFailed(resultsDir: string, runId: string): void {
   const statusPath = path.join(resultsDir, runId, "status.json");
+  const prior = readStatusPrior(statusPath);
   writeJsonFile(statusPath, {
+    ...pairingFieldsFromPrior(prior),
     runId,
     status: "failed",
     error:
@@ -332,7 +362,9 @@ export function healOrphanQueuedStatusFs(
     return "noop";
   }
 
+  const prior = readStatusPrior(statusPath);
   writeJsonFile(statusPath, {
+    ...pairingFieldsFromPrior(prior),
     runId,
     status: "failed",
     error: "orphaned queued status (job file missing)",

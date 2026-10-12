@@ -331,8 +331,28 @@ export async function importSkillsFromGitHub(opts: {
           .split(path.sep)
           .join("/");
         const sourceUrl = `https://github.com/${gh.owner}/${gh.repo}/tree/${gh.ref}/${rel}`;
+        // Prefer shared tasksets/ so imported fixtures cannot self-certify.
+        let taskSetDir = manifest.taskSetDir;
+        if (!taskSetDir) {
+          const candidate = manifest.taskSetId;
+          for (const rootDir of [
+            opts.importedSkillsDir,
+            ...(opts.tasksetSearchDirs ?? []),
+          ]) {
+            try {
+              const shared = path.join(rootDir, "tasksets", candidate);
+              if (fs.existsSync(shared)) {
+                taskSetDir = candidate;
+                break;
+              }
+            } catch {
+              /* try next */
+            }
+          }
+        }
         writeJsonFile(manifestPath, {
           ...manifest,
+          ...(taskSetDir ? { taskSetDir } : {}),
           githubUrl: sourceUrl.startsWith("https://")
             ? sourceUrl
             : manifest.githubUrl,

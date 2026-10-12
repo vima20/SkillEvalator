@@ -200,10 +200,29 @@ function claim(jobPath: string): JobManifest | null {
 
 function markStatusFailed(runId: string, err?: unknown) {
   try {
+    const statusPath = path.join(config.resultsDir, runId, "status.json");
+    let prior: Record<string, unknown> = {};
+    try {
+      if (fs.existsSync(statusPath)) {
+        prior = JSON.parse(fs.readFileSync(statusPath, "utf8")) as Record<
+          string,
+          unknown
+        >;
+      }
+    } catch {
+      prior = {};
+    }
     const formatted = err !== undefined ? formatRunError(err) : undefined;
-    writeJsonFile(path.join(config.resultsDir, runId, "status.json"), {
+    writeJsonFile(statusPath, {
       runId,
       status: "failed",
+      ...(prior.role === "baseline" || prior.role === "candidate"
+        ? { role: prior.role }
+        : {}),
+      ...(typeof prior.evaluationId === "string"
+        ? { evaluationId: prior.evaluationId }
+        : {}),
+      ...(typeof prior.costUsd === "number" ? { costUsd: prior.costUsd } : {}),
       ...(formatted?.error ? { error: formatted.error } : {}),
       ...(formatted?.errorCode ? { errorCode: formatted.errorCode } : {}),
     });

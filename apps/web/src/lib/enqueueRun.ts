@@ -148,7 +148,6 @@ export function enqueueEvaluationPair(input: {
     // Roll back the baseline leg so Comparison is not left half-queued.
     abortQueuedRun(baseline.runId, candidate.error, {
       role: "baseline",
-      evaluationId,
     });
     return {
       ok: false,
@@ -190,24 +189,10 @@ function abortQueuedRun(
   } catch {
     /* ignore */
   }
-  for (const name of [
-    `${runId}.json`,
-    `${runId}.tmp.json`,
-    `${runId}.running.json`,
-  ]) {
+  // Only remove queued/tmp — never rename .running.json (worker finalizes it).
+  for (const name of [`${runId}.json`, `${runId}.tmp.json`]) {
     try {
-      const p = path.join(jobs, name);
-      if (!fs.existsSync(p)) continue;
-      if (name.endsWith(".running.json")) {
-        // Leave running file for worker; .cancel stops it. Mark cancelled for audit.
-        try {
-          fs.renameSync(p, path.join(jobs, `${runId}.cancelled.json`));
-        } catch {
-          /* worker may still own it */
-        }
-      } else {
-        fs.unlinkSync(p);
-      }
+      fs.unlinkSync(path.join(jobs, name));
     } catch {
       /* ignore */
     }
@@ -225,14 +210,16 @@ function abortQueuedRun(
     } catch {
       prior = {};
     }
+    // Do not set evaluationId: evaluation.json is only written after both legs
+    // enqueue, so a Comparison link would 404.
+    const { evaluationId: _drop, ...priorRest } = prior;
     writeJsonFile(statusPath, {
-      ...prior,
+      ...priorRest,
       runId,
       status: "failed",
       error: `Paired enqueue aborted: ${reason}`.slice(0, 800),
       errorCode: "paired_enqueue_aborted",
       ...(meta?.role ? { role: meta.role } : {}),
-      ...(meta?.evaluationId ? { evaluationId: meta.evaluationId } : {}),
     });
   } catch {
     /* ignore */
