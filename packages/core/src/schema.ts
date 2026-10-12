@@ -64,7 +64,17 @@ export const SkillManifestSchema = z.object({
   dependencies: z.array(z.string().min(1).max(120)).default([]),
   taskIds: z.array(z.string().min(1)).min(1),
   dryRunIds: z.array(z.string().min(1)).min(1),
-  targetFile: z.record(z.string().min(1)),
+  /** Basename only — safe for Docker TARGET_FILE env (no path/control chars). */
+  targetFile: z.record(
+    z
+      .string()
+      .min(1)
+      .max(120)
+      .regex(
+        /^[A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9]+$/,
+        "targetFile must be a simple filename",
+      ),
+  ),
 });
 
 export type SkillManifest = z.output<typeof SkillManifestSchema>;

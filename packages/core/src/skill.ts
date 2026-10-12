@@ -184,7 +184,11 @@ export function taskPaths(skill: LoadedSkill, taskId: string) {
   const taskDir = resolveUnder(skill.fixturesRoot, safeTask);
   const target = skill.manifest.targetFile[safeTask];
   if (!target) throw new Error(`No targetFile for ${safeTask}`);
-  if (target.includes("..") || /[\\/]/.test(target)) {
+  if (
+    target.includes("..") ||
+    /[\\/\r\n\0=]/.test(target) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9]+$/.test(target)
+  ) {
     throw new Error(`invalid targetFile for ${safeTask}`);
   }
   return {

@@ -146,7 +146,10 @@ export function enqueueEvaluationPair(input: {
   });
   if (!candidate.ok) {
     // Roll back the baseline leg so Comparison is not left half-queued.
-    abortQueuedRun(baseline.runId, candidate.error);
+    abortQueuedRun(baseline.runId, candidate.error, {
+      role: "baseline",
+      evaluationId,
+    });
     return {
       ok: false,
       status: candidate.status,
@@ -171,22 +174,65 @@ export function enqueueEvaluationPair(input: {
   };
 }
 
-/** Remove a just-queued job and mark its status failed (paired enqueue abort). */
-function abortQueuedRun(runId: string, reason: string): void {
+/**
+ * Abort a just-queued (or already-claimed) baseline leg when candidate enqueue fails.
+ * Writes .cancel so a running worker stops; removes queued job files when possible.
+ */
+function abortQueuedRun(
+  runId: string,
+  reason: string,
+  meta?: { role?: "baseline" | "candidate"; evaluationId?: string },
+): void {
   const jobs = jobsDir();
-  for (const name of [`${runId}.json`, `${runId}.tmp.json`]) {
+  const cancelPath = path.join(jobs, `${runId}.cancel`);
+  try {
+    fs.writeFileSync(cancelPath, `${new Date().toISOString()}\n`, "utf8");
+  } catch {
+    /* ignore */
+  }
+  for (const name of [
+    `${runId}.json`,
+    `${runId}.tmp.json`,
+    `${runId}.running.json`,
+  ]) {
     try {
-      fs.unlinkSync(path.join(jobs, name));
+      const p = path.join(jobs, name);
+      if (!fs.existsSync(p)) continue;
+      if (name.endsWith(".running.json")) {
+        // Leave running file for worker; .cancel stops it. Mark cancelled for audit.
+        try {
+          fs.renameSync(p, path.join(jobs, `${runId}.cancelled.json`));
+        } catch {
+          /* worker may still own it */
+        }
+      } else {
+        fs.unlinkSync(p);
+      }
     } catch {
       /* ignore */
     }
   }
   try {
-    writeJsonFile(path.join(resultsDir(), runId, "status.json"), {
+    const statusPath = path.join(resultsDir(), runId, "status.json");
+    let prior: Record<string, unknown> = {};
+    try {
+      if (fs.existsSync(statusPath)) {
+        prior = JSON.parse(fs.readFileSync(statusPath, "utf8")) as Record<
+          string,
+          unknown
+        >;
+      }
+    } catch {
+      prior = {};
+    }
+    writeJsonFile(statusPath, {
+      ...prior,
       runId,
       status: "failed",
       error: `Paired enqueue aborted: ${reason}`.slice(0, 800),
       errorCode: "paired_enqueue_aborted",
+      ...(meta?.role ? { role: meta.role } : {}),
+      ...(meta?.evaluationId ? { evaluationId: meta.evaluationId } : {}),
     });
   } catch {
     /* ignore */

@@ -62,6 +62,11 @@ export async function POST(
     const cancelPath = path.join(dir, `${runId}.cancel`);
     fs.writeFileSync(cancelPath, `${new Date().toISOString()}\n`, "utf8");
 
+    const pairingMeta = {
+      ...(status.role ? { role: status.role } : {}),
+      ...(status.evaluationId ? { evaluationId: status.evaluationId } : {}),
+    };
+
     const queuedPath = path.join(dir, `${runId}.json`);
     let immediate = false;
     if (fs.existsSync(queuedPath)) {
@@ -70,6 +75,7 @@ export async function POST(
         writeJsonFile(path.join(root, runId, "status.json"), {
           runId,
           status: "cancelled",
+          ...pairingMeta,
         });
         immediate = true;
       } catch {
@@ -81,6 +87,7 @@ export async function POST(
       writeJsonFile(path.join(root, runId, "status.json"), {
         runId,
         status: "cancel_requested",
+        ...pairingMeta,
         ...(typeof status.costUsd === "number"
           ? { costUsd: status.costUsd }
           : {}),

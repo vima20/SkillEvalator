@@ -455,6 +455,16 @@ export function healOrphanActiveStatusFs(
   // budget_stop without result and no job → treat as failed so Retry works.
   const errorCode =
     status === "budget_stop" ? "orphan_budget_stop" : "orphan_running";
+  let prior: {
+    role?: string;
+    evaluationId?: string;
+    costUsd?: number;
+  } = {};
+  try {
+    prior = JSON.parse(fs.readFileSync(statusPath, "utf8")) as typeof prior;
+  } catch {
+    prior = {};
+  }
   writeJsonFile(statusPath, {
     runId,
     status: "failed",
@@ -463,6 +473,13 @@ export function healOrphanActiveStatusFs(
         ? "Orphaned budget_stop (no result.json). Use Retry for a new run."
         : "Orphaned active status (no job file). Use Retry for a new run.",
     errorCode,
+    ...(prior.role === "baseline" || prior.role === "candidate"
+      ? { role: prior.role }
+      : {}),
+    ...(typeof prior.evaluationId === "string"
+      ? { evaluationId: prior.evaluationId }
+      : {}),
+    ...(typeof prior.costUsd === "number" ? { costUsd: prior.costUsd } : {}),
   });
   return "failed";
 }

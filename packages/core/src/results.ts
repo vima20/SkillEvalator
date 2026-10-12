@@ -269,6 +269,7 @@ function removeJobArtifacts(jobsDir: string, runId: string): void {
 /**
  * Delete terminal runs older than `olderThanMs` (by status.json mtime).
  * Never touches queued/running jobs.
+ * After removals, drops or rewrites evaluation.json that pointed at purged runs.
  */
 export function purgeTerminalRunsFs(
   resultsDir: string,
@@ -306,7 +307,59 @@ export function purgeTerminalRunsFs(
       /* ignore one failure */
     }
   }
+
+  if (removed.length > 0) {
+    healEvaluationMetasAfterPurge(resultsDir, new Set(removed));
+  }
   return { removed };
+}
+
+type EvaluationMetaFile = {
+  evaluationId?: string;
+  baselineRunId?: string;
+  candidateRunId?: string;
+  [key: string]: unknown;
+};
+
+/** Remove or rewrite evaluation.json when purged runs were referenced. */
+export function healEvaluationMetasAfterPurge(
+  resultsDir: string,
+  purgedRunIds: Set<string>,
+): void {
+  if (!fs.existsSync(resultsDir) || purgedRunIds.size === 0) return;
+  for (const name of fs.readdirSync(resultsDir)) {
+    if (!name.startsWith("eval_")) continue;
+    try {
+      assertSafeId(name, "evaluationId");
+    } catch {
+      continue;
+    }
+    const metaPath = path.join(resultsDir, name, "evaluation.json");
+    if (!fs.existsSync(metaPath)) continue;
+    let meta: EvaluationMetaFile;
+    try {
+      meta = readJsonFile(metaPath) as EvaluationMetaFile;
+    } catch {
+      continue;
+    }
+    const baseGone =
+      typeof meta.baselineRunId === "string" &&
+      purgedRunIds.has(meta.baselineRunId);
+    const candGone =
+      typeof meta.candidateRunId === "string" &&
+      purgedRunIds.has(meta.candidateRunId);
+    if (!baseGone && !candGone) continue;
+
+    // Pair is incomplete once either leg is gone — drop Comparison meta.
+    try {
+      fs.rmSync(path.join(resultsDir, name), {
+        recursive: true,
+        force: true,
+      });
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 /** Write a marker that cleanup ran (optional audit). */
