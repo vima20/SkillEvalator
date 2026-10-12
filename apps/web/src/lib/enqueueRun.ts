@@ -31,6 +31,8 @@ export type EnqueueInput = {
   modelId?: string;
   role?: JobManifest["role"];
   evaluationId?: string;
+  /** Retry: lock candidate SKILL.md to this prior run's skill-snapshot. */
+  skillSnapshotFromRunId?: string;
 };
 
 export type EnqueueResult =
@@ -72,6 +74,10 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
   const evaluationId = input.evaluationId
     ? assertSafeId(input.evaluationId, "evaluationId")
     : undefined;
+  const skillSnapshotFromRunId = input.skillSnapshotFromRunId
+    ? assertSafeId(input.skillSnapshotFromRunId, "skillSnapshotFromRunId")
+    : undefined;
+  const role = input.role ?? "candidate";
 
   const runId = `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
   const job = createJobManifest({
@@ -80,8 +86,9 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
     mode: input.mode,
     repeats: input.repeats,
     modelId: input.modelId,
-    role: input.role ?? "candidate",
+    role,
     evaluationId,
+    skillSnapshotFromRunId,
   });
 
   // status.json first so listRuns can see the run; if we crash before the
@@ -89,6 +96,8 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
   writeJsonFile(path.join(resultsDir(), runId, "status.json"), {
     runId,
     status: "queued",
+    role,
+    ...(evaluationId ? { evaluationId } : {}),
   });
 
   const dir = jobsDir();

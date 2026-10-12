@@ -62,7 +62,26 @@ function useHostGrade(): boolean {
 export async function runJob(job: JobManifest): Promise<RunResult> {
   const runId = assertSafeId(job.runId, "runId");
   const startedAt = new Date().toISOString();
-  const skill = loadSkill(config.skillsDirs, job.evalSkillId);
+  const role = job.role ?? "candidate";
+  const findings: string[] = [];
+  let skill = loadSkill(config.skillsDirs, job.evalSkillId);
+  if (job.skillSnapshotFromRunId && role === "candidate") {
+    const snapMd = path.join(
+      resolveUnder(config.resultsDir, job.skillSnapshotFromRunId),
+      "skill-snapshot",
+      "SKILL.md",
+    );
+    if (fs.existsSync(snapMd)) {
+      skill = { ...skill, skillMd: fs.readFileSync(snapMd, "utf8") };
+      findings.push(
+        `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
+      );
+    } else {
+      findings.push(
+        `skill snapshot missing for ${job.skillSnapshotFromRunId}; using live SKILL.md`,
+      );
+    }
+  }
   const taskIds = taskIdsForMode(skill, job.mode);
   const allowedModels = new Set([config.modelDryRun, config.modelOfficial]);
   const modelId =
@@ -84,13 +103,11 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
 
   let costUsd = 0;
   let runTokens = emptyTokens();
-  const findings: string[] = [];
   const repeatScores: number[] = [];
   const scoresByTask = new Map<string, number[]>();
   const tokensByTask = new Map<string, TokenUsage>();
   const lastByTask = new Map<string, RunResult["perTask"][number]>();
   let stop: "cancelled" | "budget_stop" | null = null;
-  const role = job.role ?? "candidate";
   const promptKind =
     role === "baseline" ? ("baseline_neutral" as const) : ("skill_md" as const);
   const instructionForCapture =
@@ -130,8 +147,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   };
   writeJsonFile(path.join(resultDir, "capture.json"), capture);
 
-  // Immutable skill snapshot for Unikie audit / re-run evidence (retry still
-  // reloads live skill by default; this folder preserves what was evaluated).
+  // Immutable skill snapshot for Unikie audit / retry (SKILL.md lock).
   const snapshotDir = path.join(resultDir, "skill-snapshot");
   fs.mkdirSync(snapshotDir, { recursive: true });
   fs.writeFileSync(
@@ -150,6 +166,9 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       promptHash,
       promptKind,
       capturedAt: startedAt,
+      ...(job.skillSnapshotFromRunId
+        ? { skillSnapshotFromRunId: job.skillSnapshotFromRunId }
+        : {}),
     },
   });
   writeJsonFile(path.join(snapshotDir, "job.json"), {
@@ -160,11 +179,28 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     repeats,
     role,
     evaluationId: job.evaluationId,
+    skillSnapshotFromRunId: job.skillSnapshotFromRunId,
     createdAt: job.createdAt,
   });
 
   const statusPath = path.join(resultDir, "status.json");
   const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
+  const writeStatus = (fields: {
+    status: string;
+    repeat?: number;
+    repeats?: number;
+    costUsd?: number;
+  }) => {
+    writeJsonFile(statusPath, {
+      runId,
+      status: fields.status,
+      role,
+      ...(job.evaluationId ? { evaluationId: job.evaluationId } : {}),
+      ...(fields.repeat !== undefined ? { repeat: fields.repeat } : {}),
+      ...(fields.repeats !== undefined ? { repeats: fields.repeats } : {}),
+      ...(fields.costUsd !== undefined ? { costUsd: fields.costUsd } : {}),
+    });
+  };
 
   const heartbeatTimer = setInterval(() => {
     touchHeartbeat({ busy: true, runId });
@@ -177,8 +213,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       findings.push("cancelled");
     }
 
-    writeJsonFile(statusPath, {
-      runId,
+    writeStatus({
       status: liveRunStatusForProgress({
         stop,
         cancelFilePresent: fs.existsSync(cancelPath),
@@ -198,8 +233,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       if (config.costHardStop && costUsd >= config.costCapUsd) {
         stop = "budget_stop";
         findings.push("cost hard stop");
-        writeJsonFile(statusPath, {
-          runId,
+        writeStatus({
           status: liveRunStatusForProgress({
             stop,
             cancelFilePresent: fs.existsSync(cancelPath),
@@ -225,8 +259,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
           if (!findings.includes("cost hard stop")) {
             findings.push("cost hard stop");
           }
-          writeJsonFile(statusPath, {
-            runId,
+          writeStatus({
             status: liveRunStatusForProgress({
               stop,
               cancelFilePresent: fs.existsSync(cancelPath),
@@ -270,8 +303,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
             if (!findings.includes("cost pre-check blocked produce")) {
               findings.push("cost pre-check blocked produce");
             }
-            writeJsonFile(statusPath, {
-              runId,
+            writeStatus({
               status: liveRunStatusForProgress({
                 stop,
                 cancelFilePresent: fs.existsSync(cancelPath),
@@ -332,8 +364,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
           if (!findings.includes("cost cap reached after produce")) {
             findings.push("cost cap reached after produce");
           }
-          writeJsonFile(statusPath, {
-            runId,
+          writeStatus({
             status: liveRunStatusForProgress({
               stop,
               cancelFilePresent: fs.existsSync(cancelPath),
@@ -421,8 +452,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       const m = meanScores(scores);
       if (m !== null) repeatScores.push(m);
 
-      writeJsonFile(statusPath, {
-        runId,
+      writeStatus({
         status: liveRunStatusForProgress({
           stop,
           cancelFilePresent: fs.existsSync(cancelPath),
@@ -531,8 +561,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       path.join(resultDir, "benefit-report.json"),
       buildBenefitReport(result),
     );
-    writeJsonFile(statusPath, {
-      runId,
+    writeStatus({
       status: result.status,
       costUsd,
     });

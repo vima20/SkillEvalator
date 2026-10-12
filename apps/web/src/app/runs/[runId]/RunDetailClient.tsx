@@ -34,10 +34,21 @@ type Result = {
     totalTokens: number;
   };
   capture?: {
+    githubUrl?: string;
     promptHash?: string;
     promptKind?: string;
+    promptPreview?: string;
     commit?: string;
     license?: string;
+    dependencies?: string[];
+    skillVersion?: string;
+    env?: {
+      temperature?: number;
+      seed?: number;
+      costCapUsd?: number;
+      grade?: string;
+      fakeProduce?: boolean;
+    };
   };
 };
 
@@ -566,19 +577,90 @@ export function RunDetailClient({
               </Link>
             ) : null}
           </div>
-          {result.tokens || result.capture?.promptHash ? (
+          {result.tokens ? (
             <p className="hint">
-              {result.tokens
-                ? `Tokens in ${result.tokens.promptTokens} / out ${result.tokens.completionTokens}. `
-                : null}
-              {result.capture?.promptKind
-                ? `Prompt ${result.capture.promptKind}`
-                : null}
-              {result.capture?.promptHash
-                ? ` · hash ${result.capture.promptHash}`
-                : null}
-              {result.role ? ` · role ${result.role}` : null}
+              Tokens in {result.tokens.promptTokens} / out{" "}
+              {result.tokens.completionTokens}
+              {result.role ? ` · role ${result.role}` : null}.
             </p>
+          ) : null}
+          {result.capture ? (
+            <div className="panel" style={{ marginTop: 14 }}>
+              <h2>Capture</h2>
+              <dl className="meta-list">
+                <div>
+                  <dt>GitHub</dt>
+                  <dd>
+                    {result.capture.githubUrl ? (
+                      <a
+                        href={result.capture.githubUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {result.capture.githubUrl}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Commit</dt>
+                  <dd>
+                    <code>{result.capture.commit ?? "—"}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>License</dt>
+                  <dd>{result.capture.license ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt>Dependencies</dt>
+                  <dd>
+                    {result.capture.dependencies?.length
+                      ? result.capture.dependencies.join(", ")
+                      : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Skill version</dt>
+                  <dd>
+                    <code>{result.capture.skillVersion ?? "—"}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Prompt</dt>
+                  <dd>
+                    <code>{result.capture.promptKind ?? "—"}</code> · hash{" "}
+                    <code>{result.capture.promptHash ?? "—"}</code>
+                  </dd>
+                </div>
+                {result.capture.env ? (
+                  <div>
+                    <dt>Env snapshot</dt>
+                    <dd>
+                      temp={result.capture.env.temperature}, seed=
+                      {result.capture.env.seed}, cap=$
+                      {result.capture.env.costCapUsd}, grade=
+                      {result.capture.env.grade ?? "—"}
+                      {result.capture.env.fakeProduce
+                        ? ", FAKE_PRODUCE"
+                        : ""}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+              {result.capture.promptPreview ? (
+                <pre className="json-block" style={{ marginTop: 12 }}>
+                  {result.capture.promptPreview}
+                </pre>
+              ) : null}
+              <p className="hint" style={{ marginTop: 10 }}>
+                Immutable <code>skill-snapshot/</code> is on disk under this
+                run’s results folder (SKILL.md + manifest). Retry locks candidate
+                SKILL.md from that snapshot when present.
+              </p>
+            </div>
           ) : null}
           {jsonOpen ? (
             <pre className="json-block">{JSON.stringify(result, null, 2)}</pre>

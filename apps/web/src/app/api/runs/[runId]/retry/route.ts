@@ -137,6 +137,16 @@ export async function POST(
         });
       }
 
+      const snapshotPath = path.join(
+        root,
+        runId,
+        "skill-snapshot",
+        "SKILL.md",
+      );
+      const skillSnapshotFromRunId = fs.existsSync(snapshotPath)
+        ? runId
+        : undefined;
+
       const queued = enqueueRun({
         evalSkillId,
         mode,
@@ -144,6 +154,7 @@ export async function POST(
         modelId,
         role,
         evaluationId,
+        skillSnapshotFromRunId,
       });
       if (!queued.ok) {
         return NextResponse.json(

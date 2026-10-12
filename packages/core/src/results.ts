@@ -11,6 +11,10 @@ const StatusFileSchema = z.object({
   costUsd: z.number().optional(),
   repeat: z.number().optional(),
   repeats: z.number().optional(),
+  /** Mid-run / queued Unikie role (before result.json exists). */
+  role: z.enum(["baseline", "candidate"]).optional(),
+  /** Mid-run / queued paired evaluation id. */
+  evaluationId: z.string().optional(),
   /** Short worker/UI-facing failure reason when no result.json exists. */
   error: z.string().max(800).optional(),
   errorCode: z.string().max(64).optional(),
@@ -110,6 +114,9 @@ export type RunListItem = {
   status?: string;
   error?: string;
   errorCode?: string;
+  /** From status.json when result is not ready yet. */
+  role?: "baseline" | "candidate";
+  evaluationId?: string;
   result: RunResult | null;
 };
 
@@ -181,11 +188,20 @@ export function syncStatusFromResult(
   if (!TERMINAL_RUN_STATUS.has(result.status)) return current;
 
   if (current?.status === result.status) {
-    if (
-      typeof result.costUsd === "number" &&
-      current.costUsd !== result.costUsd
-    ) {
-      const next: RunStatusFile = { ...current, costUsd: result.costUsd };
+    const role = result.role ?? current.role;
+    const evaluationId = result.evaluationId ?? current.evaluationId;
+    const needCost =
+      typeof result.costUsd === "number" && current.costUsd !== result.costUsd;
+    const needMeta =
+      (role && role !== current.role) ||
+      (evaluationId && evaluationId !== current.evaluationId);
+    if (needCost || needMeta) {
+      const next: RunStatusFile = {
+        ...current,
+        ...(needCost ? { costUsd: result.costUsd } : {}),
+        ...(role ? { role } : {}),
+        ...(evaluationId ? { evaluationId } : {}),
+      };
       writeJsonFile(path.join(runDir(resultsDir, runId), "status.json"), next);
       return next;
     }
@@ -196,6 +212,12 @@ export function syncStatusFromResult(
     runId,
     status: result.status,
     costUsd: result.costUsd,
+    ...(result.role ? { role: result.role } : current?.role ? { role: current.role } : {}),
+    ...(result.evaluationId
+      ? { evaluationId: result.evaluationId }
+      : current?.evaluationId
+        ? { evaluationId: current.evaluationId }
+        : {}),
   };
   writeJsonFile(path.join(runDir(resultsDir, runId), "status.json"), next);
   return next;
@@ -204,12 +226,15 @@ export function syncStatusFromResult(
 export function listRuns(resultsDir: string): RunListItem[] {
   return listRunIds(resultsDir).map((runId) => {
     const st = syncStatusFromResult(resultsDir, runId);
+    const result = loadRunResult(resultsDir, runId);
     return {
       runId,
       status: st?.status,
       error: st?.error,
       errorCode: st?.errorCode,
-      result: loadRunResult(resultsDir, runId),
+      role: result?.role ?? st?.role,
+      evaluationId: result?.evaluationId ?? st?.evaluationId,
+      result,
     };
   });
 }

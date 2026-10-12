@@ -190,6 +190,11 @@ export const JobManifestSchema = z.object({
   role: EvalRoleSchema.default("candidate"),
   /** Links baseline and candidate jobs in one Unikie evaluation. */
   evaluationId: SafeIdSchema.optional(),
+  /**
+   * When set (retry), candidate produce uses SKILL.md from that run's
+   * skill-snapshot/ instead of the live skill tree.
+   */
+  skillSnapshotFromRunId: SafeIdSchema.optional(),
   createdAt: z.string(),
 });
 

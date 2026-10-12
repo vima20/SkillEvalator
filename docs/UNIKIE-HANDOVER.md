@@ -64,7 +64,7 @@ npm run smoke:skills
 
 - One primary task family in MVP demo: **cde-v1** (code debugging, 8 tasks) — see [D1-TASK-FAMILY.md](D1-TASK-FAMILY.md)
 - No multi-model dashboard; no cloud multi-user service
-- Retry reuses skill/mode/repeats/role/evaluationId but reloads **current** skill files from disk; each run still stores an immutable `skill-snapshot/` under `data/results/<runId>/`
+- Retry reuses skill/mode/repeats/role/evaluationId and locks candidate **SKILL.md** from the prior run’s `skill-snapshot/` when present (fixtures still load from the live skill tree); each run stores its own immutable `skill-snapshot/` under `data/results/<runId>/`
 - Benefit narrative: Markdown; scorecard also **CSV** (`?format=csv`). Run/Comparison CSV via download buttons.
 
 ## Re-run

@@ -20,6 +20,7 @@ export function createJobManifest(input: {
   modelId?: string;
   role?: JobManifest["role"];
   evaluationId?: string;
+  skillSnapshotFromRunId?: string;
   createdAt?: string;
 }): JobManifest {
   return JobManifestSchema.parse({
@@ -30,6 +31,7 @@ export function createJobManifest(input: {
     repeats: normalizeRepeats(input.mode, input.repeats ?? 1),
     role: input.role ?? "candidate",
     evaluationId: input.evaluationId,
+    skillSnapshotFromRunId: input.skillSnapshotFromRunId,
     createdAt: input.createdAt ?? new Date().toISOString(),
   });
 }

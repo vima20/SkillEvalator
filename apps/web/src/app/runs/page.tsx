@@ -67,8 +67,9 @@ export default function RunsPage() {
                 {runs.map((r) => {
                   const err = shortError(r.error);
                   const active = runIsActive(r.status);
-                  const role = r.result?.role ?? "—";
-                  const evaluationId = r.result?.evaluationId;
+                  const role = r.result?.role ?? r.role ?? "—";
+                  const evaluationId =
+                    r.result?.evaluationId ?? r.evaluationId;
                   return (
                     <tr key={r.runId}>
                       <td>
