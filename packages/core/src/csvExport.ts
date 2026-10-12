@@ -1,3 +1,4 @@
+import type { BenefitReport } from "./benefitReport.js";
 import type { RunComparison } from "./comparison.js";
 import type { RunResult } from "./schema.js";
 
@@ -135,6 +136,79 @@ export function comparisonToCsv(comparison: RunComparison): string {
         comparison.verdict,
         comparison.lift,
         comparison.parity.ok,
+      ]),
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+/** Benefit Report scorecard as CSV (narrative remains Markdown). */
+export function benefitReportToCsv(report: BenefitReport): string {
+  const header = row([
+    "runId",
+    "evaluationId",
+    "role",
+    "mode",
+    "modelId",
+    "evalSkillId",
+    "taskSetId",
+    "recommendation",
+    "headline",
+    "stars",
+    "grade",
+    "runScore",
+    "scoreSpread",
+    "tasksPassed",
+    "tasksTotal",
+    "taskId",
+    "taskScore",
+    "taskStatus",
+    "taskLabel",
+    "costUsd",
+    "latencyMs",
+    "status",
+    "commit",
+    "license",
+  ]);
+  const lines = [header];
+  const tasks =
+    report.scorecard.perTask.length > 0
+      ? report.scorecard.perTask
+      : [
+          {
+            taskId: "",
+            score: report.scorecard.score,
+            status: report.cost.status,
+            label: report.scorecard.label,
+          },
+        ];
+  for (const t of tasks) {
+    lines.push(
+      row([
+        report.config.runId,
+        report.config.evaluationId ?? "",
+        report.config.role ?? "candidate",
+        report.config.mode,
+        report.config.modelId,
+        report.config.evalSkillId,
+        report.config.taskSetId,
+        report.verdict.recommendation,
+        report.verdict.headline,
+        report.rating.stars,
+        report.rating.grade,
+        report.scorecard.score,
+        report.scorecard.scoreSpread,
+        report.scorecard.tasksPassed,
+        report.scorecard.tasksTotal,
+        t.taskId,
+        t.score,
+        t.status,
+        t.label,
+        report.cost.costUsd,
+        report.cost.latencyMs,
+        report.cost.status,
+        report.config.commit ?? "",
+        report.config.license ?? "",
       ]),
     );
   }

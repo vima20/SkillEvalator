@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  benefitReportToCsv,
   benefitReportToMarkdown,
   buildBenefitReport,
   loadRunResult,
@@ -25,6 +26,15 @@ export async function GET(
         headers: {
           "content-type": "text/markdown; charset=utf-8",
           "content-disposition": `inline; filename="${runId}-benefit.md"`,
+        },
+      });
+    }
+    if (format === "csv") {
+      return new NextResponse(benefitReportToCsv(report), {
+        headers: {
+          "content-type": "text/csv; charset=utf-8",
+          "content-disposition": `attachment; filename="${runId}-benefit.csv"`,
+          "cache-control": "no-store",
         },
       });
     }

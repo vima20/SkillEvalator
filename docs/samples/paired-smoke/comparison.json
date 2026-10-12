@@ -1,0 +1,76 @@
+{
+  "evaluationId": "eval_smoke_1791795036807",
+  "baselineRunId": "run_smoke_base_1791795036807",
+  "candidateRunId": "run_smoke_cand_1791795036808",
+  "evalSkillId": "code-debugging-eval",
+  "taskSetId": "cde-v1",
+  "mode": "dry-run",
+  "modelId": "gpt-4o-mini",
+  "baselineScore": 0,
+  "candidateScore": 1,
+  "lift": 1,
+  "costUsd": 0,
+  "latencyMs": 2,
+  "verdict": "PASS",
+  "rationale": "Candidate improves on baseline by 100.0 pp (need ≥ 5 pp). Lift 1.000 (candidate 1.000 − baseline 0.000). Task deltas: 3 improved, 0 regressed.",
+  "baselineStatus": "ok",
+  "candidateStatus": "ok",
+  "capture": {
+    "githubUrl": "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+    "commit": "904b9bbdd73e6e119837842b514fb825905097dd",
+    "license": "MIT",
+    "dependencies": [
+      "node"
+    ],
+    "skillVersion": "c7356e004929b61e",
+    "role": "candidate",
+    "promptHash": "2e53f7eca51fc5c5",
+    "promptPreview": "﻿---\r\nname: code-debugging-eval\r\ndescription: Minimal prompt — fix a single buggy JavaScript file so its tests pass. Shares task set cde-v1 with code-debugging-eval-checklist.\r\n---\r\n\r\n# Code debugging",
+    "promptKind": "skill_md",
+    "env": {
+      "fakeProduce": true,
+      "grade": "host_script",
+      "temperature": 0,
+      "seed": 42
+    },
+    "capturedAt": "2026-10-12T08:50:36.807Z"
+  },
+  "parity": {
+    "ok": true,
+    "issues": []
+  },
+  "perTask": [
+    {
+      "taskId": "bug-01",
+      "baselineScore": 0,
+      "candidateScore": 1,
+      "delta": 1,
+      "baselineStatus": "failed",
+      "candidateStatus": "ok",
+      "regression": false,
+      "improvement": true
+    },
+    {
+      "taskId": "bug-03",
+      "baselineScore": 0,
+      "candidateScore": 1,
+      "delta": 1,
+      "baselineStatus": "failed",
+      "candidateStatus": "ok",
+      "regression": false,
+      "improvement": true
+    },
+    {
+      "taskId": "bug-08",
+      "baselineScore": 0,
+      "candidateScore": 1,
+      "delta": 1,
+      "baselineStatus": "failed",
+      "candidateStatus": "ok",
+      "regression": false,
+      "improvement": true
+    }
+  ],
+  "regressions": 0,
+  "improvements": 3
+}

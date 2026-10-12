@@ -36,6 +36,13 @@ export function BenefitActions({
       >
         Download .md
       </a>
+      <a
+        className="btn btn-ghost btn-compact"
+        href={`/api/runs/${encodeURIComponent(runId)}/benefit?format=csv`}
+        download={`${runId}-benefit.csv`}
+      >
+        Download CSV
+      </a>
       {error ? (
         <p className="msg error" role="alert">
           {error}

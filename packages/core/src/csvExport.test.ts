@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { buildBenefitReport } from "./benefitReport.js";
 import { compareBaselineCandidate } from "./comparison.js";
-import { comparisonToCsv, runResultToCsv } from "./csvExport.js";
+import {
+  benefitReportToCsv,
+  comparisonToCsv,
+  runResultToCsv,
+} from "./csvExport.js";
 import type { RunResult } from "./schema.js";
 
 function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): RunResult {
@@ -61,5 +66,17 @@ describe("comparisonToCsv", () => {
     expect(csv).toContain("delta");
     expect(csv).toContain("bug-01");
     expect(csv).toContain("PASS");
+  });
+});
+
+describe("benefitReportToCsv", () => {
+  it("exports recommendation and tasks", () => {
+    const report = buildBenefitReport(
+      sample({ runId: "r1", role: "candidate", score: 1 }),
+    );
+    const csv = benefitReportToCsv(report);
+    expect(csv).toContain("recommendation");
+    expect(csv).toContain("r1");
+    expect(csv).toContain("bug-01");
   });
 });

@@ -1,0 +1,105 @@
+{
+  "runId": "run_smoke_base_1791795036807",
+  "evalSkillId": "code-debugging-eval",
+  "evalSkillVersion": "c7356e004929b61e",
+  "evalSkillGithubUrl": "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+  "capture": {
+    "githubUrl": "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+    "commit": "904b9bbdd73e6e119837842b514fb825905097dd",
+    "license": "MIT",
+    "dependencies": [
+      "node"
+    ],
+    "skillVersion": "c7356e004929b61e",
+    "role": "baseline",
+    "promptHash": "6ae14a15cbea716e",
+    "promptPreview": "neutral-smoke-prompt",
+    "promptKind": "baseline_neutral",
+    "env": {
+      "fakeProduce": true,
+      "grade": "host_script",
+      "temperature": 0,
+      "seed": 42
+    },
+    "capturedAt": "2026-10-12T08:50:36.807Z"
+  },
+  "evaluationId": "eval_smoke_1791795036807",
+  "role": "baseline",
+  "taskSetId": "cde-v1",
+  "taskIds": [
+    "bug-01",
+    "bug-03",
+    "bug-08"
+  ],
+  "pipeline": {
+    "produce": "model",
+    "grade": "host_script"
+  },
+  "modelId": "gpt-4o-mini",
+  "decoding": {
+    "temperature": 0,
+    "top_p": 1,
+    "seed": 42
+  },
+  "repeats": 1,
+  "aggregate": "mean",
+  "scoreSpread": 0,
+  "perTask": [
+    {
+      "taskId": "bug-01",
+      "scriptResults": [
+        {
+          "name": "grade",
+          "exitCode": 1,
+          "summary": "node:assert:152\r\n  throw new AssertionError(obj);\r\n  ^\r\n\r\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\r\n\r\n0 !== 1\r\n\r\n    at Object.<anonymous> (C:\\Users\\OMISTAJA\\AppData\\Local\\Temp\\cde-grade-Zh2hId\\test.js:4:8)\r\n    at Module._compile (node:internal/modules/cjs/loader:1761:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1893:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1481:32)\r\n    at Module._load (node:internal/modules/cjs/loader:1300:12)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)\r\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\r\n    at node:internal/main/run_main_module:33:47 {\r\n  generatedMessage: true,\r\n  code: 'ERR_ASSERTION',\r\n  actual: 0,\r\n  expected: 1,\r\n  operator: 'strictEqual',\r\n  diff: 'simple'\r\n}\r\n\r\nNode.js v24.12.0\r\n"
+        }
+      ],
+      "score": 0,
+      "status": "failed",
+      "diffRatio": 1
+    },
+    {
+      "taskId": "bug-03",
+      "scriptResults": [
+        {
+          "name": "grade",
+          "exitCode": 1,
+          "summary": "C:\\Users\\OMISTAJA\\AppData\\Local\\Temp\\cde-grade-Giq0FZ\\user.js:2\r\n  return user.profile.name.toUpperCase();\r\n              ^\r\n\r\nTypeError: Cannot read properties of null (reading 'profile')\r\n    at displayName (C:\\Users\\OMISTAJA\\AppData\\Local\\Temp\\cde-grade-Giq0FZ\\user.js:2:15)\r\n    at Object.<anonymous> (C:\\Users\\OMISTAJA\\AppData\\Local\\Temp\\cde-grade-Giq0FZ\\test.js:4:20)\r\n    at Module._compile (node:internal/modules/cjs/loader:1761:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1893:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1481:32)\r\n    at Module._load (node:internal/modules/cjs/loader:1300:12)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)\r\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\r\n    at node:internal/main/run_main_module:33:47\r\n\r\nNode.js v24.12.0\r\n"
+        }
+      ],
+      "score": 0,
+      "status": "failed",
+      "diffRatio": 1
+    },
+    {
+      "taskId": "bug-08",
+      "scriptResults": [
+        {
+          "name": "grade",
+          "exitCode": 1,
+          "summary": "node:assert:152\r\n  throw new AssertionError(obj);\r\n  ^\r\n\r\nAssertionError [ERR_ASSERTION]: Missing expected exception.\r\n    at Object.<anonymous> (C:\\Users\\OMISTAJA\\AppData\\Local\\Temp\\cde-grade-4AanV5\\test.js:6:8)\r\n    at Module._compile (node:internal/modules/cjs/loader:1761:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1893:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1481:32)\r\n    at Module._load (node:internal/modules/cjs/loader:1300:12)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)\r\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\r\n    at node:internal/main/run_main_module:33:47 {\r\n  generatedMessage: false,\r\n  code: 'ERR_ASSERTION',\r\n  actual: undefined,\r\n  expected: /traversal/i,\r\n  operator: 'throws',\r\n  diff: 'simple'\r\n}\r\n\r\nNode.js v24.12.0\r\n"
+        }
+      ],
+      "score": 0,
+      "status": "failed",
+      "diffRatio": 1
+    }
+  ],
+  "score": 0,
+  "subscores": {},
+  "rationale": "Smoke baseline (known-bad artifacts).",
+  "findings": [
+    "smoke-paired-evaluation"
+  ],
+  "costUsd": 0,
+  "latencyMs": 1,
+  "tokens": {
+    "promptTokens": 0,
+    "completionTokens": 0,
+    "totalTokens": 0
+  },
+  "status": "ok",
+  "startedAt": "2026-10-12T08:50:36.807Z",
+  "finishedAt": "2026-10-12T08:50:38.775Z",
+  "mode": "dry-run"
+}

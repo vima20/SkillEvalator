@@ -1,0 +1,9 @@
+{
+  "evaluationId": "eval_smoke_1791795036807",
+  "evalSkillId": "code-debugging-eval",
+  "mode": "dry-run",
+  "baselineRunId": "run_smoke_base_1791795036807",
+  "candidateRunId": "run_smoke_cand_1791795036808",
+  "createdAt": "2026-10-12T08:50:36.807Z",
+  "smoke": true
+}

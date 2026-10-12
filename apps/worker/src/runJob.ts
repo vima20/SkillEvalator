@@ -130,6 +130,39 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   };
   writeJsonFile(path.join(resultDir, "capture.json"), capture);
 
+  // Immutable skill snapshot for Unikie audit / re-run evidence (retry still
+  // reloads live skill by default; this folder preserves what was evaluated).
+  const snapshotDir = path.join(resultDir, "skill-snapshot");
+  fs.mkdirSync(snapshotDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(snapshotDir, "SKILL.md"),
+    role === "baseline"
+      ? `${BASELINE_NEUTRAL_PROMPT}\n`
+      : `${skill.skillMd}\n`,
+    "utf8",
+  );
+  writeJsonFile(path.join(snapshotDir, "manifest.json"), {
+    ...skill.manifest,
+    _snapshot: {
+      evalSkillId: skill.id,
+      evalSkillVersion: skill.version,
+      role,
+      promptHash,
+      promptKind,
+      capturedAt: startedAt,
+    },
+  });
+  writeJsonFile(path.join(snapshotDir, "job.json"), {
+    runId,
+    evalSkillId: skill.id,
+    mode: job.mode,
+    modelId,
+    repeats,
+    role,
+    evaluationId: job.evaluationId,
+    createdAt: job.createdAt,
+  });
+
   const statusPath = path.join(resultDir, "status.json");
   const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
 

@@ -1,0 +1,105 @@
+{
+  "runId": "run_smoke_cand_1791795036808",
+  "evalSkillId": "code-debugging-eval",
+  "evalSkillVersion": "c7356e004929b61e",
+  "evalSkillGithubUrl": "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+  "capture": {
+    "githubUrl": "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+    "commit": "904b9bbdd73e6e119837842b514fb825905097dd",
+    "license": "MIT",
+    "dependencies": [
+      "node"
+    ],
+    "skillVersion": "c7356e004929b61e",
+    "role": "candidate",
+    "promptHash": "2e53f7eca51fc5c5",
+    "promptPreview": "﻿---\r\nname: code-debugging-eval\r\ndescription: Minimal prompt — fix a single buggy JavaScript file so its tests pass. Shares task set cde-v1 with code-debugging-eval-checklist.\r\n---\r\n\r\n# Code debugging",
+    "promptKind": "skill_md",
+    "env": {
+      "fakeProduce": true,
+      "grade": "host_script",
+      "temperature": 0,
+      "seed": 42
+    },
+    "capturedAt": "2026-10-12T08:50:36.807Z"
+  },
+  "evaluationId": "eval_smoke_1791795036807",
+  "role": "candidate",
+  "taskSetId": "cde-v1",
+  "taskIds": [
+    "bug-01",
+    "bug-03",
+    "bug-08"
+  ],
+  "pipeline": {
+    "produce": "model",
+    "grade": "host_script"
+  },
+  "modelId": "gpt-4o-mini",
+  "decoding": {
+    "temperature": 0,
+    "top_p": 1,
+    "seed": 42
+  },
+  "repeats": 1,
+  "aggregate": "mean",
+  "scoreSpread": 0,
+  "perTask": [
+    {
+      "taskId": "bug-01",
+      "scriptResults": [
+        {
+          "name": "grade",
+          "exitCode": 0,
+          "summary": "ok\n"
+        }
+      ],
+      "score": 1,
+      "status": "ok",
+      "diffRatio": 0
+    },
+    {
+      "taskId": "bug-03",
+      "scriptResults": [
+        {
+          "name": "grade",
+          "exitCode": 0,
+          "summary": "ok\n"
+        }
+      ],
+      "score": 1,
+      "status": "ok",
+      "diffRatio": 0
+    },
+    {
+      "taskId": "bug-08",
+      "scriptResults": [
+        {
+          "name": "grade",
+          "exitCode": 0,
+          "summary": "ok\n"
+        }
+      ],
+      "score": 1,
+      "status": "ok",
+      "diffRatio": 0
+    }
+  ],
+  "score": 1,
+  "subscores": {},
+  "rationale": "Smoke candidate (known-good artifacts).",
+  "findings": [
+    "smoke-paired-evaluation"
+  ],
+  "costUsd": 0,
+  "latencyMs": 1,
+  "tokens": {
+    "promptTokens": 0,
+    "completionTokens": 0,
+    "totalTokens": 0
+  },
+  "status": "ok",
+  "startedAt": "2026-10-12T08:50:36.807Z",
+  "finishedAt": "2026-10-12T08:50:38.775Z",
+  "mode": "dry-run"
+}

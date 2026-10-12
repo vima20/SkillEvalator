@@ -21,7 +21,7 @@ Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` 
 
 CI: `npm run ci` runs unit tests, `typecheck`, and `smoke:skills`. New Run defaults to **baseline↔candidate**, cost estimate, and GitHub **Find/Receive** import.
 
-Unikie handover: [docs/UNIKIE-HANDOVER.md](docs/UNIKIE-HANDOVER.md).
+Unikie handover: [docs/UNIKIE-HANDOVER.md](docs/UNIKIE-HANDOVER.md) · D1: [docs/D1-TASK-FAMILY.md](docs/D1-TASK-FAMILY.md).
 
 ## Models
 
