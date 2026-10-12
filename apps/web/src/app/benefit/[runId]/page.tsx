@@ -85,8 +85,50 @@ export default async function BenefitReportPage({
           <h1>{report.title}</h1>
           <p>{report.generatedAt}</p>
         </div>
-        <BenefitActions runId={runId} markdown={markdown} />
+        <BenefitActions
+          runId={runId}
+          markdown={markdown}
+          evaluationId={result.evaluationId}
+        />
       </header>
+
+      {(result.role ?? "candidate") === "baseline" ? (
+        <div className="panel callout-warn">
+          <strong>Baseline leg</strong>
+          <p>
+            This is the neutral-prompt baseline, not a skill recommendation.
+            Open{" "}
+            {result.evaluationId ? (
+              <Link href={`/comparison/${result.evaluationId}`}>
+                Comparison
+              </Link>
+            ) : (
+              "Comparison"
+            )}{" "}
+            for PASS/FAIL lift, or the candidate Benefit Report.
+          </p>
+        </div>
+      ) : (
+        <div className="panel callout-info">
+          <strong>Comparison vs Benefit</strong>
+          <p>
+            USE / DO NOT USE below is a <em>single-run</em> recommendation.
+            Paired baseline↔candidate <strong>PASS/FAIL</strong>
+            {result.evaluationId ? (
+              <>
+                {" "}
+                is on{" "}
+                <Link href={`/comparison/${result.evaluationId}`}>
+                  Comparison
+                </Link>
+              </>
+            ) : (
+              " lives under Comparison when you ran baseline↔candidate"
+            )}
+            .
+          </p>
+        </div>
+      )}
 
       <section className="panel rating-hero">
         <StarRating

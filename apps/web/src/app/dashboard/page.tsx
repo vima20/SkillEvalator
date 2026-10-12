@@ -19,6 +19,8 @@ type Row = {
   githubUrl?: string;
   skillId: string;
   skillVersion: string;
+  evaluationId?: string;
+  role: string;
 };
 
 /** Same fixed task set + model → compare different skill implementations. */
@@ -39,8 +41,10 @@ export default function DashboardPage() {
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir());
   const hasActive = allRuns.some((r) => runIsActive(r.status));
+  // Leaderboard: candidate legs only (baseline is Comparison input, not a skill impl).
   const rows: Row[] = allRuns.flatMap((r) => {
     if (!r.result) return [];
+    if ((r.result.role ?? "candidate") === "baseline") return [];
     return [
       {
         runId: r.runId,
@@ -51,6 +55,8 @@ export default function DashboardPage() {
         githubUrl: r.result.evalSkillGithubUrl,
         skillId: r.result.evalSkillId,
         skillVersion: r.result.evalSkillVersion,
+        evaluationId: r.result.evaluationId,
+        role: r.result.role ?? "candidate",
       },
     ];
   });
@@ -80,9 +86,10 @@ export default function DashboardPage() {
           <p className="eyebrow">Unikie · Overview</p>
           <h1>Dashboard</h1>
           <p>
-            Runs grouped by task set and model so you can compare different
-            implementations of the same skill. Cross-model bake-off is out of
-            scope for this MVP.
+            Candidate runs grouped by task set and model (skill version
+            leaderboard). Baseline↔candidate lift lives under{" "}
+            <Link href="/comparison">Comparison</Link>. Cross-model bake-off is
+            out of scope for this MVP.
           </p>
         </div>
         <div className="page-header-actions">
@@ -186,7 +193,7 @@ export default function DashboardPage() {
                 {multiImpl ? (
                   <div className="impl-compare">
                     <p className="impl-compare-label">
-                      Same skill task set — implementation leaderboard
+                      Same task set — candidate skill version leaderboard
                     </p>
                     <ul className="impl-compare-list">
                       {implSummaries.map((impl, i) => {
@@ -290,6 +297,17 @@ export default function DashboardPage() {
                             >
                               Benefit
                             </Link>
+                            {r.evaluationId ? (
+                              <>
+                                {" "}
+                                <Link
+                                  className="btn btn-ghost btn-compact"
+                                  href={`/comparison/${r.evaluationId}`}
+                                >
+                                  Comparison
+                                </Link>
+                              </>
+                            ) : null}
                           </td>
                         </tr>
                       ))}

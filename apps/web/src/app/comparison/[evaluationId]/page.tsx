@@ -84,29 +84,11 @@ export default async function ComparisonDetailPage({
         </header>
         <ComparisonPending
           evaluationId={evaluationId}
+          baselineRunId={meta.baselineRunId}
+          candidateRunId={meta.candidateRunId}
           baselineStatus={baselineStatus}
           candidateStatus={candidateStatus}
         />
-        <div className="panel" style={{ marginTop: "1rem" }}>
-          <dl className="meta-list">
-            <div>
-              <dt>Baseline run</dt>
-              <dd>
-                <Link href={`/runs/${meta.baselineRunId}`}>
-                  {meta.baselineRunId}
-                </Link>
-              </dd>
-            </div>
-            <div>
-              <dt>Candidate run</dt>
-              <dd>
-                <Link href={`/runs/${meta.candidateRunId}`}>
-                  {meta.candidateRunId}
-                </Link>
-              </dd>
-            </div>
-          </dl>
-        </div>
       </div>
     );
   }
@@ -154,8 +136,18 @@ export default async function ComparisonDetailPage({
         </div>
       </header>
 
+      <div className="panel callout-info">
+        <strong>Comparison vs Benefit</strong>
+        <p>
+          <strong>{comparison.verdict}</strong> here is the paired lift gate
+          (baseline↔candidate). Benefit{" "}
+          <Link href={`/benefit/${meta.candidateRunId}`}>USE / DO NOT USE</Link>{" "}
+          is the candidate adoption narrative — open it after reviewing lift.
+        </p>
+      </div>
+
       <section className={verdictClass(comparison.verdict)}>
-        <p className="eyebrow">Unikie verdict</p>
+        <p className="eyebrow">Unikie paired verdict</p>
         <p className="verdict-headline">{comparison.verdict}</p>
         <p className="verdict-decision">
           Lift{" "}

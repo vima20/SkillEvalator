@@ -12,14 +12,14 @@ const items = [
     match: (p: string) => p.startsWith("/comparison"),
   },
   {
+    href: "/benefit",
+    label: "Benefit",
+    match: (p: string) => p.startsWith("/benefit"),
+  },
+  {
     href: "/dashboard",
     label: "Dashboard",
     match: (p: string) => p.startsWith("/dashboard"),
-  },
-  {
-    href: "/benefit",
-    label: "Benefit Report",
-    match: (p: string) => p.startsWith("/benefit"),
   },
 ] as const;
 

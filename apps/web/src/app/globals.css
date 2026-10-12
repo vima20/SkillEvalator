@@ -778,9 +778,13 @@ code {
   background: var(--warn-soft);
 }
 
-.callout-warn {
+.callout-warn,
+.callout-info {
   padding: 16px 18px;
   margin-bottom: 18px;
+}
+
+.callout-warn {
   border-color: rgba(240, 180, 41, 0.35);
   background: linear-gradient(
     180deg,
@@ -789,17 +793,63 @@ code {
   );
 }
 
-.callout-warn strong {
+.callout-info {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: linear-gradient(
+    180deg,
+    rgba(56, 189, 248, 0.08),
+    rgba(16, 24, 40, 0.9)
+  );
+}
+
+.callout-warn strong,
+.callout-info strong {
   display: block;
   margin-bottom: 6px;
-  color: var(--warn);
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.callout-warn p {
+.callout-warn strong {
+  color: var(--warn);
+}
+
+.callout-info strong {
+  color: #7dd3fc;
+}
+
+.callout-warn p,
+.callout-info p {
   margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.role-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-strong);
+}
+
+.role-chip.role-baseline {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.role-chip.role-candidate {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.run-subtitle {
+  margin: 6px 0 0;
   color: var(--text-muted);
   font-size: 14px;
 }

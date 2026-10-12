@@ -74,18 +74,20 @@ export default function RunsPage() {
                       <td>
                         <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
                         {evaluationId ? (
-                          <>
-                            <br />
-                            <Link
-                              className="hint"
-                              href={`/comparison/${evaluationId}`}
-                            >
-                              {evaluationId}
+                          <div className="cell-meta">
+                            <Link href={`/comparison/${evaluationId}`}>
+                              Comparison
                             </Link>
-                          </>
+                          </div>
                         ) : null}
                       </td>
-                      <td>{role}</td>
+                      <td>
+                        {role === "baseline" || role === "candidate" ? (
+                          <span className={`role-chip role-${role}`}>{role}</span>
+                        ) : (
+                          role
+                        )}
+                      </td>
                       <td>
                         <span
                           className={`${statusBadgeClass(r.status)}${active ? " badge-live" : ""}`}

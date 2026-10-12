@@ -10,12 +10,15 @@ export default function BenefitIndexPage() {
   healOrphanStatuses();
   const runs = listRuns(resultsDir())
     .filter((r) => r.result)
+    // Recommend surface: candidate skill only (baseline is Comparison input).
+    .filter((r) => (r.result!.role ?? "candidate") === "candidate")
     .map((r) => {
       const report = buildBenefitReport(r.result!);
       return {
         runId: r.runId,
         score: r.result!.score,
         mode: r.result!.mode,
+        evaluationId: r.result!.evaluationId,
         verdict: report.verdict,
         rating: report.rating,
       };
@@ -24,13 +27,23 @@ export default function BenefitIndexPage() {
   return (
     <div>
       <header className="page-header">
-        <p className="eyebrow">Unikie · Decision artifact</p>
+        <p className="eyebrow">Unikie · Recommend</p>
         <h1>Benefit Report</h1>
         <p>
-          Scorecard, config, cost, and constraints for a completed run. Not
-          KH-adoption proof — pick a run to open its report.
+          Candidate-skill decision artifact (USE / DO NOT USE). Paired{" "}
+          <strong>PASS/FAIL lift</strong> lives under Comparison — not here.
         </p>
       </header>
+
+      <div className="panel callout-info">
+        <strong>Comparison vs Benefit</strong>
+        <p>
+          <Link href="/comparison">Comparison</Link> = baseline↔candidate lift
+          (PASS/FAIL). Benefit = single-run recommendation for the{" "}
+          <em>candidate</em> skill only. Baseline legs are omitted from this
+          list.
+        </p>
+      </div>
 
       <div className="panel callout-warn">
         <strong>Forbidden inference</strong>
@@ -43,8 +56,8 @@ export default function BenefitIndexPage() {
       <div className="panel">
         {runs.length === 0 ? (
           <EmptyState
-            title="No completed runs"
-            body="Finish a dry-run or official evaluation before generating a Benefit Report."
+            title="No candidate reports yet"
+            body="Finish a candidate run (paired evaluation or single-leg) before opening a Benefit Report."
             actionHref="/"
             actionLabel="Start a run"
           />
@@ -66,6 +79,14 @@ export default function BenefitIndexPage() {
                       <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
                       <div className="cell-meta">
                         {r.mode} · {r.rating.starsDisplay} {r.rating.grade}
+                        {r.evaluationId ? (
+                          <>
+                            {" · "}
+                            <Link href={`/comparison/${r.evaluationId}`}>
+                              Comparison
+                            </Link>
+                          </>
+                        ) : null}
                       </div>
                     </td>
                     <td>

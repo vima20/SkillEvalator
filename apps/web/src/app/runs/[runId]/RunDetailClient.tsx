@@ -260,6 +260,27 @@ export function RunDetailClient({
           <span>{runId}</span>
         </p>
         <h1 className="run-title">{runId}</h1>
+        {result ? (
+          <p className="run-subtitle">
+            <code>{result.evalSkillId}</code>
+            {result.role ? (
+              <>
+                {" "}
+                · <span className={`role-chip role-${result.role}`}>{result.role}</span>
+              </>
+            ) : null}{" "}
+            · {result.mode}
+            {result.evaluationId ? (
+              <>
+                {" "}
+                ·{" "}
+                <Link href={`/comparison/${result.evaluationId}`}>
+                  Comparison
+                </Link>
+              </>
+            ) : null}
+          </p>
+        ) : null}
         <p>
           {pollError
             ? "Live updates paused."
@@ -279,7 +300,17 @@ export function RunDetailClient({
         </div>
         {result && !polling ? (
           <p className="hint">
-            <Link href={`/benefit/${runId}`}>Open Benefit Report →</Link>
+            {(result.role ?? "candidate") === "baseline" ? (
+              result.evaluationId ? (
+                <Link href={`/comparison/${result.evaluationId}`}>
+                  Open paired Comparison →
+                </Link>
+              ) : (
+                "Baseline leg — use Comparison for PASS/FAIL (no skill Benefit)."
+              )
+            ) : (
+              <Link href={`/benefit/${runId}`}>Open Benefit Report →</Link>
+            )}
           </p>
         ) : null}
       </header>

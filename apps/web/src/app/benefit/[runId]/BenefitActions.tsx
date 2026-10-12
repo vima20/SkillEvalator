@@ -1,13 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export function BenefitActions({
   runId,
   markdown,
+  evaluationId,
 }: {
   runId: string;
   markdown: string;
+  evaluationId?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +28,18 @@ export function BenefitActions({
   }
 
   return (
-    <div className="action-row">
+    <div className="action-row" style={{ flexWrap: "wrap", gap: 8 }}>
+      <Link className="btn btn-ghost btn-compact" href={`/runs/${runId}`}>
+        Run detail
+      </Link>
+      {evaluationId ? (
+        <Link
+          className="btn btn-ghost btn-compact"
+          href={`/comparison/${evaluationId}`}
+        >
+          Comparison
+        </Link>
+      ) : null}
       <button type="button" className="btn btn-ghost btn-compact" onClick={copyMd}>
         {copied ? "Copied" : "Copy Markdown"}
       </button>

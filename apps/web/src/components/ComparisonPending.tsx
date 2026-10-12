@@ -1,14 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { statusBadgeClass } from "@/lib/status";
 
 export function ComparisonPending({
   evaluationId,
+  baselineRunId,
+  candidateRunId,
   baselineStatus,
   candidateStatus,
 }: {
   evaluationId: string;
+  baselineRunId?: string;
+  candidateRunId?: string;
   baselineStatus?: string;
   candidateStatus?: string;
 }) {
@@ -32,11 +38,31 @@ export function ComparisonPending({
       <dl className="meta-list">
         <div>
           <dt>Baseline</dt>
-          <dd>{baselineStatus ?? "missing"}</dd>
+          <dd>
+            <span className={statusBadgeClass(baselineStatus)}>
+              {baselineStatus ?? "missing"}
+            </span>
+            {baselineRunId ? (
+              <>
+                {" "}
+                <Link href={`/runs/${baselineRunId}`}>{baselineRunId}</Link>
+              </>
+            ) : null}
+          </dd>
         </div>
         <div>
           <dt>Candidate</dt>
-          <dd>{candidateStatus ?? "missing"}</dd>
+          <dd>
+            <span className={statusBadgeClass(candidateStatus)}>
+              {candidateStatus ?? "missing"}
+            </span>
+            {candidateRunId ? (
+              <>
+                {" "}
+                <Link href={`/runs/${candidateRunId}`}>{candidateRunId}</Link>
+              </>
+            ) : null}
+          </dd>
         </div>
         <div>
           <dt>Evaluation</dt>
