@@ -289,3 +289,58 @@ export function resolveComparisonLegs(opts: {
   const matched = opts.scanByEvaluationId?.() ?? [];
   return pairEvaluationRuns(matched);
 }
+
+const DEFAULT_CANCELLABLE = new Set([
+  "queued",
+  "running",
+  "cancel_requested",
+]);
+
+/**
+ * Sibling run to cancel with a paired leg.
+ * When evaluation.json exists: cascade only if runId is a current meta leg.
+ * Never unordered readdir-first (avoids killing the live retry child).
+ * When meta is missing (crash mid enqueue): at most one other cancellable run.
+ */
+export function resolvePairedCancelSibling(opts: {
+  runId: string;
+  role?: string;
+  meta: ComparisonMetaLegs | null;
+  /** Other runs sharing evaluationId (may include terminal). */
+  peers: Array<{ runId: string; role?: string; status?: string }>;
+  cancellableStatuses?: Set<string>;
+}): string | null {
+  const runId = opts.runId;
+  const cancellable = opts.cancellableStatuses ?? DEFAULT_CANCELLABLE;
+
+  if (opts.meta) {
+    const { baselineRunId, candidateRunId } = opts.meta;
+    if (baselineRunId === runId && candidateRunId !== runId) {
+      return candidateRunId;
+    }
+    if (candidateRunId === runId && baselineRunId !== runId) {
+      return baselineRunId;
+    }
+    // Superseded / stale runId not in meta — do not cascade.
+    return null;
+  }
+
+  const live = opts.peers.filter(
+    (p) => p.runId !== runId && cancellable.has(p.status ?? ""),
+  );
+  if (live.length === 0) return null;
+  if (live.length === 1) return live[0]!.runId;
+
+  const wantOpposite =
+    opts.role === "baseline"
+      ? "candidate"
+      : opts.role === "candidate"
+        ? "baseline"
+        : null;
+  if (wantOpposite) {
+    const opposite = live.filter((p) => (p.role ?? "") === wantOpposite);
+    if (opposite.length === 1) return opposite[0]!.runId;
+  }
+  // Ambiguous — refuse to guess.
+  return null;
+}

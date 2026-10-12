@@ -5,6 +5,7 @@ import {
   assertSafeId,
   loadRunStatus,
   readJsonFile,
+  resolvePairedCancelSibling,
   writeJsonFile,
 } from "@skillevalator/core";
 import { jobsDir, resultsDir } from "@/lib/paths";
@@ -92,32 +93,45 @@ function requestCancelOne(runId: string): CancelOutcome {
   };
 }
 
-/** Sibling baseline/candidate run for the same Comparison, if any. */
-function pairedSiblingRunId(runId: string, evaluationId: string): string | null {
-  const root = resultsDir();
+function loadEvaluationMetaLegs(evaluationId: string): {
+  baselineRunId: string;
+  candidateRunId: string;
+} | null {
   try {
     const metaPath = path.join(
-      root,
+      resultsDir(),
       assertSafeId(evaluationId, "evaluationId"),
       "evaluation.json",
     );
-    if (fs.existsSync(metaPath)) {
-      const meta = readJsonFile(metaPath) as {
-        baselineRunId?: string;
-        candidateRunId?: string;
-      };
-      const baseline =
-        typeof meta.baselineRunId === "string" ? meta.baselineRunId : null;
-      const candidate =
-        typeof meta.candidateRunId === "string" ? meta.candidateRunId : null;
-      if (baseline === runId && candidate) return candidate;
-      if (candidate === runId && baseline) return baseline;
+    if (!fs.existsSync(metaPath)) return null;
+    const meta = readJsonFile(metaPath) as {
+      baselineRunId?: string;
+      candidateRunId?: string;
+    };
+    if (
+      typeof meta.baselineRunId !== "string" ||
+      typeof meta.candidateRunId !== "string"
+    ) {
+      return null;
     }
+    return {
+      baselineRunId: meta.baselineRunId,
+      candidateRunId: meta.candidateRunId,
+    };
   } catch {
-    /* fall through to status scan */
+    return null;
   }
+}
 
-  // Fallback when evaluation.json is missing (crash mid paired enqueue).
+/** Sibling baseline/candidate run for the same Comparison, if any. */
+function pairedSiblingRunId(
+  runId: string,
+  evaluationId: string,
+  role?: string,
+): string | null {
+  const root = resultsDir();
+  const meta = loadEvaluationMetaLegs(evaluationId);
+  const peers: Array<{ runId: string; role?: string; status?: string }> = [];
   try {
     for (const name of fs.readdirSync(root)) {
       if (name === runId || name.startsWith("eval_")) continue;
@@ -127,12 +141,23 @@ function pairedSiblingRunId(runId: string, evaluationId: string): string | null 
         continue;
       }
       const st = loadRunStatus(root, name);
-      if (st?.evaluationId === evaluationId) return name;
+      if (st?.evaluationId !== evaluationId) continue;
+      peers.push({
+        runId: name,
+        role: st.role,
+        status: st.status,
+      });
     }
   } catch {
     /* ignore */
   }
-  return null;
+  return resolvePairedCancelSibling({
+    runId,
+    role,
+    meta,
+    peers,
+    cancellableStatuses: CANCELLABLE,
+  });
 }
 
 export async function POST(
@@ -145,6 +170,7 @@ export async function POST(
     const prior = loadRunStatus(resultsDir(), runId);
     const evaluationId =
       typeof prior?.evaluationId === "string" ? prior.evaluationId : null;
+    const role = typeof prior?.role === "string" ? prior.role : undefined;
 
     const primary = requestCancelOne(runId);
     if (!primary.ok) {
@@ -156,7 +182,7 @@ export async function POST(
 
     let siblingCancelled: string | null = null;
     if (evaluationId) {
-      const sibling = pairedSiblingRunId(runId, evaluationId);
+      const sibling = pairedSiblingRunId(runId, evaluationId, role);
       if (sibling && sibling !== runId) {
         const sib = requestCancelOne(sibling);
         if (sib.ok && !sib.already) siblingCancelled = sibling;

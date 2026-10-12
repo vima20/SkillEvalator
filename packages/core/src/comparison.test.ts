@@ -3,7 +3,8 @@ import {
   LIFT_PASS_DELTA,
   compareBaselineCandidate,
   pairEvaluationRuns,
-     resolveComparisonLegs,
+  resolveComparisonLegs,
+  resolvePairedCancelSibling,
 } from "./comparison.js";
 import type { RunResult } from "./schema.js";
 
@@ -234,5 +235,68 @@ describe("resolveComparisonLegs", () => {
     });
     expect(baseline?.runId).toBe("run_base");
     expect(candidate?.runId).toBe("run_cand");
+  });
+});
+
+describe("resolvePairedCancelSibling", () => {
+  it("cascades only the opposite meta leg", () => {
+    expect(
+      resolvePairedCancelSibling({
+        runId: "run_base",
+        role: "baseline",
+        meta: {
+          baselineRunId: "run_base",
+          candidateRunId: "run_cand",
+        },
+        peers: [
+          { runId: "run_cand", role: "candidate", status: "running" },
+          { runId: "run_old", role: "candidate", status: "running" },
+        ],
+      }),
+    ).toBe("run_cand");
+  });
+
+  it("does not cascade when runId is superseded (not in meta)", () => {
+    expect(
+      resolvePairedCancelSibling({
+        runId: "run_old_cand",
+        role: "candidate",
+        meta: {
+          baselineRunId: "run_base",
+          candidateRunId: "run_new_cand",
+        },
+        peers: [
+          { runId: "run_base", role: "baseline", status: "running" },
+          { runId: "run_new_cand", role: "candidate", status: "running" },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("without meta cancels the sole live peer", () => {
+    expect(
+      resolvePairedCancelSibling({
+        runId: "run_base",
+        role: "baseline",
+        meta: null,
+        peers: [
+          { runId: "run_cand", role: "candidate", status: "queued" },
+          { runId: "run_done", role: "candidate", status: "ok" },
+        ],
+      }),
+    ).toBe("run_cand");
+  });
+
+  it("without meta refuses ambiguous peers", () => {
+    expect(
+      resolvePairedCancelSibling({
+        runId: "run_x",
+        meta: null,
+        peers: [
+          { runId: "run_a", status: "queued" },
+          { runId: "run_b", status: "running" },
+        ],
+      }),
+    ).toBeNull();
   });
 });
