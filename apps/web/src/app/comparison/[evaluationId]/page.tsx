@@ -88,6 +88,8 @@ export default async function ComparisonDetailPage({
           candidateRunId={meta.candidateRunId}
           baselineStatus={baselineStatus}
           candidateStatus={candidateStatus}
+          baselineHasResult={!!baseline}
+          candidateHasResult={!!candidate}
         />
       </div>
     );

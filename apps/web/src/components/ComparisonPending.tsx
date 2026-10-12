@@ -14,25 +14,50 @@ export function ComparisonPending({
   candidateRunId,
   baselineStatus,
   candidateStatus,
+  baselineHasResult = false,
+  candidateHasResult = false,
 }: {
   evaluationId: string;
   baselineRunId?: string;
   candidateRunId?: string;
   baselineStatus?: string;
   candidateStatus?: string;
+  /** True when that leg already has result.json (budget_stop may be settled). */
+  baselineHasResult?: boolean;
+  candidateHasResult?: boolean;
 }) {
   const router = useRouter();
   const [budgetTimedOut, setBudgetTimedOut] = useState(false);
 
-  const baselineSettled = SETTLED.has(baselineStatus ?? "");
-  const candidateSettled = SETTLED.has(candidateStatus ?? "");
-  const bothSettled = baselineSettled && candidateSettled;
-  const windDown =
-    baselineStatus === "budget_stop" || candidateStatus === "budget_stop";
-  const stillWaiting =
-    (runIsActive(baselineStatus, false) ||
-      runIsActive(candidateStatus, false)) &&
-    !budgetTimedOut;
+  const baselineWindDown =
+    baselineStatus === "budget_stop" && !baselineHasResult;
+  const candidateWindDown =
+    candidateStatus === "budget_stop" && !candidateHasResult;
+  const windDown = baselineWindDown || candidateWindDown;
+
+  // Wind-down without result stays active until result.json or orphan timeout.
+  const baselineActive =
+    runIsActive(baselineStatus, baselineHasResult) &&
+    !(baselineWindDown && budgetTimedOut);
+  const candidateActive =
+    runIsActive(candidateStatus, candidateHasResult) &&
+    !(candidateWindDown && budgetTimedOut);
+  const stillWaiting = baselineActive || candidateActive;
+
+  const baselineSettled =
+    SETTLED.has(baselineStatus ?? "") ||
+    (baselineStatus === "budget_stop" &&
+      (baselineHasResult || budgetTimedOut));
+  const candidateSettled =
+    SETTLED.has(candidateStatus ?? "") ||
+    (candidateStatus === "budget_stop" &&
+      (candidateHasResult || budgetTimedOut));
+
+  // Only unavailable when neither leg can still produce a usable scorecard.
+  // One leg may time out on budget_stop while the other is still queued/running —
+  // keep polling until that other leg settles too.
+  const unavailable =
+    !stillWaiting && baselineSettled && candidateSettled;
 
   useEffect(() => {
     if (!windDown) {
@@ -50,8 +75,6 @@ export function ComparisonPending({
     }, 4000);
     return () => window.clearInterval(id);
   }, [router, evaluationId, stillWaiting]);
-
-  const unavailable = bothSettled || budgetTimedOut;
 
   return (
     <div className="panel progress-panel">
@@ -73,7 +96,7 @@ export function ComparisonPending({
         {unavailable
           ? "Both baseline and candidate finished without a complete paired scorecard (failed, cancelled, or budget_stop without usable results). Open the run pages for details, or start a new paired evaluation."
           : windDown
-            ? "A leg hit the cost cap and is writing its final result.json. This page refreshes automatically until the scorecard is ready (or times out if the worker is stuck)."
+            ? "A leg hit the cost cap and is writing its final result.json. Polling continues while the other leg is still running (or until a short orphan timeout if wind-down stalls)."
             : "Baseline and candidate must finish before lift and PASS/FAIL can be computed. This page refreshes automatically."}
       </p>
       <dl className="meta-list">
