@@ -145,6 +145,12 @@ export default async function ComparisonDetailPage({
           >
             Benefit Report
           </Link>
+          <a
+            className="btn btn-ghost"
+            href={`/api/comparison/${evaluationId}/csv`}
+          >
+            Download CSV
+          </a>
         </div>
       </header>
 
@@ -161,6 +167,17 @@ export default async function ComparisonDetailPage({
         </p>
         <p className="verdict-rationale">{comparison.rationale}</p>
       </section>
+
+      {!comparison.parity.ok ? (
+        <div className="panel" style={{ marginTop: "1rem" }}>
+          <h2>Parity check failed</h2>
+          <ul>
+            {comparison.parity.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="split" style={{ marginTop: "1.25rem" }}>
         <div className="panel">
@@ -187,6 +204,14 @@ export default async function ComparisonDetailPage({
             <div>
               <dt>Combined latency</dt>
               <dd>{Math.round(comparison.latencyMs / 1000)}s</dd>
+            </div>
+            <div>
+              <dt>Task deltas</dt>
+              <dd>
+                {comparison.improvements} improved · {comparison.regressions}{" "}
+                regressed · parity{" "}
+                {comparison.parity.ok ? "OK" : "FAIL"}
+              </dd>
             </div>
             <div>
               <dt>Baseline status</dt>
@@ -246,9 +271,69 @@ export default async function ComparisonDetailPage({
                 <code>{capture?.skillVersion ?? "—"}</code>
               </dd>
             </div>
+            <div>
+              <dt>Prompt</dt>
+              <dd>
+                <code>{capture?.promptKind ?? "—"}</code> · hash{" "}
+                <code>{capture?.promptHash ?? "—"}</code>
+              </dd>
+            </div>
+            {capture?.env ? (
+              <div>
+                <dt>Env snapshot</dt>
+                <dd>
+                  temp={capture.env.temperature}, seed={capture.env.seed}, cap=$
+                  {capture.env.costCapUsd}, grade={capture.env.grade ?? "—"}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         </div>
       </div>
+
+      <section className="panel" style={{ marginTop: "1.25rem" }}>
+        <h2>Per-task regression</h2>
+        {comparison.perTask.length === 0 ? (
+          <p className="hint">No per-task rows yet.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Baseline</th>
+                  <th>Candidate</th>
+                  <th>Delta</th>
+                  <th>Flag</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.perTask.map((t) => (
+                  <tr key={t.taskId}>
+                    <td>
+                      <code>{t.taskId}</code>
+                    </td>
+                    <td>{fmtScore(t.baselineScore)}</td>
+                    <td>{fmtScore(t.candidateScore)}</td>
+                    <td>
+                      {t.delta !== null
+                        ? `${t.delta >= 0 ? "+" : ""}${t.delta.toFixed(3)}`
+                        : "—"}
+                    </td>
+                    <td>
+                      {t.regression
+                        ? "regression"
+                        : t.improvement
+                          ? "improved"
+                          : "flat"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

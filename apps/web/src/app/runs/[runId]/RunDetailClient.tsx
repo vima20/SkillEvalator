@@ -20,12 +20,25 @@ type Result = {
   evalSkillGithubUrl?: string;
   taskSetId: string;
   mode: string;
+  role?: string;
+  evaluationId?: string;
   perTask: PerTask[];
   costUsd?: number;
   latencyMs?: number;
   repeats?: number;
   findings?: string[];
   status?: string;
+  tokens?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  capture?: {
+    promptHash?: string;
+    promptKind?: string;
+    commit?: string;
+    license?: string;
+  };
 };
 
 type StatusFile = {
@@ -411,6 +424,12 @@ export function RunDetailClient({
                 {Math.round((result.latencyMs ?? 0) / 1000)}s
               </span>
             </div>
+            <div className="stat">
+              <span className="stat-label">Tokens</span>
+              <span className="stat-value">
+                {result.tokens?.totalTokens ?? "—"}
+              </span>
+            </div>
           </div>
 
           {result.findings && result.findings.length > 0 ? (
@@ -463,13 +482,43 @@ export function RunDetailClient({
             )}
           </div>
 
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => setJsonOpen((v) => !v)}
-          >
-            {jsonOpen ? "Hide raw JSON" : "Show raw JSON"}
-          </button>
+          <div className="action-row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <a
+              className="btn btn-ghost"
+              href={`/api/runs/${encodeURIComponent(runId)}/csv`}
+            >
+              Download CSV
+            </a>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setJsonOpen((v) => !v)}
+            >
+              {jsonOpen ? "Hide raw JSON" : "Show raw JSON"}
+            </button>
+            {result.evaluationId ? (
+              <Link
+                className="btn btn-ghost"
+                href={`/comparison/${result.evaluationId}`}
+              >
+                Comparison
+              </Link>
+            ) : null}
+          </div>
+          {result.tokens || result.capture?.promptHash ? (
+            <p className="hint">
+              {result.tokens
+                ? `Tokens in ${result.tokens.promptTokens} / out ${result.tokens.completionTokens}. `
+                : null}
+              {result.capture?.promptKind
+                ? `Prompt ${result.capture.promptKind}`
+                : null}
+              {result.capture?.promptHash
+                ? ` · hash ${result.capture.promptHash}`
+                : null}
+              {result.role ? ` · role ${result.role}` : null}
+            </p>
+          ) : null}
           {jsonOpen ? (
             <pre className="json-block">{JSON.stringify(result, null, 2)}</pre>
           ) : null}

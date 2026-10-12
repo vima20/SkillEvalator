@@ -79,6 +79,14 @@ export const ScriptResultSchema = z.object({
   summary: z.string(),
 });
 
+export const TokenUsageSchema = z.object({
+  promptTokens: z.number().int().nonnegative().default(0),
+  completionTokens: z.number().int().nonnegative().default(0),
+  totalTokens: z.number().int().nonnegative().default(0),
+});
+
+export type TokenUsage = z.output<typeof TokenUsageSchema>;
+
 export const PerTaskResultSchema = z.object({
   taskId: z.string(),
   artifactRef: z.string().optional(),
@@ -88,7 +96,26 @@ export const PerTaskResultSchema = z.object({
   status: TaskStatusSchema,
   /** Normalized edit distance vs expected (0 = identical); omit when N/A. */
   diffRatio: z.number().min(0).max(1).optional(),
+  /** Aggregated produce tokens across repeats for this task (when available). */
+  tokens: TokenUsageSchema.optional(),
 });
+
+/** Runtime env snapshot (Unikie Capture — no secrets). */
+export const RunEnvSnapshotSchema = z.object({
+  modelDryRun: z.string().optional(),
+  modelOfficial: z.string().optional(),
+  temperature: z.number().optional(),
+  topP: z.number().optional(),
+  seed: z.number().optional(),
+  maxOutputTokens: z.number().optional(),
+  costCapUsd: z.number().optional(),
+  costHardStop: z.boolean().optional(),
+  fakeProduce: z.boolean().optional(),
+  allowHostGrade: z.boolean().optional(),
+  grade: z.enum(["docker_script", "host_script"]).optional(),
+});
+
+export type RunEnvSnapshot = z.output<typeof RunEnvSnapshotSchema>;
 
 /** Capture block persisted on every run (Unikie Find/Capture). */
 export const RunCaptureSchema = z.object({
@@ -98,6 +125,14 @@ export const RunCaptureSchema = z.object({
   dependencies: z.array(z.string()).default([]),
   skillVersion: z.string(),
   role: EvalRoleSchema,
+  /** sha256 of instruction prompt used for produce (baseline or SKILL.md). */
+  promptHash: z.string().optional(),
+  /** First ~500 chars of instruction for audit (not the full skill body). */
+  promptPreview: z.string().max(600).optional(),
+  /** baseline_neutral | skill_md */
+  promptKind: z.enum(["baseline_neutral", "skill_md"]).optional(),
+  env: RunEnvSnapshotSchema.optional(),
+  capturedAt: z.string().optional(),
 });
 
 export type RunCapture = z.output<typeof RunCaptureSchema>;
@@ -135,6 +170,8 @@ export const RunResultSchema = z.object({
   findings: z.array(z.string()).default([]),
   costUsd: z.number().nonnegative().default(0),
   latencyMs: z.number().nonnegative().default(0),
+  /** Aggregated OpenAI token usage for the run. */
+  tokens: TokenUsageSchema.optional(),
   status: TerminalRunStatusSchema,
   startedAt: z.string(),
   finishedAt: z.string().optional(),

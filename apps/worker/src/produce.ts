@@ -29,7 +29,15 @@ export async function produceArtifact(opts: {
   seed?: number;
   /** When this file appears, abort the in-flight OpenAI request. */
   cancelPath?: string;
-}): Promise<{ content: string; costUsd: number }> {
+}): Promise<{
+  content: string;
+  costUsd: number;
+  promptTokens: number;
+  completionTokens: number;
+  /** Instruction text used (baseline neutral or SKILL.md body). */
+  instruction: string;
+  promptKind: "baseline_neutral" | "skill_md";
+}> {
   const input = fs.readFileSync(opts.inputPath, "utf8");
   if (!config.openaiApiKey) {
     throw new Error(
@@ -57,6 +65,8 @@ export async function produceArtifact(opts: {
   }
 
   const role = opts.role ?? "candidate";
+  const promptKind =
+    role === "baseline" ? ("baseline_neutral" as const) : ("skill_md" as const);
   const instruction =
     role === "baseline"
       ? BASELINE_NEUTRAL_PROMPT
@@ -126,7 +136,14 @@ export async function produceArtifact(opts: {
     const inTok = res.usage?.prompt_tokens ?? 0;
     const outTok = res.usage?.completion_tokens ?? 0;
     const costUsd = costFromTokenUsage(opts.modelId, inTok, outTok);
-    return { content, costUsd };
+    return {
+      content,
+      costUsd,
+      promptTokens: inTok,
+      completionTokens: outTok,
+      instruction,
+      promptKind,
+    };
   } catch (err) {
     if (
       cancelRequested ||

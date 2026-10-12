@@ -77,6 +77,8 @@ export async function POST(
     const mode = job?.mode ?? result?.mode;
     const repeats = job?.repeats ?? result?.repeats;
     const modelId = job?.modelId ?? result?.modelId;
+    const role = job?.role ?? result?.role ?? "candidate";
+    const evaluationId = job?.evaluationId ?? result?.evaluationId;
 
     if (!evalSkillId || !mode) {
       return NextResponse.json(
@@ -140,6 +142,8 @@ export async function POST(
         mode,
         repeats,
         modelId,
+        role,
+        evaluationId,
       });
       if (!queued.ok) {
         return NextResponse.json(
@@ -155,6 +159,8 @@ export async function POST(
         runId: queued.runId,
         fromRunId: runId,
         reused: false,
+        role,
+        evaluationId: evaluationId ?? null,
       });
     } finally {
       releaseRetryEnqueueLock(root, runId);

@@ -5,6 +5,23 @@ export const LIFT_PASS_DELTA = 0.05;
 
 export type ComparisonVerdict = "PASS" | "FAIL" | "INCONCLUSIVE";
 
+export type TaskRegression = {
+  taskId: string;
+  baselineScore: number | null;
+  candidateScore: number | null;
+  /** candidate − baseline */
+  delta: number | null;
+  baselineStatus: string;
+  candidateStatus: string;
+  regression: boolean;
+  improvement: boolean;
+};
+
+export type ComparisonParity = {
+  ok: boolean;
+  issues: string[];
+};
+
 export type RunComparison = {
   evaluationId: string;
   baselineRunId: string;
@@ -24,10 +41,104 @@ export type RunComparison = {
   baselineStatus: RunResult["status"];
   candidateStatus: RunResult["status"];
   capture: RunResult["capture"];
+  parity: ComparisonParity;
+  perTask: TaskRegression[];
+  regressions: number;
+  improvements: number;
 };
 
 function scoreOrNull(r: RunResult): number | null {
   return typeof r.score === "number" && Number.isFinite(r.score) ? r.score : null;
+}
+
+function sameSorted(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const as = [...a].sort();
+  const bs = [...b].sort();
+  return as.every((v, i) => v === bs[i]);
+}
+
+/** Assert Unikie parity: same model/mode/tasks/repeats/decoding for fair lift. */
+export function checkComparisonParity(
+  baseline: RunResult,
+  candidate: RunResult,
+): ComparisonParity {
+  const issues: string[] = [];
+  if (baseline.modelId !== candidate.modelId) {
+    issues.push(
+      `modelId mismatch: baseline=${baseline.modelId} candidate=${candidate.modelId}`,
+    );
+  }
+  if (baseline.mode !== candidate.mode) {
+    issues.push(`mode mismatch: baseline=${baseline.mode} candidate=${candidate.mode}`);
+  }
+  if (baseline.taskSetId !== candidate.taskSetId) {
+    issues.push(
+      `taskSetId mismatch: baseline=${baseline.taskSetId} candidate=${candidate.taskSetId}`,
+    );
+  }
+  if (baseline.repeats !== candidate.repeats) {
+    issues.push(
+      `repeats mismatch: baseline=${baseline.repeats} candidate=${candidate.repeats}`,
+    );
+  }
+  if (!sameSorted(baseline.taskIds, candidate.taskIds)) {
+    issues.push("taskIds differ between baseline and candidate");
+  }
+  if (
+    baseline.decoding.temperature !== candidate.decoding.temperature ||
+    baseline.decoding.top_p !== candidate.decoding.top_p
+  ) {
+    issues.push("decoding (temperature/top_p) mismatch");
+  }
+  if (
+    baseline.evaluationId &&
+    candidate.evaluationId &&
+    baseline.evaluationId !== candidate.evaluationId
+  ) {
+    issues.push("evaluationId mismatch");
+  }
+  if ((baseline.role ?? "candidate") !== "baseline") {
+    issues.push(`expected baseline.role=baseline, got ${baseline.role ?? "candidate"}`);
+  }
+  if ((candidate.role ?? "candidate") !== "candidate") {
+    issues.push(`expected candidate.role=candidate, got ${candidate.role}`);
+  }
+  return { ok: issues.length === 0, issues };
+}
+
+export function buildTaskRegressions(
+  baseline: RunResult,
+  candidate: RunResult,
+): TaskRegression[] {
+  const baseMap = new Map(baseline.perTask.map((t) => [t.taskId, t]));
+  const candMap = new Map(candidate.perTask.map((t) => [t.taskId, t]));
+  const ids = [
+    ...new Set([...baseMap.keys(), ...candMap.keys()]),
+  ].sort();
+
+  return ids.map((taskId) => {
+    const b = baseMap.get(taskId);
+    const c = candMap.get(taskId);
+    const baselineScore =
+      typeof b?.score === "number" && Number.isFinite(b.score) ? b.score : null;
+    const candidateScore =
+      typeof c?.score === "number" && Number.isFinite(c.score) ? c.score : null;
+    const delta =
+      baselineScore !== null && candidateScore !== null
+        ? Math.round((candidateScore - baselineScore) * 10_000) / 10_000
+        : null;
+    return {
+      taskId,
+      baselineScore,
+      candidateScore,
+      delta,
+      baselineStatus: b?.status ?? "missing",
+      candidateStatus: c?.status ?? "missing",
+      regression: delta !== null && delta < -0.001,
+      improvement: delta !== null && delta > 0.001,
+    };
+  });
 }
 
 /**
@@ -43,6 +154,11 @@ export function compareBaselineCandidate(
     candidate.evaluationId ??
     `pair_${baseline.runId}_${candidate.runId}`;
 
+  const parity = checkComparisonParity(baseline, candidate);
+  const perTask = buildTaskRegressions(baseline, candidate);
+  const regressions = perTask.filter((t) => t.regression).length;
+  const improvements = perTask.filter((t) => t.improvement).length;
+
   const baseScore = scoreOrNull(baseline);
   const candScore = scoreOrNull(candidate);
   const lift =
@@ -57,7 +173,10 @@ export function compareBaselineCandidate(
   let verdict: ComparisonVerdict = "INCONCLUSIVE";
   let rationale: string;
 
-  if (
+  if (!parity.ok) {
+    verdict = "INCONCLUSIVE";
+    rationale = `Parity check failed — baseline and candidate are not comparable: ${parity.issues.join("; ")}`;
+  } else if (
     baseline.status === "cancelled" ||
     candidate.status === "cancelled" ||
     baseline.status === "budget_stop" ||
@@ -74,10 +193,10 @@ export function compareBaselineCandidate(
     rationale = `Candidate score ${candScore.toFixed(3)} is below the soft-pass floor (0.80). Do not adopt.`;
   } else if (lift >= LIFT_PASS_DELTA) {
     verdict = "PASS";
-    rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}).`;
+    rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed.`;
   } else {
     verdict = "FAIL";
-    rationale = `Lift ${lift.toFixed(3)} < ${LIFT_PASS_DELTA} (candidate ${candScore.toFixed(3)} vs baseline ${baseScore.toFixed(3)}). Skill does not clear the Unikie PASS delta.`;
+    rationale = `Lift ${lift.toFixed(3)} < ${LIFT_PASS_DELTA} (candidate ${candScore.toFixed(3)} vs baseline ${baseScore.toFixed(3)}). Skill does not clear the Unikie PASS delta. Task deltas: ${improvements} improved, ${regressions} regressed.`;
   }
 
   return {
@@ -98,6 +217,10 @@ export function compareBaselineCandidate(
     baselineStatus: baseline.status,
     candidateStatus: candidate.status,
     capture: candidate.capture,
+    parity,
+    perTask,
+    regressions,
+    improvements,
   };
 }
 

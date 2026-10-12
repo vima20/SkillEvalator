@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -22,11 +23,31 @@ import {
   textDiffRatio,
   wouldExceedCostCap,
   writeJsonFile,
+  type RunCapture,
   type RunResult,
+  type TokenUsage,
 } from "@skillevalator/core";
 import { config } from "./config.js";
 import { touchHeartbeat } from "./heartbeat.js";
-import { ProduceCancelledError, produceArtifact } from "./produce.js";
+import {
+  BASELINE_NEUTRAL_PROMPT,
+  ProduceCancelledError,
+  produceArtifact,
+} from "./produce.js";
+
+function emptyTokens(): TokenUsage {
+  return { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+}
+
+function addTokens(a: TokenUsage, prompt: number, completion: number): TokenUsage {
+  const promptTokens = a.promptTokens + Math.max(0, prompt);
+  const completionTokens = a.completionTokens + Math.max(0, completion);
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens: promptTokens + completionTokens,
+  };
+}
 
 function toRepoRelative(absPath: string): string {
   return path.relative(config.repoRoot, absPath).split(path.sep).join("/");
@@ -62,11 +83,52 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   fs.mkdirSync(resultDir, { recursive: true });
 
   let costUsd = 0;
+  let runTokens = emptyTokens();
   const findings: string[] = [];
   const repeatScores: number[] = [];
   const scoresByTask = new Map<string, number[]>();
+  const tokensByTask = new Map<string, TokenUsage>();
   const lastByTask = new Map<string, RunResult["perTask"][number]>();
   let stop: "cancelled" | "budget_stop" | null = null;
+  const role = job.role ?? "candidate";
+  const promptKind =
+    role === "baseline" ? ("baseline_neutral" as const) : ("skill_md" as const);
+  const instructionForCapture =
+    role === "baseline"
+      ? BASELINE_NEUTRAL_PROMPT
+      : skill.skillMd.trim() || BASELINE_NEUTRAL_PROMPT;
+  const promptHash = crypto
+    .createHash("sha256")
+    .update(instructionForCapture)
+    .digest("hex")
+    .slice(0, 16);
+  const promptPreview = instructionForCapture.slice(0, 500);
+  const capture: RunCapture = {
+    githubUrl: skill.manifest.githubUrl,
+    commit: skill.manifest.commit,
+    license: skill.manifest.license,
+    dependencies: skill.manifest.dependencies,
+    skillVersion: skill.version,
+    role,
+    promptHash,
+    promptPreview,
+    promptKind,
+    env: {
+      modelDryRun: config.modelDryRun,
+      modelOfficial: config.modelOfficial,
+      temperature: config.temperature,
+      topP: config.topP,
+      seed: config.seed,
+      maxOutputTokens: config.maxOutputTokens,
+      costCapUsd: config.costCapUsd,
+      costHardStop: config.costHardStop,
+      fakeProduce: process.env.FAKE_PRODUCE === "known-good",
+      allowHostGrade: config.allowHostGrade,
+      grade: hostGrade ? "host_script" : "docker_script",
+    },
+    capturedAt: startedAt,
+  };
+  writeJsonFile(path.join(resultDir, "capture.json"), capture);
 
   const statusPath = path.join(resultDir, "status.json");
   const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
@@ -133,6 +195,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
 
         let content: string;
         let produceCost = 0;
+        let callPromptTokens = 0;
+        let callCompletionTokens = 0;
         const fakeProduce = process.env.FAKE_PRODUCE === "known-good";
         if (fakeProduce) {
           content = fs.readFileSync(tp.knownGoodPath, "utf8");
@@ -159,7 +223,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
             const produced = await produceArtifact({
               modelId,
               skillMd: skill.skillMd,
-              role: job.role ?? "candidate",
+              role,
               inputPath: tp.inputPath,
               targetFile: tp.targetFile,
               subjectDir: tp.subjectDir,
@@ -168,6 +232,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
             });
             content = produced.content;
             produceCost = produced.costUsd;
+            callPromptTokens = produced.promptTokens;
+            callCompletionTokens = produced.completionTokens;
           } catch (e) {
             if (
               e instanceof ProduceCancelledError ||
@@ -182,6 +248,15 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         }
         fs.writeFileSync(artifactPath, content, "utf8");
         costUsd += produceCost;
+        runTokens = addTokens(runTokens, callPromptTokens, callCompletionTokens);
+        tokensByTask.set(
+          taskId,
+          addTokens(
+            tokensByTask.get(taskId) ?? emptyTokens(),
+            callPromptTokens,
+            callCompletionTokens,
+          ),
+        );
 
         if (
           config.costHardStop &&
@@ -304,6 +379,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       else if (stop === "budget_stop") taskStatus = "budget_stop";
       else if (mean !== null && mean >= PASS_SCORE_FLOOR) taskStatus = "ok";
       else taskStatus = "failed";
+      const taskTokens = tokensByTask.get(taskId);
       return {
         taskId,
         artifactRef: last?.artifactRef,
@@ -313,6 +389,9 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         status: taskStatus,
         ...(last?.diffRatio !== undefined
           ? { diffRatio: last.diffRatio }
+          : {}),
+        ...(taskTokens && taskTokens.totalTokens > 0
+          ? { tokens: taskTokens }
           : {}),
       };
     });
@@ -330,20 +409,12 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     else if (agg.score < PASS_SCORE_FLOOR) status = "failed";
     else status = "ok";
 
-    const role = job.role ?? "candidate";
     const result = RunResultSchema.parse({
       runId,
       evalSkillId: skill.id,
       evalSkillVersion: skill.version,
       evalSkillGithubUrl: skill.manifest.githubUrl,
-      capture: {
-        githubUrl: skill.manifest.githubUrl,
-        commit: skill.manifest.commit,
-        license: skill.manifest.license,
-        dependencies: skill.manifest.dependencies,
-        skillVersion: skill.version,
-        role,
-      },
+      capture,
       evaluationId: job.evaluationId,
       role,
       taskSetId: skill.manifest.taskSetId,
@@ -372,6 +443,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
           : "",
       findings,
       costUsd,
+      tokens: runTokens,
       latencyMs: Date.now() - Date.parse(startedAt),
       status,
       startedAt,

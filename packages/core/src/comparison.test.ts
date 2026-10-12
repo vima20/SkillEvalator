@@ -81,6 +81,67 @@ describe("compareBaselineCandidate", () => {
     );
     expect(c.verdict).toBe("INCONCLUSIVE");
   });
+
+  it("INCONCLUSIVE on parity mismatch", () => {
+    const c = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.5, modelId: "gpt-4o-mini" }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        modelId: "gpt-4.1-mini",
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.parity.ok).toBe(false);
+    expect(c.parity.issues.some((i) => i.includes("modelId"))).toBe(true);
+  });
+
+  it("flags per-task regressions", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.8,
+        perTask: [
+          {
+            taskId: "bug-01",
+            score: 1,
+            status: "ok",
+            scriptResults: [],
+          },
+          {
+            taskId: "bug-02",
+            score: 0.9,
+            status: "ok",
+            scriptResults: [],
+          },
+        ],
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.9,
+        perTask: [
+          {
+            taskId: "bug-01",
+            score: 0.5,
+            status: "failed",
+            scriptResults: [],
+          },
+          {
+            taskId: "bug-02",
+            score: 1,
+            status: "ok",
+            scriptResults: [],
+          },
+        ],
+      }),
+    );
+    expect(c.regressions).toBe(1);
+    expect(c.improvements).toBe(1);
+    expect(c.perTask.find((t) => t.taskId === "bug-01")?.regression).toBe(true);
+  });
 });
 
 describe("pairEvaluationRuns", () => {
