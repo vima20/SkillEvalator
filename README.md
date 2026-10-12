@@ -1,10 +1,10 @@
 # SkillEvalator
 
-Skills-pohjainen AI Evaluator (MVP): **produce (LLM) → Docker grade (vs expected) → score**.
+Unikie Contribution Evaluator MVP: **baseline (neutral) ↔ candidate (SKILL.md) → produce → Docker grade → Comparison / Benefit**.
 
 ## Quick start
 
-1. Copy `.env.example` → `.env` and set `OPENAI_API_KEY` (optional for `FAKE_PRODUCE` smoke).
+1. Copy `.env.example` → `.env` and set `OPENAI_API_KEY` (optional for smoke).
 2. Install + run:
 
 ```bat
@@ -19,7 +19,9 @@ or
 
 Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*`; the UI shows an unlock form that sets a cookie.
 
-CI: `npm run ci` runs unit tests, `typecheck`, and `smoke:skills`. New Run shows a rough produce-cost estimate; Runs can clear terminal jobs older than 7 days.
+CI: `npm run ci` runs unit tests, `typecheck`, and `smoke:skills`. New Run defaults to **baseline↔candidate**, cost estimate, and GitHub **Find/Receive** import.
+
+Unikie handover: [docs/UNIKIE-HANDOVER.md](docs/UNIKIE-HANDOVER.md).
 
 ## Models
 
@@ -34,9 +36,10 @@ CI: `npm run ci` runs unit tests, `typecheck`, and `smoke:skills`. New Run shows
 - `eval-skills/code-debugging-eval` — skill #1 minimal prompt (`taskSetDir: cde-v1`)
 - `eval-skills/code-debugging-eval-checklist` — alternate prompt, same shared `cde-v1` fixtures
 - `eval-skills/test-generation-eval` — skill #2 (write assert tests, 6 tasks; adversarial subject-bad)
-- `packages/core` — schema, scoring, skill loader, Docker grade
-- `apps/worker` — file queue + produce/grade
-- `apps/web` — New run / Runs / Dashboard / Benefit Report
+- `data/imported-skills/` — GitHub imports (Find/Receive)
+- `packages/core` — schema, scoring, skill loader, Docker grade, comparison, CSV
+- `apps/worker` — file queue + produce/grade + capture
+- `apps/web` — New run / Runs / Comparison / Dashboard / Benefit Report
 
 ## Smoke without OpenAI
 
@@ -44,6 +47,12 @@ Harness self-check (known-good pass + known-bad fail for every skill dry-run tas
 
 ```bat
 npm run smoke:skills
+```
+
+Paired Comparison smoke (writes `data/results/eval_smoke_*` + baseline/candidate results):
+
+```bat
+npm run smoke:paired
 ```
 
 Worker smoke with fake produce:

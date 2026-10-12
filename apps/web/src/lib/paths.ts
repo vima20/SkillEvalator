@@ -23,3 +23,11 @@ export function resultsDir(): string {
 export function skillsDir(): string {
   return data().skillsDir;
 }
+
+export function importedSkillsDir(): string {
+  return data().importedSkillsDir;
+}
+
+export function skillsDirs(): string[] {
+  return data().skillsDirs;
+}

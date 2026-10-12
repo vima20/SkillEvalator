@@ -1,12 +1,12 @@
 import { listSkills } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
-import { skillsDir } from "@/lib/paths";
+import { skillsDirs } from "@/lib/paths";
 import { NewRunForm } from "./NewRunForm";
 
 export const dynamic = "force-dynamic";
 
 export default function NewRunPage() {
-  const skills = listSkills(skillsDir());
+  const skills = listSkills(skillsDirs());
 
   return (
     <div>

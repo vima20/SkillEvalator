@@ -21,6 +21,8 @@ function num(name: string, fallback: number): number {
 export const config = {
   repoRoot,
   skillsDir: data.skillsDir,
+  importedSkillsDir: data.importedSkillsDir,
+  skillsDirs: data.skillsDirs,
   jobsDir: data.jobsDir,
   resultsDir: data.resultsDir,
   modelDryRun: process.env.MODEL_DRY_RUN ?? "gpt-4o-mini",

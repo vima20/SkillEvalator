@@ -34,15 +34,20 @@ type Preflight = {
   };
 };
 
-export function NewRunForm({ skills }: { skills: SkillOption[] }) {
+export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] }) {
   const router = useRouter();
+  const [skills, setSkills] = useState(initialSkills);
   const [evalSkillId, setEvalSkillId] = useState(
-    skills[0]?.id ?? "code-debugging-eval",
+    initialSkills[0]?.id ?? "code-debugging-eval",
   );
   const [mode, setMode] = useState<"dry-run" | "official">("dry-run");
   const [repeats, setRepeats] = useState(1);
   /** Unikie: baseline (neutral) + candidate (SKILL.md) paired evaluation. */
   const [withBaseline, setWithBaseline] = useState(true);
+  const [importUrl, setImportUrl] = useState(
+    "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+  );
+  const [importBusy, setImportBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -221,6 +226,60 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="field">
+          <label htmlFor="importUrl">Find / Receive (GitHub)</label>
+          <input
+            id="importUrl"
+            type="url"
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            placeholder="https://github.com/owner/repo/tree/ref/path"
+          />
+          <p className="hint">
+            Import a skill package (fixtures/manifest.json) into{" "}
+            <code>data/imported-skills</code> pinned to the URL ref/commit.
+          </p>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={importBusy || !importUrl.trim()}
+            onClick={() => {
+              void (async () => {
+                setImportBusy(true);
+                setMsg("");
+                setError(false);
+                try {
+                  const res = await fetch("/api/skills", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ url: importUrl.trim() }),
+                  });
+                  const data = (await res.json()) as {
+                    error?: string;
+                    skills?: SkillOption[];
+                    allSkills?: SkillOption[];
+                  };
+                  if (!res.ok) throw new Error(data.error ?? "import failed");
+                  const next = data.allSkills ?? skills;
+                  setSkills(next);
+                  const first = data.skills?.[0]?.id;
+                  if (first) setEvalSkillId(first);
+                  setMsg(
+                    `Imported ${data.skills?.length ?? 0} skill(s) from GitHub`,
+                  );
+                } catch (err) {
+                  setError(true);
+                  setMsg(err instanceof Error ? err.message : "import error");
+                } finally {
+                  setImportBusy(false);
+                }
+              })();
+            }}
+          >
+            {importBusy ? "Importing…" : "Import skill"}
+          </button>
         </div>
 
         <div className="field">

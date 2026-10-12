@@ -42,6 +42,10 @@ export function resolveUnder(root: string, ...segments: string[]): string {
 export type DataPaths = {
   repoRoot: string;
   skillsDir: string;
+  /** Unikie Find/Receive imports land here (repo + commit). */
+  importedSkillsDir: string;
+  /** Primary + imported roots for listSkills / loadSkill. */
+  skillsDirs: string[];
   jobsDir: string;
   resultsDir: string;
 };
@@ -56,9 +60,17 @@ export function resolveDataPaths(
   repoRoot: string,
   env: NodeJS.ProcessEnv = process.env,
 ): DataPaths {
+  const skillsDir = resolveFromRepo(repoRoot, env.EVAL_SKILLS_DIR, "eval-skills");
+  const importedSkillsDir = resolveFromRepo(
+    repoRoot,
+    env.IMPORTED_SKILLS_DIR,
+    "data/imported-skills",
+  );
   return {
     repoRoot,
-    skillsDir: resolveFromRepo(repoRoot, env.EVAL_SKILLS_DIR, "eval-skills"),
+    skillsDir,
+    importedSkillsDir,
+    skillsDirs: [skillsDir, importedSkillsDir],
     jobsDir: resolveFromRepo(repoRoot, env.JOBS_DIR, "data/jobs"),
     resultsDir: resolveFromRepo(repoRoot, env.RESULTS_DIR, "data/results"),
   };

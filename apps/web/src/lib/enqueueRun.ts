@@ -9,7 +9,18 @@ import {
   writeJsonFile,
   type JobManifest,
 } from "@skillevalator/core";
-import { jobsDir, resultsDir, skillsDir } from "@/lib/paths";
+import { jobsDir, resultsDir, skillsDirs } from "@/lib/paths";
+
+function skillExists(evalSkillId: string): boolean {
+  for (const dir of skillsDirs()) {
+    try {
+      if (fs.existsSync(resolveUnder(dir, evalSkillId))) return true;
+    } catch {
+      /* skip */
+    }
+  }
+  return false;
+}
 
 const MAX_QUEUED_JOBS = 20;
 
@@ -51,8 +62,7 @@ function queueSlotsNeeded(n: number): EnqueueResult | null {
 
 export function enqueueRun(input: EnqueueInput): EnqueueResult {
   const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
-  const skillPath = resolveUnder(skillsDir(), evalSkillId);
-  if (!fs.existsSync(skillPath)) {
+  if (!skillExists(evalSkillId)) {
     return { ok: false, status: 400, error: "unknown skill" };
   }
 
@@ -101,8 +111,7 @@ export function enqueueEvaluationPair(input: {
   modelId?: string;
 }): EnqueuePairResult {
   const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
-  const skillPath = resolveUnder(skillsDir(), evalSkillId);
-  if (!fs.existsSync(skillPath)) {
+  if (!skillExists(evalSkillId)) {
     return { ok: false, status: 400, error: "unknown skill" };
   }
 

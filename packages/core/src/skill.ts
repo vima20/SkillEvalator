@@ -39,21 +39,31 @@ function hashDirFiles(root: string): string {
 }
 
 function resolveFixturesRoot(
-  skillsDir: string,
+  skillHomeDir: string,
   skillRoot: string,
   manifest: SkillManifest,
+  tasksetSearchDirs: string[] = [],
 ): string {
   if (manifest.taskSetDir) {
-    const shared = resolveUnder(skillsDir, "tasksets", manifest.taskSetDir);
-    if (!fs.existsSync(shared)) {
-      throw new Error(`shared task set not found: tasksets/${manifest.taskSetDir}`);
+    const search = [skillHomeDir, ...tasksetSearchDirs];
+    for (const dir of search) {
+      try {
+        const shared = resolveUnder(dir, "tasksets", manifest.taskSetDir);
+        if (fs.existsSync(shared)) return shared;
+      } catch {
+        /* try next root */
+      }
     }
-    return shared;
+    throw new Error(`shared task set not found: tasksets/${manifest.taskSetDir}`);
   }
   return path.join(skillRoot, "fixtures");
 }
 
-function loadSkillFromRoot(skillsDir: string, skillId: string): LoadedSkill {
+function loadSkillFromRoot(
+  skillsDir: string,
+  skillId: string,
+  tasksetSearchDirs: string[] = [],
+): LoadedSkill {
   const id = assertSafeId(skillId, "evalSkillId");
   const root = resolveUnder(skillsDir, id);
   if (!fs.existsSync(root)) throw new Error(`Skill not found: ${id}`);
@@ -70,7 +80,12 @@ function loadSkillFromRoot(skillsDir: string, skillId: string): LoadedSkill {
       throw new Error(`dryRunId not in taskIds: ${taskId}`);
     }
   }
-  const fixturesRoot = resolveFixturesRoot(skillsDir, root, manifest);
+  const fixturesRoot = resolveFixturesRoot(
+    skillsDir,
+    root,
+    manifest,
+    tasksetSearchDirs,
+  );
   for (const taskId of manifest.taskIds) {
     const safe = assertSafeId(taskId, "taskId");
     if (!fs.existsSync(resolveUnder(fixturesRoot, safe))) {
@@ -106,7 +121,7 @@ export function loadSkill(
   const errors: string[] = [];
   for (const dir of dirs) {
     try {
-      return loadSkillFromRoot(dir, id);
+      return loadSkillFromRoot(dir, id, dirs);
     } catch (e) {
       errors.push(e instanceof Error ? e.message : String(e));
     }
@@ -135,7 +150,7 @@ export function listSkills(skillsDir: string | string[]): SkillSummary[] {
     for (const name of fs.readdirSync(dir).sort()) {
       if (SKIP_SKILL_DIRS.has(name) || seen.has(name)) continue;
       try {
-        const skill = loadSkillFromRoot(dir, name);
+        const skill = loadSkillFromRoot(dir, name, dirs);
         seen.add(name);
         out.push({
           id: skill.id,
