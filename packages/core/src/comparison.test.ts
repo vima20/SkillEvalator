@@ -155,4 +155,23 @@ describe("pairEvaluationRuns", () => {
     expect(baseline?.runId).toBe("b");
     expect(candidate?.runId).toBe("c");
   });
+
+  it("picks the newest candidate when retries left multiple legs", () => {
+    const { candidate } = pairEvaluationRuns([
+      sample({
+        runId: "run_old_cand",
+        role: "candidate",
+        startedAt: "2026-10-12T00:00:00.000Z",
+        finishedAt: "2026-10-12T00:01:00.000Z",
+      }),
+      sample({
+        runId: "run_new_cand",
+        role: "candidate",
+        startedAt: "2026-10-12T00:10:00.000Z",
+        finishedAt: "2026-10-12T00:11:00.000Z",
+      }),
+      sample({ runId: "run_base", role: "baseline" }),
+    ]);
+    expect(candidate?.runId).toBe("run_new_cand");
+  });
 });

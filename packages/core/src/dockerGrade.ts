@@ -5,16 +5,145 @@ import os from "node:os";
 import crypto from "node:crypto";
 import { assertRealDirectory, readRegularFileUtf8 } from "./fsSafe.js";
 import { stripBom } from "./fsJson.js";
+import { assertSafeId } from "./paths.js";
 
 export type GradeResult = {
   exitCode: number;
   summary: string;
 };
 
+type TrustedMatch = {
+  skillId: string;
+  scriptsDir: string;
+  gradeHash: string;
+};
+
+function readImportedManifest(skillRoot: string): {
+  taskSetId?: string;
+  taskSetDir?: string;
+} {
+  const fixturesDir = path.join(skillRoot, "fixtures");
+  assertRealDirectory(fixturesDir, "fixtures");
+  return JSON.parse(
+    stripBom(
+      readRegularFileUtf8(
+        path.join(fixturesDir, "manifest.json"),
+        "manifest.json",
+      ),
+    ),
+  ) as { taskSetId?: string; taskSetDir?: string };
+}
+
+function scriptsDirIfTrustedGrade(
+  skillDir: string,
+  skillId: string,
+): TrustedMatch | null {
+  const gradeJs = path.join(skillDir, "scripts", "grade.js");
+  if (!fs.existsSync(gradeJs)) return null;
+  try {
+    const st = fs.lstatSync(gradeJs);
+    if (st.isSymbolicLink() || !st.isFile()) return null;
+    const gradeHash = crypto
+      .createHash("sha256")
+      .update(fs.readFileSync(gradeJs))
+      .digest("hex");
+    return {
+      skillId,
+      scriptsDir: path.join(skillDir, "scripts"),
+      gradeHash,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Prefer tasksets/<taskSetDir>/harness.json → scriptsFromSkillId. */
+function pinFromHarnessJson(
+  evalSkillsDir: string,
+  taskSetDir: string,
+): TrustedMatch | null {
+  let safeSet: string;
+  try {
+    safeSet = assertSafeId(taskSetDir, "taskSetDir");
+  } catch {
+    return null;
+  }
+  const setDir = path.join(evalSkillsDir, "tasksets", safeSet);
+  const harnessPath = path.join(setDir, "harness.json");
+  if (!fs.existsSync(harnessPath)) return null;
+  try {
+    assertRealDirectory(setDir, `tasksets/${safeSet}`);
+    const raw = JSON.parse(
+      stripBom(readRegularFileUtf8(harnessPath, "harness.json")),
+    ) as { scriptsFromSkillId?: string };
+    if (typeof raw.scriptsFromSkillId !== "string") return null;
+    const skillId = assertSafeId(raw.scriptsFromSkillId, "evalSkillId");
+    const skillDir = path.join(evalSkillsDir, skillId);
+    assertRealDirectory(skillDir, skillId);
+    return scriptsDirIfTrustedGrade(skillDir, skillId);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * All local skills with matching taskSetId and a regular grade.js.
+ * Sorted by skill id for deterministic fallback.
+ */
+function collectTaskSetMatches(
+  evalSkillsDir: string,
+  taskSetId: string,
+): TrustedMatch[] {
+  const out: TrustedMatch[] = [];
+  for (const name of fs.readdirSync(evalSkillsDir).sort()) {
+    if (name === "tasksets" || name === "node_modules") continue;
+    const candidate = path.join(evalSkillsDir, name);
+    try {
+      assertRealDirectory(candidate, name);
+    } catch {
+      continue;
+    }
+    const fixturesDir = path.join(candidate, "fixtures");
+    const manifestPath = path.join(fixturesDir, "manifest.json");
+    if (!fs.existsSync(manifestPath)) continue;
+    try {
+      assertRealDirectory(fixturesDir, `${name}/fixtures`);
+      const m = JSON.parse(
+        stripBom(readRegularFileUtf8(manifestPath, "manifest.json")),
+      ) as { taskSetId?: string };
+      if (m.taskSetId !== taskSetId) continue;
+      const match = scriptsDirIfTrustedGrade(candidate, name);
+      if (match) out.push(match);
+    } catch {
+      /* try next */
+    }
+  }
+  return out;
+}
+
+function pickDeterministicMatch(
+  matches: TrustedMatch[],
+  taskSetId: string,
+): TrustedMatch {
+  if (matches.length === 0) {
+    throw new Error(
+      "imported skill: no trusted harness grade for taskSetId " + taskSetId,
+    );
+  }
+  const hashes = new Set(matches.map((m) => m.gradeHash));
+  if (hashes.size > 1) {
+    throw new Error(
+      `imported skill: ambiguous trusted harness for taskSetId ${taskSetId} ` +
+        `(${matches.map((m) => m.skillId).join(", ")}); add tasksets/<id>/harness.json`,
+    );
+  }
+  return matches[0]!;
+}
+
 /**
  * For imported skills (.import.json), prefer a trusted local harness
- * under eval-skills/<id>/scripts with the same taskSetId — never the
- * imported grade.js.
+ * under eval-skills/<id>/scripts — never the imported grade.js.
+ * Pin order: harness.json → sorted unique-hash taskSetId match.
  */
 export function resolveTrustedScriptsDir(skillRoot: string): {
   scriptsDir: string;
@@ -27,18 +156,11 @@ export function resolveTrustedScriptsDir(skillRoot: string): {
   }
 
   let taskSetId: string | undefined;
+  let taskSetDir: string | undefined;
   try {
-    const fixturesDir = path.join(skillRoot, "fixtures");
-    assertRealDirectory(fixturesDir, "fixtures");
-    const raw = JSON.parse(
-      stripBom(
-        readRegularFileUtf8(
-          path.join(fixturesDir, "manifest.json"),
-          "manifest.json",
-        ),
-      ),
-    ) as { taskSetId?: string };
+    const raw = readImportedManifest(skillRoot);
     taskSetId = raw.taskSetId;
+    taskSetDir = raw.taskSetDir;
   } catch {
     taskSetId = undefined;
   }
@@ -49,7 +171,6 @@ export function resolveTrustedScriptsDir(skillRoot: string): {
   }
 
   // Never search under the imported skill tree (poisoned eval-skills/).
-  // Walk parents starting at the skill's parent directory.
   const skillResolved = path.resolve(skillRoot);
   let dir = path.dirname(skillResolved);
   for (let i = 0; i < 8; i++) {
@@ -60,34 +181,24 @@ export function resolveTrustedScriptsDir(skillRoot: string): {
         evalResolved === skillResolved ||
         evalResolved.startsWith(skillResolved + path.sep);
       if (!nestedUnderSkill) {
-        for (const name of fs.readdirSync(evalSkills)) {
-          const candidate = path.join(evalSkills, name);
-          try {
-            assertRealDirectory(candidate, name);
-          } catch {
-            continue;
-          }
-          const fixturesDir = path.join(candidate, "fixtures");
-          const manifestPath = path.join(fixturesDir, "manifest.json");
-          const gradeJs = path.join(candidate, "scripts", "grade.js");
-          if (!fs.existsSync(manifestPath) || !fs.existsSync(gradeJs)) continue;
-          try {
-            assertRealDirectory(fixturesDir, `${name}/fixtures`);
-            const m = JSON.parse(
-              stripBom(readRegularFileUtf8(manifestPath, "manifest.json")),
-            ) as { taskSetId?: string };
-            if (m.taskSetId === taskSetId) {
-              const st = fs.lstatSync(gradeJs);
-              if (st.isSymbolicLink() || !st.isFile()) continue;
-              return {
-                scriptsDir: path.join(candidate, "scripts"),
-                pinned: true,
-              };
-            }
-          } catch {
-            /* try next */
+        try {
+          assertRealDirectory(evalSkills, "eval-skills");
+        } catch {
+          /* try parent */
+          const parent = path.dirname(dir);
+          if (parent === dir) break;
+          dir = parent;
+          continue;
+        }
+        if (taskSetDir) {
+          const pinned = pinFromHarnessJson(evalSkills, taskSetDir);
+          if (pinned) {
+            return { scriptsDir: pinned.scriptsDir, pinned: true };
           }
         }
+        const matches = collectTaskSetMatches(evalSkills, taskSetId);
+        const chosen = pickDeterministicMatch(matches, taskSetId);
+        return { scriptsDir: chosen.scriptsDir, pinned: true };
       }
     }
     const parent = path.dirname(dir);

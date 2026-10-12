@@ -4,6 +4,7 @@ import {
   costFromTokenUsage,
   estimateCallCostUsd,
   estimateCallCostUsdForCap,
+  estimateMaxCallCostUsd,
   estimateRunCostUsd,
   wouldExceedCostCap,
 } from "./costEstimate.js";
@@ -75,6 +76,16 @@ describe("estimateCallCostUsdForCap", () => {
     const base = estimateCallCostUsd("gpt-4o-mini");
     expect(estimateCallCostUsdForCap("gpt-4o-mini")).toBeCloseTo(
       base * COST_PRECHECK_SAFETY,
+      10,
+    );
+  });
+
+  it("raises the pre-check when max_tokens worst-case dominates", () => {
+    const without = estimateCallCostUsdForCap("gpt-4o-mini");
+    const withMax = estimateCallCostUsdForCap("gpt-4o-mini", 16_000);
+    expect(withMax).toBeGreaterThan(without);
+    expect(withMax).toBeCloseTo(
+      estimateMaxCallCostUsd("gpt-4o-mini", 16_000),
       10,
     );
   });

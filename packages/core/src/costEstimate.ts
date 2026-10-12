@@ -48,9 +48,31 @@ export function estimateCallCostUsd(modelId: string): number {
   );
 }
 
-/** Conservative per-call estimate for worker cost-cap pre-check. */
-export function estimateCallCostUsdForCap(modelId: string): number {
-  return estimateCallCostUsd(modelId) * COST_PRECHECK_SAFETY;
+/** Worst-case one-call cost if the model uses the full max_tokens budget. */
+export function estimateMaxCallCostUsd(
+  modelId: string,
+  maxOutputTokens: number,
+): number {
+  const rate = rateForModel(modelId);
+  const outTok = Math.max(0, maxOutputTokens);
+  return (
+    (ASSUMED_INPUT_TOKENS * rate.inputPerMTok +
+      outTok * rate.outputPerMTok) /
+    1_000_000
+  );
+}
+
+/**
+ * Conservative per-call estimate for worker cost-cap pre-check.
+ * Uses the larger of inflated typical usage and full max_tokens worst case.
+ */
+export function estimateCallCostUsdForCap(
+  modelId: string,
+  maxOutputTokens?: number,
+): number {
+  const typical = estimateCallCostUsd(modelId) * COST_PRECHECK_SAFETY;
+  if (maxOutputTokens == null || !(maxOutputTokens > 0)) return typical;
+  return Math.max(typical, estimateMaxCallCostUsd(modelId, maxOutputTokens));
 }
 
 /**

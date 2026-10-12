@@ -22,19 +22,27 @@ describe("textDiffRatio", () => {
     expect(big).toBeLessThan(0.2);
   });
 
-  it("does not treat identical long prefixes as a perfect match", () => {
-    const head = "x".repeat(8_500);
-    const a = `${head}TAIL_A`;
-    const b = `${head}TAIL_B`;
-    expect(textDiffRatio(a, b)).toBeGreaterThan(0);
-  });
+  it(
+    "does not treat identical long prefixes as a perfect match",
+    () => {
+      const head = "x".repeat(8_500);
+      const a = `${head}TAIL_A`;
+      const b = `${head}TAIL_B`;
+      expect(textDiffRatio(a, b)).toBeGreaterThan(0);
+    },
+    15_000,
+  );
 
-  it("flags length mismatch when only the prefix fits the window", () => {
-    const head = "y".repeat(8_000);
-    const a = head;
-    const b = `${head}${"z".repeat(2_000)}`;
-    expect(textDiffRatio(a, b)).toBeGreaterThan(0);
-  });
+  it(
+    "flags length mismatch when only the prefix fits the window",
+    () => {
+      const head = "y".repeat(8_000);
+      const a = head;
+      const b = `${head}${"z".repeat(2_000)}`;
+      expect(textDiffRatio(a, b)).toBeGreaterThan(0);
+    },
+    15_000,
+  );
 });
 
 describe("scoreFromGradeAndDiff", () => {

@@ -294,7 +294,10 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         if (fakeProduce) {
           content = readRegularFileUtf8(tp.knownGoodPath, "known-good");
         } else {
-          const nextCallUsd = estimateCallCostUsdForCap(modelId);
+          const nextCallUsd = estimateCallCostUsdForCap(
+            modelId,
+            config.maxOutputTokens,
+          );
           if (
             config.costHardStop &&
             wouldExceedCostCap({

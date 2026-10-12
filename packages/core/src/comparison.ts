@@ -225,13 +225,32 @@ export function compareBaselineCandidate(
 }
 
 /** Pick baseline + candidate from a list of runs that share evaluationId. */
+/** Prefer newest finishedAt/startedAt; tie-break on runId (desc). */
+function newestForRole(
+  runs: RunResult[],
+  role: "baseline" | "candidate",
+): RunResult | null {
+  const matched = runs.filter((r) => (r.role ?? "candidate") === role);
+  if (matched.length === 0) return null;
+  matched.sort((a, b) => {
+    const ta = Date.parse(a.finishedAt ?? a.startedAt ?? "") || 0;
+    const tb = Date.parse(b.finishedAt ?? b.startedAt ?? "") || 0;
+    if (tb !== ta) return tb - ta;
+    return b.runId.localeCompare(a.runId);
+  });
+  return matched[0] ?? null;
+}
+
+/**
+ * Pair baseline/candidate legs for an evaluationId scan.
+ * When retries left multiple legs per role, pick the newest — not readdir order.
+ */
 export function pairEvaluationRuns(runs: RunResult[]): {
   baseline: RunResult | null;
   candidate: RunResult | null;
 } {
-  const baseline =
-    runs.find((r) => (r.role ?? "candidate") === "baseline") ?? null;
-  const candidate =
-    runs.find((r) => (r.role ?? "candidate") === "candidate") ?? null;
-  return { baseline, candidate };
+  return {
+    baseline: newestForRole(runs, "baseline"),
+    candidate: newestForRole(runs, "candidate"),
+  };
 }
