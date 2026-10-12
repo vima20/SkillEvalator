@@ -121,6 +121,28 @@ describe("compareBaselineCandidate", () => {
     expect(c.parity.issues.some((i) => i.includes("evalSkillId"))).toBe(true);
   });
 
+  it("INCONCLUSIVE when legs disagree with evaluation meta evalSkillId", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        evalSkillId: "code-debugging-eval",
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        evalSkillId: "code-debugging-eval",
+      }),
+      { expectedEvalSkillId: "code-debugging-eval-checklist" },
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("evaluation meta")),
+    ).toBe(true);
+  });
+
   it("INCONCLUSIVE when decoding.seed or pipeline.grade differs", () => {
     const seedMismatch = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.5 }),

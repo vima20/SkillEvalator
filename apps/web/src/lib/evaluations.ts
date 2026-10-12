@@ -115,7 +115,11 @@ export function loadEvaluationComparison(
 
   const comparison =
     baseline && candidate
-      ? compareBaselineCandidate(baseline, candidate)
+      ? compareBaselineCandidate(baseline, candidate, {
+          ...(meta?.evalSkillId
+            ? { expectedEvalSkillId: meta.evalSkillId }
+            : {}),
+        })
       : null;
 
   return { meta, baseline, candidate, comparison };

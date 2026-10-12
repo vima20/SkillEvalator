@@ -63,12 +63,26 @@ function sameSorted(a: string[], b: string[]): boolean {
 export function checkComparisonParity(
   baseline: RunResult,
   candidate: RunResult,
+  opts?: { expectedEvalSkillId?: string },
 ): ComparisonParity {
   const issues: string[] = [];
   if (baseline.evalSkillId !== candidate.evalSkillId) {
     issues.push(
       `evalSkillId mismatch: baseline=${baseline.evalSkillId} candidate=${candidate.evalSkillId}`,
     );
+  }
+  const expected = opts?.expectedEvalSkillId;
+  if (expected) {
+    if (baseline.evalSkillId !== expected) {
+      issues.push(
+        `baseline.evalSkillId ${baseline.evalSkillId} ≠ evaluation meta ${expected}`,
+      );
+    }
+    if (candidate.evalSkillId !== expected) {
+      issues.push(
+        `candidate.evalSkillId ${candidate.evalSkillId} ≠ evaluation meta ${expected}`,
+      );
+    }
   }
   if (baseline.modelId !== candidate.modelId) {
     issues.push(
@@ -164,13 +178,14 @@ export function buildTaskRegressions(
 export function compareBaselineCandidate(
   baseline: RunResult,
   candidate: RunResult,
+  opts?: { expectedEvalSkillId?: string },
 ): RunComparison {
   const evaluationId =
     baseline.evaluationId ??
     candidate.evaluationId ??
     `pair_${baseline.runId}_${candidate.runId}`;
 
-  const parity = checkComparisonParity(baseline, candidate);
+  const parity = checkComparisonParity(baseline, candidate, opts);
   const perTask = buildTaskRegressions(baseline, candidate);
   const regressions = perTask.filter((t) => t.regression).length;
   const improvements = perTask.filter((t) => t.improvement).length;
