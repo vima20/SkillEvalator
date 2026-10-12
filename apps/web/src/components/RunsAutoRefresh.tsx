@@ -3,7 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const ACTIVE = new Set(["queued", "running", "cancel_requested"]);
+const ACTIVE = new Set([
+  "queued",
+  "running",
+  "cancel_requested",
+  // Mid-finish cost-cap wind-down before result.json lands.
+  "budget_stop",
+]);
 
 export function RunsAutoRefresh({
   hasActive,

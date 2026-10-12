@@ -410,10 +410,15 @@ export function cleanupOrphanQueuedFs(
 }
 
 /** Mid-run statuses that can get stuck without a backing job file. */
-const ORPHAN_ACTIVE_STATUS = new Set(["running", "cancel_requested"]);
+const ORPHAN_ACTIVE_STATUS = new Set([
+  "running",
+  "cancel_requested",
+  // Wind-down written before result.json — heal if worker died mid-finish.
+  "budget_stop",
+]);
 
 /**
- * Heal one run stuck at running/cancel_requested with no job file.
+ * Heal one run stuck at running/cancel_requested/budget_stop with no job file.
  * Returns synced | failed | noop.
  */
 export function healOrphanActiveStatusFs(
@@ -447,12 +452,17 @@ export function healOrphanActiveStatusFs(
     return "synced";
   }
 
+  // budget_stop without result and no job → treat as failed so Retry works.
+  const errorCode =
+    status === "budget_stop" ? "orphan_budget_stop" : "orphan_running";
   writeJsonFile(statusPath, {
     runId,
     status: "failed",
     error:
-      "Orphaned active status (no job file). Use Retry for a new run.",
-    errorCode: "orphan_running",
+      status === "budget_stop"
+        ? "Orphaned budget_stop (no result.json). Use Retry for a new run."
+        : "Orphaned active status (no job file). Use Retry for a new run.",
+    errorCode,
   });
   return "failed";
 }

@@ -479,9 +479,10 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     const aggregatedPerTask: RunResult["perTask"] = taskIds.map((taskId) => {
       const last = lastByTask.get(taskId);
       const mean = meanScores(scoresByTask.get(taskId) ?? []);
+      const completed = last !== undefined;
       let taskStatus: RunResult["perTask"][number]["status"];
-      if (stop === "cancelled") taskStatus = "cancelled";
-      else if (stop === "budget_stop") taskStatus = "budget_stop";
+      if (!completed && stop === "cancelled") taskStatus = "cancelled";
+      else if (!completed && stop === "budget_stop") taskStatus = "budget_stop";
       else if (mean !== null && mean >= PASS_SCORE_FLOOR) taskStatus = "ok";
       else taskStatus = "failed";
       const taskTokens = tokensByTask.get(taskId);
@@ -490,7 +491,9 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         artifactRef: last?.artifactRef,
         expectedRef: last?.expectedRef,
         scriptResults: last?.scriptResults ?? [],
-        score: stop ? null : mean,
+        // Keep measured per-task scores on budget_stop/cancel; only incomplete
+        // tasks stay null. Aggregate run score is still null when stopped.
+        score: completed ? mean : null,
         status: taskStatus,
         ...(last?.diffRatio !== undefined
           ? { diffRatio: last.diffRatio }

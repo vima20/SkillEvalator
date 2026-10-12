@@ -546,6 +546,26 @@ describe("cleanupOrphanRunningStatusFs", () => {
     expect(status.errorCode).toBe("orphan_running");
   });
 
+  it("fails orphan budget_stop with no job or result", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_stuckbudget";
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "budget_stop",
+    });
+
+    const out = cleanupOrphanRunningStatusFs(jobsDir, resultsDir);
+    expect(out.failedStatuses).toEqual([runId]);
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { status: string; errorCode?: string };
+    expect(status.status).toBe("failed");
+    expect(status.errorCode).toBe("orphan_budget_stop");
+  });
+
   it("syncs cancel_requested when cancelled result exists without job", () => {
     const root = tmpRoot();
     const jobsDir = path.join(root, "jobs");

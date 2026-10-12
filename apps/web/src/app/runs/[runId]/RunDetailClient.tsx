@@ -176,10 +176,20 @@ export function RunDetailClient({
     return () => window.clearInterval(id);
   }, [polling, refresh]);
 
+  // budget_stop without result should not poll forever (orphan / crashed worker).
+  useEffect(() => {
+    const st = data.status?.status;
+    if (st !== "budget_stop" || data.result) return;
+    const id = window.setTimeout(() => {
+      setPolling(false);
+    }, 90_000);
+    return () => window.clearTimeout(id);
+  }, [data.status?.status, data.result]);
+
   const status = data.status?.status ?? "unknown";
   const result = data.result;
   const cancelRequested = status === "cancel_requested";
-  const budgetStopping = status === "budget_stop" && !result;
+  const budgetStopping = status === "budget_stop" && !result && polling;
   const canCancel =
     (status === "queued" || status === "running") &&
     !cancelling &&
@@ -187,12 +197,14 @@ export function RunDetailClient({
     !budgetStopping &&
     !pollError;
   const quotaBlocked = data.status?.errorCode === "insufficient_quota";
+  // Match API: budget_stop is retryable even before result.json (job fallback).
   const canRetry =
     (status === "failed" ||
       status === "cancelled" ||
-      (status === "budget_stop" && !!result)) &&
+      status === "budget_stop") &&
     !quotaBlocked &&
-    !retrying;
+    !retrying &&
+    !budgetStopping;
 
   async function onRetry() {
     if (!canRetry) return;

@@ -10,6 +10,71 @@ export type GradeResult = {
 };
 
 /**
+ * For imported skills (`.import.json`), prefer a trusted local harness
+ * `eval-skills/*/scripts` with the same taskSetId — never the imported grade.js.
+ */
+export function resolveTrustedScriptsDir(skillRoot: string): {
+  scriptsDir: string;
+  pinned: boolean;
+} {
+  const localScripts = path.join(skillRoot, "scripts");
+  const isImported = fs.existsSync(path.join(skillRoot, ".import.json"));
+  if (!isImported) {
+    return { scriptsDir: localScripts, pinned: false };
+  }
+
+  let taskSetId: string | undefined;
+  try {
+    const raw = JSON.parse(
+      fs.readFileSync(path.join(skillRoot, "fixtures", "manifest.json"), "utf8"),
+    ) as { taskSetId?: string };
+    taskSetId = raw.taskSetId;
+  } catch {
+    taskSetId = undefined;
+  }
+  if (!taskSetId) {
+    throw new Error(
+      "imported skill missing taskSetId — cannot pin trusted harness grade",
+    );
+  }
+
+  let dir = path.resolve(skillRoot);
+  for (let i = 0; i < 8; i++) {
+    const evalSkills = path.join(dir, "eval-skills");
+    if (fs.existsSync(evalSkills)) {
+      for (const name of fs.readdirSync(evalSkills)) {
+        const candidate = path.join(evalSkills, name);
+        const manifestPath = path.join(candidate, "fixtures", "manifest.json");
+        const gradeJs = path.join(candidate, "scripts", "grade.js");
+        if (!fs.existsSync(manifestPath) || !fs.existsSync(gradeJs)) continue;
+        try {
+          const m = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+            taskSetId?: string;
+          };
+          if (m.taskSetId === taskSetId) {
+            const st = fs.lstatSync(gradeJs);
+            if (st.isSymbolicLink() || !st.isFile()) continue;
+            return {
+              scriptsDir: path.join(candidate, "scripts"),
+              pinned: true,
+            };
+          }
+        } catch {
+          /* try next */
+        }
+      }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  throw new Error(
+    `imported skill: no trusted harness grade for taskSetId ${taskSetId}`,
+  );
+}
+
+/**
  * Host path for Docker Desktop bind mounts.
  * Windows `C:\foo` → `/c/foo` (also accepts already-posix paths).
  */
@@ -139,7 +204,15 @@ export async function gradeInDocker(opts: {
       };
     }
 
-    const scriptsDir = path.join(opts.skillRoot, "scripts");
+    let scriptsDir: string;
+    try {
+      scriptsDir = resolveTrustedScriptsDir(opts.skillRoot).scriptsDir;
+    } catch (e) {
+      return {
+        exitCode: 1,
+        summary: e instanceof Error ? e.message : "scripts resolve failed",
+      };
+    }
     const gradeJs = path.join(scriptsDir, "grade.js");
     if (!fs.existsSync(gradeJs)) {
       return { exitCode: 1, summary: "grade.js missing" };
