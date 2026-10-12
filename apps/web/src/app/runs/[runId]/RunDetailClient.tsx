@@ -263,17 +263,26 @@ export function RunDetailClient({
           <span aria-hidden="true"> / </span>
           <span>{runId}</span>
         </p>
-        <h1 className="run-title">{runId}</h1>
+        <h1 className="run-title">
+          {result ? (
+            <>
+              {result.evalSkillId}
+              {result.role ? (
+                <>
+                  {" "}
+                  <span className={`role-chip role-${result.role}`}>
+                    {result.role}
+                  </span>
+                </>
+              ) : null}
+            </>
+          ) : (
+            runId
+          )}
+        </h1>
         {result ? (
           <p className="run-subtitle">
-            <code>{result.evalSkillId}</code>
-            {result.role ? (
-              <>
-                {" "}
-                · <span className={`role-chip role-${result.role}`}>{result.role}</span>
-              </>
-            ) : null}{" "}
-            · {result.mode}
+            <code>{runId}</code> · {result.mode}
             {result.evaluationId ? (
               <>
                 {" "}

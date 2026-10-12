@@ -407,7 +407,13 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
         </div>
 
         <div
-          className={`cost-estimate${costPreview.estimatedUsd > DEFAULT_COST_CAP_USD ? " cost-estimate-over" : ""}`}
+          className={`cost-estimate${
+            costPreview.estimatedUsd /
+              (withBaseline ? 2 : 1) >
+            DEFAULT_COST_CAP_USD
+              ? " cost-estimate-over"
+              : ""
+          }`}
           aria-live="polite"
         >
           <strong>Estimated cost</strong>
@@ -418,16 +424,27 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
             {safeRepeatsPreview} repeats · <code>{modelPreview}</code>
             {withBaseline ? " · ×2 baseline+candidate" : ""}).
           </p>
-          {costPreview.estimatedUsd > DEFAULT_COST_CAP_USD ? (
+          {costPreview.estimatedUsd / (withBaseline ? 2 : 1) >
+          DEFAULT_COST_CAP_USD ? (
             <p className="form-error" role="status">
-              Estimate exceeds the default ${DEFAULT_COST_CAP_USD} USD hard-stop
+              Per-leg estimate exceeds the default ${DEFAULT_COST_CAP_USD} USD
+              hard-stop
+              {withBaseline
+                ? ` (each baseline/candidate leg caps separately — paired spend can reach ~$${
+                    DEFAULT_COST_CAP_USD * 2
+                  })`
+                : ""}{" "}
               — the worker may end with budget_stop before all tasks finish.
             </p>
           ) : (
             <p className="hint">
-              Rough preview from typical token sizes — not a bill. Worker
-              hard-stop defaults to ${DEFAULT_COST_CAP_USD} USD. Grade/Docker
-              time is free.
+              Rough preview assuming large SKILL.md + subject prompts — not a
+              bill; real usage can still be higher. Each run hard-stops at $
+              {DEFAULT_COST_CAP_USD}
+              {withBaseline
+                ? ` (paired ≈ up to $${DEFAULT_COST_CAP_USD * 2} across both legs)`
+                : ""}
+              . Grade/Docker time is free.
             </p>
           )}
         </div>

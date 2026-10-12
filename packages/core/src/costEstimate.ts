@@ -1,12 +1,15 @@
-/** Rough token assumptions for UI cost preview (not a bill). */
-const ASSUMED_INPUT_TOKENS = 1_800;
-const ASSUMED_OUTPUT_TOKENS = 900;
+/**
+ * Rough token assumptions for UI cost preview (not a bill).
+ * Sized for SKILL.md + subject fixtures (CDE-scale), not a tiny stub prompt.
+ */
+const ASSUMED_INPUT_TOKENS = 12_000;
+const ASSUMED_OUTPUT_TOKENS = 1_200;
 
 /**
  * Inflate pre-produce estimates so a large real call is less likely to
  * blow past COST_CAP_USD before the hard-stop can react.
  */
-export const COST_PRECHECK_SAFETY = 1.5;
+export const COST_PRECHECK_SAFETY = 1.75;
 
 type ModelRate = { inputPerMTok: number; outputPerMTok: number };
 

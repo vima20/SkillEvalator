@@ -189,39 +189,42 @@ export function rateSkill(result: RunResult): BenefitRating {
     reviewSections = [
       {
         heading: "Result",
-        body: `${result.evalSkillId} scored ${grade} (${stars}/5). With model ${result.modelId} on task set ${result.taskSetId}, score was ${scoreTxt} — ${passed}/${total || "0"} tasks passed.`,
+        body: `${result.evalSkillId} scored ${grade} (${stars}/5). With model ${result.modelId} on task set ${result.taskSetId}, score was ${scoreTxt} — ${passed}/${total || "0"} soft-pass (≥0.8).`,
       },
       {
         heading: "What went wrong",
         body: failedTasks.length
-          ? `Every evaluated task fell short. Notably: ${failedTasks.join(", ")}. The model did not produce a grade-passing fix, or the skill instructions/fixtures do not steer correctly.`
-          : "No task passed. The pipeline ran technically, but the produce→grade chain did not yield an acceptable result.",
+          ? `Every evaluated task fell short of the soft-pass floor (≥0.8). Notably: ${failedTasks.join(", ")}. The model did not produce a grade-passing fix, or the skill instructions/fixtures do not steer correctly.`
+          : "No task soft-passed. The pipeline ran technically, but the produce→grade chain did not yield an acceptable result.",
       },
       {
         heading: "Recommendation",
-        body: "Do not adopt the skill. Inspect failed artifacts, tighten SKILL.md guidance or fixtures, and repeat dry-run until score is 1.0.",
+        body: "Do not adopt the skill. Inspect failed artifacts, tighten SKILL.md guidance or fixtures, and repeat dry-run until score ≈1.0 (not only soft-pass).",
       },
     ];
   } else if (score < 1) {
-    summary = "Partial pass — not ready for use yet.";
+    const allSoftPass = failedTasks.length === 0 && total > 0;
+    summary = allSoftPass
+      ? "Soft-pass complete — short of USE (near-perfect score)."
+      : "Partial soft-pass — not ready for use yet.";
     const failList = failedTasks.length
-      ? `Failed tasks (${failedTasks.length}): ${failedTasks.join(", ")}.`
-      : "Some tasks remained incomplete.";
+      ? `Below soft-pass (≥0.8): ${failedTasks.join(", ")}.`
+      : "Every task met the soft-pass floor (≥0.8), but the aggregate score is still below a full expected match.";
     reviewSections = [
       {
         heading: "Result",
-        body: `${result.evalSkillId} scored ${grade} (${stars}/5). Score ${scoreTxt} means ${passed}/${total} passes with ${result.modelId} (${result.mode}). Duration ${latencyTxt}, cost ${costTxt}.`,
+        body: `${result.evalSkillId} scored ${grade} (${stars}/5). Score ${scoreTxt} with ${passed}/${total} soft-pass (≥0.8) on ${result.modelId} (${result.mode}). Duration ${latencyTxt}, cost ${costTxt}.`,
       },
       {
         heading: "Analysis",
-        body: `${failList} A partial pass shows the skill/model hits some cases but is not yet reliable across the full set. In team use that means intermittent regressions on the bug types that currently fail grade.`,
+        body: `${failList} Soft-pass is the harness floor used in scorecards and Comparison PASS (≥0.8 + lift). Benefit USE still requires a near-perfect official aggregate (≥0.99) — grade scripts can pass while output still drifts from expected.`,
       },
       {
         heading: "Recommendation",
         body:
           result.mode === "dry-run"
-            ? "Do not proceed to official until dry-run is fully clean (score 1.0). Fix the weak tasks first — otherwise official only confirms the same incomplete picture at higher cost."
-            : "Do not adopt the skill. Official runs require score 1.0. Fix failing tasks and re-run official (≥3 repeats).",
+            ? "Do not proceed to official until dry-run reaches a full expected match (score ≈1.0), not only soft-pass. Otherwise official mostly confirms the same incomplete picture at higher cost."
+            : "Do not adopt the skill yet. Official USE needs score ≥0.99. Soft-pass alone is not enough — tighten SKILL.md / fixtures and re-run official (≥3 repeats).",
       },
     ];
   } else if (result.mode === "dry-run") {
@@ -229,7 +232,7 @@ export function rateSkill(result: RunResult): BenefitRating {
     reviewSections = [
       {
         heading: "Result",
-        body: `${result.evalSkillId} completed dry-run cleanly: ${passed}/${total} tasks passed with ${result.modelId} (score ${scoreTxt}). Grade ${grade} (${stars}/5). Duration ${latencyTxt}, cost ${costTxt}.`,
+        body: `${result.evalSkillId} completed dry-run cleanly: ${passed}/${total} soft-pass with ${result.modelId} (score ${scoreTxt}). Grade ${grade} (${stars}/5). Duration ${latencyTxt}, cost ${costTxt}.`,
       },
       {
         heading: "What this shows",
@@ -249,7 +252,7 @@ export function rateSkill(result: RunResult): BenefitRating {
     reviewSections = [
       {
         heading: "Result",
-        body: `${result.evalSkillId} passed official evaluation at ${grade} (${stars}/5). Score ${scoreTxt}, label ${label}, spread ${spread.toFixed(3)}. Model ${result.modelId}, task set ${result.taskSetId}, ${passed}/${total} tasks, repeats ${result.repeats}. Duration ${latencyTxt}, cost ${costTxt}.`,
+        body: `${result.evalSkillId} passed official evaluation at ${grade} (${stars}/5). Score ${scoreTxt}, label ${label}, spread ${spread.toFixed(3)}. Model ${result.modelId}, task set ${result.taskSetId}, ${passed}/${total} soft-pass, repeats ${result.repeats}. Duration ${latencyTxt}, cost ${costTxt}.`,
       },
       {
         heading: "What this shows",
@@ -356,7 +359,7 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
       recommendation: "do_not_use",
       headline: "DO NOT USE — official not Strong",
       decision: "DO NOT USE — official evaluation below full expected match",
-      rationale: `Official score ${score.toFixed(2)} < 0.99 on task set ${result.taskSetId} (tests may pass but output still drifts from expected). Do not use this skill with ${result.modelId} until it reaches a near-perfect score.`,
+      rationale: `Official score ${score.toFixed(2)} < 0.99 on task set ${result.taskSetId}. Soft-pass (≥0.8) and Comparison PASS are weaker gates — Benefit USE still needs a near-perfect aggregate (grade can pass while output drifts from expected). Do not use this skill with ${result.modelId} until score ≥0.99.`,
     };
   }
 

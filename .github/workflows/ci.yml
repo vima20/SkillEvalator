@@ -29,3 +29,6 @@ jobs:
 
       - name: Skill harness smoke
         run: npm run smoke:skills
+
+      - name: Paired evaluation smoke
+        run: npm run smoke:paired
