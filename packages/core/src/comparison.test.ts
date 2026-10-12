@@ -7,8 +7,9 @@ import {
 import type { RunResult } from "./schema.js";
 
 function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): RunResult {
+  const { runId, role, ...rest } = over;
+  const resolvedRole = role ?? "candidate";
   return {
-    runId: over.runId,
     evalSkillId: "code-debugging-eval",
     evalSkillVersion: "abc",
     evalSkillGithubUrl:
@@ -20,10 +21,9 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
       license: "MIT",
       dependencies: [],
       skillVersion: "abc",
-      role: over.role ?? "candidate",
+      role: resolvedRole,
     },
     evaluationId: "eval_test_1",
-    role: over.role ?? "candidate",
     taskSetId: "cde-v1",
     taskIds: ["bug-01"],
     pipeline: { produce: "model", grade: "docker_script" },
@@ -42,7 +42,9 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
     startedAt: "2026-10-12T00:00:00.000Z",
     finishedAt: "2026-10-12T00:01:00.000Z",
     mode: "dry-run",
-    ...over,
+    ...rest,
+    runId,
+    role: resolvedRole,
   };
 }
 

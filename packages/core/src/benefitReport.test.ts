@@ -40,6 +40,7 @@ function sample(overrides: Partial<RunResult> = {}): RunResult {
     finishedAt: "2026-01-01T00:00:02.000Z",
     mode: "dry-run",
     ...overrides,
+    role: overrides.role ?? "candidate",
   };
 }
 

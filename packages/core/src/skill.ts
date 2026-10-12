@@ -142,7 +142,9 @@ export type SkillSummary = {
 
 /** List eval skills that have a valid fixtures/manifest.json. */
 export function listSkills(skillsDir: string | string[]): SkillSummary[] {
-  const dirs = Array.isArray(skillsDir) ? skillsDir : [skillsDir];
+  const dirs = (Array.isArray(skillsDir) ? skillsDir : [skillsDir]).filter(
+    (d): d is string => typeof d === "string" && d.length > 0,
+  );
   const seen = new Set<string>();
   const out: SkillSummary[] = [];
   for (const dir of dirs) {

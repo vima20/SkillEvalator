@@ -29,5 +29,13 @@ export function importedSkillsDir(): string {
 }
 
 export function skillsDirs(): string[] {
-  return data().skillsDirs;
+  const d = data();
+  const dirs = Array.isArray(d.skillsDirs) ? d.skillsDirs : [];
+  const fallback = [d.skillsDir, d.importedSkillsDir].filter(
+    (p): p is string => typeof p === "string" && p.length > 0,
+  );
+  const out = (dirs.length > 0 ? dirs : fallback).filter(
+    (p): p is string => typeof p === "string" && p.length > 0,
+  );
+  return out.length > 0 ? out : [d.skillsDir].filter(Boolean);
 }

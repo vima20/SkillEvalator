@@ -4,12 +4,11 @@ import { comparisonToCsv, runResultToCsv } from "./csvExport.js";
 import type { RunResult } from "./schema.js";
 
 function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): RunResult {
+  const { runId, role, ...rest } = over;
   return {
-    runId: over.runId,
     evalSkillId: "code-debugging-eval",
     evalSkillVersion: "abc",
     evaluationId: "eval_csv_1",
-    role: over.role ?? "candidate",
     taskSetId: "cde-v1",
     taskIds: ["bug-01"],
     pipeline: { produce: "model", grade: "docker_script" },
@@ -36,7 +35,9 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
     status: "ok",
     startedAt: "2026-10-12T00:00:00.000Z",
     mode: "dry-run",
-    ...over,
+    ...rest,
+    runId,
+    role: role ?? "candidate",
   };
 }
 
