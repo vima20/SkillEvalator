@@ -63,4 +63,15 @@ describe("fsSafe", () => {
     expect(tryAcquireWxLock(lock, { retries: 0 })).toBe(true);
     releaseWxLock(lock);
   });
+
+  it("steals a stale lock via unlink+wx", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-fstale-"));
+    temps.push(root);
+    const lock = path.join(root, "x.lock");
+    fs.writeFileSync(lock, "1", "utf8");
+    const past = new Date(Date.now() - 120_000);
+    fs.utimesSync(lock, past, past);
+    expect(tryAcquireWxLock(lock, { retries: 0, staleMs: 30_000 })).toBe(true);
+    releaseWxLock(lock);
+  });
 });

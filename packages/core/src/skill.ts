@@ -1,10 +1,24 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { readJsonFileAs } from "./fsJson.js";
-import { readRegularFileUtf8 } from "./fsSafe.js";
+import { stripBom } from "./fsJson.js";
+import {
+  assertRealDirectory,
+  assertRealDirectoryIfExists,
+  readRegularFileUtf8,
+} from "./fsSafe.js";
 import { assertSafeId, resolveUnder } from "./paths.js";
 import { SkillManifestSchema, type SkillManifest } from "./schema.js";
+
+const TASK_SUBDIRS = [
+  "input",
+  "expected",
+  "known-good",
+  "known-bad",
+  "tests",
+  "subject",
+  "subject-bad",
+] as const;
 
 export type { SkillManifest };
 
@@ -60,14 +74,24 @@ function resolveFixturesRoot(
     for (const dir of search) {
       try {
         const shared = resolveUnder(dir, "tasksets", manifest.taskSetDir);
-        if (fs.existsSync(shared)) return shared;
-      } catch {
+        if (!fs.existsSync(shared)) continue;
+        assertRealDirectory(shared, `tasksets/${manifest.taskSetDir}`);
+        return shared;
+      } catch (e) {
+        if (
+          e instanceof Error &&
+          (e.message.includes("symlink") || e.message.includes("not a directory"))
+        ) {
+          throw e;
+        }
         /* try next root */
       }
     }
     throw new Error(`shared task set not found: tasksets/${manifest.taskSetDir}`);
   }
-  return path.join(skillRoot, "fixtures");
+  const local = path.join(skillRoot, "fixtures");
+  assertRealDirectory(local, "fixtures");
+  return local;
 }
 
 function loadSkillFromRoot(
@@ -78,9 +102,14 @@ function loadSkillFromRoot(
   const id = assertSafeId(skillId, "evalSkillId");
   const root = resolveUnder(skillsDir, id);
   if (!fs.existsSync(root)) throw new Error(`Skill not found: ${id}`);
-  const manifestPath = path.join(root, "fixtures", "manifest.json");
+  assertRealDirectory(root, "skill root");
+  const fixturesMetaDir = path.join(root, "fixtures");
+  assertRealDirectory(fixturesMetaDir, "fixtures");
+  const manifestPath = path.join(fixturesMetaDir, "manifest.json");
   const skillMdPath = path.join(root, "SKILL.md");
-  const manifest = readJsonFileAs(SkillManifestSchema, manifestPath);
+  const manifest = SkillManifestSchema.parse(
+    JSON.parse(stripBom(readRegularFileUtf8(manifestPath, "manifest.json"))),
+  );
   for (const taskId of manifest.taskIds) {
     if (!manifest.targetFile[taskId]) {
       throw new Error(`manifest targetFile missing for ${taskId}`);
@@ -116,10 +145,16 @@ function loadSkillFromRoot(
       );
     }
   }
+  assertRealDirectory(fixturesRoot, "fixturesRoot");
   for (const taskId of manifest.taskIds) {
     const safe = assertSafeId(taskId, "taskId");
-    if (!fs.existsSync(resolveUnder(fixturesRoot, safe))) {
+    const taskDir = resolveUnder(fixturesRoot, safe);
+    if (!fs.existsSync(taskDir)) {
       throw new Error(`task fixtures missing: ${safe}`);
+    }
+    assertRealDirectory(taskDir, `task ${safe}`);
+    for (const sub of TASK_SUBDIRS) {
+      assertRealDirectoryIfExists(path.join(taskDir, sub), `${safe}/${sub}`);
     }
   }
   const skillMd = readSkillMdFile(skillMdPath);
@@ -209,7 +244,9 @@ export function taskIdsForMode(
 
 export function taskPaths(skill: LoadedSkill, taskId: string) {
   const safeTask = assertSafeId(taskId, "taskId");
+  assertRealDirectory(skill.fixturesRoot, "fixturesRoot");
   const taskDir = resolveUnder(skill.fixturesRoot, safeTask);
+  assertRealDirectory(taskDir, `task ${safeTask}`);
   const target = skill.manifest.targetFile[safeTask];
   if (!target) throw new Error(`No targetFile for ${safeTask}`);
   if (
@@ -218,6 +255,12 @@ export function taskPaths(skill: LoadedSkill, taskId: string) {
     !/^[A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9]+$/.test(target)
   ) {
     throw new Error(`invalid targetFile for ${safeTask}`);
+  }
+  for (const sub of TASK_SUBDIRS) {
+    assertRealDirectoryIfExists(
+      path.join(taskDir, sub),
+      `${safeTask}/${sub}`,
+    );
   }
   return {
     taskDir,

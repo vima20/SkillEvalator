@@ -58,7 +58,7 @@ export function updateEvaluationMetaLeg(opts: {
   const runId = assertSafeId(opts.runId, "runId");
   const metaPath = evaluationMetaPath(evaluationId);
   const lockPath = `${metaPath}.lock`;
-  if (!tryAcquireWxLock(lockPath, { staleMs: 30_000, retries: 40 })) {
+  if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: 80 })) {
     return false;
   }
   try {

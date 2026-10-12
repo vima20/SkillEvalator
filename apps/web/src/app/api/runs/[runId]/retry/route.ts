@@ -96,7 +96,7 @@ export async function POST(
     const dedupOpts = { jobsDir: jobsDir(), isPidAlive };
 
     const linkComparison = (newRunId: string) => {
-      if (!evaluationId) return false;
+      if (!evaluationId) return true;
       return updateEvaluationMetaLeg({
         evaluationId,
         role: role === "baseline" ? "baseline" : "candidate",
@@ -104,33 +104,48 @@ export async function POST(
       });
     };
 
-    const reused = findReusableRetryRunId(root, runId, loadChild, dedupOpts);
-    if (reused) {
-      const metaUpdated = linkComparison(reused);
+    /** Paired retries must update evaluation.json or Comparison stays on the old leg. */
+    const respondLinked = (opts: {
+      newRunId: string;
+      reused: boolean;
+    }) => {
+      const metaUpdated = linkComparison(opts.newRunId);
+      if (evaluationId && !metaUpdated) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Comparison link update failed — retry again shortly to repair the pair",
+            runId: opts.newRunId,
+            fromRunId: runId,
+            reused: opts.reused,
+            role,
+            evaluationId,
+            evaluationMetaUpdated: false,
+          },
+          { status: 503 },
+        );
+      }
       return NextResponse.json({
         ok: true,
-        runId: reused,
+        runId: opts.newRunId,
         fromRunId: runId,
-        reused: true,
+        reused: opts.reused,
         role,
         evaluationId: evaluationId ?? null,
         evaluationMetaUpdated: metaUpdated,
       });
+    };
+
+    const reused = findReusableRetryRunId(root, runId, loadChild, dedupOpts);
+    if (reused) {
+      return respondLinked({ newRunId: reused, reused: true });
     }
 
     if (!tryAcquireRetryEnqueueLock(root, runId)) {
       const raced = findReusableRetryRunId(root, runId, loadChild, dedupOpts);
       if (raced) {
-        const metaUpdated = linkComparison(raced);
-        return NextResponse.json({
-          ok: true,
-          runId: raced,
-          fromRunId: runId,
-          reused: true,
-          role,
-          evaluationId: evaluationId ?? null,
-          evaluationMetaUpdated: metaUpdated,
-        });
+        return respondLinked({ newRunId: raced, reused: true });
       }
       return NextResponse.json(
         { error: "retry already in progress — try again shortly" },
@@ -147,16 +162,7 @@ export async function POST(
         dedupOpts,
       );
       if (reusedUnderLock) {
-        const metaUpdated = linkComparison(reusedUnderLock);
-        return NextResponse.json({
-          ok: true,
-          runId: reusedUnderLock,
-          fromRunId: runId,
-          reused: true,
-          role,
-          evaluationId: evaluationId ?? null,
-          evaluationMetaUpdated: metaUpdated,
-        });
+        return respondLinked({ newRunId: reusedUnderLock, reused: true });
       }
 
       const snapshotPath = path.join(
@@ -186,17 +192,7 @@ export async function POST(
       }
 
       saveRetryMarker(root, runId, queued.runId);
-      const metaUpdated = linkComparison(queued.runId);
-
-      return NextResponse.json({
-        ok: true,
-        runId: queued.runId,
-        fromRunId: runId,
-        reused: false,
-        role,
-        evaluationId: evaluationId ?? null,
-        evaluationMetaUpdated: metaUpdated,
-      });
+      return respondLinked({ newRunId: queued.runId, reused: false });
     } finally {
       releaseRetryEnqueueLock(root, runId);
     }

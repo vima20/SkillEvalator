@@ -15,6 +15,15 @@ export function assertRealDirectory(
   }
 }
 
+/** Like assertRealDirectory, but no-op when the path does not exist. */
+export function assertRealDirectoryIfExists(
+  dirPath: string,
+  label = "directory",
+): void {
+  if (!fs.existsSync(dirPath)) return;
+  assertRealDirectory(dirPath, label);
+}
+
 /** Read only regular files; never follow symlinks into host secrets. */
 export function readRegularFileUtf8(
   filePath: string,
@@ -62,8 +71,17 @@ export function tryAcquireWxLock(
       try {
         const age = nowMs - fs.statSync(lockPath).mtimeMs;
         if (age > staleMs) {
-          fs.writeFileSync(lockPath, String(nowMs));
-          return true;
+          try {
+            fs.unlinkSync(lockPath);
+          } catch {
+            /* ignore */
+          }
+          try {
+            fs.writeFileSync(lockPath, String(nowMs), { flag: "wx" });
+            return true;
+          } catch {
+            /* lost race to another stealer — retry */
+          }
         }
       } catch {
         /* ignore */

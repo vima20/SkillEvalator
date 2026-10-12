@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
-import { assertRealDirectory } from "./fsSafe.js";
+import { assertRealDirectory, readRegularFileUtf8 } from "./fsSafe.js";
+import { stripBom } from "./fsJson.js";
 
 export type GradeResult = {
   exitCode: number;
@@ -27,8 +28,15 @@ export function resolveTrustedScriptsDir(skillRoot: string): {
 
   let taskSetId: string | undefined;
   try {
+    const fixturesDir = path.join(skillRoot, "fixtures");
+    assertRealDirectory(fixturesDir, "fixtures");
     const raw = JSON.parse(
-      fs.readFileSync(path.join(skillRoot, "fixtures", "manifest.json"), "utf8"),
+      stripBom(
+        readRegularFileUtf8(
+          path.join(fixturesDir, "manifest.json"),
+          "manifest.json",
+        ),
+      ),
     ) as { taskSetId?: string };
     taskSetId = raw.taskSetId;
   } catch {
@@ -54,17 +62,20 @@ export function resolveTrustedScriptsDir(skillRoot: string): {
       if (!nestedUnderSkill) {
         for (const name of fs.readdirSync(evalSkills)) {
           const candidate = path.join(evalSkills, name);
-          const manifestPath = path.join(
-            candidate,
-            "fixtures",
-            "manifest.json",
-          );
+          try {
+            assertRealDirectory(candidate, name);
+          } catch {
+            continue;
+          }
+          const fixturesDir = path.join(candidate, "fixtures");
+          const manifestPath = path.join(fixturesDir, "manifest.json");
           const gradeJs = path.join(candidate, "scripts", "grade.js");
           if (!fs.existsSync(manifestPath) || !fs.existsSync(gradeJs)) continue;
           try {
-            const m = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
-              taskSetId?: string;
-            };
+            assertRealDirectory(fixturesDir, `${name}/fixtures`);
+            const m = JSON.parse(
+              stripBom(readRegularFileUtf8(manifestPath, "manifest.json")),
+            ) as { taskSetId?: string };
             if (m.taskSetId === taskSetId) {
               const st = fs.lstatSync(gradeJs);
               if (st.isSymbolicLink() || !st.isFile()) continue;

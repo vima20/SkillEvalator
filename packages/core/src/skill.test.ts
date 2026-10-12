@@ -54,4 +54,20 @@ describe("loadSkill SKILL.md", () => {
     const loaded = loadSkill(root, "code-debugging-eval");
     expect(loaded.skillMd).toContain("# skill");
   });
+
+  it("rejects a fixtures directory symlink", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-skill-dirsym-"));
+    temps.push(root);
+    writeMinimalSkill(root, "code-debugging-eval");
+    const skillRoot = path.join(root, "code-debugging-eval");
+    const fixtures = path.join(skillRoot, "fixtures");
+    const host = path.join(root, "host-fixtures");
+    fs.renameSync(fixtures, host);
+    try {
+      fs.symlinkSync(host, fixtures, "dir");
+    } catch {
+      return;
+    }
+    expect(() => loadSkill(root, "code-debugging-eval")).toThrow(/symlink/i);
+  });
 });
