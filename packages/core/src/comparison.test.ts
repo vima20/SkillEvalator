@@ -3,6 +3,7 @@ import {
   LIFT_PASS_DELTA,
   compareBaselineCandidate,
   pairEvaluationRuns,
+ja   resolveComparisonLegs,
 } from "./comparison.js";
 import type { RunResult } from "./schema.js";
 
@@ -173,5 +174,45 @@ describe("pairEvaluationRuns", () => {
       sample({ runId: "run_base", role: "baseline" }),
     ]);
     expect(candidate?.runId).toBe("run_new_cand");
+  });
+});
+
+describe("resolveComparisonLegs", () => {
+  it("does not fill a missing meta leg from older same-evaluation results", () => {
+    const oldCand = sample({
+      runId: "run_old_ok",
+      role: "candidate",
+      score: 0.95,
+      status: "ok",
+    });
+    const base = sample({ runId: "run_base", role: "baseline", score: 0.7 });
+    const byId = new Map<string, RunResult>([
+      [base.runId, base],
+      [oldCand.runId, oldCand],
+    ]);
+
+    const { baseline, candidate } = resolveComparisonLegs({
+      meta: {
+        baselineRunId: "run_base",
+        candidateRunId: "run_retry_orphan",
+      },
+      loadResult: (id) => byId.get(id) ?? null,
+      scanByEvaluationId: () => [base, oldCand],
+    });
+
+    expect(baseline?.runId).toBe("run_base");
+    expect(candidate).toBeNull();
+  });
+
+  it("uses scan fallback only when meta is missing", () => {
+    const base = sample({ runId: "run_base", role: "baseline" });
+    const cand = sample({ runId: "run_cand", role: "candidate" });
+    const { baseline, candidate } = resolveComparisonLegs({
+      meta: null,
+      loadResult: () => null,
+      scanByEvaluationId: () => [cand, base],
+    });
+    expect(baseline?.runId).toBe("run_base");
+    expect(candidate?.runId).toBe("run_cand");
   });
 });

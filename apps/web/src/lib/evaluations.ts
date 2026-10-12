@@ -4,13 +4,12 @@ import {
   assertSafeId,
   compareBaselineCandidate,
   loadRunResult,
-  pairEvaluationRuns,
   readJsonFile,
   releaseWxLock,
+  resolveComparisonLegs,
   tryAcquireWxLock,
   writeJsonFile,
   type RunComparison,
-  type RunResult,
 } from "@skillevalator/core";
 import { resultsDir } from "@/lib/paths";
 
@@ -82,25 +81,25 @@ export function loadEvaluationComparison(
   evaluationId: string,
 ): {
   meta: EvaluationMeta | null;
-  baseline: RunResult | null;
-  candidate: RunResult | null;
+  baseline: ReturnType<typeof loadRunResult>;
+  candidate: ReturnType<typeof loadRunResult>;
   comparison: RunComparison | null;
 } {
   const meta = loadEvaluationMeta(evaluationId);
   const dir = resultsDir();
+  const id = assertSafeId(evaluationId, "evaluationId");
 
-  let baseline: RunResult | null = null;
-  let candidate: RunResult | null = null;
-
-  if (meta) {
-    baseline = loadRunResult(dir, meta.baselineRunId);
-    candidate = loadRunResult(dir, meta.candidateRunId);
-  }
-
-  // Fallback: scan runs that share evaluationId (legacy / partial).
-  if (!baseline || !candidate) {
-    const matched: RunResult[] = [];
-    if (fs.existsSync(dir)) {
+  const { baseline, candidate } = resolveComparisonLegs({
+    meta: meta
+      ? {
+          baselineRunId: meta.baselineRunId,
+          candidateRunId: meta.candidateRunId,
+        }
+      : null,
+    loadResult: (runId) => loadRunResult(dir, runId),
+    scanByEvaluationId: () => {
+      const matched: NonNullable<ReturnType<typeof loadRunResult>>[] = [];
+      if (!fs.existsSync(dir)) return matched;
       for (const name of fs.readdirSync(dir)) {
         try {
           assertSafeId(name, "runId");
@@ -108,13 +107,11 @@ export function loadEvaluationComparison(
           continue;
         }
         const r = loadRunResult(dir, name);
-        if (r?.evaluationId === evaluationId) matched.push(r);
+        if (r?.evaluationId === id) matched.push(r);
       }
-    }
-    const paired = pairEvaluationRuns(matched);
-    baseline = baseline ?? paired.baseline;
-    candidate = candidate ?? paired.candidate;
-  }
+      return matched;
+    },
+  });
 
   const comparison =
     baseline && candidate

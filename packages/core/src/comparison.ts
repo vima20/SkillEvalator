@@ -224,8 +224,7 @@ export function compareBaselineCandidate(
   };
 }
 
-/** Pick baseline + candidate from a list of runs that share evaluationId. */
-/** Prefer newest finishedAt/startedAt; tie-break on runId (desc). */
+om/** Prefer newest finishedAt/startedAt; tie-break on runId (desc). */
 function newestForRole(
   runs: RunResult[],
   role: "baseline" | "candidate",
@@ -253,4 +252,34 @@ export function pairEvaluationRuns(runs: RunResult[]): {
     baseline: newestForRole(runs, "baseline"),
     candidate: newestForRole(runs, "candidate"),
   };
+}
+
+export type ComparisonMetaLegs = {
+  baselineRunId: string;
+  candidateRunId: string;
+};
+
+/**
+ * Resolve Comparison legs.
+ * When evaluation.json exists, use only those runIds — never fill a missing
+ * result from older same-evaluationId runs (avoids ghost PASS after retry).
+ * Scan fallback is legacy-only (no meta).
+ */
+export function resolveComparisonLegs(opts: {
+  meta: ComparisonMetaLegs | null;
+  loadResult: (runId: string) => RunResult | null;
+  /** Used only when meta is null (legacy evaluations without evaluation.json). */
+  scanByEvaluationId?: () => RunResult[];
+}): {
+  baseline: RunResult | null;
+  candidate: RunResult | null;
+} {
+  if (opts.meta) {
+    return {
+      baseline: opts.loadResult(opts.meta.baselineRunId),
+      candidate: opts.loadResult(opts.meta.candidateRunId),
+    };
+  }
+  const matched = opts.scanByEvaluationId?.() ?? [];
+  return pairEvaluationRuns(matched);
 }
