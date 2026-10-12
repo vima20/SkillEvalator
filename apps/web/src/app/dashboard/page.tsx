@@ -38,7 +38,7 @@ function mean(scores: number[]): number | null {
 export default function DashboardPage() {
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir());
-  const hasActive = allRuns.some((r) => runIsActive(r.status));
+  const hasActive = allRuns.some((r) => runIsActive(r.status, !!r.result));
   // Leaderboard: candidate legs only (baseline is Comparison input, not a skill impl).
   const rows: Row[] = allRuns.flatMap((r) => {
     if (!r.result) return [];

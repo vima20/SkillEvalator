@@ -2,17 +2,20 @@
 
 export type StatusBadgeKind = "ok" | "run" | "fail" | "wait";
 
-const ACTIVE_RUN = new Set([
-  "queued",
-  "running",
-  "cancel_requested",
-  // Mid-finish cost-cap wind-down before result.json lands.
-  "budget_stop",
-]);
+const ACTIVE_RUN = new Set(["queued", "running", "cancel_requested"]);
 
-/** True while a run may still change (refresh-worthy). Safe for RSC + client. */
-export function runIsActive(status: string | undefined): boolean {
-  return ACTIVE_RUN.has(status ?? "");
+/**
+ * True while a run may still change (refresh-worthy). Safe for RSC + client.
+ * `budget_stop` is active only until result.json lands (wind-down); with a
+ * terminal result it must not keep dashboard/runs auto-refreshing forever.
+ */
+export function runIsActive(
+  status: string | undefined,
+  hasResult = false,
+): boolean {
+  const s = status ?? "";
+  if (s === "budget_stop") return !hasResult;
+  return ACTIVE_RUN.has(s);
 }
 
 export function statusBadgeKind(status?: string | null): StatusBadgeKind {

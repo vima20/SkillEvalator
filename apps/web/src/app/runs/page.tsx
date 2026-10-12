@@ -19,7 +19,7 @@ function shortError(msg: string | undefined, max = 72): string | null {
 export default function RunsPage() {
   healOrphanStatuses();
   const runs = listRuns(resultsDir());
-  const hasActive = runs.some((r) => runIsActive(r.status));
+  const hasActive = runs.some((r) => runIsActive(r.status, !!r.result));
 
   return (
     <div>
@@ -63,7 +63,7 @@ export default function RunsPage() {
               <tbody>
                 {runs.map((r) => {
                   const err = shortError(r.error);
-                  const active = runIsActive(r.status);
+                  const active = runIsActive(r.status, !!r.result);
                   const role = r.result?.role ?? r.role ?? "—";
                   const evaluationId =
                     r.result?.evaluationId ?? r.evaluationId;
