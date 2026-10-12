@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import {
   JobManifestSchema,
   assertSafeId,
+  clearRetryMarker,
   findReusableRetryRunId,
   isNonRetryableErrorCode,
   loadRunResult,
@@ -13,7 +14,7 @@ import {
   saveRetryMarker,
   tryAcquireRetryEnqueueLock,
 } from "@skillevalator/core";
-import { enqueueRun } from "@/lib/enqueueRun";
+import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
 import { updateEvaluationMetaLeg } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
@@ -104,21 +105,37 @@ export async function POST(
       });
     };
 
-    /** Paired retries must update evaluation.json or Comparison stays on the old leg. */
+    /**
+     * Paired retries must update evaluation.json or Comparison stays on the old leg.
+     * Fresh enqueues that fail the meta link are aborted so we do not leave a
+     * paid orphan that Comparison will ignore.
+     */
     const respondLinked = (opts: {
       newRunId: string;
       reused: boolean;
     }) => {
       const metaUpdated = linkComparison(opts.newRunId);
       if (evaluationId && !metaUpdated) {
+        if (!opts.reused) {
+          abortQueuedRun(
+            opts.newRunId,
+            "Comparison link update failed after retry enqueue",
+            {
+              role: role === "baseline" ? "baseline" : "candidate",
+            },
+          );
+          clearRetryMarker(root, runId);
+        }
         return NextResponse.json(
           {
             ok: false,
-            error:
-              "Comparison link update failed — retry again shortly to repair the pair",
+            error: opts.reused
+              ? "Comparison link update failed — retry again shortly to repair the pair"
+              : "Comparison link update failed — queued retry was aborted; try again shortly",
             runId: opts.newRunId,
             fromRunId: runId,
             reused: opts.reused,
+            aborted: !opts.reused,
             role,
             evaluationId,
             evaluationMetaUpdated: false,

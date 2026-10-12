@@ -8,6 +8,9 @@ import { runIsActive, statusBadgeClass } from "@/lib/status";
 /** Hard-finished — no more result.json expected. */
 const SETTLED = new Set(["ok", "failed", "cancelled"]);
 
+/** Orphan wait for budget_stop → result.json per leg. */
+const WIND_DOWN_MS = 90_000;
+
 export function ComparisonPending({
   evaluationId,
   baselineRunId,
@@ -27,7 +30,8 @@ export function ComparisonPending({
   candidateHasResult?: boolean;
 }) {
   const router = useRouter();
-  const [budgetTimedOut, setBudgetTimedOut] = useState(false);
+  const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
+  const [candidateBudgetTimedOut, setCandidateBudgetTimedOut] = useState(false);
 
   const baselineWindDown =
     baselineStatus === "budget_stop" && !baselineHasResult;
@@ -35,38 +39,54 @@ export function ComparisonPending({
     candidateStatus === "budget_stop" && !candidateHasResult;
   const windDown = baselineWindDown || candidateWindDown;
 
-  // Wind-down without result stays active until result.json or orphan timeout.
+  // Wind-down without result stays active until result.json or that leg's orphan timeout.
   const baselineActive =
     runIsActive(baselineStatus, baselineHasResult) &&
-    !(baselineWindDown && budgetTimedOut);
+    !(baselineWindDown && baselineBudgetTimedOut);
   const candidateActive =
     runIsActive(candidateStatus, candidateHasResult) &&
-    !(candidateWindDown && budgetTimedOut);
+    !(candidateWindDown && candidateBudgetTimedOut);
   const stillWaiting = baselineActive || candidateActive;
 
   const baselineSettled =
     SETTLED.has(baselineStatus ?? "") ||
     (baselineStatus === "budget_stop" &&
-      (baselineHasResult || budgetTimedOut));
+      (baselineHasResult || baselineBudgetTimedOut));
   const candidateSettled =
     SETTLED.has(candidateStatus ?? "") ||
     (candidateStatus === "budget_stop" &&
-      (candidateHasResult || budgetTimedOut));
+      (candidateHasResult || candidateBudgetTimedOut));
 
   // Only unavailable when neither leg can still produce a usable scorecard.
   // One leg may time out on budget_stop while the other is still queued/running —
-  // keep polling until that other leg settles too.
+  // keep polling until that other leg settles too (its own 90s clock if it later
+  // enters wind-down).
   const unavailable =
     !stillWaiting && baselineSettled && candidateSettled;
 
   useEffect(() => {
-    if (!windDown) {
-      setBudgetTimedOut(false);
+    if (!baselineWindDown) {
+      setBaselineBudgetTimedOut(false);
       return;
     }
-    const id = window.setTimeout(() => setBudgetTimedOut(true), 90_000);
+    const id = window.setTimeout(
+      () => setBaselineBudgetTimedOut(true),
+      WIND_DOWN_MS,
+    );
     return () => window.clearTimeout(id);
-  }, [windDown, evaluationId]);
+  }, [baselineWindDown, evaluationId, baselineRunId]);
+
+  useEffect(() => {
+    if (!candidateWindDown) {
+      setCandidateBudgetTimedOut(false);
+      return;
+    }
+    const id = window.setTimeout(
+      () => setCandidateBudgetTimedOut(true),
+      WIND_DOWN_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [candidateWindDown, evaluationId, candidateRunId]);
 
   useEffect(() => {
     if (!stillWaiting) return;
@@ -96,7 +116,7 @@ export function ComparisonPending({
         {unavailable
           ? "Both baseline and candidate finished without a complete paired scorecard (failed, cancelled, or budget_stop without usable results). Open the run pages for details, or start a new paired evaluation."
           : windDown
-            ? "A leg hit the cost cap and is writing its final result.json. Polling continues while the other leg is still running (or until a short orphan timeout if wind-down stalls)."
+            ? "A leg hit the cost cap and is writing its final result.json. Each wind-down leg gets its own orphan timeout; polling continues while the other leg is still active."
             : "Baseline and candidate must finish before lift and PASS/FAIL can be computed. This page refreshes automatically."}
       </p>
       <dl className="meta-list">

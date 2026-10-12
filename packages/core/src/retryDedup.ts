@@ -125,6 +125,18 @@ export function saveRetryMarker(
   } satisfies RetryMarker);
 }
 
+/** Drop retry-of.json so a rolled-back enqueue is not reused as a live child. */
+export function clearRetryMarker(
+  resultsDir: string,
+  fromRunId: string,
+): void {
+  try {
+    fs.unlinkSync(markerPath(resultsDir, fromRunId));
+  } catch {
+    /* ignore missing */
+  }
+}
+
 function retryLockPath(resultsDir: string, fromRunId: string): string {
   return path.join(
     resolveUnder(resultsDir, assertSafeId(fromRunId, "runId")),

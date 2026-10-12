@@ -185,10 +185,11 @@ export function enqueueEvaluationPair(input: {
 }
 
 /**
- * Abort a just-queued (or already-claimed) baseline leg when candidate enqueue fails.
+ * Abort a just-queued (or already-claimed) run when a follow-up step fails
+ * (paired candidate enqueue, Comparison meta link after retry, etc.).
  * Writes .cancel so a running worker stops; removes queued job files when possible.
  */
-function abortQueuedRun(
+export function abortQueuedRun(
   runId: string,
   reason: string,
   meta?: { role?: "baseline" | "candidate"; evaluationId?: string },

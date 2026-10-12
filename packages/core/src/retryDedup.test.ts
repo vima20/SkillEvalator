@@ -4,8 +4,10 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   RETRY_DEDUP_WINDOW_MS,
+  clearRetryMarker,
   findReusableRetryRunId,
   isRetryChildLive,
+  loadRetryMarker,
   releaseRetryEnqueueLock,
   saveRetryMarker,
   shouldReuseRetry,
@@ -187,6 +189,22 @@ describe("isRetryChildLive", () => {
 });
 
 describe("findReusableRetryRunId", () => {
+  it("clearRetryMarker drops retry-of.json so reuse cannot find the child", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-"));
+    temps.push(root);
+    const from = "run_100_fromaaaa";
+    const child = "run_100_childclr";
+    writeJsonFile(path.join(root, from, "status.json"), {
+      runId: from,
+      status: "failed",
+    });
+    saveRetryMarker(root, from, child);
+    expect(loadRetryMarker(root, from)?.runId).toBe(child);
+    clearRetryMarker(root, from);
+    expect(loadRetryMarker(root, from)).toBeNull();
+    clearRetryMarker(root, from); // idempotent
+  });
+
   it("returns child run when marker is valid and job + worker are live", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-"));
     const jobs = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-jobs-"));
