@@ -38,6 +38,13 @@ export async function produceArtifact(opts: {
   instruction: string;
   promptKind: "baseline_neutral" | "skill_md";
 }> {
+  const inputSt = fs.lstatSync(opts.inputPath);
+  if (inputSt.isSymbolicLink()) {
+    throw new Error(`symlink not allowed for input: ${opts.inputPath}`);
+  }
+  if (!inputSt.isFile()) {
+    throw new Error(`input is not a regular file: ${opts.inputPath}`);
+  }
   const input = fs.readFileSync(opts.inputPath, "utf8");
   if (!config.openaiApiKey) {
     throw new Error(
@@ -53,7 +60,11 @@ export async function produceArtifact(opts: {
   if (opts.subjectDir && fs.existsSync(opts.subjectDir)) {
     for (const name of fs.readdirSync(opts.subjectDir).sort()) {
       const p = path.join(opts.subjectDir, name);
-      if (!fs.statSync(p).isFile()) continue;
+      const st = fs.lstatSync(p);
+      if (st.isSymbolicLink()) {
+        throw new Error(`symlink not allowed in subject: ${name}`);
+      }
+      if (!st.isFile()) continue;
       subjectBlocks.push(
         `Subject file ${name}:`,
         "```javascript",

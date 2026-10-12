@@ -140,8 +140,34 @@ export async function gradeInDocker(opts: {
     }
 
     const scriptsDir = path.join(opts.skillRoot, "scripts");
-    if (!fs.existsSync(path.join(scriptsDir, "grade.js"))) {
+    const gradeJs = path.join(scriptsDir, "grade.js");
+    if (!fs.existsSync(gradeJs)) {
       return { exitCode: 1, summary: "grade.js missing" };
+    }
+    try {
+      const st = fs.lstatSync(gradeJs);
+      if (st.isSymbolicLink() || !st.isFile()) {
+        return { exitCode: 1, summary: "grade.js must be a regular file" };
+      }
+    } catch (e) {
+      return {
+        exitCode: 1,
+        summary: e instanceof Error ? e.message : "grade.js unreadable",
+      };
+    }
+
+    // Stage scripts without following symlinks (import integrity).
+    const scriptsStage = path.join(work, "scripts");
+    try {
+      copyDirFiles(scriptsDir, scriptsStage);
+    } catch (e) {
+      return {
+        exitCode: 1,
+        summary: e instanceof Error ? e.message : "scripts stage failed",
+      };
+    }
+    if (!fs.existsSync(path.join(scriptsStage, "grade.js"))) {
+      return { exitCode: 1, summary: "grade.js missing after stage" };
     }
 
     const containerName = `se-grade-${crypto.randomBytes(6).toString("hex")}`;
@@ -167,7 +193,7 @@ export async function gradeInDocker(opts: {
       "--security-opt",
       "no-new-privileges",
       "-v",
-      `${toDockerBindPath(scriptsDir)}:/skill/scripts:ro`,
+      `${toDockerBindPath(scriptsStage)}:/skill/scripts:ro`,
       "-v",
       `${toDockerBindPath(taskStage)}:/task:ro`,
       "-v",
@@ -273,9 +299,27 @@ export function gradeOnHost(opts: {
   targetFile: string;
   artifactPath: string;
 }): GradeResult {
+  // Imported skills must not run grade.js on the host (RCE / self-cert risk).
+  if (fs.existsSync(path.join(opts.skillRoot, ".import.json"))) {
+    return {
+      exitCode: 1,
+      summary: "host grade blocked for imported skills — use Docker grade",
+    };
+  }
   const gradeJs = path.join(opts.skillRoot, "scripts", "grade.js");
   if (!fs.existsSync(gradeJs)) {
     return { exitCode: 1, summary: "grade.js missing" };
+  }
+  try {
+    const st = fs.lstatSync(gradeJs);
+    if (st.isSymbolicLink() || !st.isFile()) {
+      return { exitCode: 1, summary: "grade.js must be a regular file" };
+    }
+  } catch (e) {
+    return {
+      exitCode: 1,
+      summary: e instanceof Error ? e.message : "grade.js unreadable",
+    };
   }
   if (!fs.existsSync(opts.artifactPath)) {
     return { exitCode: 1, summary: "artifact missing" };

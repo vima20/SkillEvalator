@@ -145,6 +145,8 @@ export function enqueueEvaluationPair(input: {
     evaluationId,
   });
   if (!candidate.ok) {
+    // Roll back the baseline leg so Comparison is not left half-queued.
+    abortQueuedRun(baseline.runId, candidate.error);
     return {
       ok: false,
       status: candidate.status,
@@ -167,4 +169,26 @@ export function enqueueEvaluationPair(input: {
     baselineRunId: baseline.runId,
     candidateRunId: candidate.runId,
   };
+}
+
+/** Remove a just-queued job and mark its status failed (paired enqueue abort). */
+function abortQueuedRun(runId: string, reason: string): void {
+  const jobs = jobsDir();
+  for (const name of [`${runId}.json`, `${runId}.tmp.json`]) {
+    try {
+      fs.unlinkSync(path.join(jobs, name));
+    } catch {
+      /* ignore */
+    }
+  }
+  try {
+    writeJsonFile(path.join(resultsDir(), runId, "status.json"), {
+      runId,
+      status: "failed",
+      error: `Paired enqueue aborted: ${reason}`.slice(0, 800),
+      errorCode: "paired_enqueue_aborted",
+    });
+  } catch {
+    /* ignore */
+  }
 }

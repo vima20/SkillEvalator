@@ -197,6 +197,52 @@ function extractZip(zipPath: string, destDir: string): void {
       `unzip failed: ${(r.stderr || r.stdout || `exit ${r.status}`).trim()}`,
     );
   }
+  assertExtractSafe(destDir);
+}
+
+/** Reject zip-slip / symlink escapes after archive extract. */
+function assertExtractSafe(root: string): void {
+  const rootResolved = path.resolve(root);
+  const walk = (dir: string, depth: number) => {
+    if (depth > MAX_WALK_DEPTH + 4) {
+      throw new Error("extract tree too deep");
+    }
+    for (const name of fs.readdirSync(dir)) {
+      if (name === ".." || name === ".") continue;
+      const p = path.join(dir, name);
+      const resolved = path.resolve(p);
+      const rel = path.relative(rootResolved, resolved);
+      if (rel.startsWith("..") || path.isAbsolute(rel)) {
+        throw new Error(`zip-slip blocked: ${name}`);
+      }
+      const st = fs.lstatSync(p);
+      if (st.isSymbolicLink()) {
+        throw new Error(`symlink not allowed in archive: ${rel || name}`);
+      }
+      if (st.isDirectory()) walk(p, depth + 1);
+    }
+  };
+  walk(rootResolved, 0);
+}
+
+/** Recursive copy of regular files/dirs only (no symlinks). */
+function copyTreeNoSymlinks(src: string, dest: string): void {
+  const st = fs.lstatSync(src);
+  if (st.isSymbolicLink()) {
+    throw new Error(`symlink not allowed: ${path.basename(src)}`);
+  }
+  if (st.isDirectory()) {
+    fs.mkdirSync(dest, { recursive: true });
+    for (const name of fs.readdirSync(src)) {
+      copyTreeNoSymlinks(path.join(src, name), path.join(dest, name));
+    }
+    return;
+  }
+  if (!st.isFile()) {
+    throw new Error(`unsupported file type: ${path.basename(src)}`);
+  }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(src, dest);
 }
 
 function singleTopDir(dir: string): string {
@@ -256,10 +302,24 @@ export async function importSkillsFromGitHub(opts: {
       const folderName = path.basename(skillRoot);
       const importId = importIdFor(gh, folderName);
       const dest = resolveUnder(opts.importedSkillsDir, importId);
-      if (fs.existsSync(dest)) {
-        fs.rmSync(dest, { recursive: true, force: true });
+      const lockPath = `${dest}.importing`;
+      if (fs.existsSync(lockPath)) {
+        throw new Error(`import already in progress for ${importId}`);
       }
-      fs.cpSync(skillRoot, dest, { recursive: true });
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(lockPath, new Date().toISOString(), "utf8");
+      try {
+        if (fs.existsSync(dest)) {
+          fs.rmSync(dest, { recursive: true, force: true });
+        }
+        copyTreeNoSymlinks(skillRoot, dest);
+      } finally {
+        try {
+          fs.unlinkSync(lockPath);
+        } catch {
+          /* ignore */
+        }
+      }
 
       const manifestPath = path.join(dest, "fixtures", "manifest.json");
       try {

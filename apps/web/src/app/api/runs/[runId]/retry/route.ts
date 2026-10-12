@@ -14,6 +14,7 @@ import {
   tryAcquireRetryEnqueueLock,
 } from "@skillevalator/core";
 import { enqueueRun } from "@/lib/enqueueRun";
+import { updateEvaluationMetaLeg } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
@@ -94,24 +95,41 @@ export async function POST(
       loadRunStatus(root, childId)?.status;
     const dedupOpts = { jobsDir: jobsDir(), isPidAlive };
 
+    const linkComparison = (newRunId: string) => {
+      if (!evaluationId) return false;
+      return updateEvaluationMetaLeg({
+        evaluationId,
+        role: role === "baseline" ? "baseline" : "candidate",
+        runId: newRunId,
+      });
+    };
+
     const reused = findReusableRetryRunId(root, runId, loadChild, dedupOpts);
     if (reused) {
+      const metaUpdated = linkComparison(reused);
       return NextResponse.json({
         ok: true,
         runId: reused,
         fromRunId: runId,
         reused: true,
+        role,
+        evaluationId: evaluationId ?? null,
+        evaluationMetaUpdated: metaUpdated,
       });
     }
 
     if (!tryAcquireRetryEnqueueLock(root, runId)) {
       const raced = findReusableRetryRunId(root, runId, loadChild, dedupOpts);
       if (raced) {
+        const metaUpdated = linkComparison(raced);
         return NextResponse.json({
           ok: true,
           runId: raced,
           fromRunId: runId,
           reused: true,
+          role,
+          evaluationId: evaluationId ?? null,
+          evaluationMetaUpdated: metaUpdated,
         });
       }
       return NextResponse.json(
@@ -129,11 +147,15 @@ export async function POST(
         dedupOpts,
       );
       if (reusedUnderLock) {
+        const metaUpdated = linkComparison(reusedUnderLock);
         return NextResponse.json({
           ok: true,
           runId: reusedUnderLock,
           fromRunId: runId,
           reused: true,
+          role,
+          evaluationId: evaluationId ?? null,
+          evaluationMetaUpdated: metaUpdated,
         });
       }
 
@@ -164,6 +186,7 @@ export async function POST(
       }
 
       saveRetryMarker(root, runId, queued.runId);
+      const metaUpdated = linkComparison(queued.runId);
 
       return NextResponse.json({
         ok: true,
@@ -172,6 +195,7 @@ export async function POST(
         reused: false,
         role,
         evaluationId: evaluationId ?? null,
+        evaluationMetaUpdated: metaUpdated,
       });
     } finally {
       releaseRetryEnqueueLock(root, runId);

@@ -64,6 +64,18 @@ describe("decideSkillUse", () => {
     expect(v.headline).toMatch(/USE/);
   });
 
+  it("use on official near-perfect (≥0.99)", () => {
+    const v = decideSkillUse(
+      sample({
+        mode: "official",
+        score: 0.995,
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+    );
+    expect(v.recommendation).toBe("use");
+  });
+
   it("do not use on failing official", () => {
     const v = decideSkillUse(sample({ mode: "official", score: 0.5, repeats: 3 }));
     expect(v.recommendation).toBe("do_not_use");
@@ -96,6 +108,30 @@ describe("benefitReport", () => {
     );
     expect(report.rating.stars).toBe(5);
     expect(report.rating.grade).toBe("Excellent");
+  });
+
+  it("aligns rating prose with USE for official ≥0.99", () => {
+    const report = buildBenefitReport(
+      sample({
+        mode: "official",
+        score: 0.995,
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        perTask: [
+          {
+            taskId: "bug-01",
+            scriptResults: [],
+            score: 0.995,
+            status: "ok",
+          },
+        ],
+      }),
+    );
+    expect(report.verdict.recommendation).toBe("use");
+    expect(report.rating.stars).toBe(5);
+    expect(report.rating.summary).toMatch(/Official passed/i);
+    expect(report.rating.review).not.toMatch(/short of USE/i);
+    expect(report.rating.review).not.toMatch(/Do not adopt the skill yet/i);
   });
 
   it("counts soft-pass tasks (>= 0.8) as passed", () => {

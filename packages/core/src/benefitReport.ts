@@ -140,11 +140,13 @@ export function rateSkill(result: RunResult): BenefitRating {
     stars = 2;
   } else if (score < 0.67) {
     stars = 3;
-  } else if (score < 1) {
+  } else if (score < 0.99) {
     stars = 4;
   } else if (result.mode === "dry-run") {
+    // Dry-run never earns 5★ even at a perfect score.
     stars = 4;
   } else {
+    // Official USE gate (≥0.99) aligns with decideSkillUse.
     stars = 5;
   }
 
@@ -202,7 +204,10 @@ export function rateSkill(result: RunResult): BenefitRating {
         body: "Do not adopt the skill. Inspect failed artifacts, tighten SKILL.md guidance or fixtures, and repeat dry-run until score ≈1.0 (not only soft-pass).",
       },
     ];
-  } else if (score < 1) {
+  } else if (
+    (result.mode === "dry-run" && score < 1) ||
+    (result.mode === "official" && score < 0.99)
+  ) {
     const allSoftPass = failedTasks.length === 0 && total > 0;
     summary = allSoftPass
       ? "Soft-pass complete — short of USE (near-perfect score)."
@@ -269,11 +274,11 @@ export function rateSkill(result: RunResult): BenefitRating {
     ];
   }
 
-  // Shared closing note unless official pass already has Limitation section
+  // Shared closing note unless official USE already has Limitation section
   if (
     status !== "cancelled" &&
     status !== "budget_stop" &&
-    !(result.mode === "official" && score === 1)
+    !(result.mode === "official" && score !== null && score >= 0.99)
   ) {
     reviewSections.push({
       heading: "Limitation",

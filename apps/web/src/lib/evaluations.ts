@@ -6,6 +6,7 @@ import {
   loadRunResult,
   pairEvaluationRuns,
   readJsonFile,
+  writeJsonFile,
   type RunComparison,
   type RunResult,
 } from "@skillevalator/core";
@@ -18,6 +19,7 @@ export type EvaluationMeta = {
   baselineRunId: string;
   candidateRunId: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export function evaluationMetaPath(evaluationId: string): string {
@@ -39,6 +41,29 @@ export function loadEvaluationMeta(
   } catch {
     return null;
   }
+}
+
+/**
+ * After a paired-leg retry, point Comparison at the new runId for that role.
+ */
+export function updateEvaluationMetaLeg(opts: {
+  evaluationId: string;
+  role: "baseline" | "candidate";
+  runId: string;
+}): boolean {
+  const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
+  const runId = assertSafeId(opts.runId, "runId");
+  const meta = loadEvaluationMeta(evaluationId);
+  if (!meta) return false;
+  const next: EvaluationMeta = {
+    ...meta,
+    ...(opts.role === "baseline"
+      ? { baselineRunId: runId }
+      : { candidateRunId: runId }),
+    updatedAt: new Date().toISOString(),
+  };
+  writeJsonFile(evaluationMetaPath(evaluationId), next);
+  return true;
 }
 
 export function loadEvaluationComparison(
