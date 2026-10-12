@@ -277,7 +277,7 @@ describe("resolveComparisonLegs", () => {
     expect(candidate).toBeNull();
   });
 
-  it("uses scan fallback only when meta is missing", () => {
+  it("returns null legs when meta is missing (no scan invent)", () => {
     const base = sample({ runId: "run_base", role: "baseline" });
     const cand = sample({ runId: "run_cand", role: "candidate" });
     const { baseline, candidate } = resolveComparisonLegs({
@@ -285,8 +285,8 @@ describe("resolveComparisonLegs", () => {
       loadResult: () => null,
       scanByEvaluationId: () => [cand, base],
     });
-    expect(baseline?.runId).toBe("run_base");
-    expect(candidate?.runId).toBe("run_cand");
+    expect(baseline).toBeNull();
+    expect(candidate).toBeNull();
   });
 });
 

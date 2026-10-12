@@ -6,6 +6,8 @@ import {
   estimateCallCostUsdForCap,
   estimateMaxCallCostUsd,
   estimateRunCostUsd,
+  estimateTokensFromText,
+  maxOutputTokensForRemainingBudget,
   wouldExceedCostCap,
 } from "./costEstimate.js";
 
@@ -88,5 +90,36 @@ describe("estimateCallCostUsdForCap", () => {
       estimateMaxCallCostUsd("gpt-4o-mini", 16_000),
       10,
     );
+  });
+});
+
+describe("maxOutputTokensForRemainingBudget", () => {
+  it("returns 0 when remaining cannot cover assumed input", () => {
+    expect(
+      maxOutputTokensForRemainingBudget({
+        modelId: "gpt-4o-mini",
+        remainingUsd: 0.0001,
+        maxOutputTokens: 4000,
+        estimatedInputTokens: 12_000,
+      }),
+    ).toBe(0);
+  });
+
+  it("clamps below the configured max when budget is tight", () => {
+    // gpt-4o-mini output $0.6/MTok → $0.001 buys ~1666 completion tokens
+    // after ~1000 input tokens (~$0.00015).
+    const clamped = maxOutputTokensForRemainingBudget({
+      modelId: "gpt-4o-mini",
+      remainingUsd: 0.001,
+      maxOutputTokens: 16_000,
+      estimatedInputTokens: 1000,
+    });
+    expect(clamped).toBeGreaterThan(0);
+    expect(clamped).toBeLessThan(16_000);
+  });
+
+  it("estimateTokensFromText scales with length", () => {
+    expect(estimateTokensFromText("abcd")).toBe(1);
+    expect(estimateTokensFromText("a".repeat(40))).toBe(10);
   });
 });

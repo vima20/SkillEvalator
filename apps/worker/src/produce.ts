@@ -4,6 +4,8 @@ import OpenAI from "openai";
 import {
   assertRealDirectory,
   costFromTokenUsage,
+  estimateTokensFromText,
+  maxOutputTokensForRemainingBudget,
   stripCodeFences,
 } from "@skillevalator/core";
 import { config } from "./config.js";
@@ -33,6 +35,10 @@ export async function produceArtifact(opts: {
   seed?: number;
   /** When this file appears, abort the in-flight OpenAI request. */
   cancelPath?: string;
+  /** Caps completion tokens (e.g. remaining cost budget). Defaults to config. */
+  maxOutputTokens?: number;
+  /** When set, re-clamp max_tokens using actual prompt size vs remaining USD. */
+  remainingUsd?: number;
 }): Promise<{
   content: string;
   costUsd: number;
@@ -129,12 +135,32 @@ export async function produceArtifact(opts: {
       role === "baseline"
         ? "You complete coding evaluation tasks using only the neutral instructions. Output only the requested source file body."
         : "You complete coding evaluation tasks. Follow the skill instructions exactly. Output only the requested source file body.";
+    const configuredMax =
+      opts.maxOutputTokens != null && opts.maxOutputTokens > 0
+        ? Math.floor(opts.maxOutputTokens)
+        : config.maxOutputTokens;
+    let max_tokens = configuredMax;
+    if (opts.remainingUsd != null) {
+      // Second clamp: actual prompt size vs remaining budget (ASSUMED_INPUT
+      // in the worker pre-check can under-estimate a large SKILL.md).
+      max_tokens = maxOutputTokensForRemainingBudget({
+        modelId: opts.modelId,
+        remainingUsd: opts.remainingUsd,
+        maxOutputTokens: configuredMax,
+        estimatedInputTokens: estimateTokensFromText(
+          `${systemContent}\n${prompt}`,
+        ),
+      });
+      if (max_tokens < 1) {
+        throw new Error("cost budget exhausted before OpenAI call");
+      }
+    }
     const res = await client.chat.completions.create(
       {
         model: opts.modelId,
         temperature: config.temperature,
         top_p: config.topP,
-        max_tokens: config.maxOutputTokens,
+        max_tokens,
         ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
         messages: [
           {

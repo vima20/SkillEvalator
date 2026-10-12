@@ -11,10 +11,14 @@ export async function GET(
   try {
     const { evaluationId: raw } = await ctx.params;
     const evaluationId = assertSafeId(raw, "evaluationId");
-    const { comparison } = loadEvaluationComparison(evaluationId);
-    if (!comparison) {
+    const { meta, comparison } = loadEvaluationComparison(evaluationId);
+    if (!meta || !comparison) {
       return NextResponse.json(
-        { error: "comparison not ready" },
+        {
+          error: !meta
+            ? "evaluation.json missing — comparison CSV requires paired meta"
+            : "comparison not ready",
+        },
         { status: 404 },
       );
     }

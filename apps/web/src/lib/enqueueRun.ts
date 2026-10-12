@@ -167,14 +167,31 @@ export function enqueueEvaluationPair(input: {
     };
   }
 
-  writeJsonFile(path.join(resultsDir(), evaluationId, "evaluation.json"), {
-    evaluationId,
-    evalSkillId,
-    mode: input.mode,
-    baselineRunId: baseline.runId,
-    candidateRunId: candidate.runId,
-    createdAt: new Date().toISOString(),
-  });
+  try {
+    writeJsonFile(path.join(resultsDir(), evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId,
+      mode: input.mode,
+      baselineRunId: baseline.runId,
+      candidateRunId: candidate.runId,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    abortQueuedRun(baseline.runId, `evaluation.json write failed: ${message}`, {
+      role: "baseline",
+    });
+    abortQueuedRun(
+      candidate.runId,
+      `evaluation.json write failed: ${message}`,
+      { role: "candidate" },
+    );
+    return {
+      ok: false,
+      status: 500,
+      error: `failed to write evaluation.json: ${message}`.slice(0, 400),
+    };
+  }
 
   return {
     ok: true,

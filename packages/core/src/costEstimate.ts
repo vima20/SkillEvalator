@@ -91,6 +91,39 @@ export function wouldExceedCostCap(opts: {
   return spent + next > cap;
 }
 
+/**
+ * Clamp max_tokens so worst-case output cost fits in remaining budget
+ * (after assumed/estimated input). Returns 0 when even a tiny completion
+ * would exceed the remaining USD.
+ */
+export function maxOutputTokensForRemainingBudget(opts: {
+  modelId: string;
+  remainingUsd: number;
+  maxOutputTokens: number;
+  estimatedInputTokens?: number;
+}): number {
+  const maxOut = Math.max(0, Math.floor(opts.maxOutputTokens));
+  if (maxOut <= 0) return 0;
+  const remaining = Math.max(0, opts.remainingUsd);
+  if (remaining <= 0) return 0;
+  const rate = rateForModel(opts.modelId);
+  const inTok = Math.max(
+    0,
+    Math.floor(opts.estimatedInputTokens ?? ASSUMED_INPUT_TOKENS),
+  );
+  const inputCostUsd = (inTok * rate.inputPerMTok) / 1_000_000;
+  const forOutput = remaining - inputCostUsd;
+  if (forOutput <= 0) return 0;
+  const affordable = Math.floor((forOutput * 1_000_000) / rate.outputPerMTok);
+  return Math.max(0, Math.min(maxOut, affordable));
+}
+
+/** Rough token estimate from UTF-8 text (~4 chars/token). */
+export function estimateTokensFromText(text: string): number {
+  const chars = text?.length ?? 0;
+  return Math.max(1, Math.ceil(chars / 4));
+}
+
 export function estimateRunCostUsd(opts: {
   taskCount: number;
   repeats: number;

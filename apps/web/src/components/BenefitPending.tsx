@@ -22,8 +22,12 @@ export function BenefitPending({
   const st = status ?? undefined;
   const windDown = st === "budget_stop";
   const settled = SETTLED.has(st ?? "");
-  const stillWaiting = runIsActive(st, false) && !budgetTimedOut;
-  const unavailable = (settled || budgetTimedOut) && !stillWaiting;
+  // Missing/unknown status: keep polling (status.json may not exist yet).
+  const stillWaiting =
+    !settled &&
+    !(windDown && budgetTimedOut) &&
+    (runIsActive(st, false) || windDown || !st);
+  const unavailable = (settled || (windDown && budgetTimedOut)) && !stillWaiting;
 
   useEffect(() => {
     if (!windDown) {

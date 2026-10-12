@@ -8,6 +8,7 @@ import {
   assertSafeId,
   buildBenefitReport,
   estimateCallCostUsdForCap,
+  maxOutputTokensForRemainingBudget,
   gradeInDocker,
   gradeOnHost,
   liveRunStatusForProgress,
@@ -75,30 +76,27 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       "SKILL.md",
     );
     const locked = tryReadRegularFileUtf8(snapMd);
-    if (locked != null) {
-      skill = { ...skill, skillMd: locked };
-      findings.push(
-        `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
+    if (locked == null) {
+      throw new Error(
+        fs.existsSync(snapMd)
+          ? `skill snapshot invalid for ${job.skillSnapshotFromRunId} (not a readable regular file)`
+          : `skill snapshot missing for ${job.skillSnapshotFromRunId}`,
       );
-      const prior = loadRunResult(
-        config.resultsDir,
-        job.skillSnapshotFromRunId,
-      );
-      if (
-        prior?.evalSkillVersion &&
-        prior.evalSkillVersion !== skill.version
-      ) {
-        findings.push(
-          `skill/fixtures version drifted since snapshot ${job.skillSnapshotFromRunId}: was ${prior.evalSkillVersion}, live ${skill.version}`,
-        );
-      }
-    } else if (fs.existsSync(snapMd)) {
-      findings.push(
-        `skill snapshot invalid for ${job.skillSnapshotFromRunId}; using live SKILL.md`,
-      );
-    } else {
-      findings.push(
-        `skill snapshot missing for ${job.skillSnapshotFromRunId}; using live SKILL.md`,
+    }
+    skill = { ...skill, skillMd: locked };
+    findings.push(
+      `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
+    );
+    const prior = loadRunResult(
+      config.resultsDir,
+      job.skillSnapshotFromRunId,
+    );
+    if (
+      prior?.evalSkillVersion &&
+      prior.evalSkillVersion !== skill.version
+    ) {
+      throw new Error(
+        `skill/fixtures version drifted since snapshot ${job.skillSnapshotFromRunId}: was ${prior.evalSkillVersion}, live ${skill.version}`,
       );
     }
   }
@@ -307,17 +305,26 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         if (fakeProduce) {
           content = readRegularFileUtf8(tp.knownGoodPath, "known-good");
         } else {
+          const remainingUsd = config.costCapUsd - costUsd;
+          const clampedMaxTokens = config.costHardStop
+            ? maxOutputTokensForRemainingBudget({
+                modelId,
+                remainingUsd,
+                maxOutputTokens: config.maxOutputTokens,
+              })
+            : config.maxOutputTokens;
           const nextCallUsd = estimateCallCostUsdForCap(
             modelId,
-            config.maxOutputTokens,
+            clampedMaxTokens,
           );
           if (
             config.costHardStop &&
-            wouldExceedCostCap({
-              spentUsd: costUsd,
-              nextCallUsd,
-              capUsd: config.costCapUsd,
-            })
+            (clampedMaxTokens < 1 ||
+              wouldExceedCostCap({
+                spentUsd: costUsd,
+                nextCallUsd,
+                capUsd: config.costCapUsd,
+              }))
           ) {
             stop = "budget_stop";
             if (!findings.includes("cost hard stop")) {
@@ -347,6 +354,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
               subjectDir: tp.subjectDir,
               seed: config.seed + r,
               cancelPath,
+              maxOutputTokens: clampedMaxTokens,
+              remainingUsd: config.costHardStop ? remainingUsd : undefined,
             });
             content = produced.content;
             produceCost = produced.costUsd;
@@ -359,6 +368,20 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
             ) {
               stop = "cancelled";
               if (!findings.includes("cancelled")) findings.push("cancelled");
+              break outer;
+            }
+            if (
+              config.costHardStop &&
+              e instanceof Error &&
+              e.message.includes("cost budget exhausted")
+            ) {
+              stop = "budget_stop";
+              if (!findings.includes("cost hard stop")) {
+                findings.push("cost hard stop");
+              }
+              if (!findings.includes("cost pre-check blocked produce")) {
+                findings.push("cost pre-check blocked produce");
+              }
               break outer;
             }
             throw e;

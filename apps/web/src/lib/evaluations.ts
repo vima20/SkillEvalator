@@ -87,7 +87,7 @@ export function loadEvaluationComparison(
 } {
   const meta = loadEvaluationMeta(evaluationId);
   const dir = resultsDir();
-  const id = assertSafeId(evaluationId, "evaluationId");
+  assertSafeId(evaluationId, "evaluationId");
 
   const { baseline, candidate } = resolveComparisonLegs({
     meta: meta
@@ -97,20 +97,6 @@ export function loadEvaluationComparison(
         }
       : null,
     loadResult: (runId) => loadRunResult(dir, runId),
-    scanByEvaluationId: () => {
-      const matched: NonNullable<ReturnType<typeof loadRunResult>>[] = [];
-      if (!fs.existsSync(dir)) return matched;
-      for (const name of fs.readdirSync(dir)) {
-        try {
-          assertSafeId(name, "runId");
-        } catch {
-          continue;
-        }
-        const r = loadRunResult(dir, name);
-        if (r?.evaluationId === id) matched.push(r);
-      }
-      return matched;
-    },
   });
 
   const comparison =

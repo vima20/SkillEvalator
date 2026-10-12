@@ -362,8 +362,13 @@ export async function importSkillsFromGitHub(opts: {
               : manifest.githubUrl,
             commit: /^[0-9a-f]{7,40}$/i.test(gh.ref) ? gh.ref : manifest.commit,
           });
-        } catch {
-          /* keep original manifest */
+        } catch (err) {
+          try {
+            fs.rmSync(dest, { recursive: true, force: true });
+          } catch {
+            /* ignore */
+          }
+          throw err;
         }
 
         writeJsonFile(path.join(dest, ".import.json"), {

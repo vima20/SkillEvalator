@@ -188,9 +188,19 @@ export async function POST(
         "skill-snapshot",
         "SKILL.md",
       );
-      const skillSnapshotFromRunId = fs.existsSync(snapshotPath)
-        ? runId
-        : undefined;
+      const hasSnapshot = fs.existsSync(snapshotPath);
+      // Candidate retries must keep the prior SKILL.md lock — never silently
+      // fall through to live fixtures/prompt.
+      if (role === "candidate" && !hasSnapshot) {
+        return NextResponse.json(
+          {
+            error:
+              "cannot retry candidate — skill-snapshot/SKILL.md missing; re-run from a finished candidate or start a new paired evaluation",
+          },
+          { status: 409 },
+        );
+      }
+      const skillSnapshotFromRunId = hasSnapshot ? runId : undefined;
 
       const queued = enqueueRun({
         evalSkillId,
