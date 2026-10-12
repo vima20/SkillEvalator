@@ -55,6 +55,7 @@ export default function RunsPage() {
               <thead>
                 <tr>
                   <th>Run</th>
+                  <th>Role</th>
                   <th>Status</th>
                   <th>Error</th>
                   <th>Mode</th>
@@ -66,11 +67,25 @@ export default function RunsPage() {
                 {runs.map((r) => {
                   const err = shortError(r.error);
                   const active = runIsActive(r.status);
+                  const role = r.result?.role ?? "—";
+                  const evaluationId = r.result?.evaluationId;
                   return (
                     <tr key={r.runId}>
                       <td>
                         <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
+                        {evaluationId ? (
+                          <>
+                            <br />
+                            <Link
+                              className="hint"
+                              href={`/comparison/${evaluationId}`}
+                            >
+                              {evaluationId}
+                            </Link>
+                          </>
+                        ) : null}
                       </td>
+                      <td>{role}</td>
                       <td>
                         <span
                           className={`${statusBadgeClass(r.status)}${active ? " badge-live" : ""}`}

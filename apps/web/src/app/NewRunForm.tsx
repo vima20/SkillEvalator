@@ -17,6 +17,9 @@ export type SkillOption = {
   taskSetId: string;
   dryRunCount: number;
   taskCount: number;
+  commit?: string;
+  license?: string;
+  dependencies?: string[];
 };
 
 type PreflightCheck = { ok: boolean; detail: string };
@@ -38,6 +41,8 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
   );
   const [mode, setMode] = useState<"dry-run" | "official">("dry-run");
   const [repeats, setRepeats] = useState(1);
+  /** Unikie: baseline (neutral) + candidate (SKILL.md) paired evaluation. */
+  const [withBaseline, setWithBaseline] = useState(true);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -59,15 +64,19 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
       ? (selected?.taskCount ?? 0)
       : (selected?.dryRunCount ?? 0);
   const modelPreview = mode === "official" ? MODEL_OFFICIAL : MODEL_DRY_RUN;
-  const costPreview = useMemo(
-    () =>
-      estimateRunCostUsd({
-        taskCount: taskCountPreview,
-        repeats: safeRepeatsPreview,
-        modelId: modelPreview,
-      }),
-    [taskCountPreview, safeRepeatsPreview, modelPreview],
-  );
+  const costPreview = useMemo(() => {
+    const one = estimateRunCostUsd({
+      taskCount: taskCountPreview,
+      repeats: safeRepeatsPreview,
+      modelId: modelPreview,
+    });
+    if (!withBaseline) return one;
+    return {
+      ...one,
+      calls: one.calls * 2,
+      estimatedUsd: Math.round(one.estimatedUsd * 2 * 10_000) / 10_000,
+    };
+  }, [taskCountPreview, safeRepeatsPreview, modelPreview, withBaseline]);
 
   const refreshPreflight = useCallback(async () => {
     setPreflightBusy(true);
@@ -129,12 +138,18 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
           evalSkillId,
           mode,
           repeats: safeRepeats,
+          withBaseline,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "failed");
-      setMsg(`Queued ${data.runId}`);
-      router.push(`/runs/${data.runId}`);
+      if (withBaseline && data.evaluationId) {
+        setMsg(`Queued evaluation ${data.evaluationId}`);
+        router.push(`/comparison/${data.evaluationId}`);
+      } else {
+        setMsg(`Queued ${data.runId}`);
+        router.push(`/runs/${data.runId}`);
+      }
     } catch (err) {
       setError(true);
       setMsg(err instanceof Error ? err.message : "error");
@@ -300,6 +315,24 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
           ) : null}
         </div>
 
+        <div className="field">
+          <label className="check-row" htmlFor="withBaseline">
+            <input
+              id="withBaseline"
+              type="checkbox"
+              checked={withBaseline}
+              onChange={(e) => setWithBaseline(e.target.checked)}
+            />
+            <span>
+              Unikie baseline↔candidate (neutral prompt + skill SKILL.md)
+            </span>
+          </label>
+          <p className="hint">
+            Queues two runs with one evaluationId and opens Comparison. Baseline
+            does not use the skill SKILL.md.
+          </p>
+        </div>
+
         <div
           className={`cost-estimate${costPreview.estimatedUsd > DEFAULT_COST_CAP_USD ? " cost-estimate-over" : ""}`}
           aria-live="polite"
@@ -309,7 +342,8 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
             ~${costPreview.estimatedUsd.toFixed(4)} for {costPreview.calls}{" "}
             produce call
             {costPreview.calls === 1 ? "" : "s"} ({taskCountPreview} tasks ×{" "}
-            {safeRepeatsPreview} repeats · <code>{modelPreview}</code>).
+            {safeRepeatsPreview} repeats · <code>{modelPreview}</code>
+            {withBaseline ? " · ×2 baseline+candidate" : ""}).
           </p>
           {costPreview.estimatedUsd > DEFAULT_COST_CAP_USD ? (
             <p className="form-error" role="status">
@@ -326,7 +360,11 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
         </div>
 
         <button className="btn btn-primary" type="submit" disabled={busy}>
-          {busy ? "Queueing…" : "Start run"}
+          {busy
+            ? "Queueing…"
+            : withBaseline
+              ? "Start baseline↔candidate"
+              : "Start run"}
         </button>
         {msg ? (
           <p
@@ -360,6 +398,18 @@ export function NewRunForm({ skills }: { skills: SkillOption[] }) {
           <div>
             <dt>Official tasks</dt>
             <dd>{selected?.taskCount ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Commit</dt>
+            <dd>
+              <code>
+                {selected?.commit ? selected.commit.slice(0, 12) : "—"}
+              </code>
+            </dd>
+          </div>
+          <div>
+            <dt>License</dt>
+            <dd>{selected?.license ?? "—"}</dd>
           </div>
         </dl>
         {selected?.githubUrl ? (

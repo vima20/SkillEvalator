@@ -53,6 +53,10 @@ export type BenefitReport = {
     evalSkillId: string;
     evalSkillVersion: string;
     evalSkillGithubUrl?: string;
+    role?: RunResult["role"];
+    evaluationId?: string;
+    commit?: string;
+    license?: string;
     taskSetId: string;
     taskIds: string[];
     repeats: number;
@@ -309,6 +313,16 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
     };
   }
 
+  if ((result.role ?? "candidate") === "baseline") {
+    return {
+      recommendation: "inconclusive",
+      headline: "BASELINE — not an adoption verdict",
+      decision: "INCONCLUSIVE — baseline leg only (no skill SKILL.md)",
+      rationale:
+        "This is the Unikie baseline run (neutral prompt). Open Comparison for the paired candidate lift / PASS–FAIL verdict.",
+    };
+  }
+
   if (status === "failed" || score === null) {
     return {
       recommendation: "do_not_use",
@@ -393,6 +407,10 @@ export function buildBenefitReport(result: RunResult): BenefitReport {
       evalSkillId: result.evalSkillId,
       evalSkillVersion: result.evalSkillVersion,
       evalSkillGithubUrl: result.evalSkillGithubUrl,
+      role: result.role ?? "candidate",
+      evaluationId: result.evaluationId,
+      commit: result.capture?.commit,
+      license: result.capture?.license,
       taskSetId: result.taskSetId,
       taskIds: result.taskIds,
       repeats: result.repeats,
@@ -418,12 +436,15 @@ export function buildBenefitReport(result: RunResult): BenefitReport {
     constraints: [
       "Official mode requires ≥3 repeats; dry-run may use fewer.",
       "Grade is script/tests vs expected fixtures — not an LLM-as-judge.",
-      "No multi-model comparison dashboard in MVP.",
+      "Unikie PASS requires candidate lift ≥ +5 pp over baseline (see Comparison).",
       "Cost hard-stop may null the score (budget_stop).",
       "Result ≠ KH-adoption proof (see disclaimer).",
       result.mode === "dry-run"
         ? "Dry-run uses a cheaper model and may use a subset of tasks — not an official claim."
         : "Official run uses the locked official model and full task set.",
+      result.evaluationId
+        ? `Paired evaluationId ${result.evaluationId} — open Comparison for baseline↔candidate lift.`
+        : "Single-leg run (no paired baseline). Enable baseline↔candidate on New run for Unikie Comparison.",
     ],
     cost: {
       costUsd: result.costUsd,

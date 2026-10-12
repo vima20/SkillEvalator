@@ -372,7 +372,7 @@ code {
 }
 
 .field select,
-.field input {
+.field input:not([type="checkbox"]) {
   width: 100%;
   appearance: none;
   background: var(--bg-elevated);
@@ -383,6 +383,24 @@ code {
   font: inherit;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.check-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
 }
 
 .field select:focus,

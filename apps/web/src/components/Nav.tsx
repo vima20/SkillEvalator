@@ -7,6 +7,11 @@ const items = [
   { href: "/", label: "New run", match: (p: string) => p === "/" },
   { href: "/runs", label: "Runs", match: (p: string) => p.startsWith("/runs") },
   {
+    href: "/comparison",
+    label: "Comparison",
+    match: (p: string) => p.startsWith("/comparison"),
+  },
+  {
     href: "/dashboard",
     label: "Dashboard",
     match: (p: string) => p.startsWith("/dashboard"),

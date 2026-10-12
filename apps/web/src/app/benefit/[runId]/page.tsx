@@ -192,6 +192,22 @@ export default async function BenefitReportPage({
             </dd>
           </div>
           <div>
+            <dt>Role</dt>
+            <dd>
+              <code>{report.config.role ?? "candidate"}</code>
+            </dd>
+          </div>
+          {report.config.evaluationId ? (
+            <div>
+              <dt>Evaluation</dt>
+              <dd>
+                <Link href={`/comparison/${report.config.evaluationId}`}>
+                  {report.config.evaluationId}
+                </Link>
+              </dd>
+            </div>
+          ) : null}
+          <div>
             <dt>Model</dt>
             <dd>
               <code>{report.config.modelId}</code>
@@ -202,6 +218,13 @@ export default async function BenefitReportPage({
             <dd>
               <code>{report.config.evalSkillId}</code>{" "}
               <code>{report.config.evalSkillVersion}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Commit / license</dt>
+            <dd>
+              <code>{report.config.commit ?? "—"}</code> ·{" "}
+              {report.config.license ?? "—"}
             </dd>
           </div>
           <div>

@@ -14,9 +14,10 @@ export default function NewRunPage() {
         <p className="eyebrow">Unikie · Evaluation pipeline</p>
         <h1>New evaluation run</h1>
         <p>
-          Produce with the model, then grade against expected fixtures. Dry-run
-          uses <code>gpt-4o-mini</code>; official uses <code>gpt-4.1-mini</code>{" "}
-          (≥3 repeats).
+          Unikie Contribution Evaluator: baseline (neutral prompt) vs candidate
+          (skill SKILL.md), then Docker grade. Dry-run uses{" "}
+          <code>gpt-4o-mini</code>; official uses <code>gpt-4.1-mini</code> (≥3
+          repeats).
         </p>
       </header>
 

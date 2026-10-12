@@ -2,6 +2,9 @@
   "taskSetId": "cde-v1",
   "taskSetDir": "cde-v1",
   "githubUrl": "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+  "commit": "904b9bbdd73e6e119837842b514fb825905097dd",
+  "license": "MIT",
+  "dependencies": ["node"],
   "taskIds": [
     "bug-01",
     "bug-02",
