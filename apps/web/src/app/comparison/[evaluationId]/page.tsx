@@ -161,9 +161,13 @@ export default async function ComparisonDetailPage({
       </section>
 
       {!comparison.parity.ok ? (
-        <div className="panel" style={{ marginTop: "1rem" }}>
-          <h2>Parity check failed</h2>
-          <ul>
+        <div className="panel callout-warn" style={{ marginTop: "1rem" }}>
+          <strong>Parity check failed</strong>
+          <p>
+            Baseline and candidate runs do not match on capture fields.
+            Comparison PASS/FAIL may be unreliable until these are fixed:
+          </p>
+          <ul className="bullet-list">
             {comparison.parity.issues.map((issue) => (
               <li key={issue}>{issue}</li>
             ))}

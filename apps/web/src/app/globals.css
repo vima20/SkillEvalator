@@ -7,7 +7,7 @@
   --border-strong: rgba(148, 176, 220, 0.28);
   --text: #f3f6fb;
   --text-muted: #93a4bd;
-  --text-dim: #6b7c96;
+  --text-dim: #7a8ba3;
   --accent: #1f6fff;
   --accent-hover: #3b82ff;
   --accent-soft: rgba(31, 111, 255, 0.16);
@@ -177,6 +177,29 @@ code {
 .nav a[aria-current="page"] {
   color: var(--text);
   background: var(--accent-soft);
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 1000;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform 0.15s ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 :focus-visible {
@@ -826,6 +849,11 @@ code {
   font-size: 14px;
 }
 
+.callout-warn .bullet-list,
+.callout-info .bullet-list {
+  margin-top: 10px;
+}
+
 .role-chip {
   display: inline-block;
   padding: 2px 8px;
@@ -1060,6 +1088,10 @@ a.btn {
 
 .stat-strip-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stat-strip-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .dashboard-groups {
@@ -1436,7 +1468,8 @@ a.btn {
   }
 
   .stat-strip,
-  .stat-strip-3 {
+  .stat-strip-3,
+  .stat-strip-5 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1473,7 +1506,8 @@ a.btn {
   }
 
   .stat-strip,
-  .stat-strip-3 {
+  .stat-strip-3,
+  .stat-strip-5 {
     grid-template-columns: 1fr 1fr;
   }
 }

@@ -31,6 +31,8 @@ export function AuthLock() {
       type="button"
       className="btn btn-ghost btn-compact auth-lock-btn"
       disabled={busy}
+      aria-label="Lock session and require the access token again"
+      title="Lock session"
       onClick={() => {
         setBusy(true);
         void fetch("/api/auth", { method: "DELETE" }).finally(() => {

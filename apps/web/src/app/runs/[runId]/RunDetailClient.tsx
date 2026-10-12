@@ -432,7 +432,7 @@ export function RunDetailClient({
 
       {result ? (
         <>
-          <div className="stat-strip">
+          <div className="stat-strip stat-strip-5">
             <div className="stat">
               <span className="stat-label">Tasks passed</span>
               <span className="stat-value">

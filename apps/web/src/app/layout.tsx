@@ -40,6 +40,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${manrope.variable} ${space.variable}`}>
       <body>
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
         <div className="app-shell">
           <header className="topbar">
             <Link className="brand" href="/" aria-label="Unikie SkillEvalator home">
@@ -56,7 +59,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <AuthLock />
             </div>
           </header>
-          <main className="main">
+          <main id="main-content" className="main" tabIndex={-1}>
             <AuthGate>{children}</AuthGate>
           </main>
         </div>

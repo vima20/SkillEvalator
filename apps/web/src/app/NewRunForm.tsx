@@ -315,17 +315,31 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
             role="radiogroup"
             aria-labelledby="modeLabel"
             onKeyDown={(e) => {
-              if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-              e.preventDefault();
-              const next =
-                e.key === "ArrowRight"
-                  ? mode === "dry-run"
-                    ? "official"
-                    : "dry-run"
-                  : mode === "official"
-                    ? "dry-run"
-                    : "official";
-              selectMode(next, true);
+              const key = e.key;
+              if (key === "ArrowLeft" || key === "ArrowRight") {
+                e.preventDefault();
+                selectMode(mode === "dry-run" ? "official" : "dry-run", true);
+                return;
+              }
+              if (key === "Home") {
+                e.preventDefault();
+                selectMode("dry-run", true);
+                return;
+              }
+              if (key === "End") {
+                e.preventDefault();
+                selectMode("official", true);
+                return;
+              }
+              if (key === " " || key === "Enter") {
+                const target = e.target as HTMLElement | null;
+                if (target?.getAttribute("role") !== "radio") return;
+                e.preventDefault();
+                const label = target.textContent?.trim();
+                if (label === "dry-run" || label === "official") {
+                  selectMode(label, true);
+                }
+              }
             }}
           >
             <button

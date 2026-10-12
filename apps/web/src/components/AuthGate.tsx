@@ -108,11 +108,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <h1>{checkFailed ? "Access check failed" : "Unlock SkillEvalator"}</h1>
           <p className="skill-card-body">
             {checkFailed
-              ? "The browser could not confirm API access. Retry the check, or enter the shared token if WEB_AUTH_TOKEN is configured."
-              : "WEB_AUTH_TOKEN is configured. Enter the shared token to use the API from this browser."}
+              ? "The browser could not confirm API access. Retry the check, or enter the access token from your admin."
+              : "Enter the access token provided by your admin to unlock this local evaluator."}
           </p>
           <div className="field">
-            <label htmlFor="webAuthToken">Shared token</label>
+            <label htmlFor="webAuthToken">Access token</label>
             <input
               id="webAuthToken"
               type="password"
