@@ -19,6 +19,16 @@ export type LoadedSkill = {
 
 const SKIP_SKILL_DIRS = new Set(["tasksets", "node_modules"]);
 
+/** Read SKILL.md only if it is a regular file (reject symlinks → host leaks). */
+function readSkillMdFile(skillMdPath: string): string {
+  if (!fs.existsSync(skillMdPath)) return "";
+  const st = fs.lstatSync(skillMdPath);
+  if (st.isSymbolicLink() || !st.isFile()) {
+    throw new Error("SKILL.md must be a regular file (no symlinks)");
+  }
+  return fs.readFileSync(skillMdPath, "utf8");
+}
+
 function hashDirFiles(root: string): string {
   const hash = crypto.createHash("sha256");
   const walk = (dir: string) => {
@@ -111,9 +121,7 @@ function loadSkillFromRoot(
       throw new Error(`task fixtures missing: ${safe}`);
     }
   }
-  const skillMd = fs.existsSync(skillMdPath)
-    ? fs.readFileSync(skillMdPath, "utf8")
-    : "";
+  const skillMd = readSkillMdFile(skillMdPath);
   const version = crypto
     .createHash("sha256")
     .update(hashDirFiles(root))

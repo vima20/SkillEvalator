@@ -256,4 +256,58 @@ describe("purgeTerminalRunsFs", () => {
       false,
     );
   });
+
+  it("clears evaluationId from surviving leg status and result", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-purge-eval-"));
+    temps.push(root);
+    const resultsDir = path.join(root, "results");
+    const jobsDir = path.join(root, "jobs");
+    fs.mkdirSync(jobsDir, { recursive: true });
+
+    const evalId = "eval_100_pairpurge";
+    const oldBase = "run_100_oldbase";
+    const survCand = "run_100_survcand";
+
+    writeJsonFile(path.join(resultsDir, oldBase, "status.json"), {
+      runId: oldBase,
+      status: "failed",
+      evaluationId: evalId,
+      role: "baseline",
+    });
+    writeJsonFile(path.join(resultsDir, survCand, "status.json"), {
+      runId: survCand,
+      status: "ok",
+      evaluationId: evalId,
+      role: "candidate",
+    });
+    writeJsonFile(path.join(resultsDir, survCand, "result.json"), {
+      runId: survCand,
+      evaluationId: evalId,
+      status: "ok",
+    });
+    writeJsonFile(path.join(resultsDir, evalId, "evaluation.json"), {
+      evaluationId: evalId,
+      baselineRunId: oldBase,
+      candidateRunId: survCand,
+    });
+
+    const oldStatus = path.join(resultsDir, oldBase, "status.json");
+    const past = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    fs.utimesSync(oldStatus, past, past);
+
+    const out = purgeTerminalRunsFs(resultsDir, jobsDir, {
+      olderThanMs: 7 * 24 * 60 * 60 * 1000,
+    });
+    expect(out.removed).toEqual([oldBase]);
+    expect(fs.existsSync(path.join(resultsDir, evalId))).toBe(false);
+
+    const survStatus = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, survCand, "status.json"), "utf8"),
+    ) as { evaluationId?: string };
+    const survResult = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, survCand, "result.json"), "utf8"),
+    ) as { evaluationId?: string };
+    expect(survStatus.evaluationId).toBeUndefined();
+    expect(survResult.evaluationId).toBeUndefined();
+  });
 });

@@ -5,21 +5,28 @@ import {
   assertSafeId,
   createJobManifest,
   isQueuedJobFile,
-  resolveUnder,
+  loadSkill,
   writeJsonFile,
   type JobManifest,
 } from "@skillevalator/core";
 import { jobsDir, resultsDir, skillsDirs } from "@/lib/paths";
 
-function skillExists(evalSkillId: string): boolean {
-  for (const dir of skillsDirs()) {
-    try {
-      if (fs.existsSync(resolveUnder(dir, evalSkillId))) return true;
-    } catch {
-      /* skip */
-    }
+/** Reject broken / incomplete imports before they hit the worker queue. */
+function skillReady(
+  evalSkillId: string,
+): { ok: true } | { ok: false; error: string } {
+  try {
+    loadSkill(skillsDirs(), evalSkillId);
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      error: message.startsWith("Skill not found")
+        ? "unknown skill"
+        : `skill not ready: ${message}`.slice(0, 400),
+    };
   }
-  return false;
 }
 
 const MAX_QUEUED_JOBS = 20;
@@ -48,7 +55,9 @@ export type EnqueuePairResult =
     }
   | { ok: false; status: number; error: string };
 
-function queueSlotsNeeded(n: number): EnqueueResult | null {
+function queueSlotsNeeded(
+  n: number,
+): { ok: false; status: number; error: string } | null {
   const dir = jobsDir();
   fs.mkdirSync(dir, { recursive: true });
   const queuedCount = fs.readdirSync(dir).filter(isQueuedJobFile).length;
@@ -64,8 +73,9 @@ function queueSlotsNeeded(n: number): EnqueueResult | null {
 
 export function enqueueRun(input: EnqueueInput): EnqueueResult {
   const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
-  if (!skillExists(evalSkillId)) {
-    return { ok: false, status: 400, error: "unknown skill" };
+  const ready = skillReady(evalSkillId);
+  if (!ready.ok) {
+    return { ok: false, status: 400, error: ready.error };
   }
 
   const full = queueSlotsNeeded(1);
@@ -120,8 +130,9 @@ export function enqueueEvaluationPair(input: {
   modelId?: string;
 }): EnqueuePairResult {
   const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
-  if (!skillExists(evalSkillId)) {
-    return { ok: false, status: 400, error: "unknown skill" };
+  const ready = skillReady(evalSkillId);
+  if (!ready.ok) {
+    return { ok: false, status: 400, error: ready.error };
   }
 
   const full = queueSlotsNeeded(2);

@@ -303,96 +303,124 @@ export async function importSkillsFromGitHub(opts: {
       const importId = importIdFor(gh, folderName);
       const dest = resolveUnder(opts.importedSkillsDir, importId);
       const lockPath = `${dest}.importing`;
-      if (fs.existsSync(lockPath)) {
-        throw new Error(`import already in progress for ${importId}`);
-      }
       fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.writeFileSync(lockPath, new Date().toISOString(), "utf8");
+      let lockFd: number | null = null;
       try {
+        try {
+          lockFd = fs.openSync(lockPath, "wx");
+          fs.writeFileSync(lockFd, new Date().toISOString(), "utf8");
+        } catch (err) {
+          const code =
+            err && typeof err === "object" && "code" in err
+              ? String((err as { code?: unknown }).code)
+              : "";
+          if (code === "EEXIST") {
+            throw new Error(`import already in progress for ${importId}`);
+          }
+          throw err;
+        }
+
         if (fs.existsSync(dest)) {
           fs.rmSync(dest, { recursive: true, force: true });
         }
         copyTreeNoSymlinks(skillRoot, dest);
+
+        const manifestPath = path.join(dest, "fixtures", "manifest.json");
+        try {
+          const manifest = SkillManifestSchema.parse(
+            JSON.parse(fs.readFileSync(manifestPath, "utf8")),
+          );
+          const rel = path
+            .relative(repoRoot, skillRoot)
+            .split(path.sep)
+            .join("/");
+          const sourceUrl = `https://github.com/${gh.owner}/${gh.repo}/tree/${gh.ref}/${rel}`;
+          // Prefer shared tasksets/ so imported fixtures cannot self-certify.
+          let taskSetDir = manifest.taskSetDir;
+          if (!taskSetDir) {
+            const candidate = manifest.taskSetId;
+            for (const rootDir of [
+              opts.importedSkillsDir,
+              ...(opts.tasksetSearchDirs ?? []),
+            ]) {
+              try {
+                const shared = path.join(rootDir, "tasksets", candidate);
+                if (fs.existsSync(shared)) {
+                  taskSetDir = candidate;
+                  break;
+                }
+              } catch {
+                /* try next */
+              }
+            }
+          }
+          writeJsonFile(manifestPath, {
+            ...manifest,
+            ...(taskSetDir ? { taskSetDir } : {}),
+            githubUrl: sourceUrl.startsWith("https://")
+              ? sourceUrl
+              : manifest.githubUrl,
+            commit: /^[0-9a-f]{7,40}$/i.test(gh.ref) ? gh.ref : manifest.commit,
+          });
+        } catch {
+          /* keep original manifest */
+        }
+
+        writeJsonFile(path.join(dest, ".import.json"), {
+          importId,
+          owner: gh.owner,
+          repo: gh.repo,
+          ref: gh.ref,
+          sourcePath: path
+            .relative(repoRoot, skillRoot)
+            .split(path.sep)
+            .join("/"),
+          pageUrl: gh.pageUrl,
+          importedAt: new Date().toISOString(),
+        });
+
+        let loaded: ReturnType<typeof loadSkill>;
+        try {
+          loaded = loadSkill(loadRoots, importId);
+        } catch (err) {
+          try {
+            fs.rmSync(dest, { recursive: true, force: true });
+          } catch {
+            /* ignore */
+          }
+          throw err;
+        }
+        skills.push({
+          importId,
+          id: loaded.id,
+          githubUrl: loaded.manifest.githubUrl,
+          taskSetId: loaded.manifest.taskSetId,
+          dryRunCount: loaded.manifest.dryRunIds.length,
+          taskCount: loaded.manifest.taskIds.length,
+          commit: loaded.manifest.commit,
+          license: loaded.manifest.license,
+          dependencies: loaded.manifest.dependencies,
+          sourcePath: path
+            .relative(repoRoot, skillRoot)
+            .split(path.sep)
+            .join("/"),
+          ref: gh.ref,
+          pageUrl: gh.pageUrl,
+        });
       } finally {
+        if (lockFd != null) {
+          try {
+            fs.closeSync(lockFd);
+          } catch {
+            /* ignore */
+          }
+        }
         try {
           fs.unlinkSync(lockPath);
         } catch {
           /* ignore */
         }
       }
-
-      const manifestPath = path.join(dest, "fixtures", "manifest.json");
-      try {
-        const manifest = SkillManifestSchema.parse(
-          JSON.parse(fs.readFileSync(manifestPath, "utf8")),
-        );
-        const rel = path
-          .relative(repoRoot, skillRoot)
-          .split(path.sep)
-          .join("/");
-        const sourceUrl = `https://github.com/${gh.owner}/${gh.repo}/tree/${gh.ref}/${rel}`;
-        // Prefer shared tasksets/ so imported fixtures cannot self-certify.
-        let taskSetDir = manifest.taskSetDir;
-        if (!taskSetDir) {
-          const candidate = manifest.taskSetId;
-          for (const rootDir of [
-            opts.importedSkillsDir,
-            ...(opts.tasksetSearchDirs ?? []),
-          ]) {
-            try {
-              const shared = path.join(rootDir, "tasksets", candidate);
-              if (fs.existsSync(shared)) {
-                taskSetDir = candidate;
-                break;
-              }
-            } catch {
-              /* try next */
-            }
-          }
-        }
-        writeJsonFile(manifestPath, {
-          ...manifest,
-          ...(taskSetDir ? { taskSetDir } : {}),
-          githubUrl: sourceUrl.startsWith("https://")
-            ? sourceUrl
-            : manifest.githubUrl,
-          commit: /^[0-9a-f]{7,40}$/i.test(gh.ref) ? gh.ref : manifest.commit,
-        });
-      } catch {
-        /* keep original manifest */
-      }
-
-      writeJsonFile(path.join(dest, ".import.json"), {
-        importId,
-        owner: gh.owner,
-        repo: gh.repo,
-        ref: gh.ref,
-        sourcePath: path
-          .relative(repoRoot, skillRoot)
-          .split(path.sep)
-          .join("/"),
-        pageUrl: gh.pageUrl,
-        importedAt: new Date().toISOString(),
-      });
-
-      const loaded = loadSkill(loadRoots, importId);
-      skills.push({
-        importId,
-        id: loaded.id,
-        githubUrl: loaded.manifest.githubUrl,
-        taskSetId: loaded.manifest.taskSetId,
-        dryRunCount: loaded.manifest.dryRunIds.length,
-        taskCount: loaded.manifest.taskIds.length,
-        commit: loaded.manifest.commit,
-        license: loaded.manifest.license,
-        dependencies: loaded.manifest.dependencies,
-        sourcePath: path
-          .relative(repoRoot, skillRoot)
-          .split(path.sep)
-          .join("/"),
-        ref: gh.ref,
-        pageUrl: gh.pageUrl,
-      });
     }
 
     return { ref: gh, skills };

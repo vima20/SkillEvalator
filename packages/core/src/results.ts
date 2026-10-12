@@ -356,7 +356,7 @@ export function healEvaluationMetasAfterPurge(
       !candGone ? candidateRunId : undefined,
     ].filter((id): id is string => typeof id === "string" && id.length > 0);
     for (const runId of surviving) {
-      clearEvaluationIdFromRunStatus(resultsDir, runId);
+      clearEvaluationIdFromRun(resultsDir, runId);
     }
 
     // Pair is incomplete once either leg is gone — drop Comparison meta.
@@ -371,24 +371,24 @@ export function healEvaluationMetasAfterPurge(
   }
 }
 
-function clearEvaluationIdFromRunStatus(
-  resultsDir: string,
-  runId: string,
-): void {
+/** Drop dangling Comparison refs from status.json and result.json. */
+function clearEvaluationIdFromRun(resultsDir: string, runId: string): void {
   try {
     assertSafeId(runId, "runId");
   } catch {
     return;
   }
-  const statusPath = path.join(resultsDir, runId, "status.json");
-  if (!fs.existsSync(statusPath)) return;
-  try {
-    const prior = readJsonFile(statusPath) as Record<string, unknown>;
-    if (typeof prior.evaluationId !== "string") return;
-    const { evaluationId: _drop, ...rest } = prior;
-    writeJsonFile(statusPath, rest);
-  } catch {
-    /* ignore */
+  for (const fileName of ["status.json", "result.json"] as const) {
+    const filePath = path.join(resultsDir, runId, fileName);
+    if (!fs.existsSync(filePath)) continue;
+    try {
+      const prior = readJsonFile(filePath) as Record<string, unknown>;
+      if (typeof prior.evaluationId !== "string") continue;
+      const { evaluationId: _drop, ...rest } = prior;
+      writeJsonFile(filePath, rest);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
