@@ -88,8 +88,15 @@ export function runResultToCsv(result: RunResult): string {
 
 /** Task-level regression CSV for a paired comparison. */
 export function comparisonToCsv(comparison: RunComparison): string {
+  const parityIssues = comparison.parity.issues.join("; ");
   const header = row([
     "evaluationId",
+    "evalSkillId",
+    "taskSetId",
+    "mode",
+    "modelId",
+    "baselineRunId",
+    "candidateRunId",
     "taskId",
     "baselineScore",
     "candidateScore",
@@ -101,12 +108,23 @@ export function comparisonToCsv(comparison: RunComparison): string {
     "verdict",
     "lift",
     "parityOk",
+    "parityIssues",
   ]);
   const lines = [header];
+  const common = [
+    comparison.evaluationId,
+    comparison.evalSkillId,
+    comparison.taskSetId,
+    comparison.mode,
+    comparison.modelId,
+    comparison.baselineRunId,
+    comparison.candidateRunId,
+  ] as const;
+
   for (const t of comparison.perTask ?? []) {
     lines.push(
       row([
-        comparison.evaluationId,
+        ...common,
         t.taskId,
         t.baselineScore,
         t.candidateScore,
@@ -118,13 +136,14 @@ export function comparisonToCsv(comparison: RunComparison): string {
         comparison.verdict,
         comparison.lift,
         comparison.parity.ok,
+        parityIssues,
       ]),
     );
   }
   if ((comparison.perTask ?? []).length === 0) {
     lines.push(
       row([
-        comparison.evaluationId,
+        ...common,
         "",
         comparison.baselineScore,
         comparison.candidateScore,
@@ -136,6 +155,7 @@ export function comparisonToCsv(comparison: RunComparison): string {
         comparison.verdict,
         comparison.lift,
         comparison.parity.ok,
+        parityIssues,
       ]),
     );
   }

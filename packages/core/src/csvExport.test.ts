@@ -57,7 +57,7 @@ describe("runResultToCsv", () => {
 });
 
 describe("comparisonToCsv", () => {
-  it("exports task deltas", () => {
+  it("exports task deltas and skill attribution", () => {
     const cmp = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.7 }),
       sample({ runId: "c", role: "candidate", score: 0.9 }),
@@ -66,6 +66,27 @@ describe("comparisonToCsv", () => {
     expect(csv).toContain("delta");
     expect(csv).toContain("bug-01");
     expect(csv).toContain("PASS");
+    expect(csv).toContain("evalSkillId");
+    expect(csv).toContain("code-debugging-eval");
+    expect(csv).toContain("gpt-4o-mini");
+    expect(csv).toContain("dry-run");
+    expect(csv).toContain("cde-v1");
+    expect(csv).toContain("parityIssues");
+  });
+
+  it("exports parityIssues when INCONCLUSIVE", () => {
+    const cmp = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.5 }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        modelId: "gpt-4.1-mini",
+      }),
+    );
+    const csv = comparisonToCsv(cmp);
+    expect(csv).toContain("INCONCLUSIVE");
+    expect(csv).toContain("modelId mismatch");
   });
 });
 
