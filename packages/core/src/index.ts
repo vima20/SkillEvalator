@@ -3,6 +3,7 @@ export * from "./scoring.js";
 export * from "./skill.js";
 export * from "./dockerGrade.js";
 export * from "./fsJson.js";
+export * from "./fsSafe.js";
 export * from "./paths.js";
 export * from "./job.js";
 export * from "./status.js";

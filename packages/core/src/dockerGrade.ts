@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
+import { assertRealDirectory } from "./fsSafe.js";
 
 export type GradeResult = {
   exitCode: number;
@@ -126,6 +127,7 @@ async function withTempDirAsync<T>(
 /** Copy regular files only; reject symlinks (grade integrity). */
 function copyDirFiles(srcDir: string, destDir: string): number {
   if (!fs.existsSync(srcDir)) return 0;
+  assertRealDirectory(srcDir, path.basename(srcDir) || "grade-src");
   fs.mkdirSync(destDir, { recursive: true });
   let n = 0;
   for (const name of fs.readdirSync(srcDir)) {

@@ -6,6 +6,8 @@ import {
   loadRunResult,
   pairEvaluationRuns,
   readJsonFile,
+  releaseWxLock,
+  tryAcquireWxLock,
   writeJsonFile,
   type RunComparison,
   type RunResult,
@@ -45,6 +47,7 @@ export function loadEvaluationMeta(
 
 /**
  * After a paired-leg retry, point Comparison at the new runId for that role.
+ * Exclusive lock so concurrent baseline+candidate retries cannot clobber each other.
  */
 export function updateEvaluationMetaLeg(opts: {
   evaluationId: string;
@@ -53,17 +56,26 @@ export function updateEvaluationMetaLeg(opts: {
 }): boolean {
   const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
   const runId = assertSafeId(opts.runId, "runId");
-  const meta = loadEvaluationMeta(evaluationId);
-  if (!meta) return false;
-  const next: EvaluationMeta = {
-    ...meta,
-    ...(opts.role === "baseline"
-      ? { baselineRunId: runId }
-      : { candidateRunId: runId }),
-    updatedAt: new Date().toISOString(),
-  };
-  writeJsonFile(evaluationMetaPath(evaluationId), next);
-  return true;
+  const metaPath = evaluationMetaPath(evaluationId);
+  const lockPath = `${metaPath}.lock`;
+  if (!tryAcquireWxLock(lockPath, { staleMs: 30_000, retries: 40 })) {
+    return false;
+  }
+  try {
+    const meta = loadEvaluationMeta(evaluationId);
+    if (!meta) return false;
+    const next: EvaluationMeta = {
+      ...meta,
+      ...(opts.role === "baseline"
+        ? { baselineRunId: runId }
+        : { candidateRunId: runId }),
+      updatedAt: new Date().toISOString(),
+    };
+    writeJsonFile(metaPath, next);
+    return true;
+  } finally {
+    releaseWxLock(lockPath);
+  }
 }
 
 export function loadEvaluationComparison(

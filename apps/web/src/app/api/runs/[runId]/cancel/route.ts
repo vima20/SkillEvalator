@@ -46,12 +46,13 @@ function requestCancelOne(runId: string): CancelOutcome {
 
   const dir = jobsDir();
   fs.mkdirSync(dir, { recursive: true });
+  // Always (re)write .cancel so a lost marker still stops the worker.
+  const cancelPath = path.join(dir, `${runId}.cancel`);
+  fs.writeFileSync(cancelPath, `${new Date().toISOString()}\n`, "utf8");
+
   if (current === "cancel_requested") {
     return { ok: true, status: "cancel_requested", already: true };
   }
-
-  const cancelPath = path.join(dir, `${runId}.cancel`);
-  fs.writeFileSync(cancelPath, `${new Date().toISOString()}\n`, "utf8");
 
   const pairingMeta = {
     ...(status.role ? { role: status.role } : {}),
@@ -93,27 +94,45 @@ function requestCancelOne(runId: string): CancelOutcome {
 
 /** Sibling baseline/candidate run for the same Comparison, if any. */
 function pairedSiblingRunId(runId: string, evaluationId: string): string | null {
+  const root = resultsDir();
   try {
     const metaPath = path.join(
-      resultsDir(),
+      root,
       assertSafeId(evaluationId, "evaluationId"),
       "evaluation.json",
     );
-    if (!fs.existsSync(metaPath)) return null;
-    const meta = readJsonFile(metaPath) as {
-      baselineRunId?: string;
-      candidateRunId?: string;
-    };
-    const baseline =
-      typeof meta.baselineRunId === "string" ? meta.baselineRunId : null;
-    const candidate =
-      typeof meta.candidateRunId === "string" ? meta.candidateRunId : null;
-    if (baseline === runId && candidate) return candidate;
-    if (candidate === runId && baseline) return baseline;
-    return null;
+    if (fs.existsSync(metaPath)) {
+      const meta = readJsonFile(metaPath) as {
+        baselineRunId?: string;
+        candidateRunId?: string;
+      };
+      const baseline =
+        typeof meta.baselineRunId === "string" ? meta.baselineRunId : null;
+      const candidate =
+        typeof meta.candidateRunId === "string" ? meta.candidateRunId : null;
+      if (baseline === runId && candidate) return candidate;
+      if (candidate === runId && baseline) return baseline;
+    }
   } catch {
-    return null;
+    /* fall through to status scan */
   }
+
+  // Fallback when evaluation.json is missing (crash mid paired enqueue).
+  try {
+    for (const name of fs.readdirSync(root)) {
+      if (name === runId || name.startsWith("eval_")) continue;
+      try {
+        assertSafeId(name, "runId");
+      } catch {
+        continue;
+      }
+      const st = loadRunStatus(root, name);
+      if (st?.evaluationId === evaluationId) return name;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 export async function POST(

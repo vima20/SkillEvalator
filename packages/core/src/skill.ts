@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { readJsonFileAs } from "./fsJson.js";
+import { readRegularFileUtf8 } from "./fsSafe.js";
 import { assertSafeId, resolveUnder } from "./paths.js";
 import { SkillManifestSchema, type SkillManifest } from "./schema.js";
 
@@ -22,11 +23,11 @@ const SKIP_SKILL_DIRS = new Set(["tasksets", "node_modules"]);
 /** Read SKILL.md only if it is a regular file (reject symlinks → host leaks). */
 function readSkillMdFile(skillMdPath: string): string {
   if (!fs.existsSync(skillMdPath)) return "";
-  const st = fs.lstatSync(skillMdPath);
-  if (st.isSymbolicLink() || !st.isFile()) {
+  try {
+    return readRegularFileUtf8(skillMdPath, "SKILL.md");
+  } catch {
     throw new Error("SKILL.md must be a regular file (no symlinks)");
   }
-  return fs.readFileSync(skillMdPath, "utf8");
 }
 
 function hashDirFiles(root: string): string {

@@ -19,8 +19,10 @@ import {
   aggregateRepeats,
   normalizeRepeats,
   resolveUnder,
+  readRegularFileUtf8,
   scoreFromGradeAndDiff,
   textDiffRatio,
+  tryReadRegularFileUtf8,
   wouldExceedCostCap,
   writeJsonFile,
   type RunCapture,
@@ -71,10 +73,15 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       "skill-snapshot",
       "SKILL.md",
     );
-    if (fs.existsSync(snapMd)) {
-      skill = { ...skill, skillMd: fs.readFileSync(snapMd, "utf8") };
+    const locked = tryReadRegularFileUtf8(snapMd);
+    if (locked != null) {
+      skill = { ...skill, skillMd: locked };
       findings.push(
         `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
+      );
+    } else if (fs.existsSync(snapMd)) {
+      findings.push(
+        `skill snapshot invalid for ${job.skillSnapshotFromRunId}; using live SKILL.md`,
       );
     } else {
       findings.push(
@@ -285,7 +292,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         let callCompletionTokens = 0;
         const fakeProduce = process.env.FAKE_PRODUCE === "known-good";
         if (fakeProduce) {
-          content = fs.readFileSync(tp.knownGoodPath, "utf8");
+          content = readRegularFileUtf8(tp.knownGoodPath, "known-good");
         } else {
           const nextCallUsd = estimateCallCostUsdForCap(modelId);
           if (
@@ -411,7 +418,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         let diffRatio: number | undefined;
         if (ok && fs.existsSync(tp.expectedPath)) {
           try {
-            const expected = fs.readFileSync(tp.expectedPath, "utf8");
+            const expected = readRegularFileUtf8(tp.expectedPath, "expected");
             diffRatio = textDiffRatio(content, expected);
           } catch {
             diffRatio = undefined;

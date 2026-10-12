@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
-import { costFromTokenUsage, stripCodeFences } from "@skillevalator/core";
+import {
+  assertRealDirectory,
+  costFromTokenUsage,
+  stripCodeFences,
+} from "@skillevalator/core";
 import { config } from "./config.js";
 
 export class ProduceCancelledError extends Error {
@@ -58,6 +62,7 @@ export async function produceArtifact(opts: {
 
   const subjectBlocks: string[] = [];
   if (opts.subjectDir && fs.existsSync(opts.subjectDir)) {
+    assertRealDirectory(opts.subjectDir, "subject");
     for (const name of fs.readdirSync(opts.subjectDir).sort()) {
       const p = path.join(opts.subjectDir, name);
       const st = fs.lstatSync(p);
