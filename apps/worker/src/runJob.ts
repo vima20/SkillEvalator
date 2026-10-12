@@ -11,6 +11,7 @@ import {
   gradeInDocker,
   gradeOnHost,
   liveRunStatusForProgress,
+  loadRunResult,
   loadSkill,
   resolveFinalRunStop,
   taskIdsForMode,
@@ -79,6 +80,18 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       findings.push(
         `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
       );
+      const prior = loadRunResult(
+        config.resultsDir,
+        job.skillSnapshotFromRunId,
+      );
+      if (
+        prior?.evalSkillVersion &&
+        prior.evalSkillVersion !== skill.version
+      ) {
+        findings.push(
+          `skill/fixtures version drifted since snapshot ${job.skillSnapshotFromRunId}: was ${prior.evalSkillVersion}, live ${skill.version}`,
+        );
+      }
     } else if (fs.existsSync(snapMd)) {
       findings.push(
         `skill snapshot invalid for ${job.skillSnapshotFromRunId}; using live SKILL.md`,

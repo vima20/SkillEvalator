@@ -121,6 +121,36 @@ describe("compareBaselineCandidate", () => {
     expect(c.parity.issues.some((i) => i.includes("evalSkillId"))).toBe(true);
   });
 
+  it("INCONCLUSIVE when decoding.seed or pipeline.grade differs", () => {
+    const seedMismatch = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.5 }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        decoding: { temperature: 0, top_p: 1, seed: 99 },
+      }),
+    );
+    expect(seedMismatch.verdict).toBe("INCONCLUSIVE");
+    expect(seedMismatch.parity.issues.some((i) => i.includes("seed"))).toBe(
+      true,
+    );
+
+    const gradeMismatch = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.5 }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        pipeline: { produce: "model", grade: "host_script" },
+      }),
+    );
+    expect(gradeMismatch.verdict).toBe("INCONCLUSIVE");
+    expect(
+      gradeMismatch.parity.issues.some((i) => i.includes("pipeline.grade")),
+    ).toBe(true);
+  });
+
   it("flags per-task regressions", () => {
     const c = compareBaselineCandidate(
       sample({

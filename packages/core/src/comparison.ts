@@ -97,6 +97,16 @@ export function checkComparisonParity(
   ) {
     issues.push("decoding (temperature/top_p) mismatch");
   }
+  if (baseline.decoding.seed !== candidate.decoding.seed) {
+    issues.push(
+      `decoding.seed mismatch: baseline=${baseline.decoding.seed ?? "none"} candidate=${candidate.decoding.seed ?? "none"}`,
+    );
+  }
+  if (baseline.pipeline.grade !== candidate.pipeline.grade) {
+    issues.push(
+      `pipeline.grade mismatch: baseline=${baseline.pipeline.grade} candidate=${candidate.pipeline.grade}`,
+    );
+  }
   if (
     baseline.evaluationId &&
     candidate.evaluationId &&

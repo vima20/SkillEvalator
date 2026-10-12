@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { writeJsonFile } from "./fsJson.js";
+import { releaseWxLock, tryAcquireWxLock } from "./fsSafe.js";
 import {
   heartbeatOwnsRunFs,
   isWorkerHeartbeatLive,
@@ -133,41 +134,24 @@ function retryLockPath(resultsDir: string, fromRunId: string): string {
 
 /**
  * Exclusive lock so concurrent Retry POSTs cannot each enqueue a paid run.
- * Stale locks older than RETRY_DEDUP_WINDOW_MS are stolen.
+ * Stale locks older than RETRY_DEDUP_WINDOW_MS are stolen via unlink+wx.
  */
 export function tryAcquireRetryEnqueueLock(
   resultsDir: string,
   fromRunId: string,
-  nowMs = Date.now(),
+  _nowMs = Date.now(),
 ): boolean {
-  const lockPath = retryLockPath(resultsDir, fromRunId);
-  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
-  try {
-    fs.writeFileSync(lockPath, String(nowMs), { flag: "wx" });
-    return true;
-  } catch {
-    try {
-      const age = nowMs - fs.statSync(lockPath).mtimeMs;
-      if (age > RETRY_DEDUP_WINDOW_MS) {
-        fs.writeFileSync(lockPath, String(nowMs));
-        return true;
-      }
-    } catch {
-      /* ignore */
-    }
-    return false;
-  }
+  return tryAcquireWxLock(retryLockPath(resultsDir, fromRunId), {
+    staleMs: RETRY_DEDUP_WINDOW_MS,
+    retries: 0,
+  });
 }
 
 export function releaseRetryEnqueueLock(
   resultsDir: string,
   fromRunId: string,
 ): void {
-  try {
-    fs.unlinkSync(retryLockPath(resultsDir, fromRunId));
-  } catch {
-    /* ignore */
-  }
+  releaseWxLock(retryLockPath(resultsDir, fromRunId));
 }
 
 /**

@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  RETRY_DEDUP_WINDOW_MS,
   findReusableRetryRunId,
   isRetryChildLive,
   releaseRetryEnqueueLock,
@@ -44,6 +45,19 @@ describe("tryAcquireRetryEnqueueLock", () => {
     expect(tryAcquireRetryEnqueueLock(root, from)).toBe(true);
     expect(tryAcquireRetryEnqueueLock(root, from)).toBe(false);
     releaseRetryEnqueueLock(root, from);
+    expect(tryAcquireRetryEnqueueLock(root, from)).toBe(true);
+    releaseRetryEnqueueLock(root, from);
+  });
+
+  it("steals a stale lock via unlink+wx", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-stale-"));
+    temps.push(root);
+    const from = "run_100_stale";
+    const lock = path.join(root, from, "retry-enqueue.lock");
+    fs.mkdirSync(path.join(root, from), { recursive: true });
+    fs.writeFileSync(lock, "1", "utf8");
+    const past = new Date(Date.now() - RETRY_DEDUP_WINDOW_MS - 1_000);
+    fs.utimesSync(lock, past, past);
     expect(tryAcquireRetryEnqueueLock(root, from)).toBe(true);
     releaseRetryEnqueueLock(root, from);
   });
