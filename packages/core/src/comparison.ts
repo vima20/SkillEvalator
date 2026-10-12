@@ -1,3 +1,4 @@
+import { PASS_SCORE_FLOOR } from "./diffScore.js";
 import type { RunResult } from "./schema.js";
 
 /** Unikie alustava PASS: candidate ≥ baseline + 5 percentage points. */
@@ -64,6 +65,11 @@ export function checkComparisonParity(
   candidate: RunResult,
 ): ComparisonParity {
   const issues: string[] = [];
+  if (baseline.evalSkillId !== candidate.evalSkillId) {
+    issues.push(
+      `evalSkillId mismatch: baseline=${baseline.evalSkillId} candidate=${candidate.evalSkillId}`,
+    );
+  }
   if (baseline.modelId !== candidate.modelId) {
     issues.push(
       `modelId mismatch: baseline=${baseline.modelId} candidate=${candidate.modelId}`,
@@ -188,9 +194,9 @@ export function compareBaselineCandidate(
     verdict = "INCONCLUSIVE";
     rationale =
       "Missing scores — cannot compute lift. Ensure both baseline and candidate finished with a score.";
-  } else if (candScore < 0.8) {
+  } else if (candScore < PASS_SCORE_FLOOR) {
     verdict = "FAIL";
-    rationale = `Candidate score ${candScore.toFixed(3)} is below the soft-pass floor (0.80). Do not adopt.`;
+    rationale = `Candidate score ${candScore.toFixed(3)} is below the soft-pass floor (${PASS_SCORE_FLOOR.toFixed(2)}). Do not adopt.`;
   } else if (lift >= LIFT_PASS_DELTA) {
     verdict = "PASS";
     rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed.`;
@@ -224,7 +230,7 @@ export function compareBaselineCandidate(
   };
 }
 
-om/** Prefer newest finishedAt/startedAt; tie-break on runId (desc). */
+/** Prefer newest finishedAt/startedAt; tie-break on runId (desc). */
 function newestForRole(
   runs: RunResult[],
   role: "baseline" | "candidate",

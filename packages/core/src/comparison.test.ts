@@ -3,7 +3,7 @@ import {
   LIFT_PASS_DELTA,
   compareBaselineCandidate,
   pairEvaluationRuns,
-ja   resolveComparisonLegs,
+     resolveComparisonLegs,
 } from "./comparison.js";
 import type { RunResult } from "./schema.js";
 
@@ -98,6 +98,26 @@ describe("compareBaselineCandidate", () => {
     expect(c.verdict).toBe("INCONCLUSIVE");
     expect(c.parity.ok).toBe(false);
     expect(c.parity.issues.some((i) => i.includes("modelId"))).toBe(true);
+  });
+
+  it("INCONCLUSIVE when evalSkillId differs on shared task set", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        evalSkillId: "code-debugging-eval",
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        evalSkillId: "code-debugging-eval-checklist",
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.parity.ok).toBe(false);
+    expect(c.parity.issues.some((i) => i.includes("evalSkillId"))).toBe(true);
   });
 
   it("flags per-task regressions", () => {
