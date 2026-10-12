@@ -57,8 +57,8 @@ export default function RunsPage() {
                   <th>Run</th>
                   <th>Role</th>
                   <th>Status</th>
-                  <th>Error</th>
-                  <th>Mode</th>
+                  <th className="col-hide-sm">Error</th>
+                  <th className="col-hide-sm">Mode</th>
                   <th>Score</th>
                   <th>Skill</th>
                 </tr>
@@ -95,7 +95,7 @@ export default function RunsPage() {
                           {r.status ?? "unknown"}
                         </span>
                       </td>
-                      <td>
+                      <td className="col-hide-sm">
                         {err ? (
                           <span className="run-error-snip" title={r.error}>
                             {r.errorCode ? (
@@ -109,7 +109,7 @@ export default function RunsPage() {
                           "—"
                         )}
                       </td>
-                      <td>{r.result?.mode ?? "—"}</td>
+                      <td className="col-hide-sm">{r.result?.mode ?? "—"}</td>
                       <td>
                         <strong>{r.result?.score ?? "—"}</strong>
                       </td>

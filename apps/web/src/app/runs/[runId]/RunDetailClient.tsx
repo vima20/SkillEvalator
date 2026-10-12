@@ -60,6 +60,8 @@ const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
 
 function shouldPoll(status: string | undefined, hasResult: boolean): boolean {
   if (hasResult) return false;
+  // Mid-loop budget_stop is written before result.json — keep polling.
+  if (status === "budget_stop") return true;
   return !TERMINAL.has(status ?? "");
 }
 
@@ -166,16 +168,18 @@ export function RunDetailClient({
   const status = data.status?.status ?? "unknown";
   const result = data.result;
   const cancelRequested = status === "cancel_requested";
+  const budgetStopping = status === "budget_stop" && !result;
   const canCancel =
     (status === "queued" || status === "running") &&
     !cancelling &&
     !cancelRequested &&
+    !budgetStopping &&
     !pollError;
   const quotaBlocked = data.status?.errorCode === "insufficient_quota";
   const canRetry =
     (status === "failed" ||
       status === "cancelled" ||
-      status === "budget_stop") &&
+      (status === "budget_stop" && !!result)) &&
     !quotaBlocked &&
     !retrying;
 
@@ -363,45 +367,60 @@ export function RunDetailClient({
 
       {(status === "running" ||
         status === "queued" ||
-        cancelRequested) &&
+        cancelRequested ||
+        budgetStopping) &&
         !pollError && (
         <div className="panel progress-panel">
           <div className="progress-head">
             <strong>
               {cancelRequested
                 ? "Cancel requested — stopping worker"
-                : isQueued
-                  ? "Queued — waiting for worker"
-                  : "Running"}
-              {!isQueued && !cancelRequested && repeat && repeats
+                : budgetStopping
+                  ? "Cost cap reached — finishing"
+                  : isQueued
+                    ? "Queued — waiting for worker"
+                    : "Running"}
+              {!isQueued &&
+              !cancelRequested &&
+              !budgetStopping &&
+              repeat &&
+              repeats
                 ? ` · repeat ${repeat}/${repeats}`
                 : ""}
             </strong>
             <span>
-              {isQueued || cancelRequested ? "…" : `${progress}%`}
+              {isQueued || cancelRequested || budgetStopping
+                ? "…"
+                : `${progress}%`}
             </span>
           </div>
           <div
-            className={`progress-track${isQueued || cancelRequested ? " is-indeterminate" : ""}`}
+            className={`progress-track${isQueued || cancelRequested || budgetStopping ? " is-indeterminate" : ""}`}
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={
-              isQueued || cancelRequested ? undefined : progress
+              isQueued || cancelRequested || budgetStopping
+                ? undefined
+                : progress
             }
-            aria-busy={isQueued || cancelRequested || undefined}
+            aria-busy={
+              isQueued || cancelRequested || budgetStopping || undefined
+            }
             aria-label={
               cancelRequested
                 ? "Cancel requested"
-                : isQueued
-                  ? "Queued, waiting for worker"
-                  : "Run progress"
+                : budgetStopping
+                  ? "Cost cap reached, finishing"
+                  : isQueued
+                    ? "Queued, waiting for worker"
+                    : "Run progress"
             }
           >
             <div
               className="progress-fill"
               style={
-                isQueued || cancelRequested
+                isQueued || cancelRequested || budgetStopping
                   ? undefined
                   : { width: `${progress}%` }
               }
@@ -411,7 +430,9 @@ export function RunDetailClient({
             <p className="hint">
               {cancelling || cancelRequested
                 ? "Cancel requested — waiting for the worker to stop."
-                : "Refresh is automatic. You can leave this page open."}
+                : budgetStopping
+                  ? "Cost hard-stop hit — writing final result (no further produce/grade)."
+                  : "Refresh is automatic. You can leave this page open."}
             </p>
             <button
               type="button"
@@ -621,7 +642,7 @@ export function RunDetailClient({
             onRetry={() => void onRetry()}
           />
         </div>
-      ) : status === "budget_stop" && !result ? (
+      ) : status === "budget_stop" && !result && !polling ? (
         <div className="panel">
           <p className="empty">Run stopped by cost budget before completion.</p>
           <RetryActions

@@ -15,10 +15,11 @@ const RATES: Record<string, ModelRate> = {
   "gpt-4.1-mini": { inputPerMTok: 0.4, outputPerMTok: 1.6 },
 };
 
-const DEFAULT_RATE = RATES["gpt-4o-mini"]!;
+/** Conservative fallback: unknown models use the most expensive known rate. */
+const UNKNOWN_MODEL_RATE = RATES["gpt-4.1-mini"]!;
 
 function rateForModel(modelId: string): ModelRate {
-  return RATES[modelId] ?? DEFAULT_RATE;
+  return RATES[modelId] ?? UNKNOWN_MODEL_RATE;
 }
 
 /** Actual USD from token usage using the same rate table as estimates. */

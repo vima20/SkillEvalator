@@ -1505,6 +1505,10 @@ a.btn {
     padding: 10px 12px;
   }
 
+  .col-hide-sm {
+    display: none;
+  }
+
   .stat-strip,
   .stat-strip-3,
   .stat-strip-5 {

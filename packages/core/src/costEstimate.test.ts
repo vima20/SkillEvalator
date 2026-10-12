@@ -37,9 +37,9 @@ describe("costFromTokenUsage", () => {
     expect(official).toBeCloseTo((1000 * 0.4 + 500 * 1.6) / 1_000_000, 8);
   });
 
-  it("falls back to mini rates for unknown models", () => {
+  it("falls back to the most expensive known rate for unknown models", () => {
     expect(costFromTokenUsage("unknown-model", 1000, 0)).toBe(
-      costFromTokenUsage("gpt-4o-mini", 1000, 0),
+      costFromTokenUsage("gpt-4.1-mini", 1000, 0),
     );
   });
 });

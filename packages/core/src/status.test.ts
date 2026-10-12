@@ -24,13 +24,13 @@ describe("liveRunStatusForProgress", () => {
     ).toBe("cancel_requested");
   });
 
-  it("keeps running during budget_stop mid-loop", () => {
+  it("surfaces budget_stop mid-loop for UI wind-down", () => {
     expect(
       liveRunStatusForProgress({
         stop: "budget_stop",
         cancelFilePresent: false,
       }),
-    ).toBe("running");
+    ).toBe("budget_stop");
   });
 });
 

@@ -198,6 +198,16 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       if (config.costHardStop && costUsd >= config.costCapUsd) {
         stop = "budget_stop";
         findings.push("cost hard stop");
+        writeJsonFile(statusPath, {
+          runId,
+          status: liveRunStatusForProgress({
+            stop,
+            cancelFilePresent: fs.existsSync(cancelPath),
+          }),
+          repeat: r,
+          repeats,
+          costUsd,
+        });
         break;
       }
 
@@ -215,6 +225,16 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
           if (!findings.includes("cost hard stop")) {
             findings.push("cost hard stop");
           }
+          writeJsonFile(statusPath, {
+            runId,
+            status: liveRunStatusForProgress({
+              stop,
+              cancelFilePresent: fs.existsSync(cancelPath),
+            }),
+            repeat: r,
+            repeats,
+            costUsd,
+          });
           break outer;
         }
 
@@ -250,6 +270,16 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
             if (!findings.includes("cost pre-check blocked produce")) {
               findings.push("cost pre-check blocked produce");
             }
+            writeJsonFile(statusPath, {
+              runId,
+              status: liveRunStatusForProgress({
+                stop,
+                cancelFilePresent: fs.existsSync(cancelPath),
+              }),
+              repeat: r,
+              repeats,
+              costUsd,
+            });
             break outer;
           }
           try {
@@ -302,6 +332,18 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
           if (!findings.includes("cost cap reached after produce")) {
             findings.push("cost cap reached after produce");
           }
+          writeJsonFile(statusPath, {
+            runId,
+            status: liveRunStatusForProgress({
+              stop,
+              cancelFilePresent: fs.existsSync(cancelPath),
+            }),
+            repeat: r,
+            repeats,
+            costUsd,
+          });
+          // Skip Docker/host grade — cap already hit after produce.
+          break outer;
         }
 
         if (fs.existsSync(cancelPath)) {

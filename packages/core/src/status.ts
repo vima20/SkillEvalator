@@ -7,13 +7,17 @@ export type StatusBadgeKind = "ok" | "run" | "fail" | "wait";
 /**
  * Mid-run status.json value while the worker is still looping.
  * Preserve cancel_requested so the UI does not flip back to "running".
+ * Surface budget_stop so the UI can show cost-cap wind-down before result.json.
  */
 export function liveRunStatusForProgress(opts: {
   stop: "cancelled" | "budget_stop" | null;
   cancelFilePresent: boolean;
-}): "running" | "cancel_requested" {
+}): "running" | "cancel_requested" | "budget_stop" {
   if (opts.stop === "cancelled" || opts.cancelFilePresent) {
     return "cancel_requested";
+  }
+  if (opts.stop === "budget_stop") {
+    return "budget_stop";
   }
   return "running";
 }

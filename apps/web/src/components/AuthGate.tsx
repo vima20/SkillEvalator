@@ -97,7 +97,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!ready) {
-    return <div className="auth-boot">Loading…</div>;
+    return (
+      <div
+        className="auth-boot"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        Loading…
+      </div>
+    );
   }
 
   if (needed) {
