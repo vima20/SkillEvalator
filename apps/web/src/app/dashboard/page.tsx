@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
-import {
-  RunsAutoRefresh,
-  runIsActive,
-} from "@/components/RunsAutoRefresh";
+import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 

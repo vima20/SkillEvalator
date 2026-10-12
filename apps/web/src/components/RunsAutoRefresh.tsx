@@ -3,14 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const ACTIVE = new Set([
-  "queued",
-  "running",
-  "cancel_requested",
-  // Mid-finish cost-cap wind-down before result.json lands.
-  "budget_stop",
-]);
-
 export function RunsAutoRefresh({
   hasActive,
 }: {
@@ -42,8 +34,4 @@ export function RunsAutoRefresh({
       {busy ? "Refreshing…" : "Refresh"}
     </button>
   );
-}
-
-export function runIsActive(status: string | undefined): boolean {
-  return ACTIVE.has(status ?? "");
 }
