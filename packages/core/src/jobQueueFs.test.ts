@@ -546,6 +546,28 @@ describe("cleanupOrphanRunningStatusFs", () => {
     expect(status.errorCode).toBe("orphan_running");
   });
 
+  it("does not orphan-fail cancel_requested while .tmp.json job exists", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_canceltmp";
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "cancel_requested",
+    });
+    fs.writeFileSync(path.join(jobsDir, `${runId}.tmp.json`), "{}");
+
+    const out = cleanupOrphanRunningStatusFs(jobsDir, resultsDir);
+    expect(out.failedStatuses).toEqual([]);
+    expect(out.synced).toEqual([]);
+    const status = JSON.parse(
+      fs.readFileSync(path.join(resultsDir, runId, "status.json"), "utf8"),
+    ) as { status: string };
+    expect(status.status).toBe("cancel_requested");
+    expect(fs.existsSync(path.join(jobsDir, `${runId}.tmp.json`))).toBe(true);
+  });
+
   it("fails orphan budget_stop with no job or result", () => {
     const root = tmpRoot();
     const jobsDir = path.join(root, "jobs");

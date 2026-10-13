@@ -475,7 +475,9 @@ export function healOrphanActiveStatusFs(
 
   const hasJob =
     fs.existsSync(path.join(jobsDir, `${runId}.json`)) ||
-    fs.existsSync(path.join(jobsDir, `${runId}.running.json`));
+    fs.existsSync(path.join(jobsDir, `${runId}.running.json`)) ||
+    // Mid-enqueue: status may be cancel_requested while job is still .tmp.json.
+    fs.existsSync(path.join(jobsDir, `${runId}.tmp.json`));
   if (hasJob) return "noop";
 
   const hasResult = fs.existsSync(path.join(resultsDir, runId, "result.json"));

@@ -60,17 +60,20 @@ function requestCancelOne(runId: string): CancelOutcome {
     ...(status.evaluationId ? { evaluationId: status.evaluationId } : {}),
   };
 
-  const queuedPath = path.join(dir, `${runId}.json`);
+  const cancelledPath = path.join(dir, `${runId}.cancelled.json`);
   let immediate = false;
-  if (fs.existsSync(queuedPath)) {
+  for (const queuedName of [`${runId}.json`, `${runId}.tmp.json`]) {
+    const queuedPath = path.join(dir, queuedName);
+    if (!fs.existsSync(queuedPath)) continue;
     try {
-      fs.renameSync(queuedPath, path.join(dir, `${runId}.cancelled.json`));
+      fs.renameSync(queuedPath, cancelledPath);
       writeJsonFile(path.join(root, runId, "status.json"), {
         runId,
         status: "cancelled",
         ...pairingMeta,
       });
       immediate = true;
+      break;
     } catch {
       /* claimed concurrently — worker honors .cancel */
     }
