@@ -122,6 +122,7 @@ export async function POST(
             "Comparison link update failed after retry enqueue",
             {
               role: role === "baseline" ? "baseline" : "candidate",
+              evaluationId,
             },
           );
           clearRetryMarker(root, runId);

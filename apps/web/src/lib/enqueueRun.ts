@@ -205,6 +205,8 @@ export function enqueueEvaluationPair(input: {
  * Abort a just-queued (or already-claimed) run when a follow-up step fails
  * (paired candidate enqueue, Comparison meta link after retry, etc.).
  * Writes .cancel so a running worker stops; removes queued job files when possible.
+ * If the worker already claimed `.running.json`, only `.cancel` is written —
+ * do not stamp `failed` (worker owns finalization and cancel wins).
  */
 export function abortQueuedRun(
   runId: string,
@@ -226,6 +228,11 @@ export function abortQueuedRun(
       /* ignore */
     }
   }
+  const claimed = fs.existsSync(path.join(jobs, `${runId}.running.json`));
+  if (claimed) {
+    // Worker will observe .cancel and finalize; avoid racing status.json.
+    return;
+  }
   try {
     const statusPath = path.join(resultsDir(), runId, "status.json");
     let prior: Record<string, unknown> = {};
@@ -239,9 +246,12 @@ export function abortQueuedRun(
     } catch {
       prior = {};
     }
-    // Do not set evaluationId: evaluation.json is only written after both legs
-    // enqueue, so a Comparison link would 404.
-    const { evaluationId: _drop, ...priorRest } = prior;
+    // Pair-enqueue abort (no evaluation.json yet): drop evaluationId so
+    // Comparison does not 404. Retry abort: keep meta.evaluationId when passed.
+    const { evaluationId: _priorEval, ...priorRest } = prior;
+    const keepEvalId = meta?.evaluationId
+      ? assertSafeId(meta.evaluationId, "evaluationId")
+      : undefined;
     writeJsonFile(statusPath, {
       ...priorRest,
       runId,
@@ -249,6 +259,7 @@ export function abortQueuedRun(
       error: `Paired enqueue aborted: ${reason}`.slice(0, 800),
       errorCode: "paired_enqueue_aborted",
       ...(meta?.role ? { role: meta.role } : {}),
+      ...(keepEvalId ? { evaluationId: keepEvalId } : {}),
     });
   } catch {
     /* ignore */
