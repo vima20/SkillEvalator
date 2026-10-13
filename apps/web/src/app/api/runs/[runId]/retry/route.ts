@@ -19,10 +19,9 @@ import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
 import { updateEvaluationMetaLeg } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import { retryGate } from "@/lib/runLifecycle";
 
 export const dynamic = "force-dynamic";
-
-const RETRYABLE = new Set(["failed", "cancelled", "budget_stop"]);
 
 function loadFailedJob(runId: string) {
   const candidates = [
@@ -54,31 +53,29 @@ export async function POST(
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
     const current = status.status ?? "unknown";
-    if (!RETRYABLE.has(current)) {
-      return NextResponse.json(
-        { error: `cannot retry status ${current}` },
-        { status: 409 },
-      );
-    }
-    // budget_stop / failed mid-write: worker may still own .running.json.
-    if (hasLiveJobFile(jobsDir(), runId)) {
+    const liveJob = hasLiveJobFile(jobsDir(), runId);
+    const gate = retryGate({
+      status: current,
+      hasLiveJob: liveJob,
+      nonRetryableError: isNonRetryableErrorCode(status.errorCode),
+    });
+    if (!gate.allow) {
+      if (isNonRetryableErrorCode(status.errorCode)) {
+        return NextResponse.json(
+          {
+            error:
+              status.errorCode === "insufficient_quota"
+                ? "No OpenAI credits remaining — add billing credits before retrying (not auto-retried)."
+                : `Cannot retry error ${status.errorCode}`,
+            errorCode: status.errorCode,
+          },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
         {
-          error:
-            "run still finishing — wait for result.json (or cancel) before retry",
-          status: current,
-        },
-        { status: 409 },
-      );
-    }
-    if (isNonRetryableErrorCode(status.errorCode)) {
-      return NextResponse.json(
-        {
-          error:
-            status.errorCode === "insufficient_quota"
-              ? "No OpenAI credits remaining — add billing credits before retrying (not auto-retried)."
-              : `Cannot retry error ${status.errorCode}`,
-          errorCode: status.errorCode,
+          error: gate.error,
+          ...(liveJob ? { status: current } : {}),
         },
         { status: 409 },
       );

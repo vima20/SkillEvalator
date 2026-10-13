@@ -8,12 +8,10 @@ import {
   resolvePairedCancelSibling,
   writeJsonFile,
 } from "@skillevalator/core";
+import { cancelGate, pairedCancelPeerStatuses } from "@/lib/runLifecycle";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
-
-const TERMINAL = new Set(["ok", "failed", "cancelled"]);
-const CANCELLABLE = new Set(["queued", "running", "cancel_requested"]);
 
 type CancelOutcome =
   | { ok: true; status: "cancelled" | "cancel_requested"; already?: boolean }
@@ -27,26 +25,13 @@ function requestCancelOne(runId: string): CancelOutcome {
   }
 
   const current = status.status ?? "unknown";
-  if (current === "cancelled") {
-    return { ok: true, status: "cancelled", already: true };
-  }
   const hasResult = fs.existsSync(path.join(root, runId, "result.json"));
-  // budget_stop without result.json is wind-down — allow .cancel so worker
-  // can finalize as cancelled (resolveFinalRunStop) and Retry becomes usable.
-  const windDownCancellable = current === "budget_stop" && !hasResult;
-  if (TERMINAL.has(current) || (current === "budget_stop" && hasResult)) {
-    return {
-      ok: false,
-      status: 409,
-      error: `run already finished (${current})`,
-    };
+  const gate = cancelGate(current, hasResult);
+  if (!gate.allow) {
+    return { ok: false, status: 409, error: gate.error };
   }
-  if (!CANCELLABLE.has(current) && !windDownCancellable) {
-    return {
-      ok: false,
-      status: 409,
-      error: `cannot cancel status ${current}`,
-    };
+  if (gate.alreadyCancelled) {
+    return { ok: true, status: "cancelled", already: true };
   }
 
   const dir = jobsDir();
@@ -165,7 +150,7 @@ function pairedSiblingRunId(
     peers,
     // Include budget_stop so a wind-down peer can be cascade-cancelled;
     // requestCancelOne still rejects settled budget_stop (has result.json).
-    cancellableStatuses: new Set([...CANCELLABLE, "budget_stop"]),
+    cancellableStatuses: pairedCancelPeerStatuses(),
   });
 }
 
