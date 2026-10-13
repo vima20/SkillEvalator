@@ -328,6 +328,154 @@ describe("compareBaselineCandidate", () => {
     );
   });
 
+  it("INCONCLUSIVE when capture.env.grade drifts from pipeline.grade", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        pipeline: { produce: "model", grade: "docker_script" },
+        capture: {
+          skillVersion: "abc",
+          role: "baseline",
+          dependencies: [],
+          promptHash: "base",
+          promptKind: "baseline_neutral",
+          env: {
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            temperature: 0,
+            topP: 1,
+            seed: 1,
+            maxOutputTokens: 1024,
+            costCapUsd: 5,
+            costHardStop: true,
+            fakeProduce: false,
+            allowHostGrade: false,
+            grade: "host_script",
+          },
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        pipeline: { produce: "model", grade: "docker_script" },
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
+          env: {
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            temperature: 0,
+            topP: 1,
+            seed: 1,
+            maxOutputTokens: 1024,
+            costCapUsd: 5,
+            costHardStop: true,
+            fakeProduce: false,
+            allowHostGrade: false,
+            grade: "docker_script",
+          },
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        i.includes("baseline.capture.env.grade"),
+      ),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when capture.role disagrees with result.role", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "base",
+          promptKind: "baseline_neutral",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        i.includes("baseline.capture.role"),
+      ),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when modelId is outside capture.env allowlist", () => {
+    const env = {
+      modelDryRun: "allowed-dry",
+      modelOfficial: "allowed-off",
+      temperature: 0,
+      topP: 1,
+      seed: 1,
+      maxOutputTokens: 1024,
+      costCapUsd: 5,
+      costHardStop: true,
+      fakeProduce: false,
+      allowHostGrade: false,
+      grade: "docker_script" as const,
+    };
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        modelId: "gpt-4o-mini",
+        capture: {
+          skillVersion: "abc",
+          role: "baseline",
+          dependencies: [],
+          promptHash: "base",
+          promptKind: "baseline_neutral",
+          env,
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        modelId: "gpt-4o-mini",
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
+          env,
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("not in capture.env allowlist")),
+    ).toBe(true);
+  });
+
   it("INCONCLUSIVE when capture.env.gradeHash differs on both legs", () => {
     const withHash = (gradeHash: string) => ({
       githubUrl: "https://github.com/acme/skills",
@@ -912,7 +1060,7 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
   });
 
-  it("allows missing capture.commit on one or both legs", () => {
+  it("INCONCLUSIVE when capture.commit presence is one-sided; both missing OK", () => {
     const oneSided = compareBaselineCandidate(
       sample({
         runId: "b",
@@ -922,7 +1070,8 @@ describe("compareBaselineCandidate", () => {
           skillVersion: "abc",
           role: "baseline",
           dependencies: [],
-          // no commit — candidate alone may still record provenance
+          promptHash: "base",
+          promptKind: "baseline_neutral",
         },
       }),
       sample({
@@ -933,26 +1082,43 @@ describe("compareBaselineCandidate", () => {
           skillVersion: "abc",
           role: "candidate",
           dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
           commit: "only-candidate",
         },
       }),
     );
+    expect(oneSided.verdict).toBe("INCONCLUSIVE");
     expect(
-      oneSided.parity.issues.some((i) => i.includes("capture.commit")),
-    ).toBe(false);
+      oneSided.parity.issues.some((i) =>
+        i.includes("capture.commit presence"),
+      ),
+    ).toBe(true);
 
     const bothMissing = compareBaselineCandidate(
       sample({
         runId: "b",
         role: "baseline",
         score: 0.5,
-        capture: { skillVersion: "abc", role: "baseline", dependencies: [] },
+        capture: {
+          skillVersion: "abc",
+          role: "baseline",
+          dependencies: [],
+          promptHash: "base",
+          promptKind: "baseline_neutral",
+        },
       }),
       sample({
         runId: "c",
         role: "candidate",
         score: 0.95,
-        capture: { skillVersion: "abc", role: "candidate", dependencies: [] },
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
+        },
       }),
     );
     expect(

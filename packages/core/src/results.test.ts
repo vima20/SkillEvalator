@@ -6,6 +6,7 @@ import {
   formatRunError,
   hasLiveJobFile,
   isNonRetryableErrorCode,
+  listRuns,
   purgeTerminalRunsFs,
   syncStatusFromResult,
 } from "./results.js";
@@ -169,6 +170,54 @@ describe("syncStatusFromResult", () => {
     expect(st?.costUsd).toBe(0.03);
     expect(st?.error).toBeUndefined();
     expect(st?.errorCode).toBeUndefined();
+  });
+
+  it("does not clobber status baseline when result omits role", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-sync-role-"));
+    temps.push(root);
+    const runId = "run_100_syncrole";
+    writeJsonFile(path.join(root, runId, "status.json"), {
+      runId,
+      status: "ok",
+      role: "baseline",
+      evaluationId: "eval_keep",
+    });
+    writeJsonFile(path.join(root, runId, "result.json"), {
+      runId,
+      evalSkillId: "code-debugging-eval",
+      evalSkillVersion: "abc",
+      taskSetId: "cde-v1",
+      taskIds: ["bug-01"],
+      pipeline: { produce: "model", grade: "docker_script" },
+      modelId: "gpt-4o-mini",
+      decoding: { temperature: 0, top_p: 1 },
+      repeats: 1,
+      aggregate: "mean",
+      perTask: [
+        {
+          taskId: "bug-01",
+          scriptResults: [],
+          score: 1,
+          status: "ok",
+        },
+      ],
+      score: 1,
+      subscores: {},
+      rationale: "",
+      findings: [],
+      costUsd: 0.02,
+      latencyMs: 50,
+      status: "ok",
+      startedAt: "2026-01-01T00:00:00.000Z",
+      mode: "dry-run",
+      // role intentionally omitted
+    });
+
+    const st = syncStatusFromResult(root, runId);
+    expect(st?.role).toBe("baseline");
+    expect(st?.evaluationId).toBe("eval_keep");
+    const listed = listRuns(root);
+    expect(listed.find((r) => r.runId === runId)?.role).toBe("baseline");
   });
 
   it("heals cancel_requested when result is cancelled", () => {

@@ -159,7 +159,11 @@ export const RunResultSchema = z.object({
   capture: RunCaptureSchema.optional(),
   /** Shared id linking baseline + candidate runs. */
   evaluationId: SafeIdSchema.optional(),
-  role: EvalRoleSchema.default("candidate"),
+  /**
+   * Optional — do not default to "candidate". A missing role must not clobber
+   * status.json baseline via syncStatusFromResult / listRuns.
+   */
+  role: EvalRoleSchema.optional(),
   taskSetId: z.string(),
   taskIds: z.array(z.string()),
   pipeline: z.object({

@@ -80,6 +80,25 @@ function pushEnvFieldParity(
   }
 }
 
+/** Trimmed string fields (commit/license/url): empty counts as missing. */
+function pushStringFieldParity(
+  issues: string[],
+  label: string,
+  opts: { baseline?: string | null; candidate?: string | null },
+): void {
+  const b = opts.baseline?.trim() ?? "";
+  const c = opts.candidate?.trim() ?? "";
+  if (Boolean(b) !== Boolean(c)) {
+    issues.push(
+      `${label} presence mismatch: baseline=${b ? "set" : "missing"} candidate=${c ? "set" : "missing"}`,
+    );
+    return;
+  }
+  if (b && c && b !== c) {
+    issues.push(`${label} mismatch: baseline=${b} candidate=${c}`);
+  }
+}
+
 /** Assert Unikie parity: same model/mode/tasks/repeats/decoding for fair lift. */
 export function checkComparisonParity(
   baseline: RunResult,
@@ -97,40 +116,19 @@ export function checkComparisonParity(
       `evalSkillVersion mismatch: baseline=${baseline.evalSkillVersion} candidate=${candidate.evalSkillVersion}`,
     );
   }
-  const baselineCommit = baseline.capture?.commit?.trim() ?? "";
-  const candidateCommit = candidate.capture?.commit?.trim() ?? "";
-  // Only when both legs recorded a commit — older results may omit Capture.
-  if (
-    baselineCommit &&
-    candidateCommit &&
-    baselineCommit !== candidateCommit
-  ) {
-    issues.push(
-      `capture.commit mismatch: baseline=${baselineCommit} candidate=${candidateCommit}`,
-    );
-  }
-  const baselineLicense = baseline.capture?.license?.trim() ?? "";
-  const candidateLicense = candidate.capture?.license?.trim() ?? "";
-  if (
-    baselineLicense &&
-    candidateLicense &&
-    baselineLicense !== candidateLicense
-  ) {
-    issues.push(
-      `capture.license mismatch: baseline=${baselineLicense} candidate=${candidateLicense}`,
-    );
-  }
-  const baselineGithub = baseline.capture?.githubUrl?.trim() ?? "";
-  const candidateGithub = candidate.capture?.githubUrl?.trim() ?? "";
-  if (
-    baselineGithub &&
-    candidateGithub &&
-    baselineGithub !== candidateGithub
-  ) {
-    issues.push(
-      `capture.githubUrl mismatch: baseline=${baselineGithub} candidate=${candidateGithub}`,
-    );
-  }
+  // Provenance strings: both missing OK (legacy); XOR or unequal → fail.
+  pushStringFieldParity(issues, "capture.commit", {
+    baseline: baseline.capture?.commit,
+    candidate: candidate.capture?.commit,
+  });
+  pushStringFieldParity(issues, "capture.license", {
+    baseline: baseline.capture?.license,
+    candidate: candidate.capture?.license,
+  });
+  pushStringFieldParity(issues, "capture.githubUrl", {
+    baseline: baseline.capture?.githubUrl,
+    candidate: candidate.capture?.githubUrl,
+  });
   const baselineGradeHash = baseline.capture?.env?.gradeHash?.trim() ?? "";
   const candidateGradeHash = candidate.capture?.env?.gradeHash?.trim() ?? "";
   // Pinned/local grade.js drift is invisible to evalSkillVersion on imports.
@@ -185,6 +183,32 @@ export function checkComparisonParity(
     baseline: baseline.capture?.env?.grade,
     candidate: candidate.capture?.env?.grade,
   });
+  pushEnvFieldParity(issues, "modelDryRun", {
+    baseline: baseline.capture?.env?.modelDryRun,
+    candidate: candidate.capture?.env?.modelDryRun,
+  });
+  pushEnvFieldParity(issues, "modelOfficial", {
+    baseline: baseline.capture?.env?.modelOfficial,
+    candidate: candidate.capture?.env?.modelOfficial,
+  });
+
+  // Capture env.grade must agree with the scored pipeline.grade on each leg.
+  if (
+    baseline.capture?.env?.grade !== undefined &&
+    baseline.capture.env.grade !== baseline.pipeline.grade
+  ) {
+    issues.push(
+      `baseline.capture.env.grade ${baseline.capture.env.grade} ≠ pipeline.grade ${baseline.pipeline.grade}`,
+    );
+  }
+  if (
+    candidate.capture?.env?.grade !== undefined &&
+    candidate.capture.env.grade !== candidate.pipeline.grade
+  ) {
+    issues.push(
+      `candidate.capture.env.grade ${candidate.capture.env.grade} ≠ pipeline.grade ${candidate.pipeline.grade}`,
+    );
+  }
 
   const baselinePromptHash = baseline.capture?.promptHash?.trim() ?? "";
   const candidatePromptHash = candidate.capture?.promptHash?.trim() ?? "";
@@ -309,6 +333,24 @@ export function checkComparisonParity(
       `candidate.capture.role ${candidateCaptureRole} ≠ result.role ${candidate.role ?? "candidate"}`,
     );
   }
+
+  // modelId must be one of the captured allowlist entries when present.
+  for (const [label, leg] of [
+    ["baseline", baseline],
+    ["candidate", candidate],
+  ] as const) {
+    const dry = leg.capture?.env?.modelDryRun;
+    const off = leg.capture?.env?.modelOfficial;
+    const allowed = [dry, off].filter(
+      (m): m is string => typeof m === "string" && m.trim().length > 0,
+    );
+    if (allowed.length > 0 && !allowed.includes(leg.modelId)) {
+      issues.push(
+        `${label}.modelId ${leg.modelId} not in capture.env allowlist (${allowed.join(", ")})`,
+      );
+    }
+  }
+
   return { ok: issues.length === 0, issues };
 }
 

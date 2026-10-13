@@ -232,6 +232,7 @@ export function listRuns(resultsDir: string): RunListItem[] {
       status: st?.status,
       error: st?.error,
       errorCode: st?.errorCode,
+      // Prefer explicit result.role; never invent "candidate" when omitted.
       role: result?.role ?? st?.role,
       evaluationId: result?.evaluationId ?? st?.evaluationId,
       result,
