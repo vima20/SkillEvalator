@@ -44,6 +44,7 @@ import {
   ProduceCancelledError,
   produceArtifact,
 } from "./produce.js";
+import { resolveRunModelId } from "./resolveRunModel.js";
 import {
   applySkillSnapshotLock,
   assertPinnedVersionMatchesLive,
@@ -366,13 +367,12 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   });
 
   const taskIds = taskIdsForMode(skill, job.mode);
-  const allowedModels = new Set([config.modelDryRun, config.modelOfficial]);
-  const modelId =
-    job.modelId ??
-    (job.mode === "official" ? config.modelOfficial : config.modelDryRun);
-  if (!allowedModels.has(modelId)) {
-    throw new Error(`modelId not allowlisted: ${modelId}`);
-  }
+  const modelId = resolveRunModelId({
+    mode: job.mode,
+    jobModelId: job.modelId,
+    modelDryRun: config.modelDryRun,
+    modelOfficial: config.modelOfficial,
+  });
   const repeats = normalizeRepeats(job.mode, job.repeats);
   const hostGrade = useHostGrade();
   if (config.allowHostGrade && !hostGrade) {
