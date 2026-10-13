@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -7,7 +8,9 @@ import { assertSafeId, resolveUnder } from "./paths.js";
 import { SkillManifestSchema } from "./schema.js";
 import { loadSkill, type SkillSummary } from "./skill.js";
 
-const MAX_ZIP_BYTES = 80 * 1024 * 1024;
+/** Shared limit for GitHub download and local zip upload. */
+export const SKILL_IMPORT_MAX_ZIP_BYTES = 80 * 1024 * 1024;
+const MAX_ZIP_BYTES = SKILL_IMPORT_MAX_ZIP_BYTES;
 const MAX_SKILLS = 30;
 const MAX_WALK_DEPTH = 8;
 
@@ -254,6 +257,181 @@ function singleTopDir(dir: string): string {
   return dir;
 }
 
+function importIdForLocal(skillFolderName: string, sourceLabel: string): string {
+  const safe = skillFolderName
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 40);
+  const hash = createHash("sha256")
+    .update(sourceLabel)
+    .digest("hex")
+    .slice(0, 8);
+  return assertSafeId(`imp_local_${safe}_${hash}`, "importId");
+}
+
+type InstallSource = {
+  makeImportId: (folderName: string) => string;
+  refLabel: string;
+  pageUrl: string;
+  owner?: string;
+  repo?: string;
+  /** Rewrite manifest githubUrl / commit when installing. */
+  githubUrlFor?: (relPath: string) => string | undefined;
+  commit?: string;
+};
+
+/**
+ * Discover fixtures/manifest.json under searchRoot and install each skill.
+ */
+function installSkillsFromSearchRoot(opts: {
+  searchRoot: string;
+  /** Root used for relative sourcePath (often zip top / repo top). */
+  contentRoot: string;
+  importedSkillsDir: string;
+  tasksetSearchDirs?: string[];
+  source: InstallSource;
+}): ImportedSkillInfo[] {
+  const roots = findManifestRoots(opts.searchRoot);
+  if (roots.length === 0) {
+    throw new Error(
+      "No SkillEvalator skills found (need fixtures/manifest.json). " +
+        "Plain Agent Skills (SKILL.md only) cannot be graded until they ship an eval harness.",
+    );
+  }
+
+  fs.mkdirSync(opts.importedSkillsDir, { recursive: true });
+  const skills: ImportedSkillInfo[] = [];
+  const loadRoots = [
+    opts.importedSkillsDir,
+    ...(opts.tasksetSearchDirs ?? []),
+  ];
+
+  for (const skillRoot of roots) {
+    const folderName = path.basename(skillRoot);
+    const importId = opts.source.makeImportId(folderName);
+    const dest = resolveUnder(opts.importedSkillsDir, importId);
+    const lockPath = `${dest}.importing`;
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    let lockFd: number | null = null;
+    try {
+      try {
+        lockFd = fs.openSync(lockPath, "wx");
+        fs.writeFileSync(lockFd, new Date().toISOString(), "utf8");
+      } catch (err) {
+        const code =
+          err && typeof err === "object" && "code" in err
+            ? String((err as { code?: unknown }).code)
+            : "";
+        if (code === "EEXIST") {
+          throw new Error(`import already in progress for ${importId}`);
+        }
+        throw err;
+      }
+
+      if (fs.existsSync(dest)) {
+        fs.rmSync(dest, { recursive: true, force: true });
+      }
+      copyTreeNoSymlinks(skillRoot, dest);
+
+      const sourcePath = path
+        .relative(opts.contentRoot, skillRoot)
+        .split(path.sep)
+        .join("/");
+
+      const manifestPath = path.join(dest, "fixtures", "manifest.json");
+      try {
+        const manifest = SkillManifestSchema.parse(
+          JSON.parse(fs.readFileSync(manifestPath, "utf8")),
+        );
+        let taskSetDir = manifest.taskSetDir;
+        if (!taskSetDir) {
+          const candidate = manifest.taskSetId;
+          for (const rootDir of [
+            opts.importedSkillsDir,
+            ...(opts.tasksetSearchDirs ?? []),
+          ]) {
+            try {
+              const shared = path.join(rootDir, "tasksets", candidate);
+              if (fs.existsSync(shared)) {
+                taskSetDir = candidate;
+                break;
+              }
+            } catch {
+              /* try next */
+            }
+          }
+        }
+        const githubUrl =
+          opts.source.githubUrlFor?.(sourcePath) ?? manifest.githubUrl;
+        writeJsonFile(manifestPath, {
+          ...manifest,
+          ...(taskSetDir ? { taskSetDir } : {}),
+          ...(githubUrl ? { githubUrl } : {}),
+          ...(opts.source.commit ? { commit: opts.source.commit } : {}),
+        });
+      } catch (err) {
+        try {
+          fs.rmSync(dest, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
+        throw err;
+      }
+
+      writeJsonFile(path.join(dest, ".import.json"), {
+        importId,
+        ...(opts.source.owner ? { owner: opts.source.owner } : {}),
+        ...(opts.source.repo ? { repo: opts.source.repo } : {}),
+        ref: opts.source.refLabel,
+        sourcePath,
+        pageUrl: opts.source.pageUrl,
+        importedAt: new Date().toISOString(),
+      });
+
+      let loaded: ReturnType<typeof loadSkill>;
+      try {
+        loaded = loadSkill(loadRoots, importId);
+      } catch (err) {
+        try {
+          fs.rmSync(dest, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
+        throw err;
+      }
+      skills.push({
+        importId,
+        id: loaded.id,
+        githubUrl: loaded.manifest.githubUrl,
+        taskSetId: loaded.manifest.taskSetId,
+        dryRunCount: loaded.manifest.dryRunIds.length,
+        taskCount: loaded.manifest.taskIds.length,
+        commit: loaded.manifest.commit,
+        license: loaded.manifest.license,
+        dependencies: loaded.manifest.dependencies,
+        sourcePath,
+        ref: opts.source.refLabel,
+        pageUrl: opts.source.pageUrl,
+      });
+    } finally {
+      if (lockFd != null) {
+        try {
+          fs.closeSync(lockFd);
+        } catch {
+          /* ignore */
+        }
+      }
+      try {
+        fs.unlinkSync(lockPath);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  return skills;
+}
+
 /**
  * Download a GitHub repo archive, discover SkillEvalator skills
  * (directories with fixtures/manifest.json), install under importedSkillsDir.
@@ -283,152 +461,89 @@ export async function importSkillsFromGitHub(opts: {
       throw new Error(`path not found in repo: ${gh.subdir}`);
     }
 
-    const roots = findManifestRoots(searchRoot);
-    if (roots.length === 0) {
-      throw new Error(
-        "No SkillEvalator skills found (need fixtures/manifest.json). " +
-          "Plain Agent Skills (SKILL.md only) cannot be graded until they ship an eval harness.",
-      );
-    }
-
-    fs.mkdirSync(opts.importedSkillsDir, { recursive: true });
-    const skills: ImportedSkillInfo[] = [];
-    const loadRoots = [
-      opts.importedSkillsDir,
-      ...(opts.tasksetSearchDirs ?? []),
-    ];
-
-    for (const skillRoot of roots) {
-      const folderName = path.basename(skillRoot);
-      const importId = importIdFor(gh, folderName);
-      const dest = resolveUnder(opts.importedSkillsDir, importId);
-      const lockPath = `${dest}.importing`;
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      let lockFd: number | null = null;
-      try {
-        try {
-          lockFd = fs.openSync(lockPath, "wx");
-          fs.writeFileSync(lockFd, new Date().toISOString(), "utf8");
-        } catch (err) {
-          const code =
-            err && typeof err === "object" && "code" in err
-              ? String((err as { code?: unknown }).code)
-              : "";
-          if (code === "EEXIST") {
-            throw new Error(`import already in progress for ${importId}`);
-          }
-          throw err;
-        }
-
-        if (fs.existsSync(dest)) {
-          fs.rmSync(dest, { recursive: true, force: true });
-        }
-        copyTreeNoSymlinks(skillRoot, dest);
-
-        const manifestPath = path.join(dest, "fixtures", "manifest.json");
-        try {
-          const manifest = SkillManifestSchema.parse(
-            JSON.parse(fs.readFileSync(manifestPath, "utf8")),
-          );
-          const rel = path
-            .relative(repoRoot, skillRoot)
-            .split(path.sep)
-            .join("/");
-          const sourceUrl = `https://github.com/${gh.owner}/${gh.repo}/tree/${gh.ref}/${rel}`;
-          // Prefer shared tasksets/ so imported fixtures cannot self-certify.
-          let taskSetDir = manifest.taskSetDir;
-          if (!taskSetDir) {
-            const candidate = manifest.taskSetId;
-            for (const rootDir of [
-              opts.importedSkillsDir,
-              ...(opts.tasksetSearchDirs ?? []),
-            ]) {
-              try {
-                const shared = path.join(rootDir, "tasksets", candidate);
-                if (fs.existsSync(shared)) {
-                  taskSetDir = candidate;
-                  break;
-                }
-              } catch {
-                /* try next */
-              }
-            }
-          }
-          writeJsonFile(manifestPath, {
-            ...manifest,
-            ...(taskSetDir ? { taskSetDir } : {}),
-            githubUrl: sourceUrl.startsWith("https://")
-              ? sourceUrl
-              : manifest.githubUrl,
-            commit: /^[0-9a-f]{7,40}$/i.test(gh.ref) ? gh.ref : manifest.commit,
-          });
-        } catch (err) {
-          try {
-            fs.rmSync(dest, { recursive: true, force: true });
-          } catch {
-            /* ignore */
-          }
-          throw err;
-        }
-
-        writeJsonFile(path.join(dest, ".import.json"), {
-          importId,
-          owner: gh.owner,
-          repo: gh.repo,
-          ref: gh.ref,
-          sourcePath: path
-            .relative(repoRoot, skillRoot)
-            .split(path.sep)
-            .join("/"),
-          pageUrl: gh.pageUrl,
-          importedAt: new Date().toISOString(),
-        });
-
-        let loaded: ReturnType<typeof loadSkill>;
-        try {
-          loaded = loadSkill(loadRoots, importId);
-        } catch (err) {
-          try {
-            fs.rmSync(dest, { recursive: true, force: true });
-          } catch {
-            /* ignore */
-          }
-          throw err;
-        }
-        skills.push({
-          importId,
-          id: loaded.id,
-          githubUrl: loaded.manifest.githubUrl,
-          taskSetId: loaded.manifest.taskSetId,
-          dryRunCount: loaded.manifest.dryRunIds.length,
-          taskCount: loaded.manifest.taskIds.length,
-          commit: loaded.manifest.commit,
-          license: loaded.manifest.license,
-          dependencies: loaded.manifest.dependencies,
-          sourcePath: path
-            .relative(repoRoot, skillRoot)
-            .split(path.sep)
-            .join("/"),
-          ref: gh.ref,
-          pageUrl: gh.pageUrl,
-        });
-      } finally {
-        if (lockFd != null) {
-          try {
-            fs.closeSync(lockFd);
-          } catch {
-            /* ignore */
-          }
-        }
-        try {
-          fs.unlinkSync(lockPath);
-        } catch {
-          /* ignore */
-        }
-      }
-    }
+    const skills = installSkillsFromSearchRoot({
+      searchRoot,
+      contentRoot: repoRoot,
+      importedSkillsDir: opts.importedSkillsDir,
+      tasksetSearchDirs: opts.tasksetSearchDirs,
+      source: {
+        makeImportId: (folder) => importIdFor(gh, folder),
+        refLabel: gh.ref,
+        pageUrl: gh.pageUrl,
+        owner: gh.owner,
+        repo: gh.repo,
+        githubUrlFor: (rel) =>
+          `https://github.com/${gh.owner}/${gh.repo}/tree/${gh.ref}/${rel}`,
+        commit: /^[0-9a-f]{7,40}$/i.test(gh.ref) ? gh.ref : undefined,
+      },
+    });
 
     return { ref: gh, skills };
+  } finally {
+    try {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/**
+ * Unikie Find/Receive local package: extract a zip (same zip-slip rules as
+ * GitHub codeload) and install discovered SkillEvalator skills.
+ */
+export function importSkillsFromZip(opts: {
+  /** Absolute path to a .zip on disk, or raw zip bytes. */
+  zipPath?: string;
+  zipBytes?: Buffer;
+  /** Display label (filename) stored in .import.json / pageUrl. */
+  sourceLabel: string;
+  importedSkillsDir: string;
+  tasksetSearchDirs?: string[];
+}): { sourceLabel: string; skills: ImportedSkillInfo[] } {
+  const label = opts.sourceLabel.trim() || "local.zip";
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "se-zip-import-"));
+  const zipPath = path.join(tmp, "upload.zip");
+  const extractDir = path.join(tmp, "extract");
+
+  try {
+    if (opts.zipBytes) {
+      if (opts.zipBytes.byteLength === 0) throw new Error("empty archive");
+      if (opts.zipBytes.byteLength > MAX_ZIP_BYTES) {
+        throw new Error(
+          `archive too large (>${Math.round(MAX_ZIP_BYTES / 1024 / 1024)}MB)`,
+        );
+      }
+      fs.writeFileSync(zipPath, opts.zipBytes);
+    } else if (opts.zipPath) {
+      const st = fs.statSync(opts.zipPath);
+      if (!st.isFile()) throw new Error("zipPath is not a file");
+      if (st.size === 0) throw new Error("empty archive");
+      if (st.size > MAX_ZIP_BYTES) {
+        throw new Error(
+          `archive too large (>${Math.round(MAX_ZIP_BYTES / 1024 / 1024)}MB)`,
+        );
+      }
+      fs.copyFileSync(opts.zipPath, zipPath);
+    } else {
+      throw new Error("zipPath or zipBytes required");
+    }
+
+    extractZip(zipPath, extractDir);
+    const contentRoot = singleTopDir(extractDir);
+    const skills = installSkillsFromSearchRoot({
+      searchRoot: contentRoot,
+      contentRoot,
+      importedSkillsDir: opts.importedSkillsDir,
+      tasksetSearchDirs: opts.tasksetSearchDirs,
+      source: {
+        makeImportId: (folder) => importIdForLocal(folder, label),
+        refLabel: "local-zip",
+        pageUrl: `local-zip:${label}`,
+      },
+    });
+
+    return { sourceLabel: label, skills };
   } finally {
     try {
       fs.rmSync(tmp, { recursive: true, force: true });

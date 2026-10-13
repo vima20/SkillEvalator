@@ -49,6 +49,7 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
   const [importUrl, setImportUrl] = useState(
     "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
   );
+  const [importZip, setImportZip] = useState<File | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState(false);
@@ -237,7 +238,7 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
         </div>
 
         <div className="field">
-          <label htmlFor="importUrl">Find / Receive (GitHub)</label>
+          <label htmlFor="importUrl">Find / Receive (GitHub or local zip)</label>
           <input
             id="importUrl"
             type="url"
@@ -247,47 +248,110 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
           />
           <p className="hint">
             Import a skill package (fixtures/manifest.json) into{" "}
-            <code>data/imported-skills</code> pinned to the URL ref/commit.
+            <code>data/imported-skills</code> — GitHub URL (ref/commit) or a
+            local <code>.zip</code> (offline / USB demo).
           </p>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={importBusy || !importUrl.trim()}
-            onClick={() => {
-              void (async () => {
-                setImportBusy(true);
-                setMsg("");
-                setError(false);
-                try {
-                  const res = await fetch("/api/skills", {
-                    method: "POST",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ url: importUrl.trim() }),
-                  });
-                  const data = (await res.json()) as {
-                    error?: string;
-                    skills?: SkillOption[];
-                    allSkills?: SkillOption[];
-                  };
-                  if (!res.ok) throw new Error(data.error ?? "import failed");
-                  const next = data.allSkills ?? skills;
-                  setSkills(next);
-                  const first = data.skills?.[0]?.id;
-                  if (first) setEvalSkillId(first);
-                  setMsg(
-                    `Imported ${data.skills?.length ?? 0} skill(s) from GitHub`,
-                  );
-                } catch (err) {
-                  setError(true);
-                  setMsg(err instanceof Error ? err.message : "import error");
-                } finally {
-                  setImportBusy(false);
-                }
-              })();
-            }}
-          >
-            {importBusy ? "Importing…" : "Import skill"}
-          </button>
+          <div className="action-row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={importBusy || !importUrl.trim()}
+              onClick={() => {
+                void (async () => {
+                  setImportBusy(true);
+                  setMsg("");
+                  setError(false);
+                  try {
+                    const res = await fetch("/api/skills", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ url: importUrl.trim() }),
+                    });
+                    const data = (await res.json()) as {
+                      error?: string;
+                      skills?: SkillOption[];
+                      allSkills?: SkillOption[];
+                    };
+                    if (!res.ok) throw new Error(data.error ?? "import failed");
+                    const next = data.allSkills ?? skills;
+                    setSkills(next);
+                    const first = data.skills?.[0]?.id;
+                    if (first) setEvalSkillId(first);
+                    setMsg(
+                      `Imported ${data.skills?.length ?? 0} skill(s) from GitHub`,
+                    );
+                  } catch (err) {
+                    setError(true);
+                    setMsg(err instanceof Error ? err.message : "import error");
+                  } finally {
+                    setImportBusy(false);
+                  }
+                })();
+              }}
+            >
+              {importBusy ? "Importing…" : "Import from GitHub"}
+            </button>
+            <label className="btn btn-ghost" style={{ cursor: "pointer" }}>
+              Choose zip
+              <input
+                type="file"
+                accept=".zip,application/zip"
+                style={{ display: "none" }}
+                disabled={importBusy}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setImportZip(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={importBusy || !importZip}
+              onClick={() => {
+                if (!importZip) return;
+                void (async () => {
+                  setImportBusy(true);
+                  setMsg("");
+                  setError(false);
+                  try {
+                    const body = new FormData();
+                    body.append("file", importZip, importZip.name);
+                    const res = await fetch("/api/skills", {
+                      method: "POST",
+                      body,
+                    });
+                    const data = (await res.json()) as {
+                      error?: string;
+                      skills?: SkillOption[];
+                      allSkills?: SkillOption[];
+                    };
+                    if (!res.ok) throw new Error(data.error ?? "import failed");
+                    const next = data.allSkills ?? skills;
+                    setSkills(next);
+                    const first = data.skills?.[0]?.id;
+                    if (first) setEvalSkillId(first);
+                    setMsg(
+                      `Imported ${data.skills?.length ?? 0} skill(s) from ${importZip.name}`,
+                    );
+                    setImportZip(null);
+                  } catch (err) {
+                    setError(true);
+                    setMsg(err instanceof Error ? err.message : "import error");
+                  } finally {
+                    setImportBusy(false);
+                  }
+                })();
+              }}
+            >
+              {importBusy
+                ? "Importing…"
+                : importZip
+                  ? `Import ${importZip.name}`
+                  : "Import zip"}
+            </button>
+          </div>
         </div>
 
         <div className="field">

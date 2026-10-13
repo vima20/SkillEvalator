@@ -1,5 +1,64 @@
-import { describe, expect, it } from "vitest";
-import { parseGitHubSkillUrl } from "./githubSkillImport.js";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { writeJsonFile } from "./fsJson.js";
+import {
+  importSkillsFromZip,
+  parseGitHubSkillUrl,
+} from "./githubSkillImport.js";
+
+const temps: string[] = [];
+
+afterEach(() => {
+  for (const d of temps.splice(0)) {
+    fs.rmSync(d, { recursive: true, force: true });
+  }
+});
+
+function mkTemp(prefix: string): string {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  temps.push(d);
+  return d;
+}
+
+/** Build a .zip via system tar (same extractor importSkillsFromZip uses). */
+function zipDir(srcDir: string, zipPath: string): void {
+  const parent = path.dirname(srcDir);
+  const base = path.basename(srcDir);
+  const r = spawnSync("tar", ["-a", "-cf", zipPath, "-C", parent, base], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  if (r.error) throw new Error(`zip failed: ${r.error.message}`);
+  if (r.status !== 0) {
+    throw new Error(
+      `zip failed: ${(r.stderr || r.stdout || `exit ${r.status}`).trim()}`,
+    );
+  }
+}
+
+function writeZipSkillPackage(pkgRoot: string, skillFolder: string): void {
+  const skillRoot = path.join(pkgRoot, skillFolder);
+  writeJsonFile(path.join(skillRoot, "fixtures", "manifest.json"), {
+    taskSetId: "zip-ts-v1",
+    taskSetDir: "zip-ts-v1",
+    githubUrl: "https://github.com/acme/skills/tree/main/demo-skill",
+    license: "MIT",
+    dependencies: [],
+    taskIds: ["bug-01"],
+    dryRunIds: ["bug-01"],
+    targetFile: { "bug-01": "fix.js" },
+  });
+  fs.writeFileSync(path.join(skillRoot, "SKILL.md"), "# demo zip skill\n", "utf8");
+}
+
+function writeSharedTaskset(skillsDir: string): void {
+  const taskDir = path.join(skillsDir, "tasksets", "zip-ts-v1", "bug-01");
+  fs.mkdirSync(taskDir, { recursive: true });
+  fs.writeFileSync(path.join(taskDir, "note.txt"), "fixture\n", "utf8");
+}
 
 describe("parseGitHubSkillUrl", () => {
   it("parses owner/repo", () => {
@@ -37,5 +96,93 @@ describe("parseGitHubSkillUrl", () => {
     expect(() =>
       parseGitHubSkillUrl("http://github.com/acme/skills"),
     ).toThrow(/https/);
+  });
+});
+
+describe("importSkillsFromZip", () => {
+  it("installs a skill from a local zip package", () => {
+    const work = mkTemp("se-zip-ok-");
+    const pkg = path.join(work, "pkg");
+    const imported = path.join(work, "imported");
+    const shared = path.join(work, "shared");
+    writeZipSkillPackage(pkg, "demo-skill");
+    writeSharedTaskset(shared);
+    const zipPath = path.join(work, "demo-skill.zip");
+    zipDir(pkg, zipPath);
+
+    const result = importSkillsFromZip({
+      zipPath,
+      sourceLabel: "demo-skill.zip",
+      importedSkillsDir: imported,
+      tasksetSearchDirs: [shared],
+    });
+
+    expect(result.sourceLabel).toBe("demo-skill.zip");
+    expect(result.skills).toHaveLength(1);
+    const skill = result.skills[0]!;
+    expect(skill.id).toMatch(/^imp_local_demo-skill_/);
+    expect(skill.ref).toBe("local-zip");
+    expect(skill.pageUrl).toBe("local-zip:demo-skill.zip");
+    expect(skill.taskCount).toBe(1);
+    expect(skill.dryRunCount).toBe(1);
+
+    const dest = path.join(imported, skill.importId);
+    expect(fs.existsSync(path.join(dest, "fixtures", "manifest.json"))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.join(dest, ".import.json"))).toBe(true);
+    const meta = JSON.parse(
+      fs.readFileSync(path.join(dest, ".import.json"), "utf8"),
+    ) as { ref: string; pageUrl: string };
+    expect(meta.ref).toBe("local-zip");
+    expect(meta.pageUrl).toBe("local-zip:demo-skill.zip");
+  });
+
+  it("accepts zipBytes", () => {
+    const work = mkTemp("se-zip-bytes-");
+    const pkg = path.join(work, "pkg");
+    const imported = path.join(work, "imported");
+    const shared = path.join(work, "shared");
+    writeZipSkillPackage(pkg, "byte-skill");
+    writeSharedTaskset(shared);
+    const zipPath = path.join(work, "byte-skill.zip");
+    zipDir(pkg, zipPath);
+    const zipBytes = fs.readFileSync(zipPath);
+
+    const result = importSkillsFromZip({
+      zipBytes,
+      sourceLabel: "byte-skill.zip",
+      importedSkillsDir: imported,
+      tasksetSearchDirs: [shared],
+    });
+    expect(result.skills).toHaveLength(1);
+    expect(result.skills[0]!.id).toMatch(/^imp_local_byte-skill_/);
+  });
+
+  it("rejects empty archive", () => {
+    expect(() =>
+      importSkillsFromZip({
+        zipBytes: Buffer.alloc(0),
+        sourceLabel: "empty.zip",
+        importedSkillsDir: mkTemp("se-zip-empty-"),
+      }),
+    ).toThrow(/empty archive/);
+  });
+
+  it("rejects zip without SkillEvalator manifest", () => {
+    const work = mkTemp("se-zip-nom-");
+    const pkg = path.join(work, "pkg", "plain");
+    fs.mkdirSync(pkg, { recursive: true });
+    fs.writeFileSync(path.join(pkg, "SKILL.md"), "# plain\n", "utf8");
+    const zipPath = path.join(work, "plain.zip");
+    zipDir(path.join(work, "pkg"), zipPath);
+
+    expect(() =>
+      importSkillsFromZip({
+        zipPath,
+        sourceLabel: "plain.zip",
+        importedSkillsDir: path.join(work, "imported"),
+      }),
+    ).toThrow(/No SkillEvalator skills found/);
   });
 });
