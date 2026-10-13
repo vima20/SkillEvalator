@@ -18,6 +18,7 @@ import {
 } from "@skillevalator/core";
 import { config } from "./config.js";
 import { touchHeartbeat } from "./heartbeat.js";
+import { isPidAlive } from "./pidAlive.js";
 import { runJob } from "./runJob.js";
 
 /** Periodic orphan reclaim while idle (startup also heals once). */
@@ -34,16 +35,6 @@ function listQueued(): string[] {
     .filter(isQueuedJobFile)
     .map((f) => path.join(config.jobsDir, f))
     .sort();
-}
-
-function isPidAlive(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function workerPidPath(runningJobPath: string): string {

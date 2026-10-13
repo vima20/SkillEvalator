@@ -10,6 +10,13 @@ import {
   stripCodeFences,
 } from "@skillevalator/core";
 import { config } from "./config.js";
+import {
+  resolveProduceInstruction,
+  resolveProduceSystemContent,
+} from "./produceInstruction.js";
+import { BASELINE_NEUTRAL_PROMPT } from "./prompts.js";
+
+export { BASELINE_NEUTRAL_PROMPT };
 
 export class ProduceCancelledError extends Error {
   code = "cancelled" as const;
@@ -18,11 +25,6 @@ export class ProduceCancelledError extends Error {
     this.name = "ProduceCancelledError";
   }
 }
-
-/** Unikie baseline: same model/tasks, no skill SKILL.md (neutral KH-style prompt). */
-export const BASELINE_NEUTRAL_PROMPT = `You are a coding assistant helping with a small JavaScript task.
-Fix or complete the requested file so it behaves correctly.
-Return only the complete source for the output file. No markdown fences. No explanation.`;
 
 export async function produceArtifact(opts: {
   modelId: string;
@@ -88,12 +90,10 @@ export async function produceArtifact(opts: {
   }
 
   const role = opts.role ?? "candidate";
-  const promptKind =
-    role === "baseline" ? ("baseline_neutral" as const) : ("skill_md" as const);
-  const instruction =
-    role === "baseline"
-      ? BASELINE_NEUTRAL_PROMPT
-      : opts.skillMd.trim() || BASELINE_NEUTRAL_PROMPT;
+  const { instruction, promptKind } = resolveProduceInstruction({
+    role,
+    skillMd: opts.skillMd,
+  });
 
   const client = new OpenAI({
     apiKey: config.openaiApiKey,
@@ -132,10 +132,7 @@ export async function produceArtifact(opts: {
       : null;
 
   try {
-    const systemContent =
-      role === "baseline"
-        ? "You complete coding evaluation tasks using only the neutral instructions. Output only the requested source file body."
-        : "You complete coding evaluation tasks. Follow the skill instructions exactly. Output only the requested source file body.";
+    const systemContent = resolveProduceSystemContent(role);
     const configuredMax =
       opts.maxOutputTokens != null && opts.maxOutputTokens > 0
         ? Math.floor(opts.maxOutputTokens)

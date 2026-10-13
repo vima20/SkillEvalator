@@ -138,5 +138,52 @@ describe("enqueueEvaluationPair", () => {
     expect(
       fs.existsSync(path.join(jobsRoot, `${out.candidateRunId}.json`)),
     ).toBe(true);
+    // Enqueue lock must not leak after a successful pair.
+    expect(fs.existsSync(path.join(jobsRoot, ".enqueue.lock"))).toBe(false);
+  });
+
+  it("rejects pair when fewer than two queue slots remain", async () => {
+    const { enqueueEvaluationPair, enqueueRun } = await import(
+      "./enqueueRun.js"
+    );
+    // Fill to max-1 so a pair (needs 2) cannot fit.
+    for (let i = 0; i < 19; i++) {
+      const filler = path.join(jobsRoot, `run_fill_${i}.json`);
+      fs.writeFileSync(filler, "{}");
+    }
+    const out = enqueueEvaluationPair({
+      evalSkillId: "code-debugging-eval",
+      mode: "dry-run",
+      repeats: 1,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.status).toBe(429);
+
+    // Single enqueue still fits in the last slot.
+    const single = enqueueRun({
+      evalSkillId: "code-debugging-eval",
+      mode: "dry-run",
+      repeats: 1,
+    });
+    expect(single.ok).toBe(true);
+  });
+});
+
+describe("enqueueRun", () => {
+  it("rejects when queue is full and releases lock", async () => {
+    const { enqueueRun } = await import("./enqueueRun.js");
+    for (let i = 0; i < 20; i++) {
+      fs.writeFileSync(path.join(jobsRoot, `run_full_${i}.json`), "{}");
+    }
+    const out = enqueueRun({
+      evalSkillId: "code-debugging-eval",
+      mode: "dry-run",
+      repeats: 1,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.status).toBe(429);
+    expect(fs.existsSync(path.join(jobsRoot, ".enqueue.lock"))).toBe(false);
   });
 });

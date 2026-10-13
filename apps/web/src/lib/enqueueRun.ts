@@ -6,6 +6,8 @@ import {
   createJobManifest,
   isQueuedJobFile,
   loadSkill,
+  releaseWxLock,
+  tryAcquireWxLock,
   writeJsonFile,
   type JobManifest,
 } from "@skillevalator/core";
@@ -30,6 +32,8 @@ function skillReady(
 }
 
 const MAX_QUEUED_JOBS = 20;
+/** Serialize slot check + job write so concurrent POSTs cannot overrun the cap. */
+const ENQUEUE_LOCK_STALE_MS = 30_000;
 
 export type EnqueueInput = {
   evalSkillId: string;
@@ -71,16 +75,29 @@ function queueSlotsNeeded(
   return null;
 }
 
-export function enqueueRun(input: EnqueueInput): EnqueueResult {
-  const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
-  const ready = skillReady(evalSkillId);
-  if (!ready.ok) {
-    return { ok: false, status: 400, error: ready.error };
+type EnqueueLockBusy = { ok: false; status: 503; error: string };
+
+function withEnqueueLock<T>(fn: () => T): T | EnqueueLockBusy {
+  const dir = jobsDir();
+  fs.mkdirSync(dir, { recursive: true });
+  const lockPath = path.join(dir, ".enqueue.lock");
+  if (!tryAcquireWxLock(lockPath, { staleMs: ENQUEUE_LOCK_STALE_MS, retries: 80 })) {
+    return {
+      ok: false,
+      status: 503,
+      error: "enqueue lock busy; retry shortly",
+    };
   }
+  try {
+    return fn();
+  } finally {
+    releaseWxLock(lockPath);
+  }
+}
 
-  const full = queueSlotsNeeded(1);
-  if (full) return full;
-
+/** Caller must hold `.enqueue.lock` (and have already reserved slots). */
+function writeQueuedRun(input: EnqueueInput): EnqueueResult {
+  const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
   const evaluationId = input.evaluationId
     ? assertSafeId(input.evaluationId, "evaluationId")
     : undefined;
@@ -119,6 +136,20 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
   return { ok: true, runId };
 }
 
+export function enqueueRun(input: EnqueueInput): EnqueueResult {
+  const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
+  const ready = skillReady(evalSkillId);
+  if (!ready.ok) {
+    return { ok: false, status: 400, error: ready.error };
+  }
+
+  return withEnqueueLock(() => {
+    const full = queueSlotsNeeded(1);
+    if (full) return full;
+    return writeQueuedRun({ ...input, evalSkillId });
+  });
+}
+
 /**
  * Unikie paired evaluation: baseline (neutral prompt) + candidate (SKILL.md)
  * share one evaluationId for Comparison view.
@@ -135,70 +166,74 @@ export function enqueueEvaluationPair(input: {
     return { ok: false, status: 400, error: ready.error };
   }
 
-  const full = queueSlotsNeeded(2);
-  if (full) return full;
+  const locked = withEnqueueLock((): EnqueuePairResult => {
+    const full = queueSlotsNeeded(2);
+    if (full) return full;
 
-  const evaluationId = `eval_${Date.now()}_${randomUUID().slice(0, 8)}`;
+    const evaluationId = `eval_${Date.now()}_${randomUUID().slice(0, 8)}`;
 
-  const baseline = enqueueRun({
-    ...input,
-    evalSkillId,
-    role: "baseline",
-    evaluationId,
-  });
-  if (!baseline.ok) return baseline;
-
-  // Tiny delay so runIds stay unique under Date.now() collisions.
-  const candidate = enqueueRun({
-    ...input,
-    evalSkillId,
-    role: "candidate",
-    evaluationId,
-  });
-  if (!candidate.ok) {
-    // Roll back the baseline leg so Comparison is not left half-queued.
-    abortQueuedRun(baseline.runId, candidate.error, {
-      role: "baseline",
-    });
-    return {
-      ok: false,
-      status: candidate.status,
-      error: `candidate enqueue failed after baseline ${baseline.runId}: ${candidate.error}`,
-    };
-  }
-
-  try {
-    writeJsonFile(path.join(resultsDir(), evaluationId, "evaluation.json"), {
-      evaluationId,
+    const baseline = writeQueuedRun({
+      ...input,
       evalSkillId,
-      mode: input.mode,
+      role: "baseline",
+      evaluationId,
+    });
+    if (!baseline.ok) return baseline;
+
+    // Tiny delay so runIds stay unique under Date.now() collisions.
+    const candidate = writeQueuedRun({
+      ...input,
+      evalSkillId,
+      role: "candidate",
+      evaluationId,
+    });
+    if (!candidate.ok) {
+      // Roll back the baseline leg so Comparison is not left half-queued.
+      abortQueuedRun(baseline.runId, candidate.error, {
+        role: "baseline",
+      });
+      return {
+        ok: false,
+        status: candidate.status,
+        error: `candidate enqueue failed after baseline ${baseline.runId}: ${candidate.error}`,
+      };
+    }
+
+    try {
+      writeJsonFile(path.join(resultsDir(), evaluationId, "evaluation.json"), {
+        evaluationId,
+        evalSkillId,
+        mode: input.mode,
+        baselineRunId: baseline.runId,
+        candidateRunId: candidate.runId,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      abortQueuedRun(baseline.runId, `evaluation.json write failed: ${message}`, {
+        role: "baseline",
+      });
+      abortQueuedRun(
+        candidate.runId,
+        `evaluation.json write failed: ${message}`,
+        { role: "candidate" },
+      );
+      return {
+        ok: false,
+        status: 500,
+        error: `failed to write evaluation.json: ${message}`.slice(0, 400),
+      };
+    }
+
+    return {
+      ok: true,
+      evaluationId,
       baselineRunId: baseline.runId,
       candidateRunId: candidate.runId,
-      createdAt: new Date().toISOString(),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    abortQueuedRun(baseline.runId, `evaluation.json write failed: ${message}`, {
-      role: "baseline",
-    });
-    abortQueuedRun(
-      candidate.runId,
-      `evaluation.json write failed: ${message}`,
-      { role: "candidate" },
-    );
-    return {
-      ok: false,
-      status: 500,
-      error: `failed to write evaluation.json: ${message}`.slice(0, 400),
     };
-  }
+  });
 
-  return {
-    ok: true,
-    evaluationId,
-    baselineRunId: baseline.runId,
-    candidateRunId: candidate.runId,
-  };
+  return locked;
 }
 
 /**

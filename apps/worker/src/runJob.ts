@@ -33,6 +33,7 @@ import {
   type TokenUsage,
 } from "@skillevalator/core";
 import { config } from "./config.js";
+import { shouldUseHostGrade } from "./gradeMode.js";
 import { touchHeartbeat } from "./heartbeat.js";
 import {
   BASELINE_NEUTRAL_PROMPT,
@@ -59,9 +60,10 @@ function toRepoRelative(absPath: string): string {
 }
 
 function useHostGrade(): boolean {
-  return (
-    config.allowHostGrade && process.env.FAKE_PRODUCE === "known-good"
-  );
+  return shouldUseHostGrade({
+    allowHostGrade: config.allowHostGrade,
+    fakeProduce: process.env.FAKE_PRODUCE,
+  });
 }
 
 function writeSkillSnapshot(opts: {
