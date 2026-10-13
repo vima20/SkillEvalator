@@ -174,6 +174,76 @@ function loadSkillFromRoot(
   };
 }
 
+/**
+ * Best-effort pin for candidate Retry before full loadSkill validation.
+ * Skips per-task fixture presence checks so a crash mid-load can still leave
+ * SKILL.md + evalSkillVersion on disk (authoritative writeSkillSnapshot later).
+ */
+function provisionalPinFromRoot(
+  skillsDir: string,
+  skillId: string,
+  tasksetSearchDirs: string[] = [],
+): {
+  id: string;
+  skillMd: string;
+  manifest: SkillManifest;
+  version: string;
+} {
+  const id = assertSafeId(skillId, "evalSkillId");
+  const root = resolveUnder(skillsDir, id);
+  if (!fs.existsSync(root)) throw new Error(`Skill not found: ${id}`);
+  assertRealDirectory(root, "skill root");
+  const fixturesMetaDir = path.join(root, "fixtures");
+  assertRealDirectory(fixturesMetaDir, "fixtures");
+  const manifestPath = path.join(fixturesMetaDir, "manifest.json");
+  const skillMdPath = path.join(root, "SKILL.md");
+  const manifest = SkillManifestSchema.parse(
+    JSON.parse(stripBom(readRegularFileUtf8(manifestPath, "manifest.json"))),
+  );
+  const fixturesRoot = resolveFixturesRoot(
+    skillsDir,
+    root,
+    manifest,
+    tasksetSearchDirs,
+  );
+  assertRealDirectory(fixturesRoot, "fixturesRoot");
+  const skillMd = readSkillMdFile(skillMdPath);
+  const version = crypto
+    .createHash("sha256")
+    .update(hashDirFiles(root))
+    .update(hashDirFiles(fixturesRoot))
+    .digest("hex")
+    .slice(0, 16);
+  return { id, skillMd, manifest, version };
+}
+
+/** First matching provisional pin across skill roots, or null. */
+export function tryProvisionalSkillPin(
+  skillsDir: string | string[],
+  skillId: string,
+): {
+  id: string;
+  skillMd: string;
+  manifest: SkillManifest;
+  version: string;
+} | null {
+  const dirs = Array.isArray(skillsDir) ? skillsDir : [skillsDir];
+  let id: string;
+  try {
+    id = assertSafeId(skillId, "evalSkillId");
+  } catch {
+    return null;
+  }
+  for (const dir of dirs) {
+    try {
+      return provisionalPinFromRoot(dir, id, dirs);
+    } catch {
+      /* try next root */
+    }
+  }
+  return null;
+}
+
 /** Load a skill from one directory or the first match across several roots. */
 export function loadSkill(
   skillsDir: string | string[],

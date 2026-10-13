@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { writeJsonFile } from "./fsJson.js";
-import { loadSkill } from "./skill.js";
+import { loadSkill, tryProvisionalSkillPin } from "./skill.js";
 
 const temps: string[] = [];
 
@@ -27,6 +27,34 @@ function writeMinimalSkill(skillsDir: string, id: string): void {
   fs.mkdirSync(path.join(root, "fixtures", "bug-01"), { recursive: true });
   fs.writeFileSync(path.join(root, "SKILL.md"), "# skill\n", "utf8");
 }
+
+describe("tryProvisionalSkillPin", () => {
+  it("pins SKILL.md + version without requiring every task fixture", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-prov-"));
+    temps.push(root);
+    writeMinimalSkill(root, "code-debugging-eval");
+    // Remove task fixture — full loadSkill would fail; provisional still pins.
+    fs.rmSync(path.join(root, "code-debugging-eval", "fixtures", "bug-01"), {
+      recursive: true,
+      force: true,
+    });
+    expect(() => loadSkill(root, "code-debugging-eval")).toThrow(
+      /task fixtures missing/,
+    );
+    const pin = tryProvisionalSkillPin(root, "code-debugging-eval");
+    expect(pin).not.toBeNull();
+    expect(pin!.id).toBe("code-debugging-eval");
+    expect(pin!.skillMd).toContain("# skill");
+    expect(pin!.version).toMatch(/^[0-9a-f]{16}$/);
+    expect(pin!.manifest.taskSetId).toBe("t-v1");
+  });
+
+  it("returns null for missing skills", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-prov-miss-"));
+    temps.push(root);
+    expect(tryProvisionalSkillPin(root, "no-such-skill")).toBeNull();
+  });
+});
 
 describe("loadSkill SKILL.md", () => {
   it("rejects symlink SKILL.md", () => {

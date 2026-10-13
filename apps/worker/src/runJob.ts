@@ -14,6 +14,7 @@ import {
   liveRunStatusForProgress,
   loadRunResult,
   loadSkill,
+  tryProvisionalSkillPin,
   resolveFinalRunStop,
   taskIdsForMode,
   taskPaths,
@@ -157,6 +158,49 @@ function seedSkillSnapshotFromPrior(opts: {
   return mdOk && manOk;
 }
 
+/** First-run candidate: pin live skill before loadSkill validation. */
+function seedSkillSnapshotFromLive(opts: {
+  resultDir: string;
+  job: JobManifest;
+  role: "baseline" | "candidate";
+  startedAt: string;
+}): boolean {
+  const pin = tryProvisionalSkillPin(config.skillsDirs, opts.job.evalSkillId);
+  if (!pin) return false;
+  const dest = path.join(opts.resultDir, "skill-snapshot");
+  fs.mkdirSync(dest, { recursive: true });
+  const skillMd =
+    opts.role === "baseline"
+      ? `${BASELINE_NEUTRAL_PROMPT}\n`
+      : `${pin.skillMd}\n`;
+  fs.writeFileSync(path.join(dest, "SKILL.md"), skillMd, "utf8");
+  writeJsonFile(path.join(dest, "manifest.json"), {
+    ...pin.manifest,
+    _snapshot: {
+      evalSkillId: pin.id,
+      evalSkillVersion: pin.version,
+      role: opts.role,
+      promptKind:
+        opts.role === "baseline" ? "baseline_neutral" : "skill_md",
+      capturedAt: opts.startedAt,
+      provisional: true,
+    },
+  });
+  writeJsonFile(path.join(dest, "job.json"), {
+    runId: opts.job.runId,
+    evalSkillId: pin.id,
+    mode: opts.job.mode,
+    modelId: opts.job.modelId,
+    repeats: opts.job.repeats,
+    role: opts.role,
+    evaluationId: opts.job.evaluationId,
+    createdAt: opts.job.createdAt,
+    provisional: true,
+    seededAt: opts.startedAt,
+  });
+  return true;
+}
+
 export async function runJob(job: JobManifest): Promise<RunResult> {
   const runId = assertSafeId(job.runId, "runId");
   const startedAt = new Date().toISOString();
@@ -173,15 +217,24 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     ...(job.evaluationId ? { evaluationId: job.evaluationId } : {}),
   });
 
-  // Candidate retries: seed pin from parent before loadSkill/drift checks.
-  if (job.skillSnapshotFromRunId && role === "candidate") {
-    seedSkillSnapshotFromPrior({
-      resultDir,
-      priorRunId: job.skillSnapshotFromRunId,
-      job,
-      role,
-      startedAt,
-    });
+  // Candidate: seed Retry pin before loadSkill (parent snapshot or live tree).
+  if (role === "candidate") {
+    if (job.skillSnapshotFromRunId) {
+      seedSkillSnapshotFromPrior({
+        resultDir,
+        priorRunId: job.skillSnapshotFromRunId,
+        job,
+        role,
+        startedAt,
+      });
+    } else {
+      seedSkillSnapshotFromLive({
+        resultDir,
+        job,
+        role,
+        startedAt,
+      });
+    }
   }
 
   let skill = loadSkill(config.skillsDirs, job.evalSkillId);
