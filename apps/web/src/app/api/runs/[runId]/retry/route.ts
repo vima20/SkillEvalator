@@ -88,8 +88,12 @@ export async function POST(
     const mode = job?.mode ?? result?.mode;
     const repeats = job?.repeats ?? result?.repeats;
     const modelId = job?.modelId ?? result?.modelId;
-    const role = job?.role ?? result?.role ?? "candidate";
-    const evaluationId = job?.evaluationId ?? result?.evaluationId;
+    // Prefer status.json role: JobManifestSchema defaults omitted role to
+    // "candidate", which can flip a paired baseline retry onto the wrong leg.
+    const role =
+      status.role ?? result?.role ?? job?.role ?? "candidate";
+    const evaluationId =
+      status.evaluationId ?? job?.evaluationId ?? result?.evaluationId;
 
     if (!evalSkillId || !mode) {
       return NextResponse.json(

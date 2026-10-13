@@ -578,6 +578,150 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
   });
 
+  it("INCONCLUSIVE when capture.promptHash is identical or one-sided", () => {
+    const capture = (
+      role: "baseline" | "candidate",
+      promptHash?: string,
+    ) => ({
+      githubUrl: "https://github.com/acme/skills",
+      commit: "aaaaaaaaaaaaaaaa",
+      license: "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role,
+      ...(promptHash !== undefined ? { promptHash } : {}),
+      promptPreview: "preview",
+      promptKind:
+        role === "baseline"
+          ? ("baseline_neutral" as const)
+          : ("skill_md" as const),
+      env: {
+        modelDryRun: "gpt-4o-mini",
+        modelOfficial: "gpt-4.1-mini",
+        temperature: 0,
+        topP: 1,
+        seed: 1,
+        maxOutputTokens: 1024,
+        costCapUsd: 5,
+        costHardStop: true,
+        fakeProduce: false,
+        allowHostGrade: false,
+        grade: "docker_script" as const,
+      },
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+    const same = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: capture("baseline", "samehash000001"),
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture("candidate", "samehash000001"),
+      }),
+    );
+    expect(same.verdict).toBe("INCONCLUSIVE");
+    expect(
+      same.parity.issues.some((i) => i.includes("promptHash identical")),
+    ).toBe(true);
+
+    const xor = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: capture("baseline", "only-base"),
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture("candidate"),
+      }),
+    );
+    expect(xor.verdict).toBe("INCONCLUSIVE");
+    expect(
+      xor.parity.issues.some((i) => i.includes("promptHash presence")),
+    ).toBe(true);
+
+    const distinct = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: capture("baseline", "neutral-hash"),
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture("candidate", "skill-hash"),
+      }),
+    );
+    expect(
+      distinct.parity.issues.some((i) => i.includes("promptHash")),
+    ).toBe(false);
+  });
+
+  it("INCONCLUSIVE when promptKind presence is one-sided", () => {
+    const env = {
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
+      temperature: 0,
+      topP: 1,
+      seed: 1,
+      maxOutputTokens: 1024,
+      costCapUsd: 5,
+      costHardStop: true,
+      fakeProduce: false,
+      allowHostGrade: false,
+      grade: "docker_script" as const,
+    };
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: {
+          githubUrl: "https://github.com/acme/skills",
+          commit: "aaaaaaaaaaaaaaaa",
+          license: "MIT",
+          dependencies: [],
+          skillVersion: "abc",
+          role: "baseline",
+          promptHash: "basehash",
+          promptKind: "baseline_neutral",
+          env,
+          capturedAt: "2026-10-12T00:00:00.000Z",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: {
+          githubUrl: "https://github.com/acme/skills",
+          commit: "aaaaaaaaaaaaaaaa",
+          license: "MIT",
+          dependencies: [],
+          skillVersion: "abc",
+          role: "candidate",
+          promptHash: "candhash",
+          env,
+          capturedAt: "2026-10-12T00:00:00.000Z",
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("promptKind presence")),
+    ).toBe(true);
+  });
+
   it("INCONCLUSIVE when promptKind disagrees with role", () => {
     const capture = (
       role: "baseline" | "candidate",

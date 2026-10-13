@@ -148,8 +148,32 @@ export function checkComparisonParity(
     candidate: candidate.capture?.env?.maxOutputTokens,
   });
 
+  const baselinePromptHash = baseline.capture?.promptHash?.trim() ?? "";
+  const candidatePromptHash = candidate.capture?.promptHash?.trim() ?? "";
+  // Same hash ⇒ candidate likely ran the neutral prompt (empty skillMd legacy).
+  if (Boolean(baselinePromptHash) !== Boolean(candidatePromptHash)) {
+    issues.push(
+      `capture.promptHash presence mismatch: baseline=${baselinePromptHash ? "set" : "missing"} candidate=${candidatePromptHash ? "set" : "missing"}`,
+    );
+  } else if (
+    baselinePromptHash &&
+    candidatePromptHash &&
+    baselinePromptHash === candidatePromptHash
+  ) {
+    issues.push(
+      `capture.promptHash identical on both legs (${baselinePromptHash.slice(0, 12)}…) — candidate may have used neutral prompt`,
+    );
+  }
+
   const baselinePromptKind = baseline.capture?.promptKind;
   const candidatePromptKind = candidate.capture?.promptKind;
+  if (
+    (baselinePromptKind !== undefined) !== (candidatePromptKind !== undefined)
+  ) {
+    issues.push(
+      `capture.promptKind presence mismatch: baseline=${baselinePromptKind !== undefined ? "set" : "missing"} candidate=${candidatePromptKind !== undefined ? "set" : "missing"}`,
+    );
+  }
   if (
     baselinePromptKind !== undefined &&
     baselinePromptKind !== "baseline_neutral"
