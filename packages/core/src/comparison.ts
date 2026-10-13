@@ -71,6 +71,11 @@ export function checkComparisonParity(
       `evalSkillId mismatch: baseline=${baseline.evalSkillId} candidate=${candidate.evalSkillId}`,
     );
   }
+  if (baseline.evalSkillVersion !== candidate.evalSkillVersion) {
+    issues.push(
+      `evalSkillVersion mismatch: baseline=${baseline.evalSkillVersion} candidate=${candidate.evalSkillVersion}`,
+    );
+  }
   const expected = opts?.expectedEvalSkillId;
   if (expected) {
     if (baseline.evalSkillId !== expected) {

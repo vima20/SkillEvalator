@@ -121,6 +121,28 @@ describe("compareBaselineCandidate", () => {
     expect(c.parity.issues.some((i) => i.includes("evalSkillId"))).toBe(true);
   });
 
+  it("INCONCLUSIVE when evalSkillVersion drifts between legs", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        evalSkillVersion: "aaaa",
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        evalSkillVersion: "bbbb",
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.parity.ok).toBe(false);
+    expect(c.parity.issues.some((i) => i.includes("evalSkillVersion"))).toBe(
+      true,
+    );
+  });
+
   it("INCONCLUSIVE when legs disagree with evaluation meta evalSkillId", () => {
     const c = compareBaselineCandidate(
       sample({
