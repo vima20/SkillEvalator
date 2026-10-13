@@ -190,11 +190,11 @@ export function RunDetailClient({
   const result = data.result;
   const cancelRequested = status === "cancel_requested";
   const budgetStopping = status === "budget_stop" && !result && polling;
+  // Wind-down budget_stop (no result yet) is cancellable so Retry is not stuck.
   const canCancel =
-    (status === "queued" || status === "running") &&
+    (status === "queued" || status === "running" || budgetStopping) &&
     !cancelling &&
     !cancelRequested &&
-    !budgetStopping &&
     !pollError;
   const quotaBlocked = data.status?.errorCode === "insufficient_quota";
   // Match API: budget_stop is retryable even before result.json (job fallback).
