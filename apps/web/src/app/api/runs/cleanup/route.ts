@@ -9,8 +9,11 @@ import { jobsDir, resultsDir } from "@/lib/paths";
 export const dynamic = "force-dynamic";
 
 const Body = z.object({
-  /** Delete terminal runs whose status.json is older than this many days. */
-  olderThanDays: z.number().int().min(0).max(365).default(7),
+  /**
+   * Delete terminal runs whose status.json is older than this many days.
+   * Min 1 — olderThanDays:0 would wipe every settled run immediately.
+   */
+  olderThanDays: z.number().int().min(1).max(365).default(7),
 });
 
 export async function POST(req: Request) {

@@ -266,9 +266,19 @@ function removeJobArtifacts(jobsDir: string, runId: string): void {
   }
 }
 
+/** True when a job file still means the worker may be writing this run. */
+function hasLiveJobFile(jobsDir: string, runId: string): boolean {
+  return (
+    fs.existsSync(path.join(jobsDir, `${runId}.json`)) ||
+    fs.existsSync(path.join(jobsDir, `${runId}.tmp.json`)) ||
+    fs.existsSync(path.join(jobsDir, `${runId}.running.json`))
+  );
+}
+
 /**
  * Delete terminal runs older than `olderThanMs` (by status.json mtime).
- * Never touches queued/running jobs.
+ * Never touches queued/running jobs (live .json / .running.json / .tmp.json).
+ * `budget_stop` without result.json is wind-down — not purgeable yet.
  * After removals, drops or rewrites evaluation.json that pointed at purged runs.
  */
 export function purgeTerminalRunsFs(
@@ -290,6 +300,15 @@ export function purgeTerminalRunsFs(
       continue;
     }
     if (!TERMINAL_PURGE.has(status)) continue;
+    // Fail-closed: status may say terminal while the worker still owns the job.
+    if (hasLiveJobFile(jobsDir, runId)) continue;
+    // budget_stop mid wind-down has no result yet — heal/orphan, don't purge.
+    if (
+      status === "budget_stop" &&
+      !fs.existsSync(path.join(resultsDir, runId, "result.json"))
+    ) {
+      continue;
+    }
 
     let mtime = 0;
     try {

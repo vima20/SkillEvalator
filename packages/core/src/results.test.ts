@@ -310,4 +310,48 @@ describe("purgeTerminalRunsFs", () => {
     expect(survStatus.evaluationId).toBeUndefined();
     expect(survResult.evaluationId).toBeUndefined();
   });
+
+  it("skips budget_stop wind-down and runs with live job files", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-purge-live-"));
+    temps.push(root);
+    const resultsDir = path.join(root, "results");
+    const jobsDir = path.join(root, "jobs");
+    fs.mkdirSync(jobsDir, { recursive: true });
+
+    const windDown = "run_100_winddown";
+    const stillRunning = "run_100_liverun";
+    const settledStop = "run_100_stopdone";
+
+    writeJsonFile(path.join(resultsDir, windDown, "status.json"), {
+      runId: windDown,
+      status: "budget_stop",
+    });
+    writeJsonFile(path.join(resultsDir, stillRunning, "status.json"), {
+      runId: stillRunning,
+      status: "budget_stop",
+    });
+    fs.writeFileSync(path.join(jobsDir, `${stillRunning}.running.json`), "{}");
+    writeJsonFile(path.join(resultsDir, settledStop, "status.json"), {
+      runId: settledStop,
+      status: "budget_stop",
+    });
+    writeJsonFile(path.join(resultsDir, settledStop, "result.json"), {
+      runId: settledStop,
+      status: "budget_stop",
+    });
+
+    const past = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    for (const id of [windDown, stillRunning, settledStop]) {
+      fs.utimesSync(path.join(resultsDir, id, "status.json"), past, past);
+    }
+
+    const out = purgeTerminalRunsFs(resultsDir, jobsDir, { olderThanMs: 0 });
+    expect(out.removed).toEqual([settledStop]);
+    expect(fs.existsSync(path.join(resultsDir, windDown))).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, stillRunning))).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, settledStop))).toBe(false);
+    expect(
+      fs.existsSync(path.join(jobsDir, `${stillRunning}.running.json`)),
+    ).toBe(true);
+  });
 });
