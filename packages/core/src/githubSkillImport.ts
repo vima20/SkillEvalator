@@ -206,9 +206,12 @@ function extractZip(zipPath: string, destDir: string): void {
   assertExtractSafe(destDir);
 }
 
-/** Reject zip-slip / symlink escapes after archive extract. */
-function assertExtractSafe(root: string): void {
-  const rootResolved = path.resolve(root);
+/**
+ * Reject zip-slip / symlink / Windows junction·reparse escapes after extract.
+ * Exported for unit tests (junction creation is OS-dependent).
+ */
+export function assertExtractSafe(root: string): void {
+  const rootResolved = fs.realpathSync(path.resolve(root));
   const walk = (dir: string, depth: number) => {
     if (depth > MAX_WALK_DEPTH + 4) {
       throw new Error("extract tree too deep");
@@ -222,8 +225,33 @@ function assertExtractSafe(root: string): void {
         throw new Error(`zip-slip blocked: ${name}`);
       }
       const st = fs.lstatSync(p);
+      // Symlinks and Windows directory junctions both report as symbolic links.
       if (st.isSymbolicLink()) {
-        throw new Error(`symlink not allowed in archive: ${rel || name}`);
+        throw new Error(
+          `symlink/junction not allowed in archive: ${rel || name}`,
+        );
+      }
+      if (!st.isFile() && !st.isDirectory()) {
+        throw new Error(
+          `unsupported extract entry type: ${rel || name}`,
+        );
+      }
+      // realpath catches reparse points Node may not flag as isSymbolicLink.
+      let real: string;
+      try {
+        real = fs.realpathSync(p);
+      } catch (err) {
+        throw new Error(
+          `extract entry unreadable: ${rel || name} (${
+            err instanceof Error ? err.message : String(err)
+          })`,
+        );
+      }
+      const relReal = path.relative(rootResolved, real);
+      if (relReal.startsWith("..") || path.isAbsolute(relReal)) {
+        throw new Error(
+          `reparse/junction escape blocked: ${rel || name}`,
+        );
       }
       if (st.isDirectory()) walk(p, depth + 1);
     }
@@ -231,11 +259,11 @@ function assertExtractSafe(root: string): void {
   walk(rootResolved, 0);
 }
 
-/** Recursive copy of regular files/dirs only (no symlinks). */
+/** Recursive copy of regular files/dirs only (no symlinks/junctions). */
 function copyTreeNoSymlinks(src: string, dest: string): void {
   const st = fs.lstatSync(src);
   if (st.isSymbolicLink()) {
-    throw new Error(`symlink not allowed: ${path.basename(src)}`);
+    throw new Error(`symlink/junction not allowed: ${path.basename(src)}`);
   }
   if (st.isDirectory()) {
     fs.mkdirSync(dest, { recursive: true });

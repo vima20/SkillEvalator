@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { writeJsonFile } from "./fsJson.js";
 import {
   SKILL_IMPORT_LOCK_STALE_MS,
+  assertExtractSafe,
   importSkillsFromZip,
   parseGitHubSkillUrl,
 } from "./githubSkillImport.js";
@@ -61,6 +62,47 @@ function writeSharedTaskset(skillsDir: string): void {
   fs.mkdirSync(taskDir, { recursive: true });
   fs.writeFileSync(path.join(taskDir, "note.txt"), "fixture\n", "utf8");
 }
+
+describe("assertExtractSafe", () => {
+  it("accepts a plain file tree", () => {
+    const root = mkTemp("se-extract-ok-");
+    fs.mkdirSync(path.join(root, "nested"), { recursive: true });
+    fs.writeFileSync(path.join(root, "nested", "a.txt"), "x\n", "utf8");
+    expect(() => assertExtractSafe(root)).not.toThrow();
+  });
+
+  it("rejects a symlink escape", () => {
+    const root = mkTemp("se-extract-sym-");
+    const outside = mkTemp("se-extract-out-");
+    fs.writeFileSync(path.join(outside, "secret.txt"), "nope\n", "utf8");
+    const link = path.join(root, "leak");
+    try {
+      fs.symlinkSync(outside, link, "dir");
+    } catch {
+      // Windows without Developer Mode / admin may block symlinks.
+      return;
+    }
+    expect(() => assertExtractSafe(root)).toThrow(/symlink|junction|reparse/i);
+  });
+
+  it("rejects a Windows directory junction escape when available", () => {
+    if (process.platform !== "win32") return;
+    const root = mkTemp("se-extract-junc-");
+    const outside = mkTemp("se-extract-junc-out-");
+    fs.writeFileSync(path.join(outside, "secret.txt"), "nope\n", "utf8");
+    const junction = path.join(root, "junc");
+    const r = spawnSync(
+      "cmd",
+      ["/c", "mklink", "/J", junction, outside],
+      { encoding: "utf8", windowsHide: true },
+    );
+    if (r.status !== 0) {
+      // Privilege / path issues — skip rather than false-fail CI.
+      return;
+    }
+    expect(() => assertExtractSafe(root)).toThrow(/symlink|junction|reparse/i);
+  });
+});
 
 describe("parseGitHubSkillUrl", () => {
   it("parses owner/repo", () => {
