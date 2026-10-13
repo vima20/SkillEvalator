@@ -142,9 +142,14 @@ export async function GET() {
   const checks = { openaiApiKey, docker, worker };
   const ok = openaiApiKey.ok && docker.ok && worker.ok;
 
+  const capRaw = Number(process.env.COST_CAP_USD);
+  const costCapUsd =
+    Number.isFinite(capRaw) && capRaw > 0 ? capRaw : 5;
+
   return NextResponse.json({
     ok,
     fakeProduce,
+    costCapUsd,
     checks,
     checkedAt: new Date().toISOString(),
   });

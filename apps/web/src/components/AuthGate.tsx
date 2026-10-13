@@ -89,6 +89,18 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       }
       setCheckFailed(false);
       setNeeded(false);
+      // Full navigation so middleware sees the new cookie before RSC.
+      const params = new URLSearchParams(window.location.search);
+      const nextRaw = params.get("next") || "/";
+      const next =
+        nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/";
+      if (
+        window.location.pathname === "/unlock" ||
+        window.location.pathname.startsWith("/unlock/")
+      ) {
+        window.location.assign(next);
+        return;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "error");
     } finally {

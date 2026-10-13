@@ -8,7 +8,7 @@ import { estimateRunCostUsd } from "@/lib/costEstimate";
 const OFFICIAL_MIN_REPEATS = 3;
 const MODEL_DRY_RUN = "gpt-4o-mini";
 const MODEL_OFFICIAL = "gpt-4.1-mini";
-/** Mirrors worker default COST_CAP_USD (env may override). */
+/** Fallback when preflight has not returned COST_CAP_USD yet. */
 const DEFAULT_COST_CAP_USD = 5;
 
 export type SkillOption = {
@@ -27,6 +27,8 @@ type PreflightCheck = { ok: boolean; detail: string };
 type Preflight = {
   ok: boolean;
   fakeProduce: boolean;
+  /** Worker COST_CAP_USD (from env / .env via preflight). */
+  costCapUsd?: number;
   checks: {
     openaiApiKey: PreflightCheck;
     docker: PreflightCheck;
@@ -69,6 +71,12 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
       ? (selected?.taskCount ?? 0)
       : (selected?.dryRunCount ?? 0);
   const modelPreview = mode === "official" ? MODEL_OFFICIAL : MODEL_DRY_RUN;
+  const costCapUsd =
+    typeof preflight?.costCapUsd === "number" &&
+    Number.isFinite(preflight.costCapUsd) &&
+    preflight.costCapUsd > 0
+      ? preflight.costCapUsd
+      : DEFAULT_COST_CAP_USD;
   const costPreview = useMemo(() => {
     const one = estimateRunCostUsd({
       taskCount: taskCountPreview,
@@ -408,9 +416,7 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
 
         <div
           className={`cost-estimate${
-            costPreview.estimatedUsd /
-              (withBaseline ? 2 : 1) >
-            DEFAULT_COST_CAP_USD
+            costPreview.estimatedUsd / (withBaseline ? 2 : 1) > costCapUsd
               ? " cost-estimate-over"
               : ""
           }`}
@@ -424,14 +430,12 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
             {safeRepeatsPreview} repeats · <code>{modelPreview}</code>
             {withBaseline ? " · ×2 baseline+candidate" : ""}).
           </p>
-          {costPreview.estimatedUsd / (withBaseline ? 2 : 1) >
-          DEFAULT_COST_CAP_USD ? (
+          {costPreview.estimatedUsd / (withBaseline ? 2 : 1) > costCapUsd ? (
             <p className="form-error" role="status">
-              Per-leg estimate exceeds the default ${DEFAULT_COST_CAP_USD} USD
-              hard-stop
+              Per-leg estimate exceeds the ${costCapUsd} USD hard-stop
               {withBaseline
                 ? ` (each baseline/candidate leg caps separately — paired spend can reach ~$${
-                    DEFAULT_COST_CAP_USD * 2
+                    costCapUsd * 2
                   })`
                 : ""}{" "}
               — the worker may end with budget_stop before all tasks finish.
@@ -440,11 +444,11 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
             <p className="hint">
               Rough preview assuming large SKILL.md + subject prompts — not a
               bill; real usage can still be higher. Each run hard-stops at $
-              {DEFAULT_COST_CAP_USD}
+              {costCapUsd}
               {withBaseline
-                ? ` (paired ≈ up to $${DEFAULT_COST_CAP_USD * 2} across both legs)`
-                : ""}
-              . Grade/Docker time is free.
+                ? ` (paired ≈ up to $${costCapUsd * 2} across both legs)`
+                : ""}{" "}
+              (from COST_CAP_USD). Grade/Docker time is free.
             </p>
           )}
         </div>

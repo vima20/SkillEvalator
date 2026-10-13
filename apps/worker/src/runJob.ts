@@ -410,6 +410,13 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
           if (!findings.includes("cost cap reached after produce")) {
             findings.push("cost cap reached after produce");
           }
+          const overshootUsd = costUsd - config.costCapUsd;
+          if (overshootUsd > 0) {
+            const overshootFinding = `cost overshootUsd=${overshootUsd.toFixed(6)} after produce`;
+            if (!findings.some((f) => f.startsWith("cost overshootUsd="))) {
+              findings.push(overshootFinding);
+            }
+          }
           writeStatus({
             status: liveRunStatusForProgress({
               stop,

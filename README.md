@@ -17,7 +17,7 @@ or
 .\start.ps1
 ```
 
-Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*`; the UI shows an unlock form that sets a cookie.
+Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*` and pages (redirect to `/unlock` before RSC); the UI sets a `se_auth` cookie after unlock.
 
 CI: `npm run ci` runs unit tests, `typecheck`, and `smoke:skills`. New Run defaults to **baseline↔candidate**, cost estimate, and GitHub **Find/Receive** import.
 
