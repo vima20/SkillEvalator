@@ -63,12 +63,66 @@ function useHostGrade(): boolean {
   );
 }
 
+function writeSkillSnapshot(opts: {
+  resultDir: string;
+  skill: ReturnType<typeof loadSkill>;
+  role: "baseline" | "candidate";
+  startedAt: string;
+  job: JobManifest;
+  promptHash: string;
+  promptKind: "baseline_neutral" | "skill_md";
+  modelId?: string;
+  repeats?: number;
+}): string {
+  const snapshotDir = path.join(opts.resultDir, "skill-snapshot");
+  fs.mkdirSync(snapshotDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(snapshotDir, "SKILL.md"),
+    opts.role === "baseline"
+      ? `${BASELINE_NEUTRAL_PROMPT}\n`
+      : `${opts.skill.skillMd}\n`,
+    "utf8",
+  );
+  writeJsonFile(path.join(snapshotDir, "manifest.json"), {
+    ...opts.skill.manifest,
+    _snapshot: {
+      evalSkillId: opts.skill.id,
+      evalSkillVersion: opts.skill.version,
+      role: opts.role,
+      promptHash: opts.promptHash,
+      promptKind: opts.promptKind,
+      capturedAt: opts.startedAt,
+      ...(opts.job.skillSnapshotFromRunId
+        ? { skillSnapshotFromRunId: opts.job.skillSnapshotFromRunId }
+        : {}),
+    },
+  });
+  writeJsonFile(path.join(snapshotDir, "job.json"), {
+    runId: opts.job.runId,
+    evalSkillId: opts.skill.id,
+    mode: opts.job.mode,
+    modelId: opts.modelId ?? opts.job.modelId,
+    repeats: opts.repeats ?? opts.job.repeats,
+    role: opts.role,
+    evaluationId: opts.job.evaluationId,
+    skillSnapshotFromRunId: opts.job.skillSnapshotFromRunId,
+    createdAt: opts.job.createdAt,
+  });
+  return snapshotDir;
+}
+
 export async function runJob(job: JobManifest): Promise<RunResult> {
   const runId = assertSafeId(job.runId, "runId");
   const startedAt = new Date().toISOString();
   const role = job.role ?? "candidate";
   const findings: string[] = [];
+  const resultDir = resolveUnder(config.resultsDir, runId);
+  fs.mkdirSync(resultDir, { recursive: true });
+
   let skill = loadSkill(config.skillsDirs, job.evalSkillId);
+  const promptKind =
+    role === "baseline" ? ("baseline_neutral" as const) : ("skill_md" as const);
+
   if (job.skillSnapshotFromRunId && role === "candidate") {
     const snapMd = path.join(
       resolveUnder(config.resultsDir, job.skillSnapshotFromRunId),
@@ -124,6 +178,30 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       );
     }
   }
+
+  const instructionForCapture =
+    role === "baseline"
+      ? BASELINE_NEUTRAL_PROMPT
+      : skill.skillMd.trim() || BASELINE_NEUTRAL_PROMPT;
+  const promptHash = crypto
+    .createHash("sha256")
+    .update(instructionForCapture)
+    .digest("hex")
+    .slice(0, 16);
+  const promptPreview = instructionForCapture.slice(0, 500);
+
+  // Pin SKILL.md + evalSkillVersion before model allowlist / repeats so a
+  // fail after claim still leaves a candidate Retry lock (not 409 orphan).
+  writeSkillSnapshot({
+    resultDir,
+    skill,
+    role,
+    startedAt,
+    job,
+    promptHash,
+    promptKind,
+  });
+
   const taskIds = taskIdsForMode(skill, job.mode);
   const allowedModels = new Set([config.modelDryRun, config.modelOfficial]);
   const modelId =
@@ -140,8 +218,18 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     );
   }
 
-  const resultDir = resolveUnder(config.resultsDir, runId);
-  fs.mkdirSync(resultDir, { recursive: true });
+  // Refresh job.json now that model/repeats are resolved.
+  writeSkillSnapshot({
+    resultDir,
+    skill,
+    role,
+    startedAt,
+    job,
+    promptHash,
+    promptKind,
+    modelId,
+    repeats,
+  });
 
   let costUsd = 0;
   let runTokens = emptyTokens();
@@ -150,18 +238,6 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const tokensByTask = new Map<string, TokenUsage>();
   const lastByTask = new Map<string, RunResult["perTask"][number]>();
   let stop: "cancelled" | "budget_stop" | null = null;
-  const promptKind =
-    role === "baseline" ? ("baseline_neutral" as const) : ("skill_md" as const);
-  const instructionForCapture =
-    role === "baseline"
-      ? BASELINE_NEUTRAL_PROMPT
-      : skill.skillMd.trim() || BASELINE_NEUTRAL_PROMPT;
-  const promptHash = crypto
-    .createHash("sha256")
-    .update(instructionForCapture)
-    .digest("hex")
-    .slice(0, 16);
-  const promptPreview = instructionForCapture.slice(0, 500);
   const capture: RunCapture = {
     githubUrl: skill.manifest.githubUrl,
     commit: skill.manifest.commit,
@@ -188,42 +264,6 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     capturedAt: startedAt,
   };
   writeJsonFile(path.join(resultDir, "capture.json"), capture);
-
-  // Immutable skill snapshot for Unikie audit / retry (SKILL.md lock).
-  const snapshotDir = path.join(resultDir, "skill-snapshot");
-  fs.mkdirSync(snapshotDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(snapshotDir, "SKILL.md"),
-    role === "baseline"
-      ? `${BASELINE_NEUTRAL_PROMPT}\n`
-      : `${skill.skillMd}\n`,
-    "utf8",
-  );
-  writeJsonFile(path.join(snapshotDir, "manifest.json"), {
-    ...skill.manifest,
-    _snapshot: {
-      evalSkillId: skill.id,
-      evalSkillVersion: skill.version,
-      role,
-      promptHash,
-      promptKind,
-      capturedAt: startedAt,
-      ...(job.skillSnapshotFromRunId
-        ? { skillSnapshotFromRunId: job.skillSnapshotFromRunId }
-        : {}),
-    },
-  });
-  writeJsonFile(path.join(snapshotDir, "job.json"), {
-    runId,
-    evalSkillId: skill.id,
-    mode: job.mode,
-    modelId,
-    repeats,
-    role,
-    evaluationId: job.evaluationId,
-    skillSnapshotFromRunId: job.skillSnapshotFromRunId,
-    createdAt: job.createdAt,
-  });
 
   const statusPath = path.join(resultDir, "status.json");
   const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
