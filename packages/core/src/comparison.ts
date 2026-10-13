@@ -88,6 +88,40 @@ export function checkComparisonParity(
       `capture.commit mismatch: baseline=${baselineCommit} candidate=${candidateCommit}`,
     );
   }
+  const baselineGradeHash = baseline.capture?.env?.gradeHash?.trim() ?? "";
+  const candidateGradeHash = candidate.capture?.env?.gradeHash?.trim() ?? "";
+  // Pinned/local grade.js drift is invisible to evalSkillVersion on imports.
+  if (
+    baselineGradeHash &&
+    candidateGradeHash &&
+    baselineGradeHash !== candidateGradeHash
+  ) {
+    issues.push(
+      `capture.env.gradeHash mismatch: baseline=${baselineGradeHash.slice(0, 12)}… candidate=${candidateGradeHash.slice(0, 12)}…`,
+    );
+  }
+  const baselineFake = baseline.capture?.env?.fakeProduce;
+  const candidateFake = candidate.capture?.env?.fakeProduce;
+  if (
+    baselineFake !== undefined &&
+    candidateFake !== undefined &&
+    baselineFake !== candidateFake
+  ) {
+    issues.push(
+      `capture.env.fakeProduce mismatch: baseline=${baselineFake} candidate=${candidateFake}`,
+    );
+  }
+  const baselineCap = baseline.capture?.env?.costCapUsd;
+  const candidateCap = candidate.capture?.env?.costCapUsd;
+  if (
+    baselineCap !== undefined &&
+    candidateCap !== undefined &&
+    baselineCap !== candidateCap
+  ) {
+    issues.push(
+      `capture.env.costCapUsd mismatch: baseline=${baselineCap} candidate=${candidateCap}`,
+    );
+  }
   const expected = opts?.expectedEvalSkillId;
   if (expected) {
     if (baseline.evalSkillId !== expected) {

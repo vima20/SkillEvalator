@@ -16,6 +16,7 @@ import {
   loadSkill,
   tryProvisionalSkillPin,
   resolveFinalRunStop,
+  resolveTrustedScriptsDir,
   taskIdsForMode,
   taskPaths,
   meanScores,
@@ -358,6 +359,14 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const tokensByTask = new Map<string, TokenUsage>();
   const lastByTask = new Map<string, RunResult["perTask"][number]>();
   let stop: "cancelled" | "budget_stop" | null = null;
+  // Record the grade.js that will run (pinned harness for imports) so
+  // Comparison can fail closed if legs used different graders.
+  let gradeHash: string | undefined;
+  try {
+    gradeHash = resolveTrustedScriptsDir(skill.root).gradeHash;
+  } catch {
+    gradeHash = undefined;
+  }
   const capture: RunCapture = {
     githubUrl: skill.manifest.githubUrl,
     commit: skill.manifest.commit,
@@ -380,6 +389,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       fakeProduce: process.env.FAKE_PRODUCE === "known-good",
       allowHostGrade: config.allowHostGrade,
       grade: hostGrade ? "host_script" : "docker_script",
+      ...(gradeHash ? { gradeHash } : {}),
     },
     capturedAt: startedAt,
   };

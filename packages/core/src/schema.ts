@@ -123,6 +123,8 @@ export const RunEnvSnapshotSchema = z.object({
   fakeProduce: z.boolean().optional(),
   allowHostGrade: z.boolean().optional(),
   grade: z.enum(["docker_script", "host_script"]).optional(),
+  /** sha256 of the grade.js that actually runs (pinned harness for imports). */
+  gradeHash: z.string().optional(),
 });
 
 export type RunEnvSnapshot = z.output<typeof RunEnvSnapshotSchema>;

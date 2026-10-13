@@ -190,6 +190,120 @@ describe("compareBaselineCandidate", () => {
     );
   });
 
+  it("INCONCLUSIVE when capture.env.gradeHash differs on both legs", () => {
+    const withHash = (gradeHash: string) => ({
+      githubUrl: "https://github.com/acme/skills",
+      commit: "aaaaaaaaaaaaaaaa",
+      license: "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role: "candidate" as const,
+      promptHash: "ph",
+      promptPreview: "preview",
+      promptKind: "skill_md" as const,
+      env: {
+        modelDryRun: "gpt-4o-mini",
+        modelOfficial: "gpt-4.1-mini",
+        temperature: 0,
+        topP: 1,
+        seed: 1,
+        maxOutputTokens: 1024,
+        costCapUsd: 5,
+        costHardStop: true,
+        fakeProduce: false,
+        allowHostGrade: false,
+        grade: "docker_script" as const,
+        gradeHash,
+      },
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: { ...withHash("aaa".repeat(21) + "aa"), role: "baseline" },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: withHash("bbb".repeat(21) + "bb"),
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.parity.ok).toBe(false);
+    expect(
+      c.parity.issues.some((i) => i.includes("capture.env.gradeHash")),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when fakeProduce or costCapUsd differs on both legs", () => {
+    const env = (over: { fakeProduce?: boolean; costCapUsd?: number }) => ({
+      githubUrl: "https://github.com/acme/skills",
+      commit: "aaaaaaaaaaaaaaaa",
+      license: "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role: "candidate" as const,
+      promptHash: "ph",
+      promptPreview: "preview",
+      promptKind: "skill_md" as const,
+      env: {
+        modelDryRun: "gpt-4o-mini",
+        modelOfficial: "gpt-4.1-mini",
+        temperature: 0,
+        topP: 1,
+        seed: 1,
+        maxOutputTokens: 1024,
+        costCapUsd: 5,
+        costHardStop: true,
+        fakeProduce: false,
+        allowHostGrade: false,
+        grade: "docker_script" as const,
+        ...over,
+      },
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+    const fakeMix = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: { ...env({ fakeProduce: true }), role: "baseline" },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: env({ fakeProduce: false }),
+      }),
+    );
+    expect(fakeMix.verdict).toBe("INCONCLUSIVE");
+    expect(
+      fakeMix.parity.issues.some((i) => i.includes("fakeProduce")),
+    ).toBe(true);
+
+    const capMix = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: { ...env({ costCapUsd: 1 }), role: "baseline" },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: env({ costCapUsd: 5 }),
+      }),
+    );
+    expect(capMix.verdict).toBe("INCONCLUSIVE");
+    expect(
+      capMix.parity.issues.some((i) => i.includes("costCapUsd")),
+    ).toBe(true);
+  });
+
   it("allows missing capture.commit on one or both legs", () => {
     const oneSided = compareBaselineCandidate(
       sample({

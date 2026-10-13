@@ -147,19 +147,39 @@ function pickDeterministicMatch(
   return matches[0]!;
 }
 
+/** sha256 of a regular grade.js; undefined when missing/unreadable. */
+export function hashGradeJsFile(gradeJsPath: string): string | undefined {
+  try {
+    const st = fs.lstatSync(gradeJsPath);
+    if (st.isSymbolicLink() || !st.isFile()) return undefined;
+    return crypto
+      .createHash("sha256")
+      .update(fs.readFileSync(gradeJsPath))
+      .digest("hex");
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * For imported skills (.import.json), prefer a trusted local harness
  * under eval-skills/<id>/scripts — never the imported grade.js.
  * Pin order: harness.json → single taskSetId match (multi-match fail-closed).
+ * Always returns gradeHash of the scripts that will actually run when readable.
  */
 export function resolveTrustedScriptsDir(skillRoot: string): {
   scriptsDir: string;
   pinned: boolean;
+  gradeHash?: string;
 } {
   const localScripts = path.join(skillRoot, "scripts");
   const isImported = fs.existsSync(path.join(skillRoot, ".import.json"));
   if (!isImported) {
-    return { scriptsDir: localScripts, pinned: false };
+    return {
+      scriptsDir: localScripts,
+      pinned: false,
+      gradeHash: hashGradeJsFile(path.join(localScripts, "grade.js")),
+    };
   }
 
   let taskSetId: string | undefined;
@@ -200,12 +220,20 @@ export function resolveTrustedScriptsDir(skillRoot: string): {
         if (taskSetDir) {
           const pinned = pinFromHarnessJson(evalSkills, taskSetDir);
           if (pinned) {
-            return { scriptsDir: pinned.scriptsDir, pinned: true };
+            return {
+              scriptsDir: pinned.scriptsDir,
+              pinned: true,
+              gradeHash: pinned.gradeHash,
+            };
           }
         }
         const matches = collectTaskSetMatches(evalSkills, taskSetId);
         const chosen = pickDeterministicMatch(matches, taskSetId);
-        return { scriptsDir: chosen.scriptsDir, pinned: true };
+        return {
+          scriptsDir: chosen.scriptsDir,
+          pinned: true,
+          gradeHash: chosen.gradeHash,
+        };
       }
     }
     const parent = path.dirname(dir);

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -108,6 +109,12 @@ describe("resolveTrustedScriptsDir", () => {
     expect(pinned.scriptsDir).toBe(
       path.join(evalSkills, "code-debugging-eval", "scripts"),
     );
+    expect(pinned.gradeHash).toBe(
+      crypto
+        .createHash("sha256")
+        .update("module.exports = { ok: true };\n")
+        .digest("hex"),
+    );
   });
 
   it("fail-closes when multiple skills share taskSetId without harness.json", () => {
@@ -197,5 +204,11 @@ describe("resolveTrustedScriptsDir", () => {
     const pinned = resolveTrustedScriptsDir(imported);
     expect(pinned.pinned).toBe(true);
     expect(pinned.scriptsDir).toBe(path.join(dir, "scripts"));
+    expect(pinned.gradeHash).toBe(
+      crypto
+        .createHash("sha256")
+        .update("module.exports = { solo: true };\n")
+        .digest("hex"),
+    );
   });
 });
