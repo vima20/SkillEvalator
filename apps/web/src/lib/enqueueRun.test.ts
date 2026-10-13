@@ -113,6 +113,29 @@ describe("abortQueuedRun", () => {
     expect(st.status).toBe("failed");
     expect(st.evaluationId).toBe("eval_100_keepmeta");
   });
+
+  it("on lock busy writes .cancel but does not unlink or stamp failed", async () => {
+    const { abortQueuedRun } = await import("./enqueueRun.js");
+    const runId = "run_100_lockbusy";
+    writeJsonFile(path.join(resultsRoot, runId, "status.json"), {
+      runId,
+      status: "queued",
+      role: "baseline",
+      evaluationId: "eval_100_busy",
+    });
+    fs.writeFileSync(path.join(jobsRoot, `${runId}.json`), "{}");
+    // Fresh lock — abort retries then falls back to cancel-only (no unlink).
+    fs.writeFileSync(path.join(jobsRoot, ".enqueue.lock"), String(Date.now()));
+
+    abortQueuedRun(runId, "meta link failed", { role: "baseline" });
+
+    expect(fs.existsSync(path.join(jobsRoot, `${runId}.cancel`))).toBe(true);
+    expect(fs.existsSync(path.join(jobsRoot, `${runId}.json`))).toBe(true);
+    const st = JSON.parse(
+      fs.readFileSync(path.join(resultsRoot, runId, "status.json"), "utf8"),
+    ) as { status: string };
+    expect(st.status).toBe("queued");
+  }, 15_000);
 });
 
 describe("enqueueEvaluationPair", () => {

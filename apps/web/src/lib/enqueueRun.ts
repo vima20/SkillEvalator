@@ -79,11 +79,22 @@ function queueSlotsNeeded(
 
 type EnqueueLockBusy = { ok: false; status: 503; error: string };
 
-function withEnqueueLock<T>(fn: () => T): T | EnqueueLockBusy {
+function withEnqueueLock<T>(
+  fn: () => T,
+  opts?: { retries?: number; retryDelayMs?: number },
+): T | EnqueueLockBusy {
   const dir = jobsDir();
   fs.mkdirSync(dir, { recursive: true });
   const lockPath = path.join(dir, ".enqueue.lock");
-  if (!tryAcquireWxLock(lockPath, { staleMs: ENQUEUE_LOCK_STALE_MS, retries: 80 })) {
+  if (
+    !tryAcquireWxLock(lockPath, {
+      staleMs: ENQUEUE_LOCK_STALE_MS,
+      retries: opts?.retries ?? 80,
+      ...(opts?.retryDelayMs !== undefined
+        ? { retryDelayMs: opts.retryDelayMs }
+        : {}),
+    })
+  ) {
     return {
       ok: false,
       status: 503,
@@ -94,6 +105,16 @@ function withEnqueueLock<T>(fn: () => T): T | EnqueueLockBusy {
     return fn();
   } finally {
     releaseWxLock(lockPath);
+  }
+}
+
+/** Soft stop signal — safe without enqueue lock (worker polls .cancel). */
+function writeRunCancel(runId: string): void {
+  const cancelPath = path.join(jobsDir(), `${runId}.cancel`);
+  try {
+    fs.writeFileSync(cancelPath, `${new Date().toISOString()}\n`, "utf8");
+  } catch {
+    /* ignore */
   }
 }
 
@@ -263,14 +284,18 @@ export function abortQueuedRun(
     run();
     return;
   }
-  const locked = withEnqueueLock(() => {
-    run();
-    return true;
-  });
+  // Wait longer than normal enqueue — pair/retry rollback must not race slots.
+  const locked = withEnqueueLock(
+    () => {
+      run();
+      return true;
+    },
+    { retries: 120, retryDelayMs: 25 },
+  );
   if (locked !== true) {
-    // Lock busy: still write .cancel / best-effort unlink so the run does not
-    // stay live forever; slot accounting may briefly race.
-    run();
+    // Lock still busy: .cancel only. Never unlink job / stamp failed without
+    // the lock — that races MAX_QUEUED_JOBS with concurrent POSTs.
+    writeRunCancel(runId);
   }
 }
 
@@ -280,12 +305,7 @@ function abortQueuedRunUnlocked(
   meta?: { role?: "baseline" | "candidate"; evaluationId?: string },
 ): void {
   const jobs = jobsDir();
-  const cancelPath = path.join(jobs, `${runId}.cancel`);
-  try {
-    fs.writeFileSync(cancelPath, `${new Date().toISOString()}\n`, "utf8");
-  } catch {
-    /* ignore */
-  }
+  writeRunCancel(runId);
   // Only remove queued/tmp — never rename .running.json (worker finalizes it).
   for (const name of [`${runId}.json`, `${runId}.tmp.json`]) {
     try {
