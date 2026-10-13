@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { webAuthMatches } from "@/lib/webAuth";
+import { parseSeAuthCookie, webAuthMatches } from "@/lib/webAuth";
 
 /**
  * Optional shared-secret for API + pages when WEB_AUTH_TOKEN is set.
  * Leave empty for open local use. /api/auth stays open so the unlock form
  * can set the se_auth cookie; pages redirect to /unlock before RSC runs.
+ * Cookie parse matches GET /api/auth (same decode path — not cookies.get alone).
  */
 export async function middleware(req: NextRequest) {
   const token = process.env.WEB_AUTH_TOKEN?.trim();
@@ -19,7 +20,7 @@ export async function middleware(req: NextRequest) {
 
   const ok = await webAuthMatches({
     expected: token,
-    cookie: req.cookies.get("se_auth")?.value,
+    cookie: parseSeAuthCookie(req.headers.get("cookie")),
     authorization: req.headers.get("authorization"),
   });
 

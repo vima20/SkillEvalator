@@ -238,8 +238,108 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
   });
 
-  it("INCONCLUSIVE when fakeProduce or costCapUsd differs on both legs", () => {
-    const env = (over: { fakeProduce?: boolean; costCapUsd?: number }) => ({
+  it("INCONCLUSIVE when only one leg has capture.env.gradeHash", () => {
+    const baseEnv = {
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
+      temperature: 0,
+      topP: 1,
+      seed: 1,
+      maxOutputTokens: 1024,
+      costCapUsd: 5,
+      costHardStop: true,
+      fakeProduce: false,
+      allowHostGrade: false,
+      grade: "docker_script" as const,
+    };
+    const capture = (gradeHash?: string) => ({
+      githubUrl: "https://github.com/acme/skills",
+      commit: "aaaaaaaaaaaaaaaa",
+      license: "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role: "candidate" as const,
+      promptHash: "ph",
+      promptPreview: "preview",
+      promptKind: "skill_md" as const,
+      env: gradeHash ? { ...baseEnv, gradeHash } : { ...baseEnv },
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: {
+          ...capture("aaa".repeat(21) + "aa"),
+          role: "baseline",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture(),
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("gradeHash presence")),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when maxOutputTokens differs on both legs", () => {
+    const env = (maxOutputTokens: number) => ({
+      githubUrl: "https://github.com/acme/skills",
+      commit: "aaaaaaaaaaaaaaaa",
+      license: "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role: "candidate" as const,
+      promptHash: "ph",
+      promptPreview: "preview",
+      promptKind: "skill_md" as const,
+      env: {
+        modelDryRun: "gpt-4o-mini",
+        modelOfficial: "gpt-4.1-mini",
+        temperature: 0,
+        topP: 1,
+        seed: 1,
+        maxOutputTokens,
+        costCapUsd: 5,
+        costHardStop: true,
+        fakeProduce: false,
+        allowHostGrade: false,
+        grade: "docker_script" as const,
+      },
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: { ...env(512), role: "baseline" },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: env(2048),
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("maxOutputTokens")),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when fakeProduce, costCapUsd, or costHardStop differs", () => {
+    const env = (over: {
+      fakeProduce?: boolean;
+      costCapUsd?: number;
+      costHardStop?: boolean;
+    }) => ({
       githubUrl: "https://github.com/acme/skills",
       commit: "aaaaaaaaaaaaaaaa",
       license: "MIT",
@@ -301,6 +401,25 @@ describe("compareBaselineCandidate", () => {
     expect(capMix.verdict).toBe("INCONCLUSIVE");
     expect(
       capMix.parity.issues.some((i) => i.includes("costCapUsd")),
+    ).toBe(true);
+
+    const hardStopMix = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: { ...env({ costHardStop: true }), role: "baseline" },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: env({ costHardStop: false }),
+      }),
+    );
+    expect(hardStopMix.verdict).toBe("INCONCLUSIVE");
+    expect(
+      hardStopMix.parity.issues.some((i) => i.includes("costHardStop")),
     ).toBe(true);
   });
 

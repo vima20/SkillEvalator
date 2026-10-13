@@ -91,7 +91,12 @@ export function checkComparisonParity(
   const baselineGradeHash = baseline.capture?.env?.gradeHash?.trim() ?? "";
   const candidateGradeHash = candidate.capture?.env?.gradeHash?.trim() ?? "";
   // Pinned/local grade.js drift is invisible to evalSkillVersion on imports.
-  if (
+  // XOR presence: one leg recorded a harness pin and the other did not.
+  if (Boolean(baselineGradeHash) !== Boolean(candidateGradeHash)) {
+    issues.push(
+      `capture.env.gradeHash presence mismatch: baseline=${baselineGradeHash ? "set" : "missing"} candidate=${candidateGradeHash ? "set" : "missing"}`,
+    );
+  } else if (
     baselineGradeHash &&
     candidateGradeHash &&
     baselineGradeHash !== candidateGradeHash
@@ -120,6 +125,28 @@ export function checkComparisonParity(
   ) {
     issues.push(
       `capture.env.costCapUsd mismatch: baseline=${baselineCap} candidate=${candidateCap}`,
+    );
+  }
+  const baselineHardStop = baseline.capture?.env?.costHardStop;
+  const candidateHardStop = candidate.capture?.env?.costHardStop;
+  if (
+    baselineHardStop !== undefined &&
+    candidateHardStop !== undefined &&
+    baselineHardStop !== candidateHardStop
+  ) {
+    issues.push(
+      `capture.env.costHardStop mismatch: baseline=${baselineHardStop} candidate=${candidateHardStop}`,
+    );
+  }
+  const baselineMaxTok = baseline.capture?.env?.maxOutputTokens;
+  const candidateMaxTok = candidate.capture?.env?.maxOutputTokens;
+  if (
+    baselineMaxTok !== undefined &&
+    candidateMaxTok !== undefined &&
+    baselineMaxTok !== candidateMaxTok
+  ) {
+    issues.push(
+      `capture.env.maxOutputTokens mismatch: baseline=${baselineMaxTok} candidate=${candidateMaxTok}`,
     );
   }
   const expected = opts?.expectedEvalSkillId;

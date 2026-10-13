@@ -44,6 +44,11 @@ describe("parseSeAuthCookie", () => {
     expect(parseSeAuthCookie(null)).toBe("");
     expect(parseSeAuthCookie("other=1")).toBe("");
   });
+
+  it("keeps raw value when decodeURIComponent throws", () => {
+    // Malformed % sequences must not diverge middleware vs /api/auth GET.
+    expect(parseSeAuthCookie("se_auth=tok%E0")).toBe("tok%E0");
+  });
 });
 
 describe("webAuthMatches", () => {

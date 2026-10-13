@@ -365,13 +365,21 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const tokensByTask = new Map<string, TokenUsage>();
   const lastByTask = new Map<string, RunResult["perTask"][number]>();
   let stop: "cancelled" | "budget_stop" | null = null;
-  // Record the grade.js that will run (pinned harness for imports) so
-  // Comparison can fail closed if legs used different graders.
-  let gradeHash: string | undefined;
+  // Pin grade.js hash before paid produce — fail closed if harness cannot
+  // be resolved (imports) or grade.js is missing/unreadable.
+  let gradeHash: string;
   try {
-    gradeHash = resolveTrustedScriptsDir(skill.root).gradeHash;
-  } catch {
-    gradeHash = undefined;
+    const resolved = resolveTrustedScriptsDir(skill.root);
+    const hash = resolved.gradeHash?.trim();
+    if (!hash) {
+      throw new Error(
+        `grade.js hash unavailable under ${resolved.scriptsDir}`,
+      );
+    }
+    gradeHash = hash;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`cannot pin grade.js before produce: ${message}`);
   }
   const capture: RunCapture = {
     githubUrl: skill.manifest.githubUrl,
@@ -395,7 +403,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       fakeProduce: process.env.FAKE_PRODUCE === "known-good",
       allowHostGrade: config.allowHostGrade,
       grade: hostGrade ? "host_script" : "docker_script",
-      ...(gradeHash ? { gradeHash } : {}),
+      gradeHash,
     },
     capturedAt: startedAt,
   };
