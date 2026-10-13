@@ -78,3 +78,37 @@ export function retryGate(opts: {
 export function pairedCancelPeerStatuses(): Set<string> {
   return new Set([...CANCEL_ACTIVE, "budget_stop"]);
 }
+
+export type RetrySnapshotGate =
+  | { allow: true; useSkillSnapshot: true }
+  | { allow: false; error: string };
+
+/**
+ * Whether Retry may pin skillSnapshotFromRunId from the prior run.
+ * Candidate needs SKILL.md + evalSkillVersion; baseline needs the version
+ * pin so fixture drift cannot spend tokens before Comparison INCONCLUSIVE.
+ */
+export function retrySnapshotGate(opts: {
+  role: "baseline" | "candidate";
+  hasSkillMd: boolean;
+  hasPinnedVersion: boolean;
+}): RetrySnapshotGate {
+  if (opts.role === "candidate") {
+    if (!opts.hasSkillMd || !opts.hasPinnedVersion) {
+      return {
+        allow: false,
+        error:
+          "cannot retry candidate — skill-snapshot/SKILL.md or pinned evalSkillVersion missing; re-run from a finished candidate or start a new paired evaluation",
+      };
+    }
+    return { allow: true, useSkillSnapshot: true };
+  }
+  if (!opts.hasPinnedVersion) {
+    return {
+      allow: false,
+      error:
+        "cannot retry baseline — pinned evalSkillVersion missing; re-run from a finished baseline or start a new paired evaluation",
+    };
+  }
+  return { allow: true, useSkillSnapshot: true };
+}

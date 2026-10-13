@@ -220,48 +220,30 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     ...(job.evaluationId ? { evaluationId: job.evaluationId } : {}),
   });
 
-  // Candidate: seed Retry pin before loadSkill (parent snapshot or live tree).
-  if (role === "candidate") {
-    if (job.skillSnapshotFromRunId) {
-      seedSkillSnapshotFromPrior({
-        resultDir,
-        priorRunId: job.skillSnapshotFromRunId,
-        job,
-        role,
-        startedAt,
-      });
-    } else {
-      seedSkillSnapshotFromLive({
-        resultDir,
-        job,
-        role,
-        startedAt,
-      });
-    }
+  // Seed Retry pin before loadSkill (parent snapshot or live tree) for both
+  // roles so baseline fixture drift cannot spend tokens after a soft fail.
+  if (job.skillSnapshotFromRunId) {
+    seedSkillSnapshotFromPrior({
+      resultDir,
+      priorRunId: job.skillSnapshotFromRunId,
+      job,
+      role,
+      startedAt,
+    });
+  } else {
+    seedSkillSnapshotFromLive({
+      resultDir,
+      job,
+      role,
+      startedAt,
+    });
   }
 
   let skill = loadSkill(config.skillsDirs, job.evalSkillId);
   const promptKind =
     role === "baseline" ? ("baseline_neutral" as const) : ("skill_md" as const);
 
-  if (job.skillSnapshotFromRunId && role === "candidate") {
-    const snapMd = path.join(
-      resolveUnder(config.resultsDir, job.skillSnapshotFromRunId),
-      "skill-snapshot",
-      "SKILL.md",
-    );
-    const locked = tryReadRegularFileUtf8(snapMd);
-    if (locked == null) {
-      throw new Error(
-        fs.existsSync(snapMd)
-          ? `skill snapshot invalid for ${job.skillSnapshotFromRunId} (not a readable regular file)`
-          : `skill snapshot missing for ${job.skillSnapshotFromRunId}`,
-      );
-    }
-    skill = { ...skill, skillMd: locked };
-    findings.push(
-      `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
-    );
+  if (job.skillSnapshotFromRunId) {
     // Prefer snapshot manifest (written even when result.json never landed —
     // cancel/fail/budget_stop mid-run). Fallback to prior result.json.
     const snapManifestPath = path.join(
@@ -296,6 +278,30 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     if (pinnedVersion !== skill.version) {
       throw new Error(
         `skill/fixtures version drifted since snapshot ${job.skillSnapshotFromRunId}: was ${pinnedVersion}, live ${skill.version}`,
+      );
+    }
+    // Candidate also locks SKILL.md body; baseline uses neutral prompt.
+    if (role === "candidate") {
+      const snapMd = path.join(
+        resolveUnder(config.resultsDir, job.skillSnapshotFromRunId),
+        "skill-snapshot",
+        "SKILL.md",
+      );
+      const locked = tryReadRegularFileUtf8(snapMd);
+      if (locked == null) {
+        throw new Error(
+          fs.existsSync(snapMd)
+            ? `skill snapshot invalid for ${job.skillSnapshotFromRunId} (not a readable regular file)`
+            : `skill snapshot missing for ${job.skillSnapshotFromRunId}`,
+        );
+      }
+      skill = { ...skill, skillMd: locked };
+      findings.push(
+        `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
+      );
+    } else {
+      findings.push(
+        `evalSkillVersion locked from snapshot of ${job.skillSnapshotFromRunId}`,
       );
     }
   }

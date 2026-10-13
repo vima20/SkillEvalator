@@ -42,7 +42,7 @@ export type EnqueueInput = {
   modelId?: string;
   role?: JobManifest["role"];
   evaluationId?: string;
-  /** Retry: lock candidate SKILL.md to this prior run's skill-snapshot. */
+  /** Retry: pin evalSkillVersion (+ candidate SKILL.md) to prior skill-snapshot. */
   skillSnapshotFromRunId?: string;
 };
 

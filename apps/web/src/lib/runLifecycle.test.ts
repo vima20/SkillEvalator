@@ -3,6 +3,7 @@ import {
   cancelGate,
   pairedCancelPeerStatuses,
   retryGate,
+  retrySnapshotGate,
 } from "./runLifecycle.js";
 
 describe("cancelGate", () => {
@@ -66,5 +67,48 @@ describe("pairedCancelPeerStatuses", () => {
   it("includes budget_stop for cascade lookup", () => {
     expect(pairedCancelPeerStatuses().has("budget_stop")).toBe(true);
     expect(pairedCancelPeerStatuses().has("running")).toBe(true);
+  });
+});
+
+describe("retrySnapshotGate", () => {
+  it("requires SKILL.md + version for candidate", () => {
+    expect(
+      retrySnapshotGate({
+        role: "candidate",
+        hasSkillMd: true,
+        hasPinnedVersion: true,
+      }).allow,
+    ).toBe(true);
+    expect(
+      retrySnapshotGate({
+        role: "candidate",
+        hasSkillMd: false,
+        hasPinnedVersion: true,
+      }).allow,
+    ).toBe(false);
+    expect(
+      retrySnapshotGate({
+        role: "candidate",
+        hasSkillMd: true,
+        hasPinnedVersion: false,
+      }).allow,
+    ).toBe(false);
+  });
+
+  it("requires pinned version for baseline (SKILL.md optional)", () => {
+    expect(
+      retrySnapshotGate({
+        role: "baseline",
+        hasSkillMd: false,
+        hasPinnedVersion: true,
+      }),
+    ).toEqual({ allow: true, useSkillSnapshot: true });
+    const missing = retrySnapshotGate({
+      role: "baseline",
+      hasSkillMd: true,
+      hasPinnedVersion: false,
+    });
+    expect(missing.allow).toBe(false);
+    if (!missing.allow) expect(missing.error).toMatch(/baseline/);
   });
 });

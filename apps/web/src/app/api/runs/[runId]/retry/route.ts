@@ -19,7 +19,7 @@ import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
 import { updateEvaluationMetaLeg } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
-import { retryGate } from "@/lib/runLifecycle";
+import { retryGate, retrySnapshotGate } from "@/lib/runLifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -195,7 +195,7 @@ export async function POST(
       const snapshotDir = path.join(root, runId, "skill-snapshot");
       const snapshotPath = path.join(snapshotDir, "SKILL.md");
       const snapManifestPath = path.join(snapshotDir, "manifest.json");
-      const hasSnapshot = fs.existsSync(snapshotPath);
+      const hasSkillMd = fs.existsSync(snapshotPath);
       let hasPinnedVersion = false;
       if (fs.existsSync(snapManifestPath)) {
         try {
@@ -209,18 +209,16 @@ export async function POST(
           hasPinnedVersion = false;
         }
       }
-      // Candidate retries must keep the prior SKILL.md lock + fixture version
-      // pin — never silently fall through to a drifted live skill tree.
-      if (role === "candidate" && (!hasSnapshot || !hasPinnedVersion)) {
-        return NextResponse.json(
-          {
-            error:
-              "cannot retry candidate — skill-snapshot/SKILL.md or pinned evalSkillVersion missing; re-run from a finished candidate or start a new paired evaluation",
-          },
-          { status: 409 },
-        );
+      // Never silently fall through to a drifted live skill/fixture tree.
+      const snapGate = retrySnapshotGate({
+        role: role === "baseline" ? "baseline" : "candidate",
+        hasSkillMd,
+        hasPinnedVersion,
+      });
+      if (!snapGate.allow) {
+        return NextResponse.json({ error: snapGate.error }, { status: 409 });
       }
-      const skillSnapshotFromRunId = hasSnapshot ? runId : undefined;
+      const skillSnapshotFromRunId = runId;
 
       const queued = enqueueRun({
         evalSkillId,
