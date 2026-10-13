@@ -143,6 +143,144 @@ describe("compareBaselineCandidate", () => {
     );
   });
 
+  it("INCONCLUSIVE when capture.license or githubUrl differs on both legs", () => {
+    const capture = (over: { license?: string; githubUrl?: string }) => ({
+      githubUrl: over.githubUrl ?? "https://github.com/acme/skills",
+      commit: "aaaaaaaaaaaaaaaa",
+      license: over.license ?? "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role: "candidate" as const,
+      promptHash: "ph",
+      promptPreview: "preview",
+      promptKind: "skill_md" as const,
+      env: {
+        modelDryRun: "gpt-4o-mini",
+        modelOfficial: "gpt-4.1-mini",
+        temperature: 0,
+        topP: 1,
+        seed: 1,
+        maxOutputTokens: 1024,
+        costCapUsd: 5,
+        costHardStop: true,
+        fakeProduce: false,
+        allowHostGrade: false,
+        grade: "docker_script" as const,
+      },
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+    const lic = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: {
+          ...capture({ license: "MIT" }),
+          role: "baseline",
+          promptKind: "baseline_neutral",
+          promptHash: "base",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: {
+          ...capture({ license: "Apache-2.0" }),
+          promptHash: "cand",
+        },
+      }),
+    );
+    expect(lic.verdict).toBe("INCONCLUSIVE");
+    expect(lic.parity.issues.some((i) => i.includes("capture.license"))).toBe(
+      true,
+    );
+
+    const gh = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: {
+          ...capture({ githubUrl: "https://github.com/acme/a" }),
+          role: "baseline",
+          promptKind: "baseline_neutral",
+          promptHash: "base",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: {
+          ...capture({ githubUrl: "https://github.com/acme/b" }),
+          promptHash: "cand",
+        },
+      }),
+    );
+    expect(gh.verdict).toBe("INCONCLUSIVE");
+    expect(
+      gh.parity.issues.some((i) => i.includes("capture.githubUrl")),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when capture.env temperature/topP/seed presence is one-sided", () => {
+    const baseEnv = {
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
+      temperature: 0,
+      topP: 1,
+      seed: 1,
+      maxOutputTokens: 1024,
+      costCapUsd: 5,
+      costHardStop: true,
+      fakeProduce: false,
+      allowHostGrade: false,
+      grade: "docker_script" as const,
+    };
+    const { temperature: _t, ...noTemp } = baseEnv;
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: {
+          githubUrl: "https://github.com/acme/skills",
+          commit: "aaaaaaaaaaaaaaaa",
+          license: "MIT",
+          dependencies: [],
+          skillVersion: "abc",
+          role: "baseline",
+          promptHash: "basehash",
+          promptKind: "baseline_neutral",
+          env: baseEnv,
+          capturedAt: "2026-10-12T00:00:00.000Z",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: {
+          githubUrl: "https://github.com/acme/skills",
+          commit: "aaaaaaaaaaaaaaaa",
+          license: "MIT",
+          dependencies: [],
+          skillVersion: "abc",
+          role: "candidate",
+          promptHash: "candhash",
+          promptKind: "skill_md",
+          env: noTemp,
+          capturedAt: "2026-10-12T00:00:00.000Z",
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("temperature presence")),
+    ).toBe(true);
+  });
+
   it("INCONCLUSIVE when capture.commit differs on both legs", () => {
     const capture = (commit: string) => ({
       githubUrl: "https://github.com/acme/skills",

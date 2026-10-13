@@ -109,6 +109,28 @@ export function checkComparisonParity(
       `capture.commit mismatch: baseline=${baselineCommit} candidate=${candidateCommit}`,
     );
   }
+  const baselineLicense = baseline.capture?.license?.trim() ?? "";
+  const candidateLicense = candidate.capture?.license?.trim() ?? "";
+  if (
+    baselineLicense &&
+    candidateLicense &&
+    baselineLicense !== candidateLicense
+  ) {
+    issues.push(
+      `capture.license mismatch: baseline=${baselineLicense} candidate=${candidateLicense}`,
+    );
+  }
+  const baselineGithub = baseline.capture?.githubUrl?.trim() ?? "";
+  const candidateGithub = candidate.capture?.githubUrl?.trim() ?? "";
+  if (
+    baselineGithub &&
+    candidateGithub &&
+    baselineGithub !== candidateGithub
+  ) {
+    issues.push(
+      `capture.githubUrl mismatch: baseline=${baselineGithub} candidate=${candidateGithub}`,
+    );
+  }
   const baselineGradeHash = baseline.capture?.env?.gradeHash?.trim() ?? "";
   const candidateGradeHash = candidate.capture?.env?.gradeHash?.trim() ?? "";
   // Pinned/local grade.js drift is invisible to evalSkillVersion on imports.
@@ -146,6 +168,18 @@ export function checkComparisonParity(
   pushEnvFieldParity(issues, "maxOutputTokens", {
     baseline: baseline.capture?.env?.maxOutputTokens,
     candidate: candidate.capture?.env?.maxOutputTokens,
+  });
+  pushEnvFieldParity(issues, "temperature", {
+    baseline: baseline.capture?.env?.temperature,
+    candidate: candidate.capture?.env?.temperature,
+  });
+  pushEnvFieldParity(issues, "topP", {
+    baseline: baseline.capture?.env?.topP,
+    candidate: candidate.capture?.env?.topP,
+  });
+  pushEnvFieldParity(issues, "seed", {
+    baseline: baseline.capture?.env?.seed,
+    candidate: candidate.capture?.env?.seed,
   });
 
   const baselinePromptHash = baseline.capture?.promptHash?.trim() ?? "";
