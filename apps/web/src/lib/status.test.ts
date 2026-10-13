@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { benefitPendingState, runIsActive } from "./status.js";
+import {
+  benefitPendingState,
+  comparisonPendingState,
+  runIsActive,
+} from "./status.js";
 
 describe("runIsActive", () => {
   it("treats queued/running/cancel_requested as active", () => {
@@ -72,5 +76,74 @@ describe("benefitPendingState", () => {
         unavailable: true,
       });
     }
+  });
+});
+
+describe("comparisonPendingState", () => {
+  const idle = {
+    status: undefined as string | undefined,
+    hasResult: false,
+    budgetTimedOut: false,
+  };
+
+  it("keeps polling while either leg is unknown without a result", () => {
+    const g = comparisonPendingState({
+      baseline: { ...idle, status: "unknown" },
+      candidate: { ...idle, status: "running" },
+    });
+    expect(g.stillWaiting).toBe(true);
+    expect(g.unavailable).toBe(false);
+  });
+
+  it("settles unknown+hasResult so both finished legs become unavailable", () => {
+    const g = comparisonPendingState({
+      baseline: { status: "unknown", hasResult: true, budgetTimedOut: false },
+      candidate: { status: "failed", hasResult: false, budgetTimedOut: false },
+    });
+    expect(g.stillWaiting).toBe(false);
+    expect(g.unavailable).toBe(true);
+  });
+
+  it("times out budget_stop wind-down per leg without cutting the other", () => {
+    const mid = comparisonPendingState({
+      baseline: {
+        status: "budget_stop",
+        hasResult: false,
+        budgetTimedOut: true,
+      },
+      candidate: { status: "running", hasResult: false, budgetTimedOut: false },
+    });
+    expect(mid.baselineWindDown).toBe(true);
+    expect(mid.stillWaiting).toBe(true);
+    expect(mid.unavailable).toBe(false);
+
+    const both = comparisonPendingState({
+      baseline: {
+        status: "budget_stop",
+        hasResult: false,
+        budgetTimedOut: true,
+      },
+      candidate: {
+        status: "budget_stop",
+        hasResult: false,
+        budgetTimedOut: true,
+      },
+    });
+    expect(both.stillWaiting).toBe(false);
+    expect(both.unavailable).toBe(true);
+  });
+
+  it("treats budget_stop with result as settled wind-down complete", () => {
+    const g = comparisonPendingState({
+      baseline: {
+        status: "budget_stop",
+        hasResult: true,
+        budgetTimedOut: false,
+      },
+      candidate: { status: "ok", hasResult: true, budgetTimedOut: false },
+    });
+    expect(g.baselineWindDown).toBe(false);
+    expect(g.stillWaiting).toBe(false);
+    expect(g.unavailable).toBe(true);
   });
 });

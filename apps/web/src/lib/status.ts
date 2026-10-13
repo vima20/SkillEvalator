@@ -41,6 +41,67 @@ export function benefitPendingState(opts: {
   return { windDown, stillWaiting, unavailable };
 }
 
+export type ComparisonLegPending = {
+  status?: string;
+  hasResult: boolean;
+  budgetTimedOut: boolean;
+};
+
+export type ComparisonPendingGates = {
+  baselineWindDown: boolean;
+  candidateWindDown: boolean;
+  windDown: boolean;
+  stillWaiting: boolean;
+  unavailable: boolean;
+};
+
+function comparisonLegWindDown(leg: ComparisonLegPending): boolean {
+  return leg.status === "budget_stop" && !leg.hasResult;
+}
+
+function comparisonLegActive(leg: ComparisonLegPending): boolean {
+  const windDown = comparisonLegWindDown(leg);
+  if (windDown && leg.budgetTimedOut) return false;
+  return runIsActive(leg.status, leg.hasResult);
+}
+
+function comparisonLegSettled(leg: ComparisonLegPending): boolean {
+  const s = leg.status ?? "";
+  if (BENEFIT_SETTLED.has(s)) return true;
+  if (s === "budget_stop") {
+    return leg.hasResult || leg.budgetTimedOut;
+  }
+  // Result landed while status.json lags as missing/unknown — do not leave
+  // ComparisonPending in !stillWaiting && !unavailable limbo.
+  if (leg.hasResult && !ACTIVE_RUN.has(s)) return true;
+  return false;
+}
+
+/**
+ * ComparisonPending wait/unavailable gates (pure — vitest without React).
+ * Per-leg wind-down clocks; unknown+hasResult settles the leg.
+ */
+export function comparisonPendingState(opts: {
+  baseline: ComparisonLegPending;
+  candidate: ComparisonLegPending;
+}): ComparisonPendingGates {
+  const baselineWindDown = comparisonLegWindDown(opts.baseline);
+  const candidateWindDown = comparisonLegWindDown(opts.candidate);
+  const stillWaiting =
+    comparisonLegActive(opts.baseline) || comparisonLegActive(opts.candidate);
+  const unavailable =
+    !stillWaiting &&
+    comparisonLegSettled(opts.baseline) &&
+    comparisonLegSettled(opts.candidate);
+  return {
+    baselineWindDown,
+    candidateWindDown,
+    windDown: baselineWindDown || candidateWindDown,
+    stillWaiting,
+    unavailable,
+  };
+}
+
 export function statusBadgeKind(status?: string | null): StatusBadgeKind {
   switch (status) {
     case "ok":

@@ -3,10 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { runIsActive, statusBadgeClass } from "@/lib/status";
-
-/** Hard-finished — no more result.json expected. */
-const SETTLED = new Set(["ok", "failed", "cancelled"]);
+import { comparisonPendingState, statusBadgeClass } from "@/lib/status";
 
 /** Orphan wait for budget_stop → result.json per leg. */
 const WIND_DOWN_MS = 90_000;
@@ -33,36 +30,24 @@ export function ComparisonPending({
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
   const [candidateBudgetTimedOut, setCandidateBudgetTimedOut] = useState(false);
 
-  const baselineWindDown =
-    baselineStatus === "budget_stop" && !baselineHasResult;
-  const candidateWindDown =
-    candidateStatus === "budget_stop" && !candidateHasResult;
-  const windDown = baselineWindDown || candidateWindDown;
-
-  // Wind-down without result stays active until result.json or that leg's orphan timeout.
-  const baselineActive =
-    runIsActive(baselineStatus, baselineHasResult) &&
-    !(baselineWindDown && baselineBudgetTimedOut);
-  const candidateActive =
-    runIsActive(candidateStatus, candidateHasResult) &&
-    !(candidateWindDown && candidateBudgetTimedOut);
-  const stillWaiting = baselineActive || candidateActive;
-
-  const baselineSettled =
-    SETTLED.has(baselineStatus ?? "") ||
-    (baselineStatus === "budget_stop" &&
-      (baselineHasResult || baselineBudgetTimedOut));
-  const candidateSettled =
-    SETTLED.has(candidateStatus ?? "") ||
-    (candidateStatus === "budget_stop" &&
-      (candidateHasResult || candidateBudgetTimedOut));
-
-  // Only unavailable when neither leg can still produce a usable scorecard.
-  // One leg may time out on budget_stop while the other is still queued/running —
-  // keep polling until that other leg settles too (its own 90s clock if it later
-  // enters wind-down).
-  const unavailable =
-    !stillWaiting && baselineSettled && candidateSettled;
+  const {
+    baselineWindDown,
+    candidateWindDown,
+    windDown,
+    stillWaiting,
+    unavailable,
+  } = comparisonPendingState({
+    baseline: {
+      status: baselineStatus,
+      hasResult: baselineHasResult,
+      budgetTimedOut: baselineBudgetTimedOut,
+    },
+    candidate: {
+      status: candidateStatus,
+      hasResult: candidateHasResult,
+      budgetTimedOut: candidateBudgetTimedOut,
+    },
+  });
 
   useEffect(() => {
     if (!baselineWindDown) {
