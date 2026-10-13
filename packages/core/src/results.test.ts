@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   formatRunError,
+  hasLiveJobFile,
   isNonRetryableErrorCode,
   purgeTerminalRunsFs,
   syncStatusFromResult,
@@ -212,6 +213,23 @@ describe("syncStatusFromResult", () => {
 
     const st = syncStatusFromResult(root, runId);
     expect(st?.status).toBe("cancelled");
+  });
+});
+
+describe("hasLiveJobFile", () => {
+  it("detects queued, tmp, and running job files", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-livejob-"));
+    temps.push(root);
+    const jobsDir = path.join(root, "jobs");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_livejobx";
+
+    expect(hasLiveJobFile(jobsDir, runId)).toBe(false);
+    fs.writeFileSync(path.join(jobsDir, `${runId}.running.json`), "{}");
+    expect(hasLiveJobFile(jobsDir, runId)).toBe(true);
+    fs.unlinkSync(path.join(jobsDir, `${runId}.running.json`));
+    fs.writeFileSync(path.join(jobsDir, `${runId}.tmp.json`), "{}");
+    expect(hasLiveJobFile(jobsDir, runId)).toBe(true);
   });
 });
 

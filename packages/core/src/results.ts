@@ -267,11 +267,12 @@ function removeJobArtifacts(jobsDir: string, runId: string): void {
 }
 
 /** True when a job file still means the worker may be writing this run. */
-function hasLiveJobFile(jobsDir: string, runId: string): boolean {
+export function hasLiveJobFile(jobsDir: string, runId: string): boolean {
+  const id = assertSafeId(runId, "runId");
   return (
-    fs.existsSync(path.join(jobsDir, `${runId}.json`)) ||
-    fs.existsSync(path.join(jobsDir, `${runId}.tmp.json`)) ||
-    fs.existsSync(path.join(jobsDir, `${runId}.running.json`))
+    fs.existsSync(path.join(jobsDir, `${id}.json`)) ||
+    fs.existsSync(path.join(jobsDir, `${id}.tmp.json`)) ||
+    fs.existsSync(path.join(jobsDir, `${id}.running.json`))
   );
 }
 

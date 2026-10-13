@@ -6,6 +6,7 @@ import {
   assertSafeId,
   clearRetryMarker,
   findReusableRetryRunId,
+  hasLiveJobFile,
   isNonRetryableErrorCode,
   loadRunResult,
   loadRunStatus,
@@ -56,6 +57,17 @@ export async function POST(
     if (!RETRYABLE.has(current)) {
       return NextResponse.json(
         { error: `cannot retry status ${current}` },
+        { status: 409 },
+      );
+    }
+    // budget_stop / failed mid-write: worker may still own .running.json.
+    if (hasLiveJobFile(jobsDir(), runId)) {
+      return NextResponse.json(
+        {
+          error:
+            "run still finishing — wait for result.json (or cancel) before retry",
+          status: current,
+        },
         { status: 409 },
       );
     }
