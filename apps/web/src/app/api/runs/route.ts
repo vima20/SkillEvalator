@@ -4,6 +4,7 @@ import { listRuns } from "@skillevalator/core";
 import { enqueueEvaluationPair, enqueueRun } from "@/lib/enqueueRun";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { runPreflight } from "@/lib/runPreflight";
 
 const Body = z.object({
   evalSkillId: z.string().min(1),
@@ -35,6 +36,20 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
+    const preflight = runPreflight();
+    if (!preflight.ok) {
+      const failed = Object.entries(preflight.checks)
+        .filter(([, c]) => !c.ok)
+        .map(([k, c]) => `${k}: ${c.detail}`)
+        .join("; ");
+      return NextResponse.json(
+        {
+          error: `preflight failed — ${failed || "fix worker, Docker, or API key"}`,
+          checks: preflight.checks,
+        },
+        { status: 503 },
+      );
+    }
     if (body.withBaseline) {
       const paired = enqueueEvaluationPair({
         evalSkillId: body.evalSkillId,

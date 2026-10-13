@@ -25,6 +25,7 @@ import {
   roleFromJobRaw,
 } from "@/lib/retryRole";
 import { retryGate, retrySnapshotGate } from "@/lib/runLifecycle";
+import { runPreflight } from "@/lib/runPreflight";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +120,21 @@ export async function POST(
             "cannot retry — original job config missing (no failed job file or result)",
         },
         { status: 409 },
+      );
+    }
+
+    const preflight = runPreflight();
+    if (!preflight.ok) {
+      const failedChecks = Object.entries(preflight.checks)
+        .filter(([, c]) => !c.ok)
+        .map(([k, c]) => `${k}: ${c.detail}`)
+        .join("; ");
+      return NextResponse.json(
+        {
+          error: `preflight failed — ${failedChecks || "fix worker, Docker, or API key"}`,
+          checks: preflight.checks,
+        },
+        { status: 503 },
       );
     }
 
