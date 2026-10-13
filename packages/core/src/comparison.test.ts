@@ -334,11 +334,12 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
   });
 
-  it("INCONCLUSIVE when fakeProduce, costCapUsd, or costHardStop differs", () => {
+  it("INCONCLUSIVE when fakeProduce, costCapUsd, costHardStop, or allowHostGrade differs", () => {
     const env = (over: {
       fakeProduce?: boolean;
       costCapUsd?: number;
       costHardStop?: boolean;
+      allowHostGrade?: boolean;
     }) => ({
       githubUrl: "https://github.com/acme/skills",
       commit: "aaaaaaaaaaaaaaaa",
@@ -420,6 +421,212 @@ describe("compareBaselineCandidate", () => {
     expect(hardStopMix.verdict).toBe("INCONCLUSIVE");
     expect(
       hardStopMix.parity.issues.some((i) => i.includes("costHardStop")),
+    ).toBe(true);
+
+    const hostGradeMix = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: { ...env({ allowHostGrade: true }), role: "baseline" },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: env({ allowHostGrade: false }),
+      }),
+    );
+    expect(hostGradeMix.verdict).toBe("INCONCLUSIVE");
+    expect(
+      hostGradeMix.parity.issues.some((i) => i.includes("allowHostGrade")),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE on one-sided capture.env cost/smoke field presence", () => {
+    const fullEnv = {
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
+      temperature: 0,
+      topP: 1,
+      seed: 1,
+      maxOutputTokens: 1024,
+      costCapUsd: 5,
+      costHardStop: true,
+      fakeProduce: false,
+      allowHostGrade: false,
+      grade: "docker_script" as const,
+    };
+    const capture = (env: Record<string, unknown> | undefined, role: "baseline" | "candidate") => ({
+      githubUrl: "https://github.com/acme/skills",
+      commit: "aaaaaaaaaaaaaaaa",
+      license: "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role,
+      promptHash: "ph",
+      promptPreview: "preview",
+      promptKind:
+        role === "baseline"
+          ? ("baseline_neutral" as const)
+          : ("skill_md" as const),
+      ...(env ? { env } : {}),
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+
+    const fakeXor = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: capture(fullEnv, "baseline"),
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture(
+          {
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            temperature: 0,
+            topP: 1,
+            seed: 1,
+            maxOutputTokens: 1024,
+            costCapUsd: 5,
+            costHardStop: true,
+            allowHostGrade: false,
+            grade: "docker_script",
+          },
+          "candidate",
+        ),
+      }),
+    );
+    expect(fakeXor.verdict).toBe("INCONCLUSIVE");
+    expect(
+      fakeXor.parity.issues.some((i) =>
+        i.includes("fakeProduce presence mismatch"),
+      ),
+    ).toBe(true);
+
+    const hardStopXor = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: capture(
+          {
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            temperature: 0,
+            topP: 1,
+            seed: 1,
+            maxOutputTokens: 1024,
+            costCapUsd: 5,
+            fakeProduce: false,
+            allowHostGrade: false,
+            grade: "docker_script",
+          },
+          "baseline",
+        ),
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture(fullEnv, "candidate"),
+      }),
+    );
+    expect(
+      hardStopXor.parity.issues.some((i) =>
+        i.includes("costHardStop presence mismatch"),
+      ),
+    ).toBe(true);
+
+    const maxTokXor = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: capture(
+          {
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            temperature: 0,
+            topP: 1,
+            seed: 1,
+            costCapUsd: 5,
+            costHardStop: true,
+            fakeProduce: false,
+            allowHostGrade: false,
+            grade: "docker_script",
+          },
+          "baseline",
+        ),
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture(fullEnv, "candidate"),
+      }),
+    );
+    expect(
+      maxTokXor.parity.issues.some((i) =>
+        i.includes("maxOutputTokens presence mismatch"),
+      ),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when promptKind disagrees with role", () => {
+    const capture = (
+      role: "baseline" | "candidate",
+      promptKind: "baseline_neutral" | "skill_md",
+    ) => ({
+      githubUrl: "https://github.com/acme/skills",
+      commit: "aaaaaaaaaaaaaaaa",
+      license: "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role,
+      promptHash: "ph",
+      promptPreview: "preview",
+      promptKind,
+      env: {
+        modelDryRun: "gpt-4o-mini",
+        modelOfficial: "gpt-4.1-mini",
+        temperature: 0,
+        topP: 1,
+        seed: 1,
+        maxOutputTokens: 1024,
+        costCapUsd: 5,
+        costHardStop: true,
+        fakeProduce: false,
+        allowHostGrade: false,
+        grade: "docker_script" as const,
+      },
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: capture("baseline", "skill_md"),
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture("candidate", "baseline_neutral"),
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("baseline.capture.promptKind")),
+    ).toBe(true);
+    expect(
+      c.parity.issues.some((i) => i.includes("candidate.capture.promptKind")),
     ).toBe(true);
   });
 

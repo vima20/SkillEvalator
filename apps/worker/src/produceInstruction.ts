@@ -15,8 +15,13 @@ export function resolveProduceInstruction(opts: {
     };
   }
   const trimmed = opts.skillMd.trim();
+  if (!trimmed) {
+    throw new Error(
+      "candidate skillMd empty — refusing silent baseline_neutral fallback (would invalidate lift)",
+    );
+  }
   return {
-    instruction: trimmed || BASELINE_NEUTRAL_PROMPT,
+    instruction: trimmed,
     promptKind: "skill_md",
   };
 }

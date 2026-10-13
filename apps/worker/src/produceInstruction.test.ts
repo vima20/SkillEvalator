@@ -24,10 +24,10 @@ describe("resolveProduceInstruction", () => {
     expect(r.instruction).toBe("# fix bugs");
   });
 
-  it("falls back to neutral when candidate skillMd is empty", () => {
-    const r = resolveProduceInstruction({ role: "candidate", skillMd: "  " });
-    expect(r.promptKind).toBe("skill_md");
-    expect(r.instruction).toBe(BASELINE_NEUTRAL_PROMPT);
+  it("fails closed when candidate skillMd is empty", () => {
+    expect(() =>
+      resolveProduceInstruction({ role: "candidate", skillMd: "  " }),
+    ).toThrow(/skillMd empty/);
   });
 });
 

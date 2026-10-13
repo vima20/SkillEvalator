@@ -41,6 +41,12 @@ import {
   ProduceCancelledError,
   produceArtifact,
 } from "./produce.js";
+import {
+  applySkillSnapshotLock,
+  assertPinnedVersionMatchesLive,
+  evalSkillVersionFromSnapshotManifest,
+  resolvePinnedEvalSkillVersion,
+} from "./skillSnapshotPin.js";
 
 function emptyTokens(): TokenUsage {
   return { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
@@ -251,65 +257,58 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       "skill-snapshot",
       "manifest.json",
     );
-    let pinnedVersion: string | undefined;
+    let snapshotVersion: string | undefined;
     try {
-      const snapManifest = JSON.parse(
-        readRegularFileUtf8(snapManifestPath, "skill snapshot manifest"),
-      ) as { _snapshot?: { evalSkillVersion?: string } };
-      const v = snapManifest._snapshot?.evalSkillVersion;
-      if (typeof v === "string" && v.trim()) pinnedVersion = v.trim();
+      snapshotVersion = evalSkillVersionFromSnapshotManifest(
+        JSON.parse(
+          readRegularFileUtf8(snapManifestPath, "skill snapshot manifest"),
+        ),
+      );
     } catch {
       /* fall through to result.json */
     }
-    if (!pinnedVersion) {
-      const prior = loadRunResult(
-        config.resultsDir,
-        job.skillSnapshotFromRunId,
-      );
-      if (prior?.evalSkillVersion?.trim()) {
-        pinnedVersion = prior.evalSkillVersion.trim();
-      }
-    }
-    if (!pinnedVersion) {
-      throw new Error(
-        `skill snapshot version missing for ${job.skillSnapshotFromRunId} (no _snapshot.evalSkillVersion or result.json)`,
-      );
-    }
-    if (pinnedVersion !== skill.version) {
-      throw new Error(
-        `skill/fixtures version drifted since snapshot ${job.skillSnapshotFromRunId}: was ${pinnedVersion}, live ${skill.version}`,
-      );
-    }
+    const prior = snapshotVersion
+      ? null
+      : loadRunResult(config.resultsDir, job.skillSnapshotFromRunId);
+    assertPinnedVersionMatchesLive({
+      priorRunId: job.skillSnapshotFromRunId,
+      pinnedVersion: resolvePinnedEvalSkillVersion({
+        snapshotVersion,
+        resultVersion: prior?.evalSkillVersion,
+      }),
+      liveVersion: skill.version,
+    });
     // Candidate also locks SKILL.md body; baseline uses neutral prompt.
-    if (role === "candidate") {
-      const snapMd = path.join(
-        resolveUnder(config.resultsDir, job.skillSnapshotFromRunId),
-        "skill-snapshot",
-        "SKILL.md",
-      );
-      const locked = tryReadRegularFileUtf8(snapMd);
-      if (locked == null) {
-        throw new Error(
-          fs.existsSync(snapMd)
-            ? `skill snapshot invalid for ${job.skillSnapshotFromRunId} (not a readable regular file)`
-            : `skill snapshot missing for ${job.skillSnapshotFromRunId}`,
-        );
-      }
-      skill = { ...skill, skillMd: locked };
-      findings.push(
-        `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
-      );
-    } else {
-      findings.push(
-        `evalSkillVersion locked from snapshot of ${job.skillSnapshotFromRunId}`,
-      );
+    const snapMd = path.join(
+      resolveUnder(config.resultsDir, job.skillSnapshotFromRunId),
+      "skill-snapshot",
+      "SKILL.md",
+    );
+    const lock = applySkillSnapshotLock({
+      role,
+      priorRunId: job.skillSnapshotFromRunId,
+      lockedSkillMd:
+        role === "candidate" ? tryReadRegularFileUtf8(snapMd) : null,
+      skillMdExists: role === "candidate" ? fs.existsSync(snapMd) : false,
+    });
+    if (lock.kind === "candidate") {
+      skill = { ...skill, skillMd: lock.skillMd };
     }
+    findings.push(lock.finding);
   }
 
   const instructionForCapture =
     role === "baseline"
       ? BASELINE_NEUTRAL_PROMPT
-      : skill.skillMd.trim() || BASELINE_NEUTRAL_PROMPT;
+      : (() => {
+          const trimmed = skill.skillMd.trim();
+          if (!trimmed) {
+            throw new Error(
+              "candidate skillMd empty — refusing silent baseline_neutral fallback (would invalidate lift)",
+            );
+          }
+          return trimmed;
+        })();
   const promptHash = crypto
     .createHash("sha256")
     .update(instructionForCapture)

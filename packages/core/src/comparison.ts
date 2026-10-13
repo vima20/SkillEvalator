@@ -59,6 +59,27 @@ function sameSorted(a: string[], b: string[]): boolean {
   return as.every((v, i) => v === bs[i]);
 }
 
+/** Both missing OK (legacy); XOR presence or unequal values → parity issue. */
+function pushEnvFieldParity(
+  issues: string[],
+  field: string,
+  opts: { baseline: unknown; candidate: unknown },
+): void {
+  const bSet = opts.baseline !== undefined;
+  const cSet = opts.candidate !== undefined;
+  if (bSet !== cSet) {
+    issues.push(
+      `capture.env.${field} presence mismatch: baseline=${bSet ? "set" : "missing"} candidate=${cSet ? "set" : "missing"}`,
+    );
+    return;
+  }
+  if (bSet && cSet && opts.baseline !== opts.candidate) {
+    issues.push(
+      `capture.env.${field} mismatch: baseline=${String(opts.baseline)} candidate=${String(opts.candidate)}`,
+    );
+  }
+}
+
 /** Assert Unikie parity: same model/mode/tasks/repeats/decoding for fair lift. */
 export function checkComparisonParity(
   baseline: RunResult,
@@ -105,48 +126,44 @@ export function checkComparisonParity(
       `capture.env.gradeHash mismatch: baseline=${baselineGradeHash.slice(0, 12)}… candidate=${candidateGradeHash.slice(0, 12)}…`,
     );
   }
-  const baselineFake = baseline.capture?.env?.fakeProduce;
-  const candidateFake = candidate.capture?.env?.fakeProduce;
+  // Cost/smoke env fields: both missing OK (legacy); XOR or unequal → fail.
+  pushEnvFieldParity(issues, "fakeProduce", {
+    baseline: baseline.capture?.env?.fakeProduce,
+    candidate: candidate.capture?.env?.fakeProduce,
+  });
+  pushEnvFieldParity(issues, "costCapUsd", {
+    baseline: baseline.capture?.env?.costCapUsd,
+    candidate: candidate.capture?.env?.costCapUsd,
+  });
+  pushEnvFieldParity(issues, "costHardStop", {
+    baseline: baseline.capture?.env?.costHardStop,
+    candidate: candidate.capture?.env?.costHardStop,
+  });
+  pushEnvFieldParity(issues, "allowHostGrade", {
+    baseline: baseline.capture?.env?.allowHostGrade,
+    candidate: candidate.capture?.env?.allowHostGrade,
+  });
+  pushEnvFieldParity(issues, "maxOutputTokens", {
+    baseline: baseline.capture?.env?.maxOutputTokens,
+    candidate: candidate.capture?.env?.maxOutputTokens,
+  });
+
+  const baselinePromptKind = baseline.capture?.promptKind;
+  const candidatePromptKind = candidate.capture?.promptKind;
   if (
-    baselineFake !== undefined &&
-    candidateFake !== undefined &&
-    baselineFake !== candidateFake
+    baselinePromptKind !== undefined &&
+    baselinePromptKind !== "baseline_neutral"
   ) {
     issues.push(
-      `capture.env.fakeProduce mismatch: baseline=${baselineFake} candidate=${candidateFake}`,
+      `baseline.capture.promptKind expected baseline_neutral, got ${baselinePromptKind}`,
     );
   }
-  const baselineCap = baseline.capture?.env?.costCapUsd;
-  const candidateCap = candidate.capture?.env?.costCapUsd;
   if (
-    baselineCap !== undefined &&
-    candidateCap !== undefined &&
-    baselineCap !== candidateCap
+    candidatePromptKind !== undefined &&
+    candidatePromptKind !== "skill_md"
   ) {
     issues.push(
-      `capture.env.costCapUsd mismatch: baseline=${baselineCap} candidate=${candidateCap}`,
-    );
-  }
-  const baselineHardStop = baseline.capture?.env?.costHardStop;
-  const candidateHardStop = candidate.capture?.env?.costHardStop;
-  if (
-    baselineHardStop !== undefined &&
-    candidateHardStop !== undefined &&
-    baselineHardStop !== candidateHardStop
-  ) {
-    issues.push(
-      `capture.env.costHardStop mismatch: baseline=${baselineHardStop} candidate=${candidateHardStop}`,
-    );
-  }
-  const baselineMaxTok = baseline.capture?.env?.maxOutputTokens;
-  const candidateMaxTok = candidate.capture?.env?.maxOutputTokens;
-  if (
-    baselineMaxTok !== undefined &&
-    candidateMaxTok !== undefined &&
-    baselineMaxTok !== candidateMaxTok
-  ) {
-    issues.push(
-      `capture.env.maxOutputTokens mismatch: baseline=${baselineMaxTok} candidate=${candidateMaxTok}`,
+      `candidate.capture.promptKind expected skill_md, got ${candidatePromptKind}`,
     );
   }
   const expected = opts?.expectedEvalSkillId;
