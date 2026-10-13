@@ -43,6 +43,24 @@ describe("textDiffRatio", () => {
     },
     15_000,
   );
+
+  it(
+    "does not treat identical head+tail as a perfect match when mid differs",
+    () => {
+      const head = "h".repeat(9_000);
+      const tail = "t".repeat(9_000);
+      const a = `${head}MID_AAAA${tail}`;
+      const b = `${head}MID_BBBB${tail}`;
+      expect(a).not.toBe(b);
+      expect(textDiffRatio(a, b)).toBeGreaterThan(0);
+    },
+    30_000,
+  );
+
+  it("still returns zero for identical oversized text", () => {
+    const body = `z`.repeat(20_000);
+    expect(textDiffRatio(body, body)).toBe(0);
+  });
 });
 
 describe("scoreFromGradeAndDiff", () => {

@@ -30,8 +30,8 @@ function windowDiffRatio(left: string, right: string): number {
 /**
  * Normalized Levenshtein distance in [0, 1] (0 = identical).
  * Caps work for large files via length-limited windows, but takes the
- * max of prefix, suffix, and length mismatch so a long identical head
- * cannot hide a divergent tail (or length) as a perfect match.
+ * max of prefix, suffix, middle, and length mismatch so identical head+tail
+ * cannot hide a divergent mid-span (or length) as a perfect match.
  */
 export function textDiffRatio(a: string, b: string, maxChars = 8_000): number {
   const aFull = a.replace(/\r\n/g, "\n");
@@ -51,11 +51,17 @@ export function textDiffRatio(a: string, b: string, maxChars = 8_000): number {
     aFull.slice(-maxChars),
     bFull.slice(-maxChars),
   );
+  const midStartA = Math.max(0, Math.floor((aFull.length - maxChars) / 2));
+  const midStartB = Math.max(0, Math.floor((bFull.length - maxChars) / 2));
+  const middle = windowDiffRatio(
+    aFull.slice(midStartA, midStartA + maxChars),
+    bFull.slice(midStartB, midStartB + maxChars),
+  );
   const lengthMismatch =
     Math.abs(aFull.length - bFull.length) /
     Math.max(aFull.length, bFull.length, 1);
 
-  return Math.max(prefix, suffix, lengthMismatch);
+  return Math.max(prefix, suffix, middle, lengthMismatch);
 }
 
 /**
