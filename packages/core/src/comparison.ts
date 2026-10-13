@@ -181,6 +181,10 @@ export function checkComparisonParity(
     baseline: baseline.capture?.env?.seed,
     candidate: candidate.capture?.env?.seed,
   });
+  pushEnvFieldParity(issues, "grade", {
+    baseline: baseline.capture?.env?.grade,
+    candidate: candidate.capture?.env?.grade,
+  });
 
   const baselinePromptHash = baseline.capture?.promptHash?.trim() ?? "";
   const candidatePromptHash = candidate.capture?.promptHash?.trim() ?? "";
@@ -286,6 +290,24 @@ export function checkComparisonParity(
   }
   if ((candidate.role ?? "candidate") !== "candidate") {
     issues.push(`expected candidate.role=candidate, got ${candidate.role}`);
+  }
+  const baselineCaptureRole = baseline.capture?.role;
+  const candidateCaptureRole = candidate.capture?.role;
+  if (
+    baselineCaptureRole !== undefined &&
+    baselineCaptureRole !== (baseline.role ?? "candidate")
+  ) {
+    issues.push(
+      `baseline.capture.role ${baselineCaptureRole} ≠ result.role ${baseline.role ?? "candidate"}`,
+    );
+  }
+  if (
+    candidateCaptureRole !== undefined &&
+    candidateCaptureRole !== (candidate.role ?? "candidate")
+  ) {
+    issues.push(
+      `candidate.capture.role ${candidateCaptureRole} ≠ result.role ${candidate.role ?? "candidate"}`,
+    );
   }
   return { ok: issues.length === 0, issues };
 }

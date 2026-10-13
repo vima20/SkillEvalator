@@ -6,12 +6,15 @@ import {
   QUEUE_CLAIM_LOCK_STALE_MS,
   cleanupOrphanQueuedFs,
   cleanupOrphanRunningStatusFs,
+  evaluationIdFromSources,
   formatRunError,
   formatWorkerPidRecord,
   isQueuedJobFile,
-  readJsonFileAs,
+  readJsonFile,
   reclaimOrphanRunningJobsFs,
   releaseWxLock,
+  resolveEvalRole,
+  roleFromJobRaw,
   syncStatusFromResult,
   tryAcquireQueueClaimLock,
   writeJsonFile,
@@ -161,7 +164,44 @@ function claim(jobPath: string): JobManifest | null {
     return null;
   }
   try {
-    return readJsonFileAs(JobManifestSchema, running);
+    const raw = readJsonFile(running);
+    const parsed = JobManifestSchema.parse(raw);
+    // Prefer enqueue status.json over schema-defaulted job.role=candidate.
+    let statusRole: ReturnType<typeof roleFromJobRaw>;
+    let statusEvaluationId: string | undefined;
+    try {
+      const statusPath = path.join(
+        config.resultsDir,
+        parsed.runId,
+        "status.json",
+      );
+      if (fs.existsSync(statusPath)) {
+        const st = JSON.parse(fs.readFileSync(statusPath, "utf8")) as unknown;
+        statusRole = roleFromJobRaw(st);
+        if (
+          st &&
+          typeof st === "object" &&
+          typeof (st as { evaluationId?: unknown }).evaluationId === "string"
+        ) {
+          statusEvaluationId = (st as { evaluationId: string }).evaluationId;
+        }
+      }
+    } catch {
+      statusRole = undefined;
+    }
+    const role = resolveEvalRole({
+      statusRole,
+      jobRoleExplicit: roleFromJobRaw(raw),
+    });
+    const evaluationId = evaluationIdFromSources({
+      statusEvaluationId,
+      jobEvaluationId: parsed.evaluationId,
+    });
+    return {
+      ...parsed,
+      role,
+      ...(evaluationId ? { evaluationId } : { evaluationId: undefined }),
+    };
   } catch (e) {
     fs.renameSync(running, jobPath.replace(/\.json$/, ".failed.json"));
     const runId = runIdFromJobPath(jobPath);

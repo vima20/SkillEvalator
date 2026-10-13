@@ -15,9 +15,12 @@ import {
   loadRunResult,
   loadSkill,
   tryProvisionalSkillPin,
+  resolveEvalRole,
   resolveFinalRunStop,
   resolveTrustedScriptsDir,
+  roleFromJobRaw,
   taskIdsForMode,
+  evaluationIdFromSources,
   taskPaths,
   meanScores,
   aggregateRepeats,
@@ -213,17 +216,51 @@ function seedSkillSnapshotFromLive(opts: {
 export async function runJob(job: JobManifest): Promise<RunResult> {
   const runId = assertSafeId(job.runId, "runId");
   const startedAt = new Date().toISOString();
-  const role = job.role ?? "candidate";
   const findings: string[] = [];
   const resultDir = resolveUnder(config.resultsDir, runId);
   fs.mkdirSync(resultDir, { recursive: true });
 
+  // Read enqueue status BEFORE overwrite — JobManifestSchema may have
+  // defaulted omitted role to candidate while status still says baseline.
+  let priorStatusRole: ReturnType<typeof roleFromJobRaw>;
+  let priorEvaluationId: string | undefined;
+  const statusPathEarly = path.join(resultDir, "status.json");
+  try {
+    if (fs.existsSync(statusPathEarly)) {
+      const prior = JSON.parse(
+        fs.readFileSync(statusPathEarly, "utf8"),
+      ) as unknown;
+      priorStatusRole = roleFromJobRaw(prior);
+      if (
+        prior &&
+        typeof prior === "object" &&
+        typeof (prior as { evaluationId?: unknown }).evaluationId === "string"
+      ) {
+        priorEvaluationId = (prior as { evaluationId: string }).evaluationId;
+      }
+    }
+  } catch {
+    priorStatusRole = undefined;
+  }
+  const role = resolveEvalRole({
+    statusRole: priorStatusRole,
+    // After claim(), job.role is already resolved; still prefer prior status.
+    jobRoleExplicit:
+      job.role === "baseline" || job.role === "candidate"
+        ? job.role
+        : undefined,
+  });
+  const evaluationId = evaluationIdFromSources({
+    statusEvaluationId: priorEvaluationId,
+    jobEvaluationId: job.evaluationId,
+  });
+
   // Align UI with .running.json immediately (avoid lingering "queued").
-  writeJsonFile(path.join(resultDir, "status.json"), {
+  writeJsonFile(statusPathEarly, {
     runId,
     status: "running",
     role,
-    ...(job.evaluationId ? { evaluationId: job.evaluationId } : {}),
+    ...(evaluationId ? { evaluationId } : {}),
   });
 
   // Seed Retry pin before loadSkill (parent snapshot or live tree) for both
@@ -420,7 +457,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       runId,
       status: fields.status,
       role,
-      ...(job.evaluationId ? { evaluationId: job.evaluationId } : {}),
+      ...(evaluationId ? { evaluationId } : {}),
       ...(fields.repeat !== undefined ? { repeat: fields.repeat } : {}),
       ...(fields.repeats !== undefined ? { repeats: fields.repeats } : {}),
       ...(fields.costUsd !== undefined ? { costUsd: fields.costUsd } : {}),
@@ -783,7 +820,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       evalSkillVersion: skill.version,
       evalSkillGithubUrl: skill.manifest.githubUrl,
       capture,
-      evaluationId: job.evaluationId,
+      evaluationId,
       role,
       taskSetId: skill.manifest.taskSetId,
       taskIds,
