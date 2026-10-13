@@ -130,11 +130,18 @@ function pickDeterministicMatch(
       "imported skill: no trusted harness grade for taskSetId " + taskSetId,
     );
   }
-  const hashes = new Set(matches.map((m) => m.gradeHash));
-  if (hashes.size > 1) {
+  // Fail closed on any multi-match — even identical grade.js hashes must not
+  // silently pick lexicographic first (aaa-poison risk without harness.json).
+  if (matches.length > 1) {
+    const hashes = new Set(matches.map((m) => m.gradeHash));
+    const detail =
+      hashes.size > 1
+        ? "differing grade.js hashes"
+        : "multiple skills share the same grade.js";
     throw new Error(
       `imported skill: ambiguous trusted harness for taskSetId ${taskSetId} ` +
-        `(${matches.map((m) => m.skillId).join(", ")}); add tasksets/<id>/harness.json`,
+        `(${matches.map((m) => m.skillId).join(", ")}; ${detail}); ` +
+        `add tasksets/<id>/harness.json`,
     );
   }
   return matches[0]!;
@@ -143,7 +150,7 @@ function pickDeterministicMatch(
 /**
  * For imported skills (.import.json), prefer a trusted local harness
  * under eval-skills/<id>/scripts — never the imported grade.js.
- * Pin order: harness.json → sorted unique-hash taskSetId match.
+ * Pin order: harness.json → single taskSetId match (multi-match fail-closed).
  */
 export function resolveTrustedScriptsDir(skillRoot: string): {
   scriptsDir: string;

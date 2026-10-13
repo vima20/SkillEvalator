@@ -109,4 +109,93 @@ describe("resolveTrustedScriptsDir", () => {
       path.join(evalSkills, "code-debugging-eval", "scripts"),
     );
   });
+
+  it("fail-closes when multiple skills share taskSetId without harness.json", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-harness-multi-"));
+    temps.push(root);
+    const evalSkills = path.join(root, "eval-skills");
+    const imported = path.join(root, "imported", "imp_skill");
+    const gradeBody = "module.exports = { ok: true };\n";
+
+    const writeLocal = (id: string) => {
+      const dir = path.join(evalSkills, id);
+      writeJsonFile(path.join(dir, "fixtures", "manifest.json"), {
+        taskSetId: "cde-v1",
+        taskSetDir: "cde-v1",
+        githubUrl: "https://github.com/acme/x",
+        license: "MIT",
+        dependencies: [],
+        taskIds: ["bug-01"],
+        dryRunIds: ["bug-01"],
+        targetFile: { "bug-01": "fix.js" },
+      });
+      fs.mkdirSync(path.join(dir, "scripts"), { recursive: true });
+      fs.writeFileSync(path.join(dir, "scripts", "grade.js"), gradeBody, "utf8");
+    };
+
+    writeLocal("aaa-twin");
+    writeLocal("bbb-twin");
+    // No harness.json — identical grade.js must still fail closed.
+
+    writeJsonFile(path.join(imported, "fixtures", "manifest.json"), {
+      taskSetId: "cde-v1",
+      taskSetDir: "cde-v1",
+      githubUrl: "https://github.com/acme/x",
+      license: "MIT",
+      dependencies: [],
+      taskIds: ["bug-01"],
+      dryRunIds: ["bug-01"],
+      targetFile: { "bug-01": "fix.js" },
+    });
+    writeJsonFile(path.join(imported, ".import.json"), {
+      importId: "imp_skill",
+    });
+
+    expect(() => resolveTrustedScriptsDir(imported)).toThrow(
+      /ambiguous trusted harness[\s\S]*same grade\.js[\s\S]*harness\.json/,
+    );
+  });
+
+  it("allows a single taskSetId match without harness.json", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-harness-one-"));
+    temps.push(root);
+    const evalSkills = path.join(root, "eval-skills");
+    const imported = path.join(root, "imported", "imp_skill");
+
+    const dir = path.join(evalSkills, "only-skill");
+    writeJsonFile(path.join(dir, "fixtures", "manifest.json"), {
+      taskSetId: "solo-v1",
+      taskSetDir: "solo-v1",
+      githubUrl: "https://github.com/acme/x",
+      license: "MIT",
+      dependencies: [],
+      taskIds: ["bug-01"],
+      dryRunIds: ["bug-01"],
+      targetFile: { "bug-01": "fix.js" },
+    });
+    fs.mkdirSync(path.join(dir, "scripts"), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "scripts", "grade.js"),
+      "module.exports = { solo: true };\n",
+      "utf8",
+    );
+
+    writeJsonFile(path.join(imported, "fixtures", "manifest.json"), {
+      taskSetId: "solo-v1",
+      taskSetDir: "solo-v1",
+      githubUrl: "https://github.com/acme/x",
+      license: "MIT",
+      dependencies: [],
+      taskIds: ["bug-01"],
+      dryRunIds: ["bug-01"],
+      targetFile: { "bug-01": "fix.js" },
+    });
+    writeJsonFile(path.join(imported, ".import.json"), {
+      importId: "imp_skill",
+    });
+
+    const pinned = resolveTrustedScriptsDir(imported);
+    expect(pinned.pinned).toBe(true);
+    expect(pinned.scriptsDir).toBe(path.join(dir, "scripts"));
+  });
 });
