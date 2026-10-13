@@ -97,4 +97,15 @@ describe("JobManifestSchema runId", () => {
       }),
     ).toThrow();
   });
+
+  it("does not invent role=candidate when omitted", async () => {
+    const { JobManifestSchema } = await import("./schema.js");
+    const m = JobManifestSchema.parse({
+      runId: "run_100_norolexx",
+      evalSkillId: "code-debugging-eval",
+      mode: "dry-run",
+      createdAt: new Date().toISOString(),
+    });
+    expect(m.role).toBeUndefined();
+  });
 });

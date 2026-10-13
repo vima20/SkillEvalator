@@ -202,8 +202,11 @@ export const JobManifestSchema = z.object({
   mode: z.enum(["dry-run", "official"]),
   modelId: z.string().optional(),
   repeats: z.number().int().positive().max(10).default(1),
-  /** baseline = neutral prompt; candidate = skill SKILL.md. */
-  role: EvalRoleSchema.default("candidate"),
+  /**
+   * baseline = neutral prompt; candidate = skill SKILL.md.
+   * Optional — omit must not inject "candidate" (claim/retry resolve from status).
+   */
+  role: EvalRoleSchema.optional(),
   /** Links baseline and candidate jobs in one Unikie evaluation. */
   evaluationId: SafeIdSchema.optional(),
   /**

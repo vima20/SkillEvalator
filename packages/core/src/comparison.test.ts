@@ -328,6 +328,64 @@ describe("compareBaselineCandidate", () => {
     );
   });
 
+  it("INCONCLUSIVE when evaluationId presence is one-sided", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        evaluationId: "eval_only_base",
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        evaluationId: undefined,
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("evaluationId presence")),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when capture.skillVersion disagrees with evalSkillVersion", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        evalSkillVersion: "abc",
+        capture: {
+          skillVersion: "drifted",
+          role: "baseline",
+          dependencies: [],
+          promptHash: "base",
+          promptKind: "baseline_neutral",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        evalSkillVersion: "abc",
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        i.includes("baseline.capture.skillVersion"),
+      ),
+    ).toBe(true);
+  });
+
   it("INCONCLUSIVE when decoding disagrees with capture.env on a leg", () => {
     const c = compareBaselineCandidate(
       sample({

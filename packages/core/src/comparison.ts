@@ -328,12 +328,29 @@ export function checkComparisonParity(
       `pipeline.grade mismatch: baseline=${baseline.pipeline.grade} candidate=${candidate.pipeline.grade}`,
     );
   }
-  if (
-    baseline.evaluationId &&
-    candidate.evaluationId &&
-    baseline.evaluationId !== candidate.evaluationId
-  ) {
-    issues.push("evaluationId mismatch");
+  {
+    const bEval = baseline.evaluationId?.trim() ?? "";
+    const cEval = candidate.evaluationId?.trim() ?? "";
+    if (Boolean(bEval) !== Boolean(cEval)) {
+      issues.push(
+        `evaluationId presence mismatch: baseline=${bEval ? "set" : "missing"} candidate=${cEval ? "set" : "missing"}`,
+      );
+    } else if (bEval && cEval && bEval !== cEval) {
+      issues.push(`evaluationId mismatch: baseline=${bEval} candidate=${cEval}`);
+    }
+  }
+
+  // Capture skillVersion should match the scored evalSkillVersion on each leg.
+  for (const [label, leg] of [
+    ["baseline", baseline],
+    ["candidate", candidate],
+  ] as const) {
+    const capVer = leg.capture?.skillVersion?.trim() ?? "";
+    if (capVer && capVer !== leg.evalSkillVersion) {
+      issues.push(
+        `${label}.capture.skillVersion ${capVer} ≠ evalSkillVersion ${leg.evalSkillVersion}`,
+      );
+    }
   }
   if ((baseline.role ?? "candidate") !== "baseline") {
     issues.push(`expected baseline.role=baseline, got ${baseline.role ?? "candidate"}`);

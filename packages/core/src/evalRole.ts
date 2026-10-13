@@ -1,6 +1,6 @@
 /**
- * Resolve Unikie baseline/candidate role without trusting
- * JobManifestSchema's default "candidate" when the on-disk job omitted role.
+ * Resolve Unikie baseline/candidate role when job JSON omitted role
+ * (JobManifest.role is optional — never schema-inject "candidate").
  */
 
 import type { EvalRole } from "./schema.js";
