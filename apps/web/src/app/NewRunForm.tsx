@@ -2,14 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { estimateRunCostUsd } from "@/lib/costEstimate";
-
-/** Mirrored from @skillevalator/core OFFICIAL_MIN_REPEATS (API re-normalizes). */
-const OFFICIAL_MIN_REPEATS = 3;
-const MODEL_DRY_RUN = "gpt-4o-mini";
-const MODEL_OFFICIAL = "gpt-4.1-mini";
-/** Fallback when preflight has not returned COST_CAP_USD yet. */
-const DEFAULT_COST_CAP_USD = 5;
+import { estimateRunCostUsd } from "@skillevalator/core/costEstimate";
+import { OFFICIAL_MIN_REPEATS } from "@skillevalator/core/job";
+import {
+  DEFAULT_COST_CAP_USD,
+  MODEL_DRY_RUN,
+  MODEL_OFFICIAL,
+} from "@skillevalator/core/models";
 
 export type SkillOption = {
   id: string;

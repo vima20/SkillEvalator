@@ -6,6 +6,7 @@ export * from "./fsJson.js";
 export * from "./fsSafe.js";
 export * from "./paths.js";
 export * from "./job.js";
+export * from "./models.js";
 export * from "./status.js";
 export * from "./results.js";
 export * from "./benefitReport.js";
