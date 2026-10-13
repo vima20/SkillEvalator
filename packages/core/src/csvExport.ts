@@ -109,6 +109,8 @@ export function comparisonToCsv(comparison: RunComparison): string {
     "lift",
     "parityOk",
     "parityIssues",
+    "commit",
+    "license",
   ]);
   const lines = [header];
   const common = [
@@ -119,6 +121,10 @@ export function comparisonToCsv(comparison: RunComparison): string {
     comparison.modelId,
     comparison.baselineRunId,
     comparison.candidateRunId,
+  ] as const;
+  const captureCells = [
+    comparison.capture?.commit ?? "",
+    comparison.capture?.license ?? "",
   ] as const;
 
   for (const t of comparison.perTask ?? []) {
@@ -137,6 +143,7 @@ export function comparisonToCsv(comparison: RunComparison): string {
         comparison.lift,
         comparison.parity.ok,
         parityIssues,
+        ...captureCells,
       ]),
     );
   }
@@ -156,6 +163,7 @@ export function comparisonToCsv(comparison: RunComparison): string {
         comparison.lift,
         comparison.parity.ok,
         parityIssues,
+        ...captureCells,
       ]),
     );
   }

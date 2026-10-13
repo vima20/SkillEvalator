@@ -74,6 +74,58 @@ describe("comparisonToCsv", () => {
     expect(csv).toContain("parityIssues");
   });
 
+  it("exports candidate Capture commit and license", () => {
+    const cmp = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.7 }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.9,
+        capture: {
+          githubUrl: "https://github.com/acme/skills",
+          commit: "abcdef1234567890",
+          license: "MIT",
+          dependencies: [],
+          skillVersion: "abc",
+          role: "candidate",
+          promptHash: "ph",
+          promptPreview: "preview",
+          promptKind: "skill_md",
+          env: {
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            temperature: 0,
+            topP: 1,
+            seed: 1,
+            maxOutputTokens: 1024,
+            costCapUsd: 5,
+            costHardStop: true,
+            fakeProduce: false,
+            allowHostGrade: false,
+            grade: "docker_script",
+          },
+          capturedAt: "2026-10-12T00:00:00.000Z",
+        },
+      }),
+    );
+    const csv = comparisonToCsv(cmp);
+    const header = csv.split("\n")[0]!;
+    expect(header).toContain("commit");
+    expect(header).toContain("license");
+    expect(csv).toContain("abcdef1234567890");
+    expect(csv).toContain("MIT");
+  });
+
+  it("leaves commit/license empty when Capture is missing", () => {
+    const cmp = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.7 }),
+      sample({ runId: "c", role: "candidate", score: 0.9 }),
+    );
+    const csv = comparisonToCsv(cmp);
+    const dataLine = csv.trim().split("\n")[1]!;
+    expect(dataLine.endsWith(",")).toBe(true);
+  });
+
   it("exports parityIssues when INCONCLUSIVE", () => {
     const cmp = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.5 }),
