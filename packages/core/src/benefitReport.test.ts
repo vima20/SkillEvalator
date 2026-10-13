@@ -74,6 +74,7 @@ describe("decideSkillUse", () => {
         capture: {
           role: "candidate",
           skillVersion: "abc123",
+          dependencies: [],
           env: { fakeProduce: true },
         },
       }),

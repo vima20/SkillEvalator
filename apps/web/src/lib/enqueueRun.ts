@@ -18,6 +18,8 @@ function skillReady(
   evalSkillId: string,
 ): { ok: true } | { ok: false; error: string } {
   try {
+    // loadSkill fails closed on empty/whitespace SKILL.md (avoids baseline
+    // spend when candidate would later refuse produce).
     loadSkill(skillsDirs(), evalSkillId);
     return { ok: true };
   } catch (err) {

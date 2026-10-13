@@ -7,15 +7,19 @@ import { findRepoRoot, writeJsonFile } from "@skillevalator/core";
 const temps: string[] = [];
 let jobsRoot = "";
 let resultsRoot = "";
+/** When set, skillsDirs() returns only this root (empty-SKILL.md tests). */
+let skillsDirsOverride: string[] | null = null;
 
 vi.mock("@/lib/paths", () => ({
   jobsDir: () => jobsRoot,
   resultsDir: () => resultsRoot,
   skillsDirs: () => {
+    if (skillsDirsOverride) return skillsDirsOverride;
     const repo = findRepoRoot(path.resolve(process.cwd()));
     return [path.join(repo, "eval-skills")];
   },
   skillsDir: () => {
+    if (skillsDirsOverride?.[0]) return skillsDirsOverride[0];
     const repo = findRepoRoot(path.resolve(process.cwd()));
     return path.join(repo, "eval-skills");
   },
@@ -27,6 +31,7 @@ afterEach(() => {
   for (const d of temps.splice(0)) {
     fs.rmSync(d, { recursive: true, force: true });
   }
+  skillsDirsOverride = null;
   vi.resetModules();
 });
 
@@ -35,6 +40,7 @@ beforeEach(() => {
   temps.push(root);
   jobsRoot = path.join(root, "jobs");
   resultsRoot = path.join(root, "results");
+  skillsDirsOverride = null;
   fs.mkdirSync(jobsRoot, { recursive: true });
   fs.mkdirSync(resultsRoot, { recursive: true });
 });
@@ -185,5 +191,50 @@ describe("enqueueRun", () => {
     if (out.ok) return;
     expect(out.status).toBe(429);
     expect(fs.existsSync(path.join(jobsRoot, ".enqueue.lock"))).toBe(false);
+  });
+
+  it("rejects empty SKILL.md before queueing (no status/job files)", async () => {
+    const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "se-web-empty-"));
+    temps.push(skillsRoot);
+    const id = "empty-skill-eval";
+    const skillRoot = path.join(skillsRoot, id);
+    writeJsonFile(path.join(skillRoot, "fixtures", "manifest.json"), {
+      taskSetId: "t-v1",
+      githubUrl: "https://github.com/acme/skills",
+      license: "MIT",
+      dependencies: [],
+      taskIds: ["bug-01"],
+      dryRunIds: ["bug-01"],
+      targetFile: { "bug-01": "fix.js" },
+    });
+    fs.mkdirSync(path.join(skillRoot, "fixtures", "bug-01"), {
+      recursive: true,
+    });
+    fs.writeFileSync(path.join(skillRoot, "SKILL.md"), "   \n", "utf8");
+    skillsDirsOverride = [skillsRoot];
+
+    const { enqueueRun, enqueueEvaluationPair } = await import(
+      "./enqueueRun.js"
+    );
+    const single = enqueueRun({ evalSkillId: id, mode: "dry-run", repeats: 1 });
+    expect(single.ok).toBe(false);
+    if (single.ok) return;
+    expect(single.status).toBe(400);
+    expect(single.error).toMatch(/SKILL\.md empty/i);
+
+    const pair = enqueueEvaluationPair({
+      evalSkillId: id,
+      mode: "dry-run",
+      repeats: 1,
+    });
+    expect(pair.ok).toBe(false);
+    if (pair.ok) return;
+    expect(pair.status).toBe(400);
+    expect(pair.error).toMatch(/SKILL\.md empty/i);
+
+    expect(fs.readdirSync(jobsRoot).filter((n) => n.endsWith(".json"))).toEqual(
+      [],
+    );
+    expect(fs.readdirSync(resultsRoot)).toEqual([]);
   });
 });

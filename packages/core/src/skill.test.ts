@@ -54,6 +54,18 @@ describe("tryProvisionalSkillPin", () => {
     temps.push(root);
     expect(tryProvisionalSkillPin(root, "no-such-skill")).toBeNull();
   });
+
+  it("returns null when SKILL.md is empty", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-prov-empty-"));
+    temps.push(root);
+    writeMinimalSkill(root, "code-debugging-eval");
+    fs.writeFileSync(
+      path.join(root, "code-debugging-eval", "SKILL.md"),
+      "",
+      "utf8",
+    );
+    expect(tryProvisionalSkillPin(root, "code-debugging-eval")).toBeNull();
+  });
 });
 
 describe("loadSkill SKILL.md", () => {
@@ -81,6 +93,21 @@ describe("loadSkill SKILL.md", () => {
     writeMinimalSkill(root, "code-debugging-eval");
     const loaded = loadSkill(root, "code-debugging-eval");
     expect(loaded.skillMd).toContain("# skill");
+  });
+
+  it("rejects empty or whitespace-only SKILL.md", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-skill-empty-"));
+    temps.push(root);
+    writeMinimalSkill(root, "code-debugging-eval");
+    const md = path.join(root, "code-debugging-eval", "SKILL.md");
+    fs.writeFileSync(md, "", "utf8");
+    expect(() => loadSkill(root, "code-debugging-eval")).toThrow(
+      /SKILL\.md empty/,
+    );
+    fs.writeFileSync(md, "  \n\t  \n", "utf8");
+    expect(() => loadSkill(root, "code-debugging-eval")).toThrow(
+      /SKILL\.md empty/,
+    );
   });
 
   it("rejects a fixtures directory symlink", () => {

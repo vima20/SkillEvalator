@@ -158,6 +158,9 @@ function loadSkillFromRoot(
     }
   }
   const skillMd = readSkillMdFile(skillMdPath);
+  if (!skillMd.trim()) {
+    throw new Error("SKILL.md empty");
+  }
   const version = crypto
     .createHash("sha256")
     .update(hashDirFiles(root))
@@ -208,6 +211,9 @@ function provisionalPinFromRoot(
   );
   assertRealDirectory(fixturesRoot, "fixturesRoot");
   const skillMd = readSkillMdFile(skillMdPath);
+  if (!skillMd.trim()) {
+    throw new Error("SKILL.md empty");
+  }
   const version = crypto
     .createHash("sha256")
     .update(hashDirFiles(root))
