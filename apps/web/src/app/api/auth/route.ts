@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  parseSeAuthCookie,
+  timingSafeEqualUtf8,
+  webAuthMatches,
+} from "@/lib/webAuth";
 
 const COOKIE = "se_auth";
 const Body = z.object({ token: z.string().min(1) });
@@ -13,11 +18,11 @@ export async function GET(req: Request) {
   if (!token) {
     return NextResponse.json({ required: false, ok: true });
   }
-  const cookie = req.headers.get("cookie") ?? "";
-  const match = cookie.match(/(?:^|;\s*)se_auth=([^;]+)/);
-  const value = match ? decodeURIComponent(match[1]!) : "";
-  const auth = req.headers.get("authorization");
-  const ok = value === token || auth === `Bearer ${token}`;
+  const ok = await webAuthMatches({
+    expected: token,
+    cookie: parseSeAuthCookie(req.headers.get("cookie")),
+    authorization: req.headers.get("authorization"),
+  });
   return NextResponse.json({ required: true, ok });
 }
 
@@ -28,7 +33,7 @@ export async function POST(req: Request) {
   }
   try {
     const body = Body.parse(await req.json());
-    if (body.token !== token) {
+    if (!(await timingSafeEqualUtf8(body.token, token))) {
       return NextResponse.json({ error: "invalid token" }, { status: 401 });
     }
     const res = NextResponse.json({ ok: true, required: true });
@@ -46,6 +51,11 @@ export async function POST(req: Request) {
 
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+  res.cookies.set(COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
   return res;
 }

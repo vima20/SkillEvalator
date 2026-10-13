@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { webAuthMatches } from "@/lib/webAuth";
 
 /**
  * Optional shared-secret for API + pages when WEB_AUTH_TOKEN is set.
  * Leave empty for open local use. /api/auth stays open so the unlock form
  * can set the se_auth cookie; pages redirect to /unlock before RSC runs.
  */
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const token = process.env.WEB_AUTH_TOKEN?.trim();
   if (!token) return NextResponse.next();
 
@@ -16,9 +17,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const auth = req.headers.get("authorization");
-  const cookie = req.cookies.get("se_auth")?.value;
-  const ok = auth === `Bearer ${token}` || cookie === token;
+  const ok = await webAuthMatches({
+    expected: token,
+    cookie: req.cookies.get("se_auth")?.value,
+    authorization: req.headers.get("authorization"),
+  });
 
   if (pathname === "/unlock" || pathname.startsWith("/unlock/")) {
     if (ok) {
