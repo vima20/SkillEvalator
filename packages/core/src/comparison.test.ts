@@ -328,6 +328,69 @@ describe("compareBaselineCandidate", () => {
     );
   });
 
+  it("INCONCLUSIVE when decoding disagrees with capture.env on a leg", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        decoding: { temperature: 0, top_p: 1, seed: 42 },
+        capture: {
+          skillVersion: "abc",
+          role: "baseline",
+          dependencies: [],
+          promptHash: "base",
+          promptKind: "baseline_neutral",
+          env: {
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            temperature: 0.7,
+            topP: 1,
+            seed: 42,
+            maxOutputTokens: 1024,
+            costCapUsd: 5,
+            costHardStop: true,
+            fakeProduce: false,
+            allowHostGrade: false,
+            grade: "docker_script",
+          },
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        decoding: { temperature: 0, top_p: 1, seed: 42 },
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
+          env: {
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            temperature: 0,
+            topP: 1,
+            seed: 42,
+            maxOutputTokens: 1024,
+            costCapUsd: 5,
+            costHardStop: true,
+            fakeProduce: false,
+            allowHostGrade: false,
+            grade: "docker_script",
+          },
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        i.includes("baseline.decoding.temperature"),
+      ),
+    ).toBe(true);
+  });
+
   it("INCONCLUSIVE when capture.env.grade drifts from pipeline.grade", () => {
     const c = compareBaselineCandidate(
       sample({

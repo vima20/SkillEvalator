@@ -297,6 +297,32 @@ export function checkComparisonParity(
       `decoding.seed mismatch: baseline=${baseline.decoding.seed ?? "none"} candidate=${candidate.decoding.seed ?? "none"}`,
     );
   }
+  // Per-leg: scored decoding must match what Capture recorded.
+  for (const [label, leg] of [
+    ["baseline", baseline],
+    ["candidate", candidate],
+  ] as const) {
+    const env = leg.capture?.env;
+    if (!env) continue;
+    if (
+      env.temperature !== undefined &&
+      env.temperature !== leg.decoding.temperature
+    ) {
+      issues.push(
+        `${label}.decoding.temperature ${leg.decoding.temperature} ≠ capture.env.temperature ${env.temperature}`,
+      );
+    }
+    if (env.topP !== undefined && env.topP !== leg.decoding.top_p) {
+      issues.push(
+        `${label}.decoding.top_p ${leg.decoding.top_p} ≠ capture.env.topP ${env.topP}`,
+      );
+    }
+    if (env.seed !== undefined && env.seed !== leg.decoding.seed) {
+      issues.push(
+        `${label}.decoding.seed ${leg.decoding.seed ?? "none"} ≠ capture.env.seed ${env.seed}`,
+      );
+    }
+  }
   if (baseline.pipeline.grade !== candidate.pipeline.grade) {
     issues.push(
       `pipeline.grade mismatch: baseline=${baseline.pipeline.grade} candidate=${candidate.pipeline.grade}`,
