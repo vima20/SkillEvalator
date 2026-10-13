@@ -46,15 +46,22 @@ export function loadEvaluationMeta(
 
 /**
  * After a paired-leg retry, point Comparison at the new runId for that role.
+ * Sync mode / evalSkillId when provided so expectedEvaluationMode parity
+ * matches the retried leg (stale meta must not leave Comparison INCONCLUSIVE).
  * Exclusive lock so concurrent baseline+candidate retries cannot clobber each other.
  */
 export function updateEvaluationMetaLeg(opts: {
   evaluationId: string;
   role: "baseline" | "candidate";
   runId: string;
+  mode?: "dry-run" | "official";
+  evalSkillId?: string;
 }): boolean {
   const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
   const runId = assertSafeId(opts.runId, "runId");
+  const evalSkillId = opts.evalSkillId
+    ? assertSafeId(opts.evalSkillId, "evalSkillId")
+    : undefined;
   const metaPath = evaluationMetaPath(evaluationId);
   const lockPath = `${metaPath}.lock`;
   if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: 80 })) {
@@ -68,6 +75,8 @@ export function updateEvaluationMetaLeg(opts: {
       ...(opts.role === "baseline"
         ? { baselineRunId: runId }
         : { candidateRunId: runId }),
+      ...(opts.mode ? { mode: opts.mode } : {}),
+      ...(evalSkillId ? { evalSkillId } : {}),
       updatedAt: new Date().toISOString(),
     };
     writeJsonFile(metaPath, next);

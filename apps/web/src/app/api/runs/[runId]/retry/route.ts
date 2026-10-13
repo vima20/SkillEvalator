@@ -148,6 +148,8 @@ export async function POST(
         evaluationId,
         role: role === "baseline" ? "baseline" : "candidate",
         runId: newRunId,
+        ...(mode === "dry-run" || mode === "official" ? { mode } : {}),
+        evalSkillId,
       });
     };
 
