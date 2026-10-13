@@ -11,7 +11,8 @@ export const WORKER_HEARTBEAT_IDLE_STALE_MS = 20_000;
 
 /**
  * After claim writes .running.json + .worker.pid, allow a short window
- * before heartbeat has runId — avoid web heal failing a just-started job.
+ * before the first busy heartbeat with runId (worker starts it immediately
+ * after status=running; grace covers FS/clock skew and crash mid-write).
  */
 export const RUNNING_CLAIM_GRACE_MS = 30_000;
 

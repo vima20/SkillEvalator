@@ -264,6 +264,15 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     ...(evaluationId ? { evaluationId } : {}),
   });
 
+  // Own the run in .worker before loadSkill / grade pin — claim grace is only
+  // 30s; slow setup must not look like an orphan (false .failed → Retry double-spend).
+  const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
+  const heartbeatTimer = setInterval(() => {
+    touchHeartbeat({ busy: true, runId });
+  }, 5_000);
+  touchHeartbeat({ busy: true, runId });
+
+  try {
   // Seed Retry pin before loadSkill (parent snapshot or live tree) for both
   // roles so baseline fixture drift cannot spend tokens after a soft fail.
   if (job.skillSnapshotFromRunId) {
@@ -446,7 +455,6 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   writeJsonFile(path.join(resultDir, "capture.json"), capture);
 
   const statusPath = path.join(resultDir, "status.json");
-  const cancelPath = path.join(config.jobsDir, `${runId}.cancel`);
   const writeStatus = (fields: {
     status: string;
     repeat?: number;
@@ -464,12 +472,6 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     });
   };
 
-  const heartbeatTimer = setInterval(() => {
-    touchHeartbeat({ busy: true, runId });
-  }, 5_000);
-  touchHeartbeat({ busy: true, runId });
-
-  try {
     if (fs.existsSync(cancelPath)) {
       stop = "cancelled";
       findings.push("cancelled");

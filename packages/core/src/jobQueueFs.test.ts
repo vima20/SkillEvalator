@@ -225,6 +225,38 @@ describe("reclaimOrphanRunningJobsFs", () => {
     expect(fs.existsSync(running)).toBe(true);
   });
 
+  it("skips past claim grace when heartbeat still owns the run", () => {
+    // Worker heartbeats with runId before loadSkill; claim mtime alone must not
+    // fail a live setup that exceeded RUNNING_CLAIM_GRACE_MS.
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const runId = "run_100_slowsetup";
+    const running = path.join(jobsDir, `${runId}.running.json`);
+    const pidFile = path.join(jobsDir, `${runId}.worker.pid`);
+    fs.writeFileSync(running, "{}");
+    fs.writeFileSync(pidFile, formatWorkerPidRecord({ pid: 4242, runId }));
+    const past = new Date(Date.now() - 120_000);
+    fs.utimesSync(running, past, past);
+    fs.utimesSync(pidFile, past, past);
+    writeJsonFile(path.join(jobsDir, ".worker"), {
+      pid: 4242,
+      at: new Date().toISOString(),
+      busy: true,
+      runId,
+    });
+    writeJsonFile(path.join(resultsDir, runId, "status.json"), {
+      runId,
+      status: "running",
+    });
+
+    const out = reclaimOrphanRunningJobsFs(jobsDir, resultsDir, () => true);
+    expect(out.failed).toEqual([]);
+    expect(out.finalized).toEqual([]);
+    expect(fs.existsSync(running)).toBe(true);
+  });
+
   it("fails zombie .running when pid alive but idle heartbeat has no runId", () => {
     const root = tmpRoot();
     const jobsDir = path.join(root, "jobs");
