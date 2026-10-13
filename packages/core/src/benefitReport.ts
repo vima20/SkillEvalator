@@ -303,7 +303,7 @@ export function rateSkill(result: RunResult): BenefitRating {
 /**
  * Official + perfect score → use.
  * Completed run with imperfect score → do not use.
- * Dry-run / cancelled / budget / null score → inconclusive.
+ * Dry-run / cancelled / budget / smoke / null score → inconclusive.
  */
 export function decideSkillUse(result: RunResult): BenefitVerdict {
   const score = result.score;
@@ -318,6 +318,17 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
         status === "cancelled"
           ? "Run was cancelled before a complete scorecard was produced."
           : "Cost hard-stop ended the run; score is not a valid adoption signal.",
+    };
+  }
+
+  // FAKE_PRODUCE smoke harness — scores are not an adoption signal.
+  if (result.capture?.env?.fakeProduce === true) {
+    return {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — smoke harness (FAKE_PRODUCE)",
+      decision: "INCONCLUSIVE — smoke produce; not an adoption verdict",
+      rationale:
+        "This run used FAKE_PRODUCE=known-good (fixture smoke). Scores and Benefit USE are not valid for skill adoption — re-run with a live model produce.",
     };
   }
 

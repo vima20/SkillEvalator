@@ -61,6 +61,53 @@ describe("compareBaselineCandidate", () => {
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
   });
 
+  it("INCONCLUSIVE when both legs used fakeProduce smoke", () => {
+    const smokeEnv = {
+      fakeProduce: true as const,
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
+    };
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.7,
+        capture: {
+          githubUrl:
+            "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+          commit: "deadbeef",
+          license: "MIT",
+          dependencies: [],
+          skillVersion: "abc",
+          role: "baseline",
+          promptHash: "baselinehash0001",
+          promptKind: "baseline_neutral",
+          env: smokeEnv,
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.85,
+        capture: {
+          githubUrl:
+            "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+          commit: "deadbeef",
+          license: "MIT",
+          dependencies: [],
+          skillVersion: "abc",
+          role: "candidate",
+          promptHash: "candidatehash0002",
+          promptKind: "skill_md",
+          env: smokeEnv,
+        },
+      }),
+    );
+    expect(c.parity.ok).toBe(true);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.rationale).toMatch(/FAKE_PRODUCE|smoke/i);
+  });
+
   it("FAIL when lift too small", () => {
     const c = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.9 }),

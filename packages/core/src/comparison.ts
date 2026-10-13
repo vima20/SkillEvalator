@@ -492,6 +492,14 @@ export function compareBaselineCandidate(
     verdict = "INCONCLUSIVE";
     rationale = `Parity check failed — baseline and candidate are not comparable: ${parity.issues.join("; ")}`;
   } else if (
+    baseline.capture?.env?.fakeProduce === true &&
+    candidate.capture?.env?.fakeProduce === true
+  ) {
+    // Matching smoke env passes parity but must not yield PASS / FAIL adoption.
+    verdict = "INCONCLUSIVE";
+    rationale =
+      "Both legs used FAKE_PRODUCE=known-good (smoke harness). Lift is not an adoption signal — re-run with live model produce.";
+  } else if (
     baseline.status === "cancelled" ||
     candidate.status === "cancelled" ||
     baseline.status === "budget_stop" ||

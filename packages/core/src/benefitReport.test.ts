@@ -64,6 +64,24 @@ describe("decideSkillUse", () => {
     expect(v.headline).toMatch(/USE/);
   });
 
+  it("inconclusive on official pass when fakeProduce smoke", () => {
+    const v = decideSkillUse(
+      sample({
+        mode: "official",
+        score: 1,
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        capture: {
+          role: "candidate",
+          skillVersion: "abc123",
+          env: { fakeProduce: true },
+        },
+      }),
+    );
+    expect(v.recommendation).toBe("inconclusive");
+    expect(v.headline).toMatch(/smoke|FAKE_PRODUCE/i);
+  });
+
   it("use on official near-perfect (≥0.99)", () => {
     const v = decideSkillUse(
       sample({
