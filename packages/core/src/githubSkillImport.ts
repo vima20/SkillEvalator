@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { releaseWxLock, tryAcquireWxLock } from "./fsSafe.js";
 import { writeJsonFile } from "./fsJson.js";
 import { assertSafeId, resolveUnder } from "./paths.js";
 import { SkillManifestSchema } from "./schema.js";
@@ -10,6 +11,8 @@ import { loadSkill, type SkillSummary } from "./skill.js";
 
 /** Shared limit for GitHub download and local zip upload. */
 export const SKILL_IMPORT_MAX_ZIP_BYTES = 80 * 1024 * 1024;
+/** Stale .importing locks (crashed web) older than this are stolen. */
+export const SKILL_IMPORT_LOCK_STALE_MS = 5 * 60 * 1000;
 const MAX_ZIP_BYTES = SKILL_IMPORT_MAX_ZIP_BYTES;
 const MAX_SKILLS = 30;
 const MAX_WALK_DEPTH = 8;
@@ -312,20 +315,14 @@ function installSkillsFromSearchRoot(opts: {
     const dest = resolveUnder(opts.importedSkillsDir, importId);
     const lockPath = `${dest}.importing`;
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    let lockFd: number | null = null;
+    let lockHeld = false;
     try {
-      try {
-        lockFd = fs.openSync(lockPath, "wx");
-        fs.writeFileSync(lockFd, new Date().toISOString(), "utf8");
-      } catch (err) {
-        const code =
-          err && typeof err === "object" && "code" in err
-            ? String((err as { code?: unknown }).code)
-            : "";
-        if (code === "EEXIST") {
-          throw new Error(`import already in progress for ${importId}`);
-        }
-        throw err;
+      lockHeld = tryAcquireWxLock(lockPath, {
+        staleMs: SKILL_IMPORT_LOCK_STALE_MS,
+        retries: 0,
+      });
+      if (!lockHeld) {
+        throw new Error(`import already in progress for ${importId}`);
       }
 
       if (fs.existsSync(dest)) {
@@ -414,18 +411,7 @@ function installSkillsFromSearchRoot(opts: {
         pageUrl: opts.source.pageUrl,
       });
     } finally {
-      if (lockFd != null) {
-        try {
-          fs.closeSync(lockFd);
-        } catch {
-          /* ignore */
-        }
-      }
-      try {
-        fs.unlinkSync(lockPath);
-      } catch {
-        /* ignore */
-      }
+      if (lockHeld) releaseWxLock(lockPath);
     }
   }
 

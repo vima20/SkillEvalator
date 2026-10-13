@@ -19,9 +19,9 @@ or
 
 Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*` and pages (redirect to `/unlock` before RSC); the UI sets a `se_auth` cookie after unlock.
 
-CI: `npm run ci` runs unit tests, `typecheck`, and `smoke:skills`. New Run defaults to **baseline↔candidate**, cost estimate, and GitHub **Find/Receive** import.
+CI: `npm run ci` runs unit tests, `typecheck`, and `smoke:skills`. New Run defaults to **baseline↔candidate**, cost estimate, and **Find/Receive** import (GitHub URL or local `.zip`).
 
-Unikie handover: [docs/UNIKIE-HANDOVER.md](docs/UNIKIE-HANDOVER.md) · D1: [docs/D1-TASK-FAMILY.md](docs/D1-TASK-FAMILY.md).
+D1 task family: [docs/D1-TASK-FAMILY.md](docs/D1-TASK-FAMILY.md).
 
 ## Models
 
@@ -36,7 +36,7 @@ Unikie handover: [docs/UNIKIE-HANDOVER.md](docs/UNIKIE-HANDOVER.md) · D1: [docs
 - `eval-skills/code-debugging-eval` — skill #1 minimal prompt (`taskSetDir: cde-v1`)
 - `eval-skills/code-debugging-eval-checklist` — alternate prompt, same shared `cde-v1` fixtures
 - `eval-skills/test-generation-eval` — skill #2 (write assert tests, 6 tasks; adversarial subject-bad)
-- `data/imported-skills/` — GitHub imports (Find/Receive)
+- `data/imported-skills/` — GitHub / local zip imports (Find/Receive)
 - `packages/core` — schema, scoring, skill loader, Docker grade, comparison, CSV
 - `apps/worker` — file queue + produce/grade + capture
 - `apps/web` — New run / Runs / Comparison / Dashboard / Benefit Report

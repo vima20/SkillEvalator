@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -5,6 +6,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { writeJsonFile } from "./fsJson.js";
 import {
+  SKILL_IMPORT_LOCK_STALE_MS,
   importSkillsFromZip,
   parseGitHubSkillUrl,
 } from "./githubSkillImport.js";
@@ -185,4 +187,74 @@ describe("importSkillsFromZip", () => {
       }),
     ).toThrow(/No SkillEvalator skills found/);
   });
+
+  it("steals a stale .importing lock after crash", () => {
+    const work = mkTemp("se-zip-stale-");
+    const pkg = path.join(work, "pkg");
+    const imported = path.join(work, "imported");
+    const shared = path.join(work, "shared");
+    writeZipSkillPackage(pkg, "stale-skill");
+    writeSharedTaskset(shared);
+    const zipPath = path.join(work, "stale-skill.zip");
+    zipDir(pkg, zipPath);
+
+    const label = "stale-skill.zip";
+    const importId = localImportId("stale-skill", label);
+    fs.mkdirSync(imported, { recursive: true });
+    const lockPath = path.join(imported, `${importId}.importing`);
+    fs.writeFileSync(lockPath, "crashed", "utf8");
+    const past = new Date(Date.now() - SKILL_IMPORT_LOCK_STALE_MS - 5_000);
+    fs.utimesSync(lockPath, past, past);
+
+    const result = importSkillsFromZip({
+      zipPath,
+      sourceLabel: label,
+      importedSkillsDir: imported,
+      tasksetSearchDirs: [shared],
+    });
+    expect(result.skills).toHaveLength(1);
+    expect(result.skills[0]!.importId).toBe(importId);
+    expect(fs.existsSync(lockPath)).toBe(false);
+  });
+
+  it("rejects a fresh .importing lock", () => {
+    const work = mkTemp("se-zip-fresh-");
+    const pkg = path.join(work, "pkg");
+    const imported = path.join(work, "imported");
+    const shared = path.join(work, "shared");
+    writeZipSkillPackage(pkg, "fresh-skill");
+    writeSharedTaskset(shared);
+    const zipPath = path.join(work, "fresh-skill.zip");
+    zipDir(pkg, zipPath);
+
+    const label = "fresh-skill.zip";
+    const importId = localImportId("fresh-skill", label);
+    fs.mkdirSync(imported, { recursive: true });
+    fs.writeFileSync(
+      path.join(imported, `${importId}.importing`),
+      String(Date.now()),
+      "utf8",
+    );
+
+    expect(() =>
+      importSkillsFromZip({
+        zipPath,
+        sourceLabel: label,
+        importedSkillsDir: imported,
+        tasksetSearchDirs: [shared],
+      }),
+    ).toThrow(/import already in progress/);
+  });
 });
+
+function localImportId(folder: string, sourceLabel: string): string {
+  const safe = folder
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 40);
+  const hash = createHash("sha256")
+    .update(sourceLabel)
+    .digest("hex")
+    .slice(0, 8);
+  return `imp_local_${safe}_${hash}`;
+}
