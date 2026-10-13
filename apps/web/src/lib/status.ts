@@ -8,6 +8,7 @@ const ACTIVE_RUN = new Set(["queued", "running", "cancel_requested"]);
  * True while a run may still change (refresh-worthy). Safe for RSC + client.
  * `budget_stop` is active only until result.json lands (wind-down); with a
  * terminal result it must not keep dashboard/runs auto-refreshing forever.
+ * Missing / `unknown` (status.json lag) stays active until a result exists.
  */
 export function runIsActive(
   status: string | undefined,
@@ -15,7 +16,29 @@ export function runIsActive(
 ): boolean {
   const s = status ?? "";
   if (s === "budget_stop") return !hasResult;
-  return ACTIVE_RUN.has(s);
+  if (ACTIVE_RUN.has(s)) return true;
+  if (!s || s === "unknown") return !hasResult;
+  return false;
+}
+
+const BENEFIT_SETTLED = new Set(["ok", "failed", "cancelled"]);
+
+/**
+ * BenefitPending wait/unavailable gates (pure — vitest without React).
+ * Poll while not settled and budget wind-down has not orphan-timed-out,
+ * including missing/`unknown` status (status.json may lag result.json).
+ */
+export function benefitPendingState(opts: {
+  status?: string | null;
+  budgetTimedOut: boolean;
+}): { windDown: boolean; stillWaiting: boolean; unavailable: boolean } {
+  const st = opts.status ?? undefined;
+  const windDown = st === "budget_stop";
+  const settled = BENEFIT_SETTLED.has(st ?? "");
+  const budgetExpired = windDown && opts.budgetTimedOut;
+  const stillWaiting = !settled && !budgetExpired;
+  const unavailable = settled || budgetExpired;
+  return { windDown, stillWaiting, unavailable };
 }
 
 export function statusBadgeKind(status?: string | null): StatusBadgeKind {

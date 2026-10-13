@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { runIsActive } from "@/lib/status";
-
-const SETTLED = new Set(["ok", "failed", "cancelled"]);
+import { benefitPendingState } from "@/lib/status";
 
 /** Auto-refresh while waiting for result.json / benefit report. */
 export function BenefitPending({
@@ -19,15 +17,10 @@ export function BenefitPending({
   const [busy, setBusy] = useState(false);
   const [budgetTimedOut, setBudgetTimedOut] = useState(false);
 
-  const st = status ?? undefined;
-  const windDown = st === "budget_stop";
-  const settled = SETTLED.has(st ?? "");
-  // Missing/unknown status: keep polling (status.json may not exist yet).
-  const stillWaiting =
-    !settled &&
-    !(windDown && budgetTimedOut) &&
-    (runIsActive(st, false) || windDown || !st);
-  const unavailable = (settled || (windDown && budgetTimedOut)) && !stillWaiting;
+  const { windDown, stillWaiting, unavailable } = benefitPendingState({
+    status,
+    budgetTimedOut,
+  });
 
   useEffect(() => {
     if (!windDown) {
