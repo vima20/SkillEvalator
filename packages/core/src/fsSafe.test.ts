@@ -3,9 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  QUEUE_CLAIM_LOCK_STALE_MS,
   assertRealDirectory,
   readRegularFileUtf8,
   releaseWxLock,
+  tryAcquireQueueClaimLock,
   tryAcquireWxLock,
   tryReadRegularFileUtf8,
 } from "./fsSafe.js";
@@ -73,5 +75,50 @@ describe("fsSafe", () => {
     fs.utimesSync(lock, past, past);
     expect(tryAcquireWxLock(lock, { retries: 0, staleMs: 30_000 })).toBe(true);
     releaseWxLock(lock);
+  });
+
+  it("queue claim steals stale age locks", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-qclaim-"));
+    temps.push(root);
+    const lock = path.join(root, ".lock");
+    fs.writeFileSync(lock, String(Date.now()), "utf8");
+    const past = new Date(Date.now() - QUEUE_CLAIM_LOCK_STALE_MS - 5_000);
+    fs.utimesSync(lock, past, past);
+    expect(tryAcquireQueueClaimLock(lock)).toBe(true);
+    releaseWxLock(lock);
+  });
+
+  it("queue claim steals a fresh dead legacy PID lock", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-qpid-"));
+    temps.push(root);
+    const lock = path.join(root, ".lock");
+    fs.writeFileSync(lock, "424242", "utf8");
+    expect(
+      tryAcquireQueueClaimLock(lock, { isPidAlive: () => false }),
+    ).toBe(true);
+    releaseWxLock(lock);
+  });
+
+  it("queue claim keeps a fresh live PID lock", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-qlive-"));
+    temps.push(root);
+    const lock = path.join(root, ".lock");
+    fs.writeFileSync(lock, "12345", "utf8");
+    expect(
+      tryAcquireQueueClaimLock(lock, { isPidAlive: () => true }),
+    ).toBe(false);
+  });
+
+  it("queue claim does not treat timestamp locks as PIDs", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-qts-"));
+    temps.push(root);
+    const lock = path.join(root, ".lock");
+    fs.writeFileSync(lock, String(Date.now()), "utf8");
+    expect(
+      tryAcquireQueueClaimLock(lock, {
+        staleMs: 60_000,
+        isPidAlive: () => false,
+      }),
+    ).toBe(false);
   });
 });

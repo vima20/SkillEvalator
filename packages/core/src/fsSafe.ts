@@ -100,6 +100,43 @@ export function releaseWxLock(lockPath: string): void {
   }
 }
 
+/** Worker claim lock: held only for rename+pid write before produce/grade. */
+export const QUEUE_CLAIM_LOCK_STALE_MS = 30_000;
+
+/**
+ * Queue claim lock: wx + age steal, plus immediate steal of a fresh legacy
+ * PID lock when `isPidAlive` reports the holder is dead (≤8 digit pid text;
+ * timestamp locks are 13 digits and are never treated as PIDs).
+ */
+export function tryAcquireQueueClaimLock(
+  lockPath: string,
+  opts?: {
+    staleMs?: number;
+    isPidAlive?: (pid: number) => boolean;
+  },
+): boolean {
+  const staleMs = opts?.staleMs ?? QUEUE_CLAIM_LOCK_STALE_MS;
+  if (tryAcquireWxLock(lockPath, { staleMs, retries: 5 })) {
+    return true;
+  }
+  const isPidAlive = opts?.isPidAlive;
+  if (!isPidAlive) return false;
+  try {
+    const raw = fs.readFileSync(lockPath, "utf8").trim();
+    if (!/^\d{1,8}$/.test(raw)) return false;
+    const pid = Number(raw);
+    if (isPidAlive(pid)) return false;
+    try {
+      fs.unlinkSync(lockPath);
+    } catch {
+      /* ignore */
+    }
+    return tryAcquireWxLock(lockPath, { staleMs, retries: 2 });
+  } catch {
+    return false;
+  }
+}
+
 function sleepMs(ms: number): void {
   const buf = new Int32Array(new SharedArrayBuffer(4));
   Atomics.wait(buf, 0, 0, ms);

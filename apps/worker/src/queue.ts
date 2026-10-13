@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   JobManifestSchema,
   type JobManifest,
+  QUEUE_CLAIM_LOCK_STALE_MS,
   cleanupOrphanQueuedFs,
   cleanupOrphanRunningStatusFs,
   formatRunError,
@@ -10,7 +11,9 @@ import {
   isQueuedJobFile,
   readJsonFileAs,
   reclaimOrphanRunningJobsFs,
+  releaseWxLock,
   syncStatusFromResult,
+  tryAcquireQueueClaimLock,
   writeJsonFile,
 } from "@skillevalator/core";
 import { config } from "./config.js";
@@ -57,48 +60,27 @@ function runIdFromJobPath(jobPath: string): string | null {
   return /^run_[A-Za-z0-9._-]+$/.test(base) ? base : null;
 }
 
-/** Acquire claim lock; steal only if recorded PID is dead (not by age). */
-function tryAcquireLock(lockPath: string): boolean {
-  try {
-    fs.writeFileSync(lockPath, String(process.pid), { flag: "wx" });
-    return true;
-  } catch {
-    try {
-      const pid = Number(fs.readFileSync(lockPath, "utf8").trim());
-      if (!isPidAlive(pid)) {
-        fs.unlinkSync(lockPath);
-        fs.writeFileSync(lockPath, String(process.pid), { flag: "wx" });
-        return true;
-      }
-    } catch {
-      /* ignore */
-    }
-    return false;
-  }
-}
-
-function releaseLock(lockPath: string) {
-  try {
-    const raw = fs.readFileSync(lockPath, "utf8").trim();
-    if (Number(raw) === process.pid) fs.unlinkSync(lockPath);
-  } catch {
-    try {
-      fs.unlinkSync(lockPath);
-    } catch {
-      /* ignore */
-    }
-  }
-}
-
-/** Clear leftover lock from a crashed previous process of this host. */
-function clearDeadLock(): void {
+/** Clear leftover claim lock from a crashed previous process of this host. */
+function clearStaleClaimLock(): void {
   const lock = path.join(config.jobsDir, ".lock");
   if (!fs.existsSync(lock)) return;
   try {
-    const pid = Number(fs.readFileSync(lock, "utf8").trim());
-    if (!isPidAlive(pid)) {
+    const raw = fs.readFileSync(lock, "utf8").trim();
+    if (/^\d{1,8}$/.test(raw)) {
+      const pid = Number(raw);
+      if (!isPidAlive(pid)) {
+        fs.unlinkSync(lock);
+        console.warn("cleared dead queue claim lock from pid", pid);
+        return;
+      }
+    }
+    const age = Date.now() - fs.statSync(lock).mtimeMs;
+    if (age > QUEUE_CLAIM_LOCK_STALE_MS) {
       fs.unlinkSync(lock);
-      console.warn("cleared dead queue lock from pid", pid);
+      console.warn(
+        "cleared stale queue claim lock",
+        `${Math.round(age / 1000)}s old`,
+      );
     }
   } catch {
     /* ignore */
@@ -234,7 +216,7 @@ function markStatusFailed(runId: string, err?: unknown) {
 export async function pollOnce(): Promise<boolean> {
   ensureDirs();
   const lock = path.join(config.jobsDir, ".lock");
-  if (!tryAcquireLock(lock)) return false;
+  if (!tryAcquireQueueClaimLock(lock, { isPidAlive })) return false;
 
   let job: JobManifest | null = null;
   let jobPath = "";
@@ -254,7 +236,7 @@ export async function pollOnce(): Promise<boolean> {
     );
   } finally {
     // Release before produce/grade so long official runs cannot stale-steal the lock.
-    releaseLock(lock);
+    releaseWxLock(lock);
   }
 
   if (!job) return false;
@@ -280,7 +262,7 @@ export async function pollOnce(): Promise<boolean> {
 
 export async function loop() {
   ensureDirs();
-  clearDeadLock();
+  clearStaleClaimLock();
   healOrphansNow();
   let lastOrphanHealMs = Date.now();
   touchHeartbeat();
