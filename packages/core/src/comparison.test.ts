@@ -547,10 +547,10 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
   });
 
-  it("INCONCLUSIVE when modelId is outside capture.env allowlist", () => {
+  it("INCONCLUSIVE when dry-run uses official modelId (mode↔env pin)", () => {
     const env = {
-      modelDryRun: "allowed-dry",
-      modelOfficial: "allowed-off",
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
       temperature: 0,
       topP: 1,
       seed: 1,
@@ -566,7 +566,8 @@ describe("compareBaselineCandidate", () => {
         runId: "b",
         role: "baseline",
         score: 0.5,
-        modelId: "gpt-4o-mini",
+        mode: "dry-run",
+        modelId: "gpt-4.1-mini",
         capture: {
           skillVersion: "abc",
           role: "baseline",
@@ -580,7 +581,8 @@ describe("compareBaselineCandidate", () => {
         runId: "c",
         role: "candidate",
         score: 0.95,
-        modelId: "gpt-4o-mini",
+        mode: "dry-run",
+        modelId: "gpt-4.1-mini",
         capture: {
           skillVersion: "abc",
           role: "candidate",
@@ -593,7 +595,102 @@ describe("compareBaselineCandidate", () => {
     );
     expect(c.verdict).toBe("INCONCLUSIVE");
     expect(
-      c.parity.issues.some((i) => i.includes("not in capture.env allowlist")),
+      c.parity.issues.some((i) =>
+        i.includes("≠ capture.env.modelDryRun"),
+      ),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when official repeats are below the floor", () => {
+    const env = {
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
+      temperature: 0,
+      topP: 1,
+      seed: 1,
+      maxOutputTokens: 1024,
+      costCapUsd: 5,
+      costHardStop: true,
+      fakeProduce: false,
+      allowHostGrade: false,
+      grade: "docker_script" as const,
+    };
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 1,
+        capture: {
+          skillVersion: "abc",
+          role: "baseline",
+          dependencies: [],
+          promptHash: "base",
+          promptKind: "baseline_neutral",
+          env,
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 1,
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
+          env,
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("official minimum")),
+    ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when capture.githubUrl disagrees with evalSkillGithubUrl", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        evalSkillGithubUrl: "https://github.com/acme/a",
+        capture: {
+          skillVersion: "abc",
+          role: "baseline",
+          dependencies: [],
+          promptHash: "base",
+          promptKind: "baseline_neutral",
+          githubUrl: "https://github.com/acme/b",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        evalSkillGithubUrl: "https://github.com/acme/a",
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          promptHash: "cand",
+          promptKind: "skill_md",
+          githubUrl: "https://github.com/acme/a",
+        },
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        i.includes("baseline.capture.githubUrl ≠ evalSkillGithubUrl"),
+      ),
     ).toBe(true);
   });
 

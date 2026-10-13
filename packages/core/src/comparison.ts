@@ -1,4 +1,5 @@
 import { PASS_SCORE_FLOOR } from "./diffScore.js";
+import { OFFICIAL_MIN_REPEATS } from "./job.js";
 import type { RunResult } from "./schema.js";
 
 /** Unikie alustava PASS: candidate ≥ baseline + 5 percentage points. */
@@ -340,7 +341,7 @@ export function checkComparisonParity(
     }
   }
 
-  // Capture skillVersion should match the scored evalSkillVersion on each leg.
+  // Capture skillVersion / githubUrl should match scored fields on each leg.
   for (const [label, leg] of [
     ["baseline", baseline],
     ["candidate", candidate],
@@ -349,6 +350,13 @@ export function checkComparisonParity(
     if (capVer && capVer !== leg.evalSkillVersion) {
       issues.push(
         `${label}.capture.skillVersion ${capVer} ≠ evalSkillVersion ${leg.evalSkillVersion}`,
+      );
+    }
+    const capGh = leg.capture?.githubUrl?.trim() ?? "";
+    const scoredGh = leg.evalSkillGithubUrl?.trim() ?? "";
+    if (capGh && scoredGh && capGh !== scoredGh) {
+      issues.push(
+        `${label}.capture.githubUrl ≠ evalSkillGithubUrl`,
       );
     }
   }
@@ -377,19 +385,35 @@ export function checkComparisonParity(
     );
   }
 
-  // modelId must be one of the captured allowlist entries when present.
+  // modelId must match the mode-pinned Capture env model (not merely allowlist).
   for (const [label, leg] of [
     ["baseline", baseline],
     ["candidate", candidate],
   ] as const) {
-    const dry = leg.capture?.env?.modelDryRun;
-    const off = leg.capture?.env?.modelOfficial;
-    const allowed = [dry, off].filter(
-      (m): m is string => typeof m === "string" && m.trim().length > 0,
-    );
-    if (allowed.length > 0 && !allowed.includes(leg.modelId)) {
+    const dry = leg.capture?.env?.modelDryRun?.trim() || undefined;
+    const off = leg.capture?.env?.modelOfficial?.trim() || undefined;
+    const expected =
+      leg.mode === "official" ? off : leg.mode === "dry-run" ? dry : undefined;
+    if (expected && leg.modelId !== expected) {
+      const field =
+        leg.mode === "official" ? "modelOfficial" : "modelDryRun";
       issues.push(
-        `${label}.modelId ${leg.modelId} not in capture.env allowlist (${allowed.join(", ")})`,
+        `${label}.modelId ${leg.modelId} ≠ capture.env.${field} ${expected} for mode ${leg.mode}`,
+      );
+    } else if (!expected) {
+      // Fallback: if only the other slot is set, still reject unknown modelIds.
+      const allowed = [dry, off].filter(
+        (m): m is string => typeof m === "string" && m.length > 0,
+      );
+      if (allowed.length > 0 && !allowed.includes(leg.modelId)) {
+        issues.push(
+          `${label}.modelId ${leg.modelId} not in capture.env allowlist (${allowed.join(", ")})`,
+        );
+      }
+    }
+    if (leg.mode === "official" && leg.repeats < OFFICIAL_MIN_REPEATS) {
+      issues.push(
+        `${label}.repeats ${leg.repeats} < official minimum ${OFFICIAL_MIN_REPEATS}`,
       );
     }
   }
