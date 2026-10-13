@@ -216,7 +216,16 @@ export async function POST(
       const snapshotDir = path.join(root, runId, "skill-snapshot");
       const snapshotPath = path.join(snapshotDir, "SKILL.md");
       const snapManifestPath = path.join(snapshotDir, "manifest.json");
-      const hasSkillMd = fs.existsSync(snapshotPath);
+      // Exists alone is not enough — empty/whitespace SKILL.md must not pin.
+      let hasSkillMd = false;
+      if (fs.existsSync(snapshotPath)) {
+        try {
+          hasSkillMd =
+            fs.readFileSync(snapshotPath, "utf8").trim().length > 0;
+        } catch {
+          hasSkillMd = false;
+        }
+      }
       let hasPinnedVersion = false;
       if (fs.existsSync(snapManifestPath)) {
         try {

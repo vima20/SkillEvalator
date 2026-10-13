@@ -85,11 +85,12 @@ export type RetrySnapshotGate =
 
 /**
  * Whether Retry may pin skillSnapshotFromRunId from the prior run.
- * Candidate needs SKILL.md + evalSkillVersion; baseline needs the version
- * pin so fixture drift cannot spend tokens before Comparison INCONCLUSIVE.
+ * Candidate needs non-empty SKILL.md + evalSkillVersion; baseline needs the
+ * version pin so fixture drift cannot spend tokens before Comparison INCONCLUSIVE.
  */
 export function retrySnapshotGate(opts: {
   role: "baseline" | "candidate";
+  /** True only when skill-snapshot/SKILL.md exists and trim() is non-empty. */
   hasSkillMd: boolean;
   hasPinnedVersion: boolean;
 }): RetrySnapshotGate {
@@ -98,7 +99,7 @@ export function retrySnapshotGate(opts: {
       return {
         allow: false,
         error:
-          "cannot retry candidate — skill-snapshot/SKILL.md or pinned evalSkillVersion missing; re-run from a finished candidate or start a new paired evaluation",
+          "cannot retry candidate — skill-snapshot/SKILL.md missing or empty, or pinned evalSkillVersion missing; re-run from a finished candidate or start a new paired evaluation",
       };
     }
     return { allow: true, useSkillSnapshot: true };

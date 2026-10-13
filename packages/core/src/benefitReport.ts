@@ -332,7 +332,18 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
     };
   }
 
-  if ((result.role ?? "candidate") === "baseline") {
+  // Do not invent candidate — missing role must not unlock USE.
+  if (result.role === undefined) {
+    return {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — missing eval role",
+      decision: "INCONCLUSIVE — result.role unset; not an adoption verdict",
+      rationale:
+        "RunResult.role is missing. Benefit cannot assume candidate (that could treat a baseline leg as adoption). Re-run or open Comparison with explicit roles.",
+    };
+  }
+
+  if (result.role === "baseline") {
     return {
       recommendation: "inconclusive",
       headline: "BASELINE — not an adoption verdict",
@@ -426,7 +437,7 @@ export function buildBenefitReport(result: RunResult): BenefitReport {
       evalSkillId: result.evalSkillId,
       evalSkillVersion: result.evalSkillVersion,
       evalSkillGithubUrl: result.evalSkillGithubUrl,
-      role: result.role ?? "candidate",
+      role: result.role,
       evaluationId: result.evaluationId,
       commit: result.capture?.commit,
       license: result.capture?.license,

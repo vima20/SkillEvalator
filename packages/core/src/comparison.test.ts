@@ -1413,6 +1413,28 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
   });
 
+  it("INCONCLUSIVE when legs disagree with evaluation meta mode", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        mode: "dry-run",
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        mode: "dry-run",
+      }),
+      { expectedEvaluationMode: "official" },
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => i.includes("evaluation meta mode")),
+    ).toBe(true);
+  });
+
   it("INCONCLUSIVE when decoding.seed or pipeline.grade differs", () => {
     const seedMismatch = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.5 }),

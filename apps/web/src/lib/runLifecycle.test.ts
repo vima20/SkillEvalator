@@ -71,7 +71,7 @@ describe("pairedCancelPeerStatuses", () => {
 });
 
 describe("retrySnapshotGate", () => {
-  it("requires SKILL.md + version for candidate", () => {
+  it("requires non-empty SKILL.md + version for candidate", () => {
     expect(
       retrySnapshotGate({
         role: "candidate",
@@ -93,6 +93,13 @@ describe("retrySnapshotGate", () => {
         hasPinnedVersion: false,
       }).allow,
     ).toBe(false);
+    const emptyMd = retrySnapshotGate({
+      role: "candidate",
+      hasSkillMd: false, // route treats whitespace-only as false
+      hasPinnedVersion: true,
+    });
+    expect(emptyMd.allow).toBe(false);
+    if (!emptyMd.allow) expect(emptyMd.error).toMatch(/empty|missing/i);
   });
 
   it("requires pinned version for baseline (SKILL.md optional)", () => {

@@ -104,7 +104,11 @@ function pushStringFieldParity(
 export function checkComparisonParity(
   baseline: RunResult,
   candidate: RunResult,
-  opts?: { expectedEvalSkillId?: string },
+  opts?: {
+    expectedEvalSkillId?: string;
+    /** evaluation.json mode — legs must match meta, not only each other. */
+    expectedEvaluationMode?: RunResult["mode"];
+  },
 ): ComparisonParity {
   const issues: string[] = [];
   if (baseline.evalSkillId !== candidate.evalSkillId) {
@@ -263,6 +267,19 @@ export function checkComparisonParity(
     if (candidate.evalSkillId !== expected) {
       issues.push(
         `candidate.evalSkillId ${candidate.evalSkillId} ≠ evaluation meta ${expected}`,
+      );
+    }
+  }
+  const expectedMode = opts?.expectedEvaluationMode;
+  if (expectedMode) {
+    if (baseline.mode !== expectedMode) {
+      issues.push(
+        `baseline.mode ${baseline.mode} ≠ evaluation meta mode ${expectedMode}`,
+      );
+    }
+    if (candidate.mode !== expectedMode) {
+      issues.push(
+        `candidate.mode ${candidate.mode} ≠ evaluation meta mode ${expectedMode}`,
       );
     }
   }
@@ -462,7 +479,10 @@ export function buildTaskRegressions(
 export function compareBaselineCandidate(
   baseline: RunResult,
   candidate: RunResult,
-  opts?: { expectedEvalSkillId?: string },
+  opts?: {
+    expectedEvalSkillId?: string;
+    expectedEvaluationMode?: RunResult["mode"];
+  },
 ): RunComparison {
   const evaluationId =
     baseline.evaluationId ??

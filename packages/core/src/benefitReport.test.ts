@@ -64,6 +64,19 @@ describe("decideSkillUse", () => {
     expect(v.headline).toMatch(/USE/);
   });
 
+  it("inconclusive when role is missing (do not invent candidate)", () => {
+    const base = sample({
+      mode: "official",
+      score: 1,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const { role: _drop, ...rest } = base;
+    const v = decideSkillUse(rest as RunResult);
+    expect(v.recommendation).toBe("inconclusive");
+    expect(v.headline).toMatch(/missing.*role/i);
+  });
+
   it("inconclusive on official pass when fakeProduce smoke", () => {
     const v = decideSkillUse(
       sample({

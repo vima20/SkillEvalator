@@ -105,6 +105,9 @@ export function loadEvaluationComparison(
           ...(meta?.evalSkillId
             ? { expectedEvalSkillId: meta.evalSkillId }
             : {}),
+          ...(meta?.mode === "dry-run" || meta?.mode === "official"
+            ? { expectedEvaluationMode: meta.mode }
+            : {}),
         })
       : null;
 
