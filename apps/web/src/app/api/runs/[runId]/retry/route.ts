@@ -19,11 +19,19 @@ import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
 import { updateEvaluationMetaLeg } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import {
+  evaluationIdFromSources,
+  resolveRetryRole,
+  roleFromJobRaw,
+} from "@/lib/retryRole";
 import { retryGate, retrySnapshotGate } from "@/lib/runLifecycle";
 
 export const dynamic = "force-dynamic";
 
-function loadFailedJob(runId: string) {
+function loadFailedJob(runId: string): {
+  job: ReturnType<typeof JobManifestSchema.parse>;
+  roleExplicit: ReturnType<typeof roleFromJobRaw>;
+} | null {
   const candidates = [
     path.join(jobsDir(), `${runId}.failed.json`),
     path.join(jobsDir(), `${runId}.done.json`),
@@ -32,7 +40,11 @@ function loadFailedJob(runId: string) {
   for (const p of candidates) {
     if (!fs.existsSync(p)) continue;
     try {
-      return JobManifestSchema.parse(readJsonFile(p));
+      const raw = readJsonFile(p);
+      return {
+        job: JobManifestSchema.parse(raw),
+        roleExplicit: roleFromJobRaw(raw),
+      };
     } catch {
       /* try next */
     }
@@ -81,19 +93,24 @@ export async function POST(
       );
     }
 
-    const job = loadFailedJob(runId);
+    const failed = loadFailedJob(runId);
+    const job = failed?.job;
     const result = loadRunResult(root, runId);
 
     const evalSkillId = job?.evalSkillId ?? result?.evalSkillId;
     const mode = job?.mode ?? result?.mode;
     const repeats = job?.repeats ?? result?.repeats;
     const modelId = job?.modelId ?? result?.modelId;
-    // Prefer status.json role: JobManifestSchema defaults omitted role to
-    // "candidate", which can flip a paired baseline retry onto the wrong leg.
-    const role =
-      status.role ?? result?.role ?? job?.role ?? "candidate";
-    const evaluationId =
-      status.evaluationId ?? job?.evaluationId ?? result?.evaluationId;
+    const role = resolveRetryRole({
+      statusRole: status.role,
+      resultRole: result?.role,
+      jobRoleExplicit: failed?.roleExplicit,
+    });
+    const evaluationId = evaluationIdFromSources({
+      statusEvaluationId: status.evaluationId,
+      jobEvaluationId: job?.evaluationId,
+      resultEvaluationId: result?.evaluationId,
+    });
 
     if (!evalSkillId || !mode) {
       return NextResponse.json(
