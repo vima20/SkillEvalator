@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
 import {
+  COST_PRECHECK_SAFETY,
   assertRealDirectory,
   costFromTokenUsage,
   estimateTokensFromText,
@@ -141,15 +142,17 @@ export async function produceArtifact(opts: {
         : config.maxOutputTokens;
     let max_tokens = configuredMax;
     if (opts.remainingUsd != null) {
-      // Second clamp: actual prompt size vs remaining budget (ASSUMED_INPUT
-      // in the worker pre-check can under-estimate a large SKILL.md).
+      // Second clamp: actual prompt size vs remaining budget. Inflate chars/4
+      // by COST_PRECHECK_SAFETY so tokenizer under-estimates do not leave
+      // max_tokens high enough to overshoot COST_CAP_USD in one call.
+      const rawInputTokens = estimateTokensFromText(
+        `${systemContent}\n${prompt}`,
+      );
       max_tokens = maxOutputTokensForRemainingBudget({
         modelId: opts.modelId,
         remainingUsd: opts.remainingUsd,
         maxOutputTokens: configuredMax,
-        estimatedInputTokens: estimateTokensFromText(
-          `${systemContent}\n${prompt}`,
-        ),
+        estimatedInputTokens: Math.ceil(rawInputTokens * COST_PRECHECK_SAFETY),
       });
       if (max_tokens < 1) {
         throw new Error("cost budget exhausted before OpenAI call");

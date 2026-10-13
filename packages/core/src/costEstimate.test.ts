@@ -122,4 +122,22 @@ describe("maxOutputTokensForRemainingBudget", () => {
     expect(estimateTokensFromText("abcd")).toBe(1);
     expect(estimateTokensFromText("a".repeat(40))).toBe(10);
   });
+
+  it("inflating input estimate with COST_PRECHECK_SAFETY tightens the clamp", () => {
+    const remainingUsd = 0.002;
+    const raw = estimateTokensFromText("a".repeat(4_000)); // ~1000 tok
+    const plain = maxOutputTokensForRemainingBudget({
+      modelId: "gpt-4o-mini",
+      remainingUsd,
+      maxOutputTokens: 16_000,
+      estimatedInputTokens: raw,
+    });
+    const safe = maxOutputTokensForRemainingBudget({
+      modelId: "gpt-4o-mini",
+      remainingUsd,
+      maxOutputTokens: 16_000,
+      estimatedInputTokens: Math.ceil(raw * COST_PRECHECK_SAFETY),
+    });
+    expect(safe).toBeLessThan(plain);
+  });
 });
