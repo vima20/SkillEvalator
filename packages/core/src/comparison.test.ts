@@ -143,6 +143,101 @@ describe("compareBaselineCandidate", () => {
     );
   });
 
+  it("INCONCLUSIVE when capture.commit differs on both legs", () => {
+    const capture = (commit: string) => ({
+      githubUrl: "https://github.com/acme/skills",
+      commit,
+      license: "MIT",
+      dependencies: [] as string[],
+      skillVersion: "abc",
+      role: "candidate" as const,
+      promptHash: "ph",
+      promptPreview: "preview",
+      promptKind: "skill_md" as const,
+      env: {
+        modelDryRun: "gpt-4o-mini",
+        modelOfficial: "gpt-4.1-mini",
+        temperature: 0,
+        topP: 1,
+        seed: 1,
+        maxOutputTokens: 1024,
+        costCapUsd: 5,
+        costHardStop: true,
+        fakeProduce: false,
+        allowHostGrade: false,
+        grade: "docker_script" as const,
+      },
+      capturedAt: "2026-10-12T00:00:00.000Z",
+    });
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: { ...capture("aaaaaaaaaaaaaaaa"), role: "baseline" },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: capture("bbbbbbbbbbbbbbbb"),
+      }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.parity.ok).toBe(false);
+    expect(c.parity.issues.some((i) => i.includes("capture.commit"))).toBe(
+      true,
+    );
+  });
+
+  it("allows missing capture.commit on one or both legs", () => {
+    const oneSided = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: {
+          skillVersion: "abc",
+          role: "baseline",
+          dependencies: [],
+          // no commit — candidate alone may still record provenance
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: {
+          skillVersion: "abc",
+          role: "candidate",
+          dependencies: [],
+          commit: "only-candidate",
+        },
+      }),
+    );
+    expect(
+      oneSided.parity.issues.some((i) => i.includes("capture.commit")),
+    ).toBe(false);
+
+    const bothMissing = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        capture: { skillVersion: "abc", role: "baseline", dependencies: [] },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        capture: { skillVersion: "abc", role: "candidate", dependencies: [] },
+      }),
+    );
+    expect(
+      bothMissing.parity.issues.some((i) => i.includes("capture.commit")),
+    ).toBe(false);
+  });
+
   it("INCONCLUSIVE when legs disagree with evaluation meta evalSkillId", () => {
     const c = compareBaselineCandidate(
       sample({

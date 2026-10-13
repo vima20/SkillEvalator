@@ -76,6 +76,18 @@ export function checkComparisonParity(
       `evalSkillVersion mismatch: baseline=${baseline.evalSkillVersion} candidate=${candidate.evalSkillVersion}`,
     );
   }
+  const baselineCommit = baseline.capture?.commit?.trim() ?? "";
+  const candidateCommit = candidate.capture?.commit?.trim() ?? "";
+  // Only when both legs recorded a commit — older results may omit Capture.
+  if (
+    baselineCommit &&
+    candidateCommit &&
+    baselineCommit !== candidateCommit
+  ) {
+    issues.push(
+      `capture.commit mismatch: baseline=${baselineCommit} candidate=${candidateCommit}`,
+    );
+  }
   const expected = opts?.expectedEvalSkillId;
   if (expected) {
     if (baseline.evalSkillId !== expected) {
