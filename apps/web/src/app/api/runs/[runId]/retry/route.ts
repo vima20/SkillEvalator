@@ -183,20 +183,30 @@ export async function POST(
         return respondLinked({ newRunId: reusedUnderLock, reused: true });
       }
 
-      const snapshotPath = path.join(
-        root,
-        runId,
-        "skill-snapshot",
-        "SKILL.md",
-      );
+      const snapshotDir = path.join(root, runId, "skill-snapshot");
+      const snapshotPath = path.join(snapshotDir, "SKILL.md");
+      const snapManifestPath = path.join(snapshotDir, "manifest.json");
       const hasSnapshot = fs.existsSync(snapshotPath);
-      // Candidate retries must keep the prior SKILL.md lock — never silently
-      // fall through to live fixtures/prompt.
-      if (role === "candidate" && !hasSnapshot) {
+      let hasPinnedVersion = false;
+      if (fs.existsSync(snapManifestPath)) {
+        try {
+          const raw = JSON.parse(
+            fs.readFileSync(snapManifestPath, "utf8"),
+          ) as { _snapshot?: { evalSkillVersion?: string } };
+          hasPinnedVersion = Boolean(
+            raw._snapshot?.evalSkillVersion?.trim(),
+          );
+        } catch {
+          hasPinnedVersion = false;
+        }
+      }
+      // Candidate retries must keep the prior SKILL.md lock + fixture version
+      // pin — never silently fall through to a drifted live skill tree.
+      if (role === "candidate" && (!hasSnapshot || !hasPinnedVersion)) {
         return NextResponse.json(
           {
             error:
-              "cannot retry candidate — skill-snapshot/SKILL.md missing; re-run from a finished candidate or start a new paired evaluation",
+              "cannot retry candidate — skill-snapshot/SKILL.md or pinned evalSkillVersion missing; re-run from a finished candidate or start a new paired evaluation",
           },
           { status: 409 },
         );

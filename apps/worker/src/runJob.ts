@@ -87,16 +87,40 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     findings.push(
       `skill md locked from snapshot of ${job.skillSnapshotFromRunId}`,
     );
-    const prior = loadRunResult(
-      config.resultsDir,
-      job.skillSnapshotFromRunId,
+    // Prefer snapshot manifest (written even when result.json never landed —
+    // cancel/fail/budget_stop mid-run). Fallback to prior result.json.
+    const snapManifestPath = path.join(
+      resolveUnder(config.resultsDir, job.skillSnapshotFromRunId),
+      "skill-snapshot",
+      "manifest.json",
     );
-    if (
-      prior?.evalSkillVersion &&
-      prior.evalSkillVersion !== skill.version
-    ) {
+    let pinnedVersion: string | undefined;
+    try {
+      const snapManifest = JSON.parse(
+        readRegularFileUtf8(snapManifestPath, "skill snapshot manifest"),
+      ) as { _snapshot?: { evalSkillVersion?: string } };
+      const v = snapManifest._snapshot?.evalSkillVersion;
+      if (typeof v === "string" && v.trim()) pinnedVersion = v.trim();
+    } catch {
+      /* fall through to result.json */
+    }
+    if (!pinnedVersion) {
+      const prior = loadRunResult(
+        config.resultsDir,
+        job.skillSnapshotFromRunId,
+      );
+      if (prior?.evalSkillVersion?.trim()) {
+        pinnedVersion = prior.evalSkillVersion.trim();
+      }
+    }
+    if (!pinnedVersion) {
       throw new Error(
-        `skill/fixtures version drifted since snapshot ${job.skillSnapshotFromRunId}: was ${prior.evalSkillVersion}, live ${skill.version}`,
+        `skill snapshot version missing for ${job.skillSnapshotFromRunId} (no _snapshot.evalSkillVersion or result.json)`,
+      );
+    }
+    if (pinnedVersion !== skill.version) {
+      throw new Error(
+        `skill/fixtures version drifted since snapshot ${job.skillSnapshotFromRunId}: was ${pinnedVersion}, live ${skill.version}`,
       );
     }
   }
