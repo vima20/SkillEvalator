@@ -191,6 +191,7 @@ export function enqueueEvaluationPair(input: {
       // Roll back the baseline leg so Comparison is not left half-queued.
       abortQueuedRun(baseline.runId, candidate.error, {
         role: "baseline",
+        alreadyHoldingEnqueueLock: true,
       });
       return {
         ok: false,
@@ -212,11 +213,12 @@ export function enqueueEvaluationPair(input: {
       const message = err instanceof Error ? err.message : String(err);
       abortQueuedRun(baseline.runId, `evaluation.json write failed: ${message}`, {
         role: "baseline",
+        alreadyHoldingEnqueueLock: true,
       });
       abortQueuedRun(
         candidate.runId,
         `evaluation.json write failed: ${message}`,
-        { role: "candidate" },
+        { role: "candidate", alreadyHoldingEnqueueLock: true },
       );
       return {
         ok: false,
@@ -242,8 +244,35 @@ export function enqueueEvaluationPair(input: {
  * Writes .cancel so a running worker stops; removes queued job files when possible.
  * If the worker already claimed `.running.json`, only `.cancel` is written —
  * do not stamp `failed` (worker owns finalization and cancel wins).
+ * Job unlink runs under `.enqueue.lock` unless the caller already holds it
+ * (pair enqueue rollback) so slot counts stay consistent with concurrent POSTs.
  */
 export function abortQueuedRun(
+  runId: string,
+  reason: string,
+  meta?: {
+    role?: "baseline" | "candidate";
+    evaluationId?: string;
+    alreadyHoldingEnqueueLock?: boolean;
+  },
+): void {
+  const run = () => abortQueuedRunUnlocked(runId, reason, meta);
+  if (meta?.alreadyHoldingEnqueueLock) {
+    run();
+    return;
+  }
+  const locked = withEnqueueLock(() => {
+    run();
+    return true;
+  });
+  if (locked !== true) {
+    // Lock busy: still write .cancel / best-effort unlink so the run does not
+    // stay live forever; slot accounting may briefly race.
+    run();
+  }
+}
+
+function abortQueuedRunUnlocked(
   runId: string,
   reason: string,
   meta?: { role?: "baseline" | "candidate"; evaluationId?: string },

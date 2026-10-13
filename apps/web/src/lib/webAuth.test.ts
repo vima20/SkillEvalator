@@ -49,6 +49,11 @@ describe("parseSeAuthCookie", () => {
     // Malformed % sequences must not diverge middleware vs /api/auth GET.
     expect(parseSeAuthCookie("se_auth=tok%E0")).toBe("tok%E0");
   });
+
+  it("uses the last se_auth when duplicates appear", () => {
+    expect(parseSeAuthCookie("se_auth=stale; se_auth=fresh")).toBe("fresh");
+    expect(parseSeAuthCookie("se_auth=a; other=1; se_auth=b%2Fc")).toBe("b/c");
+  });
 });
 
 describe("webAuthMatches", () => {

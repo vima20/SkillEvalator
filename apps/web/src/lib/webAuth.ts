@@ -29,12 +29,19 @@ export function bearerCredential(authorization: string | null): string | null {
   return m?.[1] ?? null;
 }
 
-/** Parse se_auth from a Cookie header (Node route handlers). */
+/**
+ * Parse se_auth from a Cookie header (Node route handlers + middleware).
+ * Last duplicate wins — matches typical browser Cookie jar behavior.
+ */
 export function parseSeAuthCookie(cookieHeader: string | null): string {
   if (!cookieHeader) return "";
-  const match = cookieHeader.match(/(?:^|;\s*)se_auth=([^;]*)/);
-  if (!match) return "";
-  const raw = match[1]!.trim();
+  let raw: string | undefined;
+  const re = /(?:^|;\s*)se_auth=([^;]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cookieHeader)) !== null) {
+    raw = m[1]!.trim();
+  }
+  if (raw === undefined) return "";
   try {
     return decodeURIComponent(raw);
   } catch {
