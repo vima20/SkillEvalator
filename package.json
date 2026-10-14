@@ -12,7 +12,8 @@
     "typecheck": "npm run build -w @skillevalator/core && tsc -p packages/core/tsconfig.json --noEmit && tsc -p apps/worker/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
     "smoke:skills": "npm run build -w @skillevalator/core && node scripts/smoke-skills.mjs",
     "smoke:paired": "npm run build -w @skillevalator/core && node scripts/smoke-paired-evaluation.mjs",
-    "ci": "npm test && npm run typecheck && npm run smoke:skills && npm run smoke:paired",
+    "smoke:official": "npm run build -w @skillevalator/core && node scripts/smoke-official-adoption.mjs",
+    "ci": "npm test && npm run typecheck && npm run smoke:skills && npm run smoke:paired && npm run smoke:official",
     "docker:check": "docker info >nul 2>&1 && echo Docker OK || (echo Docker not available && exit 1)"
   },
   "devDependencies": {

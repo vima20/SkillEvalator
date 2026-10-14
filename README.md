@@ -19,7 +19,7 @@ or
 
 Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*` and pages (redirect to `/unlock` before RSC); the UI sets a `se_auth` cookie after unlock.
 
-CI: `npm run ci` runs unit tests, `typecheck`, `smoke:skills`, and `smoke:paired`. New Run defaults to **baseline↔candidate**, cost estimate, and **Find/Receive** import (GitHub URL or local `.zip`).
+CI: `npm run ci` runs unit tests, `typecheck`, `smoke:skills`, `smoke:paired`, and `smoke:official`. New Run defaults to **baseline↔candidate**, cost estimate, and **Find/Receive** import (GitHub URL or local `.zip`).
 
 D1 task family: [docs/D1-TASK-FAMILY.md](docs/D1-TASK-FAMILY.md).
 
@@ -53,6 +53,12 @@ Paired Comparison smoke (writes `data/results/eval_smoke_*` + baseline/candidate
 
 ```bat
 npm run smoke:paired
+```
+
+Official adoption smoke (fixture scores → Comparison PASS→Benefit USE and FAIL→DO NOT USE, no OpenAI):
+
+```bat
+npm run smoke:official
 ```
 
 Worker smoke with fake produce:

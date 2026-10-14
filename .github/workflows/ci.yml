@@ -32,3 +32,6 @@ jobs:
 
       - name: Paired evaluation smoke
         run: npm run smoke:paired
+
+      - name: Official adoption smoke
+        run: npm run smoke:official
