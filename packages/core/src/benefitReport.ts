@@ -493,6 +493,24 @@ export function applyPairedComparisonGate(opts: {
     return { verdict, rating };
   }
 
+  // Tip Comparison only: a superseded retry leg must not inherit PASS/USE.
+  if (result.runId !== comparison.candidateRunId) {
+    verdict = {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — superseded candidate leg",
+      decision:
+        "INCONCLUSIVE — this run is not the current Comparison candidate",
+      rationale: `Comparison for ${result.evaluationId} is about candidate ${comparison.candidateRunId}, not this run (${result.runId}). Benefit USE / DO NOT USE follow the tip candidate only — open Benefit for ${comparison.candidateRunId}.`,
+    };
+    rating = withUpdatedRecommendation(
+      rating,
+      4,
+      "Superseded candidate — USE locked.",
+      `This run was replaced by ${comparison.candidateRunId} on the paired evaluation. Open that Benefit page for the adoption verdict.`,
+    );
+    return { verdict, rating };
+  }
+
   const v: ComparisonVerdict = comparison.verdict;
   if (v === "PASS" && comparison.mode === "official") {
     return { verdict, rating };

@@ -307,13 +307,33 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         baselineRunId?: string;
         candidateRunId?: string;
         evaluationId?: string;
+        mode?: string;
+        evalSkillId?: string;
       };
+      if (
+        typeof meta.evaluationId === "string" &&
+        meta.evaluationId !== evalId
+      ) {
+        throw new Error(
+          `official_evaluation_meta_id_mismatch: folder ${evalId} vs meta.evaluationId ${meta.evaluationId}`,
+        );
+      }
+      if (typeof meta.mode === "string" && meta.mode !== job.mode) {
+        throw new Error(
+          `official_evaluation_mode_mismatch: job mode ${job.mode} vs meta.mode ${meta.mode}`,
+        );
+      }
+      if (
+        typeof meta.evalSkillId === "string" &&
+        meta.evalSkillId !== job.evalSkillId
+      ) {
+        throw new Error(
+          `official_evaluation_skill_mismatch: job ${job.evalSkillId} vs meta.evalSkillId ${meta.evalSkillId}`,
+        );
+      }
+      // Tip legs only — retries must update evaluation.json before the job is claimable.
       const legs = [meta.baselineRunId, meta.candidateRunId].filter(Boolean);
-      const prior = job.skillSnapshotFromRunId;
-      const onMeta =
-        legs.includes(runId) ||
-        (typeof prior === "string" && legs.includes(prior));
-      if (!onMeta) {
+      if (!legs.includes(runId)) {
         throw new Error(
           `official_evaluation_leg_mismatch: run ${runId} is not a current meta leg of ${evalId}`,
         );

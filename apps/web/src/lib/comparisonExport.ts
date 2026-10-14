@@ -3,9 +3,11 @@ import type { ComparisonVerdict, RunComparison } from "@skillevalator/core";
 /**
  * Adoption CSV must not look like an official export when Comparison is
  * INCONCLUSIVE, or when the pair is only dry-run.
+ * Always pass the full Comparison object — bare verdict strings omit mode
+ * and would allow dry-run PASS/FAIL CSV laundering.
  */
 export function comparisonCsvGate(
-  comparison: Pick<RunComparison, "verdict" | "mode"> | ComparisonVerdict,
+  comparison: Pick<RunComparison, "verdict" | "mode">,
 ):
   | { ok: true }
   | {
@@ -13,13 +15,11 @@ export function comparisonCsvGate(
       status: 409;
       error: string;
       verdict: ComparisonVerdict;
-      mode?: RunComparison["mode"];
+      mode: RunComparison["mode"];
     } {
-  const verdict =
-    typeof comparison === "string" ? comparison : comparison.verdict;
-  const mode = typeof comparison === "string" ? undefined : comparison.mode;
+  const { verdict, mode } = comparison;
 
-  if (mode !== undefined && mode !== "official") {
+  if (mode !== "official") {
     return {
       ok: false,
       status: 409,
@@ -36,7 +36,7 @@ export function comparisonCsvGate(
     ok: false,
     status: 409,
     verdict,
-    ...(mode ? { mode } : {}),
+    mode,
     error:
       "comparison CSV export requires PASS or FAIL verdict (not INCONCLUSIVE)",
   };

@@ -28,6 +28,12 @@ export async function GET(
       result,
       comparisonVerdict: packed?.comparison?.verdict ?? null,
       comparisonMode: packed?.comparison?.mode ?? null,
+      baselineRunId:
+        packed?.comparison?.baselineRunId ?? packed?.meta?.baselineRunId ?? null,
+      candidateRunId:
+        packed?.comparison?.candidateRunId ??
+        packed?.meta?.candidateRunId ??
+        null,
     });
     if (!gate.ok) {
       return NextResponse.json(

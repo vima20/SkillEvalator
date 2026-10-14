@@ -11,11 +11,6 @@ describe("comparisonCsvGate", () => {
     );
   });
 
-  it("allows bare verdict for back-compat when mode omitted", () => {
-    expect(comparisonCsvGate("PASS").ok).toBe(true);
-    expect(comparisonCsvGate("FAIL").ok).toBe(true);
-  });
-
   it("blocks dry-run even with PASS", () => {
     const out = comparisonCsvGate({ verdict: "PASS", mode: "dry-run" });
     expect(out.ok).toBe(false);

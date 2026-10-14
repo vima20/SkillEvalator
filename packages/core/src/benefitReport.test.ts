@@ -12,11 +12,12 @@ import type { RunResult } from "./schema.js";
 function comparisonStub(
   verdict: RunComparison["verdict"],
   lift = 0.1,
+  ids?: { baselineRunId?: string; candidateRunId?: string },
 ): RunComparison {
   return {
     evaluationId: "eval_test",
-    baselineRunId: "b1",
-    candidateRunId: "c1",
+    baselineRunId: ids?.baselineRunId ?? "b1",
+    candidateRunId: ids?.candidateRunId ?? "run_test",
     evalSkillId: "code-debugging-eval",
     taskSetId: "cde-v1",
     mode: "official",
@@ -336,6 +337,26 @@ describe("benefitReport", () => {
     });
     expect(inc.verdict.recommendation).toBe("inconclusive");
     expect(inc.rating.stars).toBe(4);
+  });
+
+  it("does not inherit tip Comparison PASS on a superseded candidate runId", () => {
+    const superseded = sample({
+      runId: "run_old_cand",
+      mode: "official",
+      score: 1,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      evaluationId: "eval_test",
+    });
+    const report = buildBenefitReport(superseded, {
+      comparison: comparisonStub("PASS", 0.1, {
+        candidateRunId: "run_tip_cand",
+      }),
+    });
+    expect(report.verdict.recommendation).toBe("inconclusive");
+    expect(report.verdict.headline).toMatch(/superseded/i);
+    expect(report.rating.stars).toBeLessThan(5);
+    expect(report.rating.review).toMatch(/run_tip_cand/);
   });
 
   it("counts soft-pass tasks (>= 0.8) as passed", () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
@@ -17,7 +18,10 @@ import {
   tryAcquireRetryEnqueueLock,
 } from "@skillevalator/core";
 import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
-import { updateEvaluationMetaLeg } from "@/lib/evaluations";
+import {
+  loadEvaluationMeta,
+  updateEvaluationMetaLeg,
+} from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import {
@@ -159,6 +163,32 @@ export async function POST(
         );
       }
     }
+    // Official retry: evaluation.json must exist and parent must be (or have been)
+    // a tip leg — refuse forged evaluationId strings with no meta on disk.
+    if (mode === "official" && evaluationId) {
+      const meta = loadEvaluationMeta(evaluationId);
+      if (!meta?.baselineRunId || !meta?.candidateRunId) {
+        return NextResponse.json(
+          {
+            error:
+              "official retry requires paired evaluation.json on disk (baseline↔candidate)",
+            errorCode: "official_evaluation_meta_missing",
+          },
+          { status: 409 },
+        );
+      }
+      const legs = [meta.baselineRunId, meta.candidateRunId];
+      if (!legs.includes(runId)) {
+        return NextResponse.json(
+          {
+            error:
+              "official retry parent runId is not a current Comparison meta leg — retry from the tip baseline/candidate",
+            errorCode: "official_evaluation_leg_mismatch",
+          },
+          { status: 409 },
+        );
+      }
+    }
 
     const loadChild = (childId: string) =>
       loadRunStatus(root, childId)?.status;
@@ -290,6 +320,26 @@ export async function POST(
       }
       const skillSnapshotFromRunId = runId;
 
+      // Allocate runId + update evaluation.json BEFORE the job file so the
+      // worker never claims an official retry that is not yet a tip meta leg.
+      const newRunId = `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
+      if (evaluationId) {
+        const metaUpdated = linkComparison(newRunId);
+        if (!metaUpdated) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                "Comparison link update failed before enqueue — try again shortly",
+              fromRunId: runId,
+              evaluationId,
+              evaluationMetaUpdated: false,
+            },
+            { status: 503 },
+          );
+        }
+      }
+
       const queued = enqueueRun({
         evalSkillId,
         mode,
@@ -298,8 +348,14 @@ export async function POST(
         role,
         evaluationId,
         skillSnapshotFromRunId,
+        runId: newRunId,
       });
       if (!queued.ok) {
+        if (evaluationId) {
+          // Best-effort revert tip to parent so Comparison does not point at a
+          // never-queued runId.
+          linkComparison(runId);
+        }
         return NextResponse.json(
           { error: queued.error },
           { status: queued.status },
@@ -307,7 +363,15 @@ export async function POST(
       }
 
       saveRetryMarker(root, runId, queued.runId);
-      return respondLinked({ newRunId: queued.runId, reused: false });
+      return NextResponse.json({
+        ok: true,
+        runId: queued.runId,
+        fromRunId: runId,
+        reused: false,
+        role,
+        evaluationId: evaluationId ?? null,
+        evaluationMetaUpdated: Boolean(evaluationId),
+      });
     } finally {
       releaseRetryEnqueueLock(root, runId);
     }
