@@ -10,6 +10,7 @@ import {
   isNonRetryableErrorCode,
   loadRunResult,
   loadRunStatus,
+  officialEnqueueAllowed,
   readJsonFile,
   releaseRetryEnqueueLock,
   saveRetryMarker,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/retryRole";
 import { retryGate, retrySnapshotGate } from "@/lib/runLifecycle";
 import { runPreflight } from "@/lib/runPreflight";
+import { resolveWebAuthConfig } from "@/lib/webAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -136,6 +138,21 @@ export async function POST(
         },
         { status: 503 },
       );
+    }
+    if (mode === "dry-run" || mode === "official") {
+      const webAuth = resolveWebAuthConfig(process.env.WEB_AUTH_TOKEN);
+      const officialGate = officialEnqueueAllowed({
+        mode,
+        requireWebAuthConfigured:
+          process.env.OFFICIAL_REQUIRES_WEB_AUTH === "true",
+        webAuthOpen: webAuth.kind === "open",
+      });
+      if (!officialGate.ok) {
+        return NextResponse.json(
+          { error: officialGate.error, errorCode: officialGate.errorCode },
+          { status: officialGate.status },
+        );
+      }
     }
 
     const loadChild = (childId: string) =>

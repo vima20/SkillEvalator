@@ -25,6 +25,7 @@ import {
   meanScores,
   aggregateRepeats,
   normalizeRepeats,
+  officialEnqueueAllowed,
   resolveUnder,
   readRegularFileUtf8,
   scoreFromGradeAndDiff,
@@ -273,6 +274,12 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   touchHeartbeat({ busy: true, runId });
 
   try {
+  // Belt-and-suspenders: refuse official+smoke even if enqueue was bypassed.
+  const admission = officialEnqueueAllowed({ mode: job.mode });
+  if (!admission.ok) {
+    throw new Error(`${admission.errorCode}: ${admission.error}`);
+  }
+
   // Seed Retry pin before loadSkill (parent snapshot or live tree) for both
   // roles so baseline fixture drift cannot spend tokens after a soft fail.
   if (job.skillSnapshotFromRunId) {

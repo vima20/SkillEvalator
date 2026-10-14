@@ -116,7 +116,20 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
     return () => window.clearInterval(id);
   }, [refreshPreflight]);
 
+  useEffect(() => {
+    if (preflight?.fakeProduce && mode === "official") {
+      setMode("dry-run");
+    }
+  }, [preflight?.fakeProduce, mode]);
+
   function selectMode(next: "dry-run" | "official", focus = false) {
+    if (next === "official" && preflight?.fakeProduce) {
+      setError(true);
+      setMsg(
+        "Official mode blocked while FAKE_PRODUCE smoke is on — use dry-run or unset FAKE_PRODUCE.",
+      );
+      return;
+    }
     setMode(next);
     if (next === "official") {
       setRepeats((r) => Math.max(r, OFFICIAL_MIN_REPEATS));
@@ -134,6 +147,13 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
       setError(true);
       setMsg(
         "Preflight not green — fix API key, Docker, or worker before queueing (API also rejects).",
+      );
+      return;
+    }
+    if (mode === "official" && preflight?.fakeProduce) {
+      setError(true);
+      setMsg(
+        "Official mode requires live OpenAI produce — unset FAKE_PRODUCE (API also rejects).",
       );
       return;
     }
@@ -432,11 +452,23 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
               aria-checked={mode === "official"}
               tabIndex={mode === "official" ? 0 : -1}
               className={mode === "official" ? "is-active" : undefined}
+              disabled={Boolean(preflight?.fakeProduce)}
+              title={
+                preflight?.fakeProduce
+                  ? "Disabled while FAKE_PRODUCE smoke harness is on"
+                  : undefined
+              }
               onClick={() => selectMode("official")}
             >
               official
             </button>
           </div>
+          {preflight?.fakeProduce ? (
+            <p className="hint">
+              Smoke harness detected — official enqueue is blocked (dry-run
+              only). Unset FAKE_PRODUCE for a live pilot.
+            </p>
+          ) : null}
         </div>
 
         <div className="field">

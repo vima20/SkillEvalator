@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
-import { listRuns } from "@skillevalator/core";
+import { listRuns, officialEnqueueAllowed } from "@skillevalator/core";
 import { enqueueEvaluationPair, enqueueRun } from "@/lib/enqueueRun";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { runPreflight } from "@/lib/runPreflight";
+import { resolveWebAuthConfig } from "@/lib/webAuth";
 
 const Body = z.object({
   evalSkillId: z.string().min(1),
@@ -48,6 +49,19 @@ export async function POST(req: Request) {
           checks: preflight.checks,
         },
         { status: 503 },
+      );
+    }
+    const webAuth = resolveWebAuthConfig(process.env.WEB_AUTH_TOKEN);
+    const officialGate = officialEnqueueAllowed({
+      mode: body.mode,
+      requireWebAuthConfigured:
+        process.env.OFFICIAL_REQUIRES_WEB_AUTH === "true",
+      webAuthOpen: webAuth.kind === "open",
+    });
+    if (!officialGate.ok) {
+      return NextResponse.json(
+        { error: officialGate.error, errorCode: officialGate.errorCode },
+        { status: officialGate.status },
       );
     }
     if (body.withBaseline) {
