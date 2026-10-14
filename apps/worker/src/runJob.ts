@@ -964,22 +964,14 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       buildBenefitReport(result, { comparison: pairedComparison }),
     );
     // Sibling may have finished earlier with USE locked — refresh its cache.
+    // Use healed Comparison tip ids (not raw disk meta) so retry-chain tips match.
     if (result.evaluationId && pairedComparison) {
-      const metaPath = path.join(
-        config.resultsDir,
-        result.evaluationId,
-        "evaluation.json",
-      );
       try {
-        const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
-          baselineRunId?: string;
-          candidateRunId?: string;
-        };
         const siblingId =
           role === "candidate"
-            ? meta.baselineRunId
+            ? pairedComparison.baselineRunId
             : role === "baseline"
-              ? meta.candidateRunId
+              ? pairedComparison.candidateRunId
               : undefined;
         if (siblingId && siblingId !== runId) {
           const sibling = loadRunResult(config.resultsDir, siblingId);
