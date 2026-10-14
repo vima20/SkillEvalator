@@ -2,9 +2,29 @@ import { describe, expect, it } from "vitest";
 import {
   bearerCredential,
   parseSeAuthCookie,
+  resolveWebAuthConfig,
   timingSafeEqualUtf8,
   webAuthMatches,
 } from "./webAuth.js";
+
+describe("resolveWebAuthConfig", () => {
+  it("is open when env is unset", () => {
+    expect(resolveWebAuthConfig(undefined)).toEqual({ kind: "open" });
+  });
+
+  it("is misconfigured when env is empty or whitespace-only", () => {
+    expect(resolveWebAuthConfig("")).toEqual({ kind: "misconfigured" });
+    expect(resolveWebAuthConfig("   ")).toEqual({ kind: "misconfigured" });
+    expect(resolveWebAuthConfig("\t\n")).toEqual({ kind: "misconfigured" });
+  });
+
+  it("is required when env has a non-empty token after trim", () => {
+    expect(resolveWebAuthConfig("  secret  ")).toEqual({
+      kind: "required",
+      token: "secret",
+    });
+  });
+});
 
 describe("timingSafeEqualUtf8", () => {
   it("accepts equal strings", async () => {
@@ -72,6 +92,33 @@ describe("webAuthMatches", () => {
         authorization: "Bearer tok",
       }),
     ).toBe(true);
+  });
+
+  it("trims expected and cookie before compare", async () => {
+    expect(
+      await webAuthMatches({
+        expected: "  tok  ",
+        cookie: "tok",
+        authorization: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("never bypasses on empty or whitespace expected", async () => {
+    expect(
+      await webAuthMatches({
+        expected: "",
+        cookie: "anything",
+        authorization: null,
+      }),
+    ).toBe(false);
+    expect(
+      await webAuthMatches({
+        expected: "   ",
+        cookie: "   ",
+        authorization: null,
+      }),
+    ).toBe(false);
   });
 
   it("rejects wrong credentials", async () => {

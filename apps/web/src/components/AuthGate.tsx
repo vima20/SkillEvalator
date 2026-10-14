@@ -22,7 +22,19 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         setError("Auth check failed — unlock or retry.");
         return;
       }
-      const data = (await res.json()) as { required?: boolean; ok?: boolean };
+      const data = (await res.json()) as {
+        required?: boolean;
+        ok?: boolean;
+        misconfigured?: boolean;
+      };
+      if (data.misconfigured) {
+        setNeeded(true);
+        setCheckFailed(true);
+        setError(
+          "WEB_AUTH_TOKEN is misconfigured (empty or whitespace only). Set a real token in .env and restart.",
+        );
+        return;
+      }
       if (data.required && !data.ok) {
         setNeeded(true);
       } else {
@@ -47,7 +59,19 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           setError("Auth check failed — unlock or retry.");
           return;
         }
-        const data = (await res.json()) as { required?: boolean; ok?: boolean };
+        const data = (await res.json()) as {
+          required?: boolean;
+          ok?: boolean;
+          misconfigured?: boolean;
+        };
+        if (data.misconfigured) {
+          setNeeded(true);
+          setCheckFailed(true);
+          setError(
+            "WEB_AUTH_TOKEN is misconfigured (empty or whitespace only). Set a real token in .env and restart.",
+          );
+          return;
+        }
         if (data.required && !data.ok) {
           setNeeded(true);
         }

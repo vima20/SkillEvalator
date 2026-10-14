@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
   parseSeAuthCookie,
+  resolveWebAuthConfig,
   timingSafeEqualUtf8,
   webAuthMatches,
 } from "@/lib/webAuth";
@@ -9,17 +10,20 @@ import {
 const COOKIE = "se_auth";
 const Body = z.object({ token: z.string().min(1) });
 
-function configuredToken(): string {
-  return process.env.WEB_AUTH_TOKEN?.trim() ?? "";
-}
-
 export async function GET(req: Request) {
-  const token = configuredToken();
-  if (!token) {
+  const auth = resolveWebAuthConfig(process.env.WEB_AUTH_TOKEN);
+  if (auth.kind === "open") {
     return NextResponse.json({ required: false, ok: true });
   }
+  if (auth.kind === "misconfigured") {
+    return NextResponse.json({
+      required: true,
+      ok: false,
+      misconfigured: true,
+    });
+  }
   const ok = await webAuthMatches({
-    expected: token,
+    expected: auth.token,
     cookie: parseSeAuthCookie(req.headers.get("cookie")),
     authorization: req.headers.get("authorization"),
   });
@@ -27,17 +31,26 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const token = configuredToken();
-  if (!token) {
+  const auth = resolveWebAuthConfig(process.env.WEB_AUTH_TOKEN);
+  if (auth.kind === "open") {
     return NextResponse.json({ ok: true, required: false });
+  }
+  if (auth.kind === "misconfigured") {
+    return NextResponse.json(
+      {
+        error: "WEB_AUTH_TOKEN misconfigured (empty or whitespace only)",
+        misconfigured: true,
+      },
+      { status: 503 },
+    );
   }
   try {
     const body = Body.parse(await req.json());
-    if (!(await timingSafeEqualUtf8(body.token, token))) {
+    if (!(await timingSafeEqualUtf8(body.token.trim(), auth.token))) {
       return NextResponse.json({ error: "invalid token" }, { status: 401 });
     }
     const res = NextResponse.json({ ok: true, required: true });
-    res.cookies.set(COOKIE, token, {
+    res.cookies.set(COOKIE, auth.token, {
       httpOnly: true,
       sameSite: "lax",
       path: "/",

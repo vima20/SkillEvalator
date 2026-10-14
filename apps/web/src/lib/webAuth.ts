@@ -5,6 +5,26 @@
 
 const enc = new TextEncoder();
 
+export type WebAuthConfig =
+  | { kind: "open" }
+  | { kind: "misconfigured" }
+  | { kind: "required"; token: string };
+
+/**
+ * Resolve WEB_AUTH_TOKEN from env.
+ * - unset → open local MVP (no lock)
+ * - set but empty/whitespace after trim → misconfigured (fail-closed)
+ * - non-empty after trim → required
+ */
+export function resolveWebAuthConfig(
+  envValue: string | undefined = process.env.WEB_AUTH_TOKEN,
+): WebAuthConfig {
+  if (envValue === undefined) return { kind: "open" };
+  const token = envValue.trim();
+  if (!token) return { kind: "misconfigured" };
+  return { kind: "required", token };
+}
+
 /** Constant-time equality of two UTF-8 strings (hash then XOR-diff digests). */
 export async function timingSafeEqualUtf8(
   left: string,
@@ -52,16 +72,18 @@ export function parseSeAuthCookie(cookieHeader: string | null): string {
 /**
  * True when cookie or Bearer matches expected token.
  * Always evaluates both present channels (no early return on first hit).
+ * Empty/whitespace expected never bypasses — callers use resolveWebAuthConfig
+ * for the open-local case.
  */
 export async function webAuthMatches(opts: {
   expected: string;
   cookie?: string | null;
   authorization?: string | null;
 }): Promise<boolean> {
-  const expected = opts.expected;
-  if (!expected) return true;
+  const expected = opts.expected.trim();
+  if (!expected) return false;
 
-  const cookieVal = opts.cookie ?? "";
+  const cookieVal = (opts.cookie ?? "").trim();
   const bearer = bearerCredential(opts.authorization ?? null);
 
   const [cookieOk, bearerOk] = await Promise.all([

@@ -1,25 +1,48 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { parseSeAuthCookie, webAuthMatches } from "@/lib/webAuth";
+import {
+  parseSeAuthCookie,
+  resolveWebAuthConfig,
+  webAuthMatches,
+} from "@/lib/webAuth";
 
 /**
  * Optional shared-secret for API + pages when WEB_AUTH_TOKEN is set.
- * Leave empty for open local use. /api/auth stays open so the unlock form
- * can set the se_auth cookie; pages redirect to /unlock before RSC runs.
- * Cookie parse matches GET /api/auth (same decode path — not cookies.get alone).
+ * Unset → open local use. Whitespace-only / empty string → fail-closed
+ * (misconfigured). /api/auth stays reachable so unlock + status work.
  */
 export async function middleware(req: NextRequest) {
-  const token = process.env.WEB_AUTH_TOKEN?.trim();
-  if (!token) return NextResponse.next();
-
+  const auth = resolveWebAuthConfig(process.env.WEB_AUTH_TOKEN);
   const { pathname } = req.nextUrl;
 
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
     return NextResponse.next();
   }
 
+  if (auth.kind === "open") {
+    return NextResponse.next();
+  }
+
+  if (auth.kind === "misconfigured") {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        {
+          error: "WEB_AUTH_TOKEN misconfigured (empty or whitespace only)",
+          misconfigured: true,
+        },
+        { status: 503 },
+      );
+    }
+    // Pages: send to unlock with a clear query flag (AuthGate / unlock UI).
+    const dest = req.nextUrl.clone();
+    dest.pathname = "/unlock";
+    dest.search = "";
+    dest.searchParams.set("misconfigured", "1");
+    return NextResponse.redirect(dest);
+  }
+
   const ok = await webAuthMatches({
-    expected: token,
+    expected: auth.token,
     cookie: parseSeAuthCookie(req.headers.get("cookie")),
     authorization: req.headers.get("authorization"),
   });
