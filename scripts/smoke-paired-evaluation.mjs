@@ -186,8 +186,21 @@ if (!comparison.parity.ok) {
   console.error("Smoke failed: parity");
   process.exit(1);
 }
-if (comparison.verdict !== "PASS") {
-  console.error("Smoke failed: expected PASS (known-good vs known-bad)");
+// Dry-run + FAKE_PRODUCE must never emit adoption PASS/FAIL.
+if (comparison.verdict !== "INCONCLUSIVE") {
+  console.error(
+    "Smoke failed: expected INCONCLUSIVE (dry-run/smoke is not adoption PASS/FAIL)",
+  );
+  process.exit(1);
+}
+if (
+  typeof comparison.lift !== "number" ||
+  !(comparison.lift > 0) ||
+  !(comparison.candidateScore > comparison.baselineScore)
+) {
+  console.error(
+    "Smoke failed: expected candidate score/lift above baseline (known-good vs known-bad)",
+  );
   process.exit(1);
 }
 console.log("Smoke paired OK");

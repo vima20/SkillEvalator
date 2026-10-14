@@ -11,8 +11,8 @@
   "lift": 1,
   "costUsd": 0,
   "latencyMs": 2,
-  "verdict": "PASS",
-  "rationale": "Candidate improves on baseline by 100.0 pp (need ≥ 5 pp). Lift 1.000 (candidate 1.000 − baseline 0.000). Task deltas: 3 improved, 0 regressed.",
+  "verdict": "INCONCLUSIVE",
+  "rationale": "Dry-run Comparison is not an adoption PASS/FAIL (FAKE_PRODUCE smoke). Lift 1.000 (candidate 1.000 − baseline 0.000) is exploratory only — run mode=official for Benefit USE.",
   "baselineStatus": "ok",
   "candidateStatus": "ok",
   "capture": {

@@ -52,7 +52,8 @@ export default function ComparisonListPage() {
           <p>
             Baseline↔candidate lift on the same task set. Official{" "}
             <strong>PASS</strong> requires candidate ≥0.99 + lift and unlocks
-            Benefit <strong>USE</strong>. Dry-run PASS is exploratory only.
+            Benefit <strong>USE</strong>. Dry-run stays{" "}
+            <strong>INCONCLUSIVE</strong> (no adoption PASS/FAIL).
           </p>
         </div>
         <div className="page-header-actions">

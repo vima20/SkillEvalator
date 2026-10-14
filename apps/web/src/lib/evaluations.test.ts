@@ -196,6 +196,8 @@ describe("updateEvaluationMetaLeg", () => {
         i.includes("evaluation meta mode"),
       ),
     ).toBe(false);
-    expect(after.comparison?.verdict).toBe("PASS");
+    // Dry-run never emits adoption PASS even when lift clears delta.
+    expect(after.comparison?.verdict).toBe("INCONCLUSIVE");
+    expect(after.comparison?.lift).toBeGreaterThan(0);
   });
 });
