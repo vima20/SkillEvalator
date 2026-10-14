@@ -6,6 +6,7 @@ import {
 } from "@skillevalator/core";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import { runCsvExportAllowed } from "@/lib/runCsvExportAllowed";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,12 @@ export async function GET(
     if (!status && !result) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
-    return NextResponse.json({ runId, status, result });
+    return NextResponse.json({
+      runId,
+      status,
+      result,
+      csvExportAllowed: runCsvExportAllowed(result),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
     const code = message.startsWith("invalid ") ? 400 : 500;

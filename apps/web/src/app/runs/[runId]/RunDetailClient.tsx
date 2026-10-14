@@ -65,6 +65,8 @@ type Payload = {
   runId: string;
   status: StatusFile | null;
   result: Result | null;
+  /** Same bar as CSV API gate (official + decisive Comparison + meta leg). */
+  csvExportAllowed?: boolean;
 };
 
 const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
@@ -567,13 +569,11 @@ export function RunDetailClient({
           </div>
 
           <div className="action-row" style={{ gap: 8, flexWrap: "wrap" }}>
-            {result.mode === "official" &&
-            result.evaluationId &&
-            !result.capture?.env?.fakeProduce ? (
+            {data.csvExportAllowed ? (
               <a
                 className="btn btn-ghost"
                 href={`/api/runs/${encodeURIComponent(runId)}/csv`}
-                title="Requires official Comparison PASS or FAIL (API enforces)"
+                title="Official Comparison PASS/FAIL on a current meta leg"
               >
                 Download CSV
               </a>
@@ -581,7 +581,7 @@ export function RunDetailClient({
               <span
                 className="hint"
                 style={{ margin: 0, alignSelf: "center" }}
-                title="CSV locked until official paired Comparison PASS/FAIL"
+                title="CSV locked until official paired Comparison PASS/FAIL on this meta leg"
               >
                 CSV export locked (official + Comparison PASS/FAIL)
               </span>

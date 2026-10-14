@@ -7,6 +7,7 @@ import {
 import { EmptyState } from "@/components/EmptyState";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import { runCsvExportAllowed } from "@/lib/runCsvExportAllowed";
 import { RunDetailClient } from "./RunDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,12 @@ export default async function RunDetailPage({
   return (
     <RunDetailClient
       runId={runId}
-      initial={{ runId, status, result }}
+      initial={{
+        runId,
+        status,
+        result,
+        csvExportAllowed: runCsvExportAllowed(result),
+      }}
     />
   );
 }

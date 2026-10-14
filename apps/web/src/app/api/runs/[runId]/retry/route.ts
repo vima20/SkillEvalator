@@ -108,7 +108,16 @@ export async function POST(
     const mode = job?.mode ?? result?.mode;
     const repeats = job?.repeats ?? result?.repeats;
     const modelId = job?.modelId ?? result?.modelId;
-    const role = resolveRetryRole({
+    const explicitRole =
+      status.role === "baseline" || status.role === "candidate"
+        ? status.role
+        : result?.role === "baseline" || result?.role === "candidate"
+          ? result.role
+          : failed?.roleExplicit === "baseline" ||
+              failed?.roleExplicit === "candidate"
+            ? failed.roleExplicit
+            : undefined;
+    let role = resolveRetryRole({
       statusRole: status.role,
       resultRole: result?.role,
       jobRoleExplicit: failed?.roleExplicit,
@@ -163,30 +172,48 @@ export async function POST(
         );
       }
     }
-    // Official retry: evaluation.json must exist and parent must be (or have been)
-    // a tip leg — refuse forged evaluationId strings with no meta on disk.
-    if (mode === "official" && evaluationId) {
+    // Paired retry: bind meta update to the tip slot this parent occupies.
+    // Never default a baseline tip to "candidate" (would orphan the real skill leg).
+    if (evaluationId) {
       const meta = loadEvaluationMeta(evaluationId);
       if (!meta?.baselineRunId || !meta?.candidateRunId) {
-        return NextResponse.json(
-          {
-            error:
-              "official retry requires paired evaluation.json on disk (baseline↔candidate)",
-            errorCode: "official_evaluation_meta_missing",
-          },
-          { status: 409 },
-        );
-      }
-      const legs = [meta.baselineRunId, meta.candidateRunId];
-      if (!legs.includes(runId)) {
-        return NextResponse.json(
-          {
-            error:
-              "official retry parent runId is not a current Comparison meta leg — retry from the tip baseline/candidate",
-            errorCode: "official_evaluation_leg_mismatch",
-          },
-          { status: 409 },
-        );
+        if (mode === "official") {
+          return NextResponse.json(
+            {
+              error:
+                "official retry requires paired evaluation.json on disk (baseline↔candidate)",
+              errorCode: "official_evaluation_meta_missing",
+            },
+            { status: 409 },
+          );
+        }
+      } else {
+        const metaSlot =
+          runId === meta.baselineRunId
+            ? ("baseline" as const)
+            : runId === meta.candidateRunId
+              ? ("candidate" as const)
+              : null;
+        if (!metaSlot) {
+          return NextResponse.json(
+            {
+              error:
+                "paired retry parent runId is not a current Comparison meta leg — retry from the tip baseline/candidate",
+              errorCode: "official_evaluation_leg_mismatch",
+            },
+            { status: 409 },
+          );
+        }
+        if (explicitRole && explicitRole !== metaSlot) {
+          return NextResponse.json(
+            {
+              error: `retry role ${explicitRole} does not match evaluation meta slot ${metaSlot}`,
+              errorCode: "official_evaluation_role_slot_mismatch",
+            },
+            { status: 409 },
+          );
+        }
+        role = metaSlot;
       }
     }
 
