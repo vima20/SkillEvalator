@@ -283,6 +283,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     requireWebAuthConfigured:
       process.env.OFFICIAL_REQUIRES_WEB_AUTH === "true",
     webAuthKind: webAuth.kind,
+    requireEvaluationId: true,
+    evaluationId: job.evaluationId,
   });
   if (!admission.ok) {
     throw new Error(`${admission.errorCode}: ${admission.error}`);

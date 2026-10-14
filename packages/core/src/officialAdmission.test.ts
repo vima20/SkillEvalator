@@ -126,4 +126,27 @@ describe("officialEnqueueAllowed", () => {
       }).ok,
     ).toBe(true);
   });
+
+  it("rejects official worker job without evaluationId", () => {
+    const out = officialEnqueueAllowed({
+      mode: "official",
+      env: { OPENAI_API_KEY: "sk-live" },
+      requireEvaluationId: true,
+      evaluationId: "",
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("official_evaluation_required");
+  });
+
+  it("allows official worker job with evaluationId", () => {
+    expect(
+      officialEnqueueAllowed({
+        mode: "official",
+        env: { OPENAI_API_KEY: "sk-live" },
+        requireEvaluationId: true,
+        evaluationId: "eval_abc",
+      }).ok,
+    ).toBe(true);
+  });
 });

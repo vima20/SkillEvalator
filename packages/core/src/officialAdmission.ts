@@ -17,7 +17,8 @@ export type OfficialAdmissionDenied = {
     | "official_api_key_missing"
     | "official_web_auth_required"
     | "official_pair_required"
-    | "official_repeats_too_low";
+    | "official_repeats_too_low"
+    | "official_evaluation_required";
 };
 
 export type OfficialAdmissionResult =
@@ -48,6 +49,12 @@ export function officialEnqueueAllowed(opts: {
    * at the API boundary). Omit on worker after normalizeRepeats.
    */
   repeats?: number;
+  /**
+   * Worker fail-fast: official jobs must carry evaluationId (paired meta).
+   * Blocks hand-written single-leg jobs that bypass API withBaseline.
+   */
+  requireEvaluationId?: boolean;
+  evaluationId?: string | null;
 }): OfficialAdmissionResult {
   if (opts.mode !== "official") return { ok: true };
 
@@ -108,6 +115,15 @@ export function officialEnqueueAllowed(opts: {
       status: 400,
       errorCode: "official_repeats_too_low",
       error: `official mode requires at least ${OFFICIAL_MIN_REPEATS} repeats (got ${opts.repeats})`,
+    };
+  }
+  if (opts.requireEvaluationId && !opts.evaluationId?.trim()) {
+    return {
+      ok: false,
+      status: 400,
+      errorCode: "official_evaluation_required",
+      error:
+        "official mode requires evaluationId (paired baseline↔candidate) — refuse single-leg official jobs",
     };
   }
   return { ok: true };
