@@ -130,9 +130,22 @@ export function rateSkill(result: RunResult): BenefitRating {
     .filter((t) => !taskPassedSoft(t.score))
     .map((t) => t.taskId);
 
+  const smokeHarness = result.capture?.env?.fakeProduce === true;
+  const roleMissing = result.role === undefined;
+  /** Align with decideSkillUse — these must not look like Excellent / USE. */
+  const adoptionBlocked =
+    smokeHarness || roleMissing || status === "failed";
+
   let stars: 1 | 2 | 3 | 4 | 5 = 1;
 
-  if (status === "cancelled" || status === "budget_stop" || score === null) {
+  if (
+    status === "cancelled" ||
+    status === "budget_stop" ||
+    status === "failed" ||
+    score === null ||
+    smokeHarness ||
+    roleMissing
+  ) {
     stars = 1;
   } else if (score <= 0) {
     stars = 1;
@@ -167,7 +180,43 @@ export function rateSkill(result: RunResult): BenefitRating {
   let summary: string;
   let reviewSections: ReviewSection[];
 
-  if (status === "cancelled" || status === "budget_stop") {
+  if (smokeHarness) {
+    summary = "Smoke harness — not an adoption grade.";
+    reviewSections = [
+      {
+        heading: "Situation",
+        body: `${result.evalSkillId} used FAKE_PRODUCE=known-good (fixture smoke). Stars stay at ${stars}/5; scores are not a live-model adoption signal.`,
+      },
+      {
+        heading: "Recommendation",
+        body: "Re-run with a live model produce (FAKE_PRODUCE unset) before reading Benefit USE or star ratings as adoption advice.",
+      },
+    ];
+  } else if (roleMissing) {
+    summary = "Missing eval role — rating withheld.";
+    reviewSections = [
+      {
+        heading: "Situation",
+        body: "RunResult.role is unset. Benefit cannot assume candidate, so the star rating stays at the floor.",
+      },
+      {
+        heading: "Recommendation",
+        body: "Re-run with an explicit baseline or candidate role, or open Comparison for the paired evaluation.",
+      },
+    ];
+  } else if (status === "failed") {
+    summary = "Run failed — no adoption grade.";
+    reviewSections = [
+      {
+        heading: "Situation",
+        body: `${result.evalSkillId} ended with status failed (score ${scoreTxt}). A failed terminal status is not a USE signal even when a partial score exists.`,
+      },
+      {
+        heading: "Recommendation",
+        body: "Fix the failure (skill, fixtures, or harness), then re-run dry-run and official before adopting.",
+      },
+    ];
+  } else if (status === "cancelled" || status === "budget_stop") {
     summary = "Run stopped early — no reliable grade.";
     reviewSections = [
       {
@@ -276,6 +325,7 @@ export function rateSkill(result: RunResult): BenefitRating {
 
   // Shared closing note unless official USE already has Limitation section
   if (
+    !adoptionBlocked &&
     status !== "cancelled" &&
     status !== "budget_stop" &&
     !(result.mode === "official" && score !== null && score >= 0.99)

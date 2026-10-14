@@ -170,6 +170,66 @@ export function releaseRetryEnqueueLock(
  * If a recent retry child is still queued/running and live on disk, return its runId.
  * Caller supplies child status loader to keep this free of listRuns coupling.
  */
+/** Cap retry-of walks so a corrupt cycle cannot hang Comparison load. */
+export const RETRY_CHAIN_MAX_HOPS = 8;
+
+export type RetryChainLegInfo = {
+  evaluationId?: string;
+  role?: string;
+  status?: string;
+};
+
+/**
+ * Follow retry-of.json from a Comparison meta leg to the newest same-eval /
+ * same-role child. Used when meta still points at a failed/cancelled parent
+ * after a paid retry child was enqueued (meta-link 503 / lock race).
+ * Does not scan readdir — only explicit lineage markers.
+ */
+export function resolveLegRunIdViaRetryChain(opts: {
+  resultsDir: string;
+  fromRunId: string;
+  evaluationId: string;
+  role: "baseline" | "candidate";
+  loadLeg: (runId: string) => RetryChainLegInfo | null;
+  loadMarker?: (
+    resultsDir: string,
+    fromRunId: string,
+  ) => RetryMarker | null;
+  maxHops?: number;
+}): { runId: string; hops: number } {
+  const maxHops = opts.maxHops ?? RETRY_CHAIN_MAX_HOPS;
+  const loadMarker = opts.loadMarker ?? loadRetryMarker;
+  let current: string;
+  try {
+    current = assertSafeId(opts.fromRunId, "runId");
+  } catch {
+    return { runId: opts.fromRunId, hops: 0 };
+  }
+  const seen = new Set<string>([current]);
+  let hops = 0;
+
+  while (hops < maxHops) {
+    const marker = loadMarker(opts.resultsDir, current);
+    if (!marker) break;
+    let childId: string;
+    try {
+      childId = assertSafeId(marker.runId, "runId");
+    } catch {
+      break;
+    }
+    if (seen.has(childId)) break;
+    const leg = opts.loadLeg(childId);
+    if (!leg) break;
+    if (leg.evaluationId !== opts.evaluationId) break;
+    if (leg.role !== opts.role) break;
+    seen.add(childId);
+    current = childId;
+    hops += 1;
+  }
+
+  return { runId: current, hops };
+}
+
 export function findReusableRetryRunId(
   resultsDir: string,
   fromRunId: string,

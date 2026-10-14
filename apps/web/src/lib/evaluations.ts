@@ -4,11 +4,13 @@ import {
   assertSafeId,
   compareBaselineCandidate,
   loadRunResult,
+  loadRunStatus,
   readJsonFile,
   releaseWxLock,
   resolveComparisonLegs,
   resolveEvaluationMetaEvalSkillId,
   resolveEvaluationMetaMode,
+  resolveLegRunIdViaRetryChain,
   tryAcquireWxLock,
   writeJsonFile,
   type RunComparison,
@@ -88,6 +90,31 @@ export function updateEvaluationMetaLeg(opts: {
   }
 }
 
+function loadRetryChainLegInfo(
+  resultsDirPath: string,
+  runId: string,
+): { evaluationId?: string; role?: string; status?: string } | null {
+  const status = loadRunStatus(resultsDirPath, runId);
+  if (status) {
+    return {
+      ...(typeof status.evaluationId === "string"
+        ? { evaluationId: status.evaluationId }
+        : {}),
+      ...(status.role === "baseline" || status.role === "candidate"
+        ? { role: status.role }
+        : {}),
+      ...(typeof status.status === "string" ? { status: status.status } : {}),
+    };
+  }
+  const result = loadRunResult(resultsDirPath, runId);
+  if (!result) return null;
+  return {
+    ...(result.evaluationId ? { evaluationId: result.evaluationId } : {}),
+    ...(result.role ? { role: result.role } : {}),
+    status: result.status,
+  };
+}
+
 export function loadEvaluationComparison(
   evaluationId: string,
 ): {
@@ -96,15 +123,72 @@ export function loadEvaluationComparison(
   candidate: ReturnType<typeof loadRunResult>;
   comparison: RunComparison | null;
 } {
-  const meta = loadEvaluationMeta(evaluationId);
+  let meta = loadEvaluationMeta(evaluationId);
   const dir = resultsDir();
   assertSafeId(evaluationId, "evaluationId");
 
+  let baselineRunId = meta?.baselineRunId;
+  let candidateRunId = meta?.candidateRunId;
+  if (meta && baselineRunId && candidateRunId) {
+    const loadLeg = (runId: string) => loadRetryChainLegInfo(dir, runId);
+    const baseTip = resolveLegRunIdViaRetryChain({
+      resultsDir: dir,
+      fromRunId: baselineRunId,
+      evaluationId,
+      role: "baseline",
+      loadLeg,
+    });
+    const candTip = resolveLegRunIdViaRetryChain({
+      resultsDir: dir,
+      fromRunId: candidateRunId,
+      evaluationId,
+      role: "candidate",
+      loadLeg,
+    });
+    // Best-effort heal so the next load does not depend on retry-of walk.
+    if (baseTip.hops > 0 && baseTip.runId !== baselineRunId) {
+      if (
+        updateEvaluationMetaLeg({
+          evaluationId,
+          role: "baseline",
+          runId: baseTip.runId,
+          ...(meta.mode === "dry-run" || meta.mode === "official"
+            ? { mode: meta.mode }
+            : {}),
+          evalSkillId: meta.evalSkillId,
+        })
+      ) {
+        baselineRunId = baseTip.runId;
+        meta = loadEvaluationMeta(evaluationId) ?? meta;
+      } else {
+        baselineRunId = baseTip.runId;
+      }
+    }
+    if (candTip.hops > 0 && candTip.runId !== candidateRunId) {
+      if (
+        updateEvaluationMetaLeg({
+          evaluationId,
+          role: "candidate",
+          runId: candTip.runId,
+          ...(meta.mode === "dry-run" || meta.mode === "official"
+            ? { mode: meta.mode }
+            : {}),
+          evalSkillId: meta.evalSkillId,
+        })
+      ) {
+        candidateRunId = candTip.runId;
+        meta = loadEvaluationMeta(evaluationId) ?? meta;
+      } else {
+        candidateRunId = candTip.runId;
+      }
+    }
+  }
+
   const { baseline, candidate } = resolveComparisonLegs({
-    meta: meta
+    meta: meta && baselineRunId && candidateRunId
       ? {
-          baselineRunId: meta.baselineRunId,
-          candidateRunId: meta.candidateRunId,
+          baselineRunId,
+          candidateRunId,
         }
       : null,
     loadResult: (runId) => loadRunResult(dir, runId),

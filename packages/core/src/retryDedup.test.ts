@@ -3,12 +3,14 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  RETRY_CHAIN_MAX_HOPS,
   RETRY_DEDUP_WINDOW_MS,
   clearRetryMarker,
   findReusableRetryRunId,
   isRetryChildLive,
   loadRetryMarker,
   releaseRetryEnqueueLock,
+  resolveLegRunIdViaRetryChain,
   saveRetryMarker,
   shouldReuseRetry,
   tryAcquireRetryEnqueueLock,
@@ -304,5 +306,127 @@ describe("findReusableRetryRunId", () => {
         isPidAlive: () => true,
       }),
     ).toBeNull();
+  });
+});
+
+describe("resolveLegRunIdViaRetryChain", () => {
+  it("follows retry-of to the newest same-eval same-role child", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-chain-"));
+    temps.push(root);
+    const evaluationId = "eval_100_chainxx";
+    const oldId = "run_100_oldlegxx";
+    const midId = "run_100_midlegxx";
+    const newId = "run_100_newlegxx";
+
+    writeJsonFile(path.join(root, oldId, "status.json"), {
+      runId: oldId,
+      status: "failed",
+      role: "candidate",
+      evaluationId,
+    });
+    writeJsonFile(path.join(root, midId, "status.json"), {
+      runId: midId,
+      status: "failed",
+      role: "candidate",
+      evaluationId,
+    });
+    writeJsonFile(path.join(root, newId, "status.json"), {
+      runId: newId,
+      status: "ok",
+      role: "candidate",
+      evaluationId,
+    });
+    saveRetryMarker(root, oldId, midId);
+    saveRetryMarker(root, midId, newId);
+
+    const out = resolveLegRunIdViaRetryChain({
+      resultsDir: root,
+      fromRunId: oldId,
+      evaluationId,
+      role: "candidate",
+      loadLeg: (id) => {
+        const p = path.join(root, id, "status.json");
+        if (!fs.existsSync(p)) return null;
+        return JSON.parse(fs.readFileSync(p, "utf8")) as {
+          evaluationId?: string;
+          role?: string;
+          status?: string;
+        };
+      },
+    });
+    expect(out.runId).toBe(newId);
+    expect(out.hops).toBe(2);
+  });
+
+  it("refuses to follow a child with a different evaluationId or role", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-chain-bad-"));
+    temps.push(root);
+    const from = "run_100_fromlegx";
+    const child = "run_100_badchild";
+    writeJsonFile(path.join(root, from, "status.json"), {
+      runId: from,
+      status: "failed",
+      role: "baseline",
+      evaluationId: "eval_100_a",
+    });
+    writeJsonFile(path.join(root, child, "status.json"), {
+      runId: child,
+      status: "ok",
+      role: "candidate",
+      evaluationId: "eval_100_a",
+    });
+    saveRetryMarker(root, from, child);
+
+    const out = resolveLegRunIdViaRetryChain({
+      resultsDir: root,
+      fromRunId: from,
+      evaluationId: "eval_100_a",
+      role: "baseline",
+      loadLeg: (id) => {
+        const p = path.join(root, id, "status.json");
+        if (!fs.existsSync(p)) return null;
+        return JSON.parse(fs.readFileSync(p, "utf8")) as {
+          evaluationId?: string;
+          role?: string;
+        };
+      },
+    });
+    expect(out.runId).toBe(from);
+    expect(out.hops).toBe(0);
+  });
+
+  it("stops on cycles without hanging", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-chain-cyc-"));
+    temps.push(root);
+    const a = "run_100_cycleaaa";
+    const b = "run_100_cyclebbb";
+    const evaluationId = "eval_100_cycle";
+    for (const id of [a, b]) {
+      writeJsonFile(path.join(root, id, "status.json"), {
+        runId: id,
+        status: "failed",
+        role: "candidate",
+        evaluationId,
+      });
+    }
+    saveRetryMarker(root, a, b);
+    saveRetryMarker(root, b, a);
+
+    const out = resolveLegRunIdViaRetryChain({
+      resultsDir: root,
+      fromRunId: a,
+      evaluationId,
+      role: "candidate",
+      maxHops: RETRY_CHAIN_MAX_HOPS,
+      loadLeg: (id) => {
+        const p = path.join(root, id, "status.json");
+        return JSON.parse(fs.readFileSync(p, "utf8")) as {
+          evaluationId?: string;
+          role?: string;
+        };
+      },
+    });
+    expect(out.runId).toBe(b);
+    expect(out.hops).toBe(1);
   });
 });

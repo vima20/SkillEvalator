@@ -142,6 +142,48 @@ describe("benefitReport", () => {
     expect(report.rating.grade).toBe("Excellent");
   });
 
+  it("does not give 5 stars on smoke, failed, or role-less official scores", () => {
+    const smoke = buildBenefitReport(
+      sample({
+        mode: "official",
+        score: 1,
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        capture: {
+          role: "candidate",
+          skillVersion: "abc123",
+          dependencies: [],
+          env: { fakeProduce: true },
+        },
+      }),
+    );
+    expect(smoke.rating.stars).toBe(1);
+    expect(smoke.verdict.recommendation).toBe("inconclusive");
+
+    const failed = buildBenefitReport(
+      sample({
+        mode: "official",
+        score: 1,
+        status: "failed",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+    );
+    expect(failed.rating.stars).toBe(1);
+    expect(failed.verdict.recommendation).toBe("do_not_use");
+
+    const base = sample({
+      mode: "official",
+      score: 1,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const { role: _drop, ...rest } = base;
+    const roleless = buildBenefitReport(rest as RunResult);
+    expect(roleless.rating.stars).toBe(1);
+    expect(roleless.verdict.recommendation).toBe("inconclusive");
+  });
+
   it("aligns rating prose with USE for official ≥0.99", () => {
     const report = buildBenefitReport(
       sample({
