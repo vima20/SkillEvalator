@@ -414,5 +414,7 @@ describe("benefitReport", () => {
     expect(report.rating.review).toMatch(/1\/1 soft-pass/);
     expect(report.rating.summary).toMatch(/Soft-pass complete/i);
     expect(report.rating.review).toMatch(/Benefit USE/i);
+    expect(report.rating.review).toMatch(/INCONCLUSIVE/i);
+    expect(report.rating.review).not.toMatch(/dry-run Comparison floor/i);
   });
 });

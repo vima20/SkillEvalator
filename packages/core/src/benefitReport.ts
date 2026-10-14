@@ -291,7 +291,7 @@ export function rateSkill(result: RunResult): BenefitRating {
       },
       {
         heading: "Analysis",
-        body: `${failList} Soft-pass (≥${PASS_SCORE_FLOOR}) is the dry-run Comparison floor. Official Comparison PASS and Benefit USE both require aggregate ≥${OFFICIAL_USE_SCORE_FLOOR} plus lift — grade scripts can pass while output still drifts from expected.`,
+        body: `${failList} Soft-pass (≥${PASS_SCORE_FLOOR}) is an exploratory score floor only — dry-run Comparison stays INCONCLUSIVE (not adoption PASS/FAIL). Official Comparison PASS and Benefit USE both require aggregate ≥${OFFICIAL_USE_SCORE_FLOOR} plus lift — grade scripts can pass while output still drifts from expected.`,
       },
       {
         heading: "Recommendation",

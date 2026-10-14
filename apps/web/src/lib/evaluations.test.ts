@@ -200,4 +200,46 @@ describe("updateEvaluationMetaLeg", () => {
     expect(after.comparison?.verdict).toBe("INCONCLUSIVE");
     expect(after.comparison?.lift).toBeGreaterThan(0);
   });
+
+  it("deletes superseded tip benefit-report.json on meta leg update", async () => {
+    const evaluationId = "eval_100_benunlink";
+    const oldCand = "run_100_old_bunl";
+    const newCand = "run_100_new_bunl";
+    const baselineRunId = "run_100_base_bunl";
+
+    writeJsonFile(path.join(resultsRoot, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "official",
+      baselineRunId,
+      candidateRunId: oldCand,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    writeJsonFile(path.join(resultsRoot, oldCand, "benefit-report.json"), {
+      verdict: { recommendation: "use" },
+      stale: true,
+    });
+
+    const { updateEvaluationMetaLeg } = await import("./evaluations.js");
+    expect(
+      updateEvaluationMetaLeg({
+        evaluationId,
+        role: "candidate",
+        runId: newCand,
+        mode: "official",
+        evalSkillId: "code-debugging-eval",
+      }),
+    ).toBe(true);
+
+    expect(
+      fs.existsSync(path.join(resultsRoot, oldCand, "benefit-report.json")),
+    ).toBe(false);
+    const meta = JSON.parse(
+      fs.readFileSync(
+        path.join(resultsRoot, evaluationId, "evaluation.json"),
+        "utf8",
+      ),
+    ) as { candidateRunId: string };
+    expect(meta.candidateRunId).toBe(newCand);
+  });
 });

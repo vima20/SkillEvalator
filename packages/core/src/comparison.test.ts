@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   LIFT_PASS_DELTA,
   compareBaselineCandidate,
+  loadPairedComparison,
   pairEvaluationRuns,
   resolveComparisonLegs,
   resolveEvaluationMetaEvalSkillId,
@@ -9,7 +13,16 @@ import {
   resolveEvaluationMetaMode,
   resolvePairedCancelSibling,
 } from "./comparison.js";
+import { writeJsonFile } from "./fsJson.js";
+import { saveRetryMarker } from "./retryDedup.js";
 import type { RunResult } from "./schema.js";
+
+const pairedTemps: string[] = [];
+afterEach(() => {
+  for (const d of pairedTemps.splice(0)) {
+    fs.rmSync(d, { recursive: true, force: true });
+  }
+});
 
 function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): RunResult {
   const { runId, role, ...rest } = over;
@@ -1958,5 +1971,117 @@ describe("resolvePairedCancelSibling", () => {
         ],
       }),
     ).toBeNull();
+  });
+});
+
+describe("loadPairedComparison tip heal", () => {
+  it("follows retry-of to tip candidateRunId (worker Benefit path)", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-paired-heal-"));
+    pairedTemps.push(root);
+    const evaluationId = "eval_100_healxx";
+    const baselineRunId = "run_100_baseheal";
+    const oldCand = "run_100_oldcheal";
+    const tipCand = "run_100_tipcheal";
+
+    writeJsonFile(path.join(root, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "dry-run",
+      baselineRunId,
+      candidateRunId: oldCand,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    writeJsonFile(
+      path.join(root, baselineRunId, "result.json"),
+      sample({
+        runId: baselineRunId,
+        role: "baseline",
+        evaluationId,
+        score: 0.5,
+      }),
+    );
+    writeJsonFile(
+      path.join(root, oldCand, "result.json"),
+      sample({
+        runId: oldCand,
+        role: "candidate",
+        evaluationId,
+        score: 0.7,
+        status: "failed",
+      }),
+    );
+    writeJsonFile(
+      path.join(root, tipCand, "result.json"),
+      sample({
+        runId: tipCand,
+        role: "candidate",
+        evaluationId,
+        score: 0.95,
+      }),
+    );
+    writeJsonFile(path.join(root, tipCand, "status.json"), {
+      runId: tipCand,
+      status: "ok",
+      role: "candidate",
+      evaluationId,
+    });
+    saveRetryMarker(root, oldCand, tipCand);
+
+    const cmp = loadPairedComparison({
+      resultsDir: root,
+      evaluationId,
+    });
+    expect(cmp).not.toBeNull();
+    expect(cmp!.baselineRunId).toBe(baselineRunId);
+    expect(cmp!.candidateRunId).toBe(tipCand);
+    expect(cmp!.verdict).toBe("INCONCLUSIVE");
+  });
+
+  it("keeps explicit leg overrides pinned (no tip walk)", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-paired-pin-"));
+    pairedTemps.push(root);
+    const evaluationId = "eval_100_pinxxx";
+    const baselineRunId = "run_100_basepinx";
+    const oldCand = "run_100_oldcpinx";
+    const tipCand = "run_100_tipcpinx";
+
+    writeJsonFile(path.join(root, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "dry-run",
+      baselineRunId,
+      candidateRunId: oldCand,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    for (const [id, role, score] of [
+      [baselineRunId, "baseline", 0.5],
+      [oldCand, "candidate", 0.7],
+      [tipCand, "candidate", 0.95],
+    ] as const) {
+      writeJsonFile(
+        path.join(root, id, "result.json"),
+        sample({
+          runId: id,
+          role,
+          evaluationId,
+          score,
+        }),
+      );
+    }
+    writeJsonFile(path.join(root, tipCand, "status.json"), {
+      runId: tipCand,
+      status: "ok",
+      role: "candidate",
+      evaluationId,
+    });
+    saveRetryMarker(root, oldCand, tipCand);
+
+    const cmp = loadPairedComparison({
+      resultsDir: root,
+      evaluationId,
+      baselineRunId,
+      candidateRunId: oldCand,
+    });
+    expect(cmp!.candidateRunId).toBe(oldCand);
   });
 });
