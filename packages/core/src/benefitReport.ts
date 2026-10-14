@@ -136,9 +136,10 @@ export function rateSkill(result: RunResult): BenefitRating {
 
   const smokeHarness = result.capture?.env?.fakeProduce === true;
   const roleMissing = result.role === undefined;
+  const isBaseline = result.role === "baseline";
   /** Align with decideSkillUse — these must not look like Excellent / USE. */
   const adoptionBlocked =
-    smokeHarness || roleMissing || status === "failed";
+    smokeHarness || roleMissing || status === "failed" || isBaseline;
 
   let stars: 1 | 2 | 3 | 4 | 5 = 1;
 
@@ -156,6 +157,9 @@ export function rateSkill(result: RunResult): BenefitRating {
   } else if (score < 0.34) {
     stars = 2;
   } else if (score < 0.67) {
+    stars = 3;
+  } else if (isBaseline) {
+    // Baseline never earns Excellent / USE styling — Comparison owns the pair.
     stars = 3;
   } else if (score < OFFICIAL_USE_SCORE_FLOOR) {
     stars = 4;
@@ -194,6 +198,18 @@ export function rateSkill(result: RunResult): BenefitRating {
       {
         heading: "Recommendation",
         body: "Re-run with a live model produce (FAKE_PRODUCE unset) before reading Benefit USE or star ratings as adoption advice.",
+      },
+    ];
+  } else if (isBaseline) {
+    summary = "Baseline leg — not a skill recommendation.";
+    reviewSections = [
+      {
+        heading: "Situation",
+        body: `This is the Unikie baseline run (neutral prompt, no skill SKILL.md). Score ${scoreTxt} on ${result.modelId} is a Comparison input only — stars stay at ${stars}/5.`,
+      },
+      {
+        heading: "Recommendation",
+        body: "Open Comparison for baseline↔candidate PASS/FAIL. Do not treat this baseline Benefit page as a skill USE recommendation.",
       },
     ];
   } else if (roleMissing) {
@@ -392,12 +408,22 @@ export function applyPairedComparisonGate(opts: {
   const { result, comparison } = opts;
   let { verdict, rating } = opts;
 
+  if (result.role === "baseline") {
+    // Defense-in-depth: never leave Excellent / USE styling on a baseline leg.
+    if (rating.stars >= 5 || verdict.recommendation === "use") {
+      rating = withUpdatedRecommendation(
+        rating,
+        3,
+        "Baseline leg — not a skill recommendation.",
+        "Open Comparison for baseline↔candidate PASS/FAIL. Baseline Benefit is not adoption advice.",
+      );
+    }
+    return { verdict, rating };
+  }
+
   const adoptionClaim =
     verdict.recommendation === "use" || rating.stars === 5;
   if (!adoptionClaim) {
-    return { verdict, rating };
-  }
-  if (result.role === "baseline") {
     return { verdict, rating };
   }
   if (result.mode !== "official") {

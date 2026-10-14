@@ -23,12 +23,13 @@ export async function GET(
     const report = buildBenefitReportForRun(result);
     const format = new URL(req.url).searchParams.get("format");
     if (format === "md" || format === "markdown" || format === "csv") {
-      const gate = benefitExportGate(report.verdict.recommendation);
+      const gate = benefitExportGate(report);
       if (!gate.ok) {
         return NextResponse.json(
           {
             error: gate.error,
             recommendation: gate.recommendation,
+            ...(gate.mode ? { mode: gate.mode } : {}),
           },
           { status: gate.status },
         );

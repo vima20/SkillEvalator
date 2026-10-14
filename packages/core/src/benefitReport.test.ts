@@ -182,6 +182,26 @@ describe("benefitReport", () => {
     expect(report.verdict.recommendation).toBe("use");
   });
 
+  it("baseline official score never earns 5★ or adopt prose", () => {
+    const report = buildBenefitReport(
+      sample({
+        role: "baseline",
+        mode: "official",
+        score: 1,
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        evaluationId: "eval_test",
+      }),
+      { comparison: comparisonStub("PASS") },
+    );
+    expect(report.verdict.recommendation).toBe("inconclusive");
+    expect(report.rating.stars).toBeLessThanOrEqual(3);
+    expect(report.rating.summary).toMatch(/baseline/i);
+    expect(report.rating.grade).not.toBe("Excellent");
+    expect(report.rating.review).not.toMatch(/fit for use/i);
+    expect(report.rating.review).toMatch(/Comparison/i);
+  });
+
   it("locks USE / 5★ when Comparison is FAIL or missing", () => {
     const official = sample({
       mode: "official",

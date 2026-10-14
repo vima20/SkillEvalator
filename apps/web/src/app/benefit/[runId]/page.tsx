@@ -90,8 +90,9 @@ export default async function BenefitReportPage({
           markdown={markdown}
           evaluationId={result.evaluationId}
           exportAllowed={
-            report.verdict.recommendation === "use" ||
-            report.verdict.recommendation === "do_not_use"
+            result.mode === "official" &&
+            (report.verdict.recommendation === "use" ||
+              report.verdict.recommendation === "do_not_use")
           }
         />
       </header>
