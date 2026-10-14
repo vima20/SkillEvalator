@@ -80,6 +80,84 @@ function useHostGrade(): boolean {
   });
 }
 
+/**
+ * Official tip↔role↔slot gate. Call at claim and again before writing
+ * result.json so a mid-run meta move cannot stamp adoption caches.
+ */
+function assertOfficialMetaTipSlot(opts: {
+  resultsDir: string;
+  evaluationId: string;
+  runId: string;
+  role: "baseline" | "candidate";
+  evalSkillId: string;
+  mode: string;
+}): void {
+  const evalId = assertSafeId(opts.evaluationId, "evaluationId");
+  const metaPath = path.join(opts.resultsDir, evalId, "evaluation.json");
+  if (!fs.existsSync(metaPath)) {
+    throw new Error(
+      `official_evaluation_meta_missing: official job requires ${evalId}/evaluation.json (paired baseline↔candidate)`,
+    );
+  }
+  let meta: {
+    baselineRunId?: string;
+    candidateRunId?: string;
+    evaluationId?: string;
+    mode?: string;
+    evalSkillId?: string;
+  };
+  try {
+    meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as typeof meta;
+  } catch {
+    throw new Error(
+      `official_evaluation_meta_invalid: cannot read ${evalId}/evaluation.json`,
+    );
+  }
+  if (meta.evaluationId !== evalId) {
+    throw new Error(
+      `official_evaluation_meta_id_mismatch: folder ${evalId} vs meta.evaluationId ${String(meta.evaluationId)}`,
+    );
+  }
+  if (meta.mode !== "official" || meta.mode !== opts.mode) {
+    throw new Error(
+      `official_evaluation_mode_mismatch: job mode ${opts.mode} vs meta.mode ${String(meta.mode)}`,
+    );
+  }
+  if (meta.evalSkillId !== opts.evalSkillId) {
+    throw new Error(
+      `official_evaluation_skill_mismatch: job ${opts.evalSkillId} vs meta.evalSkillId ${String(meta.evalSkillId)}`,
+    );
+  }
+  const baselineRunId = meta.baselineRunId;
+  const candidateRunId = meta.candidateRunId;
+  if (
+    typeof baselineRunId !== "string" ||
+    !baselineRunId ||
+    typeof candidateRunId !== "string" ||
+    !candidateRunId
+  ) {
+    throw new Error(
+      `official_evaluation_legs_incomplete: ${evalId} requires both baselineRunId and candidateRunId`,
+    );
+  }
+  const metaSlot =
+    opts.runId === baselineRunId
+      ? ("baseline" as const)
+      : opts.runId === candidateRunId
+        ? ("candidate" as const)
+        : null;
+  if (!metaSlot) {
+    throw new Error(
+      `official_evaluation_leg_mismatch: run ${opts.runId} is not a current meta leg of ${evalId}`,
+    );
+  }
+  if (opts.role !== metaSlot) {
+    throw new Error(
+      `official_evaluation_role_slot_mismatch: job role ${opts.role} vs meta slot ${metaSlot} for ${opts.runId}`,
+    );
+  }
+}
+
 function writeSkillSnapshot(opts: {
   resultDir: string;
   skill: ReturnType<typeof loadSkill>;
@@ -291,80 +369,14 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   }
   // Official must point at a real paired meta file (not a forged evaluationId).
   if (job.mode === "official" && job.evaluationId) {
-    const evalId = assertSafeId(job.evaluationId, "evaluationId");
-    const metaPath = path.join(
-      config.resultsDir,
-      evalId,
-      "evaluation.json",
-    );
-    if (!fs.existsSync(metaPath)) {
-      throw new Error(
-        `official_evaluation_meta_missing: official job requires ${evalId}/evaluation.json (paired baseline↔candidate)`,
-      );
-    }
-    try {
-      const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
-        baselineRunId?: string;
-        candidateRunId?: string;
-        evaluationId?: string;
-        mode?: string;
-        evalSkillId?: string;
-      };
-      if (meta.evaluationId !== evalId) {
-        throw new Error(
-          `official_evaluation_meta_id_mismatch: folder ${evalId} vs meta.evaluationId ${String(meta.evaluationId)}`,
-        );
-      }
-      if (meta.mode !== "official" || meta.mode !== job.mode) {
-        throw new Error(
-          `official_evaluation_mode_mismatch: job mode ${job.mode} vs meta.mode ${String(meta.mode)}`,
-        );
-      }
-      if (meta.evalSkillId !== job.evalSkillId) {
-        throw new Error(
-          `official_evaluation_skill_mismatch: job ${job.evalSkillId} vs meta.evalSkillId ${String(meta.evalSkillId)}`,
-        );
-      }
-      const baselineRunId = meta.baselineRunId;
-      const candidateRunId = meta.candidateRunId;
-      if (
-        typeof baselineRunId !== "string" ||
-        !baselineRunId ||
-        typeof candidateRunId !== "string" ||
-        !candidateRunId
-      ) {
-        throw new Error(
-          `official_evaluation_legs_incomplete: ${evalId} requires both baselineRunId and candidateRunId`,
-        );
-      }
-      // Tip legs only — retries must update evaluation.json before the job is claimable.
-      const metaSlot =
-        runId === baselineRunId
-          ? ("baseline" as const)
-          : runId === candidateRunId
-            ? ("candidate" as const)
-            : null;
-      if (!metaSlot) {
-        throw new Error(
-          `official_evaluation_leg_mismatch: run ${runId} is not a current meta leg of ${evalId}`,
-        );
-      }
-      if (role !== metaSlot) {
-        throw new Error(
-          `official_evaluation_role_slot_mismatch: job role ${role} vs meta slot ${metaSlot} for ${runId}`,
-        );
-      }
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        err.message.startsWith("official_evaluation_")
-      ) {
-        throw err;
-      }
-      throw new Error(
-        `official_evaluation_meta_invalid: cannot read ${evalId}/evaluation.json`,
-      );
-    }
+    assertOfficialMetaTipSlot({
+      resultsDir: config.resultsDir,
+      evaluationId: job.evaluationId,
+      runId,
+      role,
+      evalSkillId: job.evalSkillId,
+      mode: job.mode,
+    });
   }
 
   // Seed Retry pin before loadSkill (parent snapshot or live tree) for both
@@ -951,6 +963,18 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       finishedAt: new Date().toISOString(),
       mode: job.mode,
     });
+
+    // Re-check tip↔role↔slot before adoption stamps (meta may have moved mid-run).
+    if (job.mode === "official" && job.evaluationId) {
+      assertOfficialMetaTipSlot({
+        resultsDir: config.resultsDir,
+        evaluationId: job.evaluationId,
+        runId,
+        role,
+        evalSkillId: job.evalSkillId,
+        mode: job.mode,
+      });
+    }
 
     writeJsonFile(path.join(resultDir, "result.json"), result);
     const pairedComparison = result.evaluationId

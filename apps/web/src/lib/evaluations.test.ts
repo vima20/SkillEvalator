@@ -201,6 +201,79 @@ describe("updateEvaluationMetaLeg", () => {
     expect(after.comparison?.lift).toBeGreaterThan(0);
   });
 
+  it("unlinks superseded benefit cache when tip-heal lock fails", async () => {
+    const evaluationId = "eval_100_heal_unlock";
+    const oldCand = "run_100_old_heal";
+    const newCand = "run_100_new_heal";
+    const baselineRunId = "run_100_base_heal";
+
+    const { saveRetryMarker, tryAcquireWxLock, releaseWxLock } =
+      await import("@skillevalator/core");
+    const { loadEvaluationComparison, evaluationMetaPath } =
+      await import("./evaluations.js");
+
+    writeJsonFile(path.join(resultsRoot, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "dry-run",
+      baselineRunId,
+      candidateRunId: oldCand,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    writeJsonFile(path.join(resultsRoot, oldCand, "benefit-report.json"), {
+      verdict: { recommendation: "use" },
+      stale: true,
+    });
+    writeJsonFile(path.join(resultsRoot, oldCand, "status.json"), {
+      runId: oldCand,
+      status: "failed",
+      role: "candidate",
+      evaluationId,
+    });
+    writeJsonFile(path.join(resultsRoot, newCand, "status.json"), {
+      runId: newCand,
+      status: "ok",
+      role: "candidate",
+      evaluationId,
+    });
+    writeJsonFile(
+      path.join(resultsRoot, baselineRunId, "result.json"),
+      sampleResult({
+        runId: baselineRunId,
+        role: "baseline",
+        mode: "dry-run",
+        evaluationId,
+        score: 0.5,
+      }),
+    );
+    writeJsonFile(
+      path.join(resultsRoot, newCand, "result.json"),
+      sampleResult({
+        runId: newCand,
+        role: "candidate",
+        mode: "dry-run",
+        evaluationId,
+        score: 0.9,
+      }),
+    );
+    saveRetryMarker(resultsRoot, oldCand, newCand);
+
+    // Hold meta lock so disk heal fails; in-memory tip still unlinks Benefit.
+    const lockPath = `${evaluationMetaPath(evaluationId)}.lock`;
+    expect(tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: 1 })).toBe(
+      true,
+    );
+    try {
+      const out = loadEvaluationComparison(evaluationId);
+      expect(out.meta?.candidateRunId).toBe(newCand);
+      expect(
+        fs.existsSync(path.join(resultsRoot, oldCand, "benefit-report.json")),
+      ).toBe(false);
+    } finally {
+      releaseWxLock(lockPath);
+    }
+  });
+
   it("deletes superseded tip benefit-report.json on meta leg update", async () => {
     const evaluationId = "eval_100_benunlink";
     const oldCand = "run_100_old_bunl";

@@ -4,10 +4,10 @@ import { NextResponse } from "next/server";
 import {
   assertSafeId,
   loadRunStatus,
-  readJsonFile,
   resolvePairedCancelSibling,
   writeJsonFile,
 } from "@skillevalator/core";
+import { resolveHealedMetaLegsForCancel } from "@/lib/evaluations";
 import { cancelGate, pairedCancelPeerStatuses } from "@/lib/runLifecycle";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
@@ -85,36 +85,6 @@ function requestCancelOne(runId: string): CancelOutcome {
   };
 }
 
-function loadEvaluationMetaLegs(evaluationId: string): {
-  baselineRunId: string;
-  candidateRunId: string;
-} | null {
-  try {
-    const metaPath = path.join(
-      resultsDir(),
-      assertSafeId(evaluationId, "evaluationId"),
-      "evaluation.json",
-    );
-    if (!fs.existsSync(metaPath)) return null;
-    const meta = readJsonFile(metaPath) as {
-      baselineRunId?: string;
-      candidateRunId?: string;
-    };
-    if (
-      typeof meta.baselineRunId !== "string" ||
-      typeof meta.candidateRunId !== "string"
-    ) {
-      return null;
-    }
-    return {
-      baselineRunId: meta.baselineRunId,
-      candidateRunId: meta.candidateRunId,
-    };
-  } catch {
-    return null;
-  }
-}
-
 /** Sibling baseline/candidate run for the same Comparison, if any. */
 function pairedSiblingRunId(
   runId: string,
@@ -122,7 +92,8 @@ function pairedSiblingRunId(
   role?: string,
 ): string | null {
   const root = resultsDir();
-  const meta = loadEvaluationMetaLegs(evaluationId);
+  // Tip-heal before cascade — raw disk meta can still name a superseded leg.
+  const meta = resolveHealedMetaLegsForCancel(evaluationId);
   const peers: Array<{ runId: string; role?: string; status?: string }> = [];
   try {
     for (const name of fs.readdirSync(root)) {
@@ -178,8 +149,9 @@ export async function POST(
     if (evaluationId) {
       const sibling = pairedSiblingRunId(runId, evaluationId, role);
       if (sibling && sibling !== runId) {
-        const sib = requestCancelOne(sibling);
-        if (sib.ok && !sib.already) siblingCancelled = sibling;
+        const safeSibling = assertSafeId(sibling, "runId");
+        const sib = requestCancelOne(safeSibling);
+        if (sib.ok && !sib.already) siblingCancelled = safeSibling;
       }
     }
 

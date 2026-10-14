@@ -4,6 +4,7 @@ import {
   OFFICIAL_USE_SCORE_FLOOR,
   PASS_SCORE_FLOOR,
 } from "./diffScore.js";
+import { resolveTrustedGradeHashFromRunResultDir } from "./dockerGrade.js";
 import { readJsonFile } from "./fsJson.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
 import { assertSafeId } from "./paths.js";
@@ -247,6 +248,11 @@ export function checkComparisonParity(
     expectedEvaluationMode?: RunResult["mode"];
     /** results/<id>/ folder — legs must match this audit path. */
     expectedEvaluationId?: string;
+    /**
+     * Trusted grade.js sha256 (skill-snapshot / harness). Official Comparison
+     * must pin this — matching forged leg↔leg hashes alone must not PASS.
+     */
+    expectedGradeHash?: string;
     /** Extra parity issues (e.g. from resolveEvaluationMetaMode). */
     extraParityIssues?: string[];
   },
@@ -307,6 +313,23 @@ export function checkComparisonParity(
       issues.push(
         "official Comparison requires candidate.capture.env.gradeHash",
       );
+    }
+    const expectedGradeHash = opts?.expectedGradeHash?.trim() ?? "";
+    if (!expectedGradeHash) {
+      issues.push(
+        "official Comparison requires trusted expectedGradeHash (skill-snapshot grade.js)",
+      );
+    } else {
+      if (baselineGradeHash && baselineGradeHash !== expectedGradeHash) {
+        issues.push(
+          `baseline.capture.env.gradeHash ≠ trusted expectedGradeHash (${baselineGradeHash.slice(0, 12)}…)`,
+        );
+      }
+      if (candidateGradeHash && candidateGradeHash !== expectedGradeHash) {
+        issues.push(
+          `candidate.capture.env.gradeHash ≠ trusted expectedGradeHash (${candidateGradeHash.slice(0, 12)}…)`,
+        );
+      }
     }
   }
   // Cost/smoke env fields: both missing OK for dry-run; XOR or unequal → fail.
@@ -699,6 +722,7 @@ export function compareBaselineCandidate(
     expectedEvalSkillId?: string;
     expectedEvaluationMode?: RunResult["mode"];
     expectedEvaluationId?: string;
+    expectedGradeHash?: string;
     extraParityIssues?: string[];
   },
 ): RunComparison {
@@ -1023,6 +1047,20 @@ export function loadPairedComparison(opts: {
     metaEvaluationId: meta?.evaluationId,
     evaluationMetaPresent: metaPresent,
   });
+  const officialDisk =
+    modePin.expectedEvaluationMode === "official" ||
+    baseline.mode === "official" ||
+    candidate.mode === "official";
+  const expectedGradeHash = officialDisk
+    ? (resolveTrustedGradeHashFromRunResultDir(
+        opts.resultsDir,
+        candidateRunId,
+      ) ??
+      resolveTrustedGradeHashFromRunResultDir(
+        opts.resultsDir,
+        baselineRunId,
+      ))
+    : undefined;
   const extraParityIssues = [
     ...modePin.issues,
     ...skillPin.issues,
@@ -1038,6 +1076,7 @@ export function loadPairedComparison(opts: {
     ...(evalIdPin.expectedEvaluationId
       ? { expectedEvaluationId: evalIdPin.expectedEvaluationId }
       : {}),
+    ...(expectedGradeHash ? { expectedGradeHash } : {}),
     ...(extraParityIssues.length ? { extraParityIssues } : {}),
   });
 }

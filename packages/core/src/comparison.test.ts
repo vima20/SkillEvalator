@@ -92,6 +92,10 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
   };
 }
 
+/** Trusted pin matching sample() defaultCapture.env.gradeHash. */
+const TRUSTED_GRADE_HASH =
+  "gradehash0000001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
 describe("compareBaselineCandidate", () => {
   it("dry-run lift is INCONCLUSIVE (not adoption PASS)", () => {
     const c = compareBaselineCandidate(
@@ -123,6 +127,7 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
     );
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
     expect(c.verdict).toBe("FAIL");
@@ -147,9 +152,63 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
     );
     expect(c.verdict).toBe("PASS");
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
+  it("official INCONCLUSIVE when expectedGradeHash missing (forged leg match)", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /trusted expectedGradeHash/i.test(i)),
+    ).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when legs share forged gradeHash ≠ trusted", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      { expectedGradeHash: "trusted_real_gradehash_bbbbbbbbbbbbbbbbbbbb" },
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /≠ trusted expectedGradeHash/i.test(i)),
+    ).toBe(true);
   });
 
   it("official INCONCLUSIVE when both legs omit promptKind (legacy laundering)", () => {
@@ -337,6 +396,7 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
     );
     expect(c.lift!).toBeLessThan(LIFT_PASS_DELTA);
     expect(c.verdict).toBe("FAIL");
@@ -368,6 +428,7 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
     );
     expect(c.verdict).toBe("FAIL");
   });

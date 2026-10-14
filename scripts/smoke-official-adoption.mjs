@@ -19,6 +19,7 @@ import {
   gradeOnHost,
   loadSkill,
   resolveDataPaths,
+  resolveTrustedScriptsDir,
   taskIdsForMode,
   taskPaths,
   writeJsonFile,
@@ -33,10 +34,12 @@ const skill = loadSkill(skillsDir, skillId);
 const taskIds = taskIdsForMode(skill, "official");
 const stamp = Date.now();
 const startedAt = new Date().toISOString();
-const gradeHash = crypto
-  .createHash("sha256")
-  .update(`smoke-official-grade:${skill.id}`)
-  .digest("hex");
+// Pin to real harness grade.js — forged matching hashes must not PASS.
+const gradeHash = resolveTrustedScriptsDir(skill.root).gradeHash?.trim();
+if (!gradeHash) {
+  console.error("Smoke official failed: trusted grade.js hash unavailable");
+  process.exit(1);
+}
 
 function fail(msg) {
   console.error(`Smoke official failed: ${msg}`);
@@ -179,6 +182,7 @@ function writePair(evaluationId, baseline, candidate, label) {
     expectedEvalSkillId: skill.id,
     expectedEvaluationMode: "official",
     expectedEvaluationId: evaluationId,
+    expectedGradeHash: gradeHash,
   });
   writeJsonFile(
     path.join(resultsDir, evaluationId, "comparison.json"),

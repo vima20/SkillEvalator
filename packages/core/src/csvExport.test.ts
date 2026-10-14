@@ -56,6 +56,40 @@ describe("runResultToCsv", () => {
   });
 });
 
+const TRUSTED_GRADE_HASH =
+  "gradehash0000001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+function officialCapture(role: "baseline" | "candidate") {
+  return {
+    githubUrl:
+      "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+    commit: "deadbeef",
+    license: "MIT",
+    dependencies: [] as string[],
+    skillVersion: "abc",
+    role,
+    promptHash: role === "baseline" ? "baselinehash0001" : "candidatehash0002",
+    promptKind:
+      role === "baseline"
+        ? ("baseline_neutral" as const)
+        : ("skill_md" as const),
+    env: {
+      gradeHash: TRUSTED_GRADE_HASH,
+      fakeProduce: false,
+      costCapUsd: 5,
+      costHardStop: true,
+      allowHostGrade: false,
+      temperature: 0,
+      topP: 1,
+      seed: 42,
+      maxOutputTokens: 1024,
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
+      grade: "docker_script" as const,
+    },
+  };
+}
+
 describe("comparisonToCsv", () => {
   it("exports task deltas and skill attribution", () => {
     const cmp = compareBaselineCandidate(
@@ -66,6 +100,7 @@ describe("comparisonToCsv", () => {
         mode: "official",
         modelId: "gpt-4.1-mini",
         repeats: 3,
+        capture: officialCapture("baseline"),
       }),
       sample({
         runId: "c",
@@ -74,7 +109,9 @@ describe("comparisonToCsv", () => {
         mode: "official",
         modelId: "gpt-4.1-mini",
         repeats: 3,
+        capture: officialCapture("candidate"),
       }),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
     );
     expect(cmp.verdict).toBe("PASS");
     const csv = comparisonToCsv(cmp);

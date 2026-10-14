@@ -12,6 +12,7 @@ import {
   resolveEvaluationMetaEvaluationId,
   resolveEvaluationMetaMode,
   resolveLegRunIdViaRetryChain,
+  resolveTrustedGradeHashFromRunResultDir,
   tryAcquireWxLock,
   writeJsonFile,
   type RunComparison,
@@ -93,20 +94,108 @@ export function updateEvaluationMetaLeg(opts: {
     writeJsonFile(metaPath, next);
     // Drop superseded tip's cached Benefit so offline USE cannot outlive tip move.
     if (prevLegId && prevLegId !== runId) {
-      try {
-        const staleBenefit = path.join(
-          resultsDir(),
-          assertSafeId(prevLegId, "runId"),
-          "benefit-report.json",
-        );
-        if (fs.existsSync(staleBenefit)) fs.unlinkSync(staleBenefit);
-      } catch {
-        /* best-effort */
-      }
+      unlinkBenefitReportCache(prevLegId);
     }
     return true;
   } finally {
     releaseWxLock(lockPath);
+  }
+}
+
+/** Best-effort drop of a run's cached Benefit (superseded tip / heal lock miss). */
+export function unlinkBenefitReportCache(runId: string): void {
+  try {
+    const staleBenefit = path.join(
+      resultsDir(),
+      assertSafeId(runId, "runId"),
+      "benefit-report.json",
+    );
+    if (fs.existsSync(staleBenefit)) fs.unlinkSync(staleBenefit);
+  } catch {
+    /* best-effort */
+  }
+}
+
+/**
+ * Tip-healed baseline/candidate runIds for cancel cascade.
+ * Follows retry-of in memory (and best-effort disk heal) so cancelling a
+ * superseded disk tip cannot kill the live sibling.
+ */
+export function resolveHealedMetaLegsForCancel(evaluationId: string): {
+  baselineRunId: string;
+  candidateRunId: string;
+} | null {
+  const id = assertSafeId(evaluationId, "evaluationId");
+  const meta = loadEvaluationMeta(id);
+  if (!meta?.baselineRunId || !meta?.candidateRunId) return null;
+  const dir = resultsDir();
+  const loadLeg = (runId: string) => loadRetryChainLegInfo(dir, runId);
+
+  const baseTip = resolveLegRunIdViaRetryChain({
+    resultsDir: dir,
+    fromRunId: meta.baselineRunId,
+    evaluationId: id,
+    role: "baseline",
+    loadLeg,
+  });
+  const candTip = resolveLegRunIdViaRetryChain({
+    resultsDir: dir,
+    fromRunId: meta.candidateRunId,
+    evaluationId: id,
+    role: "candidate",
+    loadLeg,
+  });
+
+  let baselineRunId = meta.baselineRunId;
+  let candidateRunId = meta.candidateRunId;
+  const modePin =
+    meta.mode === "dry-run" || meta.mode === "official"
+      ? { mode: meta.mode as "dry-run" | "official" }
+      : {};
+
+  if (baseTip.hops > 0 && baseTip.runId !== baselineRunId) {
+    const prev = baselineRunId;
+    if (
+      updateEvaluationMetaLeg({
+        evaluationId: id,
+        role: "baseline",
+        runId: baseTip.runId,
+        ...modePin,
+        evalSkillId: meta.evalSkillId,
+      })
+    ) {
+      baselineRunId = baseTip.runId;
+    } else {
+      // In-memory tip only — still drop superseded Benefit so USE cannot linger.
+      unlinkBenefitReportCache(prev);
+      baselineRunId = baseTip.runId;
+    }
+  }
+  if (candTip.hops > 0 && candTip.runId !== candidateRunId) {
+    const prev = candidateRunId;
+    if (
+      updateEvaluationMetaLeg({
+        evaluationId: id,
+        role: "candidate",
+        runId: candTip.runId,
+        ...modePin,
+        evalSkillId: meta.evalSkillId,
+      })
+    ) {
+      candidateRunId = candTip.runId;
+    } else {
+      unlinkBenefitReportCache(prev);
+      candidateRunId = candTip.runId;
+    }
+  }
+
+  try {
+    return {
+      baselineRunId: assertSafeId(baselineRunId, "runId"),
+      candidateRunId: assertSafeId(candidateRunId, "runId"),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -167,6 +256,7 @@ export function loadEvaluationComparison(
     });
     // Best-effort heal so the next load does not depend on retry-of walk.
     if (baseTip.hops > 0 && baseTip.runId !== baselineRunId) {
+      const prev = baselineRunId;
       if (
         updateEvaluationMetaLeg({
           evaluationId,
@@ -181,10 +271,13 @@ export function loadEvaluationComparison(
         baselineRunId = baseTip.runId;
         meta = loadEvaluationMeta(evaluationId) ?? meta;
       } else {
+        // Lock miss: Comparison still uses tip in memory — drop stale USE cache.
+        if (prev) unlinkBenefitReportCache(prev);
         baselineRunId = baseTip.runId;
       }
     }
     if (candTip.hops > 0 && candTip.runId !== candidateRunId) {
+      const prev = candidateRunId;
       if (
         updateEvaluationMetaLeg({
           evaluationId,
@@ -199,6 +292,7 @@ export function loadEvaluationComparison(
         candidateRunId = candTip.runId;
         meta = loadEvaluationMeta(evaluationId) ?? meta;
       } else {
+        if (prev) unlinkBenefitReportCache(prev);
         candidateRunId = candTip.runId;
       }
     }
@@ -235,6 +329,17 @@ export function loadEvaluationComparison(
             metaEvaluationId: meta?.evaluationId,
             evaluationMetaPresent: metaPresent,
           });
+          const officialDisk =
+            modePin.expectedEvaluationMode === "official" ||
+            baseline.mode === "official" ||
+            candidate.mode === "official";
+          const expectedGradeHash = officialDisk
+            ? (resolveTrustedGradeHashFromRunResultDir(
+                dir,
+                candidate.runId,
+              ) ??
+              resolveTrustedGradeHashFromRunResultDir(dir, baseline.runId))
+            : undefined;
           const extraParityIssues = [
             ...modePin.issues,
             ...skillPin.issues,
@@ -250,6 +355,7 @@ export function loadEvaluationComparison(
             ...(evalIdPin.expectedEvaluationId
               ? { expectedEvaluationId: evalIdPin.expectedEvaluationId }
               : {}),
+            ...(expectedGradeHash ? { expectedGradeHash } : {}),
             ...(extraParityIssues.length ? { extraParityIssues } : {}),
           });
         })()

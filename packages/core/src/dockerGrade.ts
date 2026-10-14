@@ -162,6 +162,25 @@ export function hashGradeJsFile(gradeJsPath: string): string | undefined {
 }
 
 /**
+ * Trusted grade.js hash from a run's skill-snapshot (what the worker graded).
+ * Undefined when snapshot/grade.js is missing — callers fail closed for official.
+ */
+export function resolveTrustedGradeHashFromRunResultDir(
+  resultsDirPath: string,
+  runId: string,
+): string | undefined {
+  try {
+    const id = assertSafeId(runId, "runId");
+    const snapRoot = path.join(resultsDirPath, id, "skill-snapshot");
+    if (!fs.existsSync(snapRoot)) return undefined;
+    const hash = resolveTrustedScriptsDir(snapRoot).gradeHash?.trim();
+    return hash || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * For imported skills (.import.json), prefer a trusted local harness
  * under eval-skills/<id>/scripts — never the imported grade.js.
  * Pin order: harness.json → single taskSetId match (multi-match fail-closed).
