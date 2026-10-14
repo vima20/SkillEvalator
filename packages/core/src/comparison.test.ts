@@ -5,6 +5,7 @@ import {
   pairEvaluationRuns,
   resolveComparisonLegs,
   resolveEvaluationMetaEvalSkillId,
+  resolveEvaluationMetaEvaluationId,
   resolveEvaluationMetaMode,
   resolvePairedCancelSibling,
 } from "./comparison.js";
@@ -1527,6 +1528,37 @@ describe("compareBaselineCandidate", () => {
     });
     expect(pin.expectedEvalSkillId).toBe("code-debugging-eval");
     expect(pin.issues).toEqual([]);
+  });
+
+  it("INCONCLUSIVE when evaluation meta evaluationId disagrees with folder pin", () => {
+    const pin = resolveEvaluationMetaEvaluationId({
+      folderEvaluationId: "eval_100_folder",
+      metaEvaluationId: "eval_100_other",
+      evaluationMetaPresent: true,
+    });
+    expect(pin.expectedEvaluationId).toBe("eval_100_folder");
+    expect(pin.issues.some((i) => i.includes("folder"))).toBe(true);
+
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        evaluationId: "eval_100_other",
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        evaluationId: "eval_100_other",
+      }),
+      {
+        expectedEvaluationId: pin.expectedEvaluationId,
+        extraParityIssues: pin.issues,
+      },
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.evaluationId).toBe("eval_100_folder");
   });
 
   it("INCONCLUSIVE when decoding.seed or pipeline.grade differs", () => {

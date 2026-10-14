@@ -9,6 +9,7 @@ import {
   releaseWxLock,
   resolveComparisonLegs,
   resolveEvaluationMetaEvalSkillId,
+  resolveEvaluationMetaEvaluationId,
   resolveEvaluationMetaMode,
   resolveLegRunIdViaRetryChain,
   tryAcquireWxLock,
@@ -40,6 +41,10 @@ export function loadEvaluationMeta(
   try {
     const raw = readJsonFile(p) as EvaluationMeta;
     if (!raw?.evaluationId || !raw.baselineRunId || !raw.candidateRunId) {
+      return null;
+    }
+    // Folder name is the audit path — reject meta that claims another id.
+    if (raw.evaluationId !== evaluationId) {
       return null;
     }
     return raw;
@@ -210,9 +215,15 @@ export function loadEvaluationComparison(
             candidateEvalSkillId: candidate.evalSkillId,
             evaluationMetaPresent: metaPresent,
           });
+          const evalIdPin = resolveEvaluationMetaEvaluationId({
+            folderEvaluationId: evaluationId,
+            metaEvaluationId: meta?.evaluationId,
+            evaluationMetaPresent: metaPresent,
+          });
           const extraParityIssues = [
             ...modePin.issues,
             ...skillPin.issues,
+            ...evalIdPin.issues,
           ];
           return compareBaselineCandidate(baseline, candidate, {
             ...(skillPin.expectedEvalSkillId
@@ -220,6 +231,9 @@ export function loadEvaluationComparison(
               : {}),
             ...(modePin.expectedEvaluationMode
               ? { expectedEvaluationMode: modePin.expectedEvaluationMode }
+              : {}),
+            ...(evalIdPin.expectedEvaluationId
+              ? { expectedEvaluationId: evalIdPin.expectedEvaluationId }
               : {}),
             ...(extraParityIssues.length ? { extraParityIssues } : {}),
           });

@@ -193,6 +193,41 @@ export function resolveEvaluationMetaEvalSkillId(opts: {
   return { issues };
 }
 
+/**
+ * Canonical evaluation id is the results folder name (URL path).
+ * Meta file and both legs must match that pin — prevents PASS under the wrong
+ * /comparison/[evaluationId] audit path.
+ */
+export function resolveEvaluationMetaEvaluationId(opts: {
+  folderEvaluationId: string;
+  metaEvaluationId?: string | null;
+  evaluationMetaPresent: boolean;
+}): {
+  expectedEvaluationId?: string;
+  issues: string[];
+} {
+  const issues: string[] = [];
+  const folder = opts.folderEvaluationId.trim();
+  if (!isEvalSkillId(folder)) {
+    issues.push(
+      `evaluation folder id invalid: ${JSON.stringify(opts.folderEvaluationId)}`,
+    );
+    return { issues };
+  }
+  if (opts.evaluationMetaPresent) {
+    const raw =
+      typeof opts.metaEvaluationId === "string"
+        ? opts.metaEvaluationId.trim()
+        : "";
+    if (raw && raw !== folder) {
+      issues.push(
+        `evaluation meta evaluationId ${JSON.stringify(raw)} ≠ folder ${folder}`,
+      );
+    }
+  }
+  return { expectedEvaluationId: folder, issues };
+}
+
 /** Assert Unikie parity: same model/mode/tasks/repeats/decoding for fair lift. */
 export function checkComparisonParity(
   baseline: RunResult,
@@ -201,6 +236,8 @@ export function checkComparisonParity(
     expectedEvalSkillId?: string;
     /** evaluation.json mode — legs must match meta, not only each other. */
     expectedEvaluationMode?: RunResult["mode"];
+    /** results/<id>/ folder — legs must match this audit path. */
+    expectedEvaluationId?: string;
     /** Extra parity issues (e.g. from resolveEvaluationMetaMode). */
     extraParityIssues?: string[];
   },
@@ -362,6 +399,21 @@ export function checkComparisonParity(
     if (candidate.evalSkillId !== expected) {
       issues.push(
         `candidate.evalSkillId ${candidate.evalSkillId} ≠ evaluation meta ${expected}`,
+      );
+    }
+  }
+  const expectedEvaluationId = opts?.expectedEvaluationId;
+  if (expectedEvaluationId) {
+    const bEval = baseline.evaluationId?.trim() ?? "";
+    const cEval = candidate.evaluationId?.trim() ?? "";
+    if (bEval !== expectedEvaluationId) {
+      issues.push(
+        `baseline.evaluationId ${bEval || "missing"} ≠ folder ${expectedEvaluationId}`,
+      );
+    }
+    if (cEval !== expectedEvaluationId) {
+      issues.push(
+        `candidate.evaluationId ${cEval || "missing"} ≠ folder ${expectedEvaluationId}`,
       );
     }
   }
@@ -577,10 +629,12 @@ export function compareBaselineCandidate(
   opts?: {
     expectedEvalSkillId?: string;
     expectedEvaluationMode?: RunResult["mode"];
+    expectedEvaluationId?: string;
     extraParityIssues?: string[];
   },
 ): RunComparison {
   const evaluationId =
+    opts?.expectedEvaluationId ??
     baseline.evaluationId ??
     candidate.evaluationId ??
     `pair_${baseline.runId}_${candidate.runId}`;
