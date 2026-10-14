@@ -20,3 +20,4 @@ export * from "./comparison.js";
 export * from "./csvExport.js";
 export * from "./githubSkillImport.js";
 export * from "./officialAdmission.js";
+export * from "./webAuthConfig.js";

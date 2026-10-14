@@ -27,6 +27,7 @@ import {
   aggregateRepeats,
   normalizeRepeats,
   officialEnqueueAllowed,
+  resolveWebAuthConfig,
   resolveUnder,
   readRegularFileUtf8,
   scoreFromGradeAndDiff,
@@ -275,8 +276,14 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   touchHeartbeat({ busy: true, runId });
 
   try {
-  // Belt-and-suspenders: refuse official+smoke even if enqueue was bypassed.
-  const admission = officialEnqueueAllowed({ mode: job.mode });
+  // Belt-and-suspenders: refuse official bypass (smoke / key / web-auth pilot).
+  const webAuth = resolveWebAuthConfig(process.env.WEB_AUTH_TOKEN);
+  const admission = officialEnqueueAllowed({
+    mode: job.mode,
+    requireWebAuthConfigured:
+      process.env.OFFICIAL_REQUIRES_WEB_AUTH === "true",
+    webAuthOpen: webAuth.kind === "open",
+  });
   if (!admission.ok) {
     throw new Error(`${admission.errorCode}: ${admission.error}`);
   }

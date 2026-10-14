@@ -1,28 +1,23 @@
 /**
  * Edge-safe WEB_AUTH helpers (middleware + /api/auth).
  * Compare via SHA-256 digests so length/content timing does not leak the token.
+ * Token presence / open vs required lives in @skillevalator/core.
  */
+
+import {
+  resolveWebAuthConfig as resolveWebAuthConfigCore,
+  type WebAuthConfig,
+} from "@skillevalator/core";
+
+export type { WebAuthConfig };
 
 const enc = new TextEncoder();
 
-export type WebAuthConfig =
-  | { kind: "open" }
-  | { kind: "misconfigured" }
-  | { kind: "required"; token: string };
-
-/**
- * Resolve WEB_AUTH_TOKEN from env.
- * - unset → open local MVP (no lock)
- * - set but empty/whitespace after trim → misconfigured (fail-closed)
- * - non-empty after trim → required
- */
+/** Resolve WEB_AUTH_TOKEN (defaults to process.env for web callers). */
 export function resolveWebAuthConfig(
   envValue: string | undefined = process.env.WEB_AUTH_TOKEN,
 ): WebAuthConfig {
-  if (envValue === undefined) return { kind: "open" };
-  const token = envValue.trim();
-  if (!token) return { kind: "misconfigured" };
-  return { kind: "required", token };
+  return resolveWebAuthConfigCore(envValue);
 }
 
 /** Constant-time equality of two UTF-8 strings (hash then XOR-diff digests). */
