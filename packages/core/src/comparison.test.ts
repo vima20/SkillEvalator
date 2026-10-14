@@ -64,6 +64,53 @@ describe("compareBaselineCandidate", () => {
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
   });
 
+  it("official FAIL when soft-pass + lift but score below USE floor", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.8,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+    );
+    expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+    expect(c.verdict).toBe("FAIL");
+    expect(c.rationale).toMatch(/USE floor|0\.99/i);
+  });
+
+  it("official PASS when score meets USE floor and lift clears delta", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+    );
+    expect(c.verdict).toBe("PASS");
+    expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
   it("INCONCLUSIVE when both legs used fakeProduce smoke", () => {
     const smokeEnv = {
       fakeProduce: true as const,

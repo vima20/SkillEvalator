@@ -1,12 +1,34 @@
-import type { ComparisonVerdict } from "@skillevalator/core";
+import type { ComparisonVerdict, RunComparison } from "@skillevalator/core";
 
 /**
  * Adoption CSV must not look like an official export when Comparison is
- * INCONCLUSIVE (parity / failed leg / smoke / meta pin).
+ * INCONCLUSIVE, or when the pair is only dry-run.
  */
 export function comparisonCsvGate(
-  verdict: ComparisonVerdict,
-): { ok: true } | { ok: false; status: 409; error: string; verdict: ComparisonVerdict } {
+  comparison: Pick<RunComparison, "verdict" | "mode"> | ComparisonVerdict,
+):
+  | { ok: true }
+  | {
+      ok: false;
+      status: 409;
+      error: string;
+      verdict: ComparisonVerdict;
+      mode?: RunComparison["mode"];
+    } {
+  const verdict =
+    typeof comparison === "string" ? comparison : comparison.verdict;
+  const mode = typeof comparison === "string" ? undefined : comparison.mode;
+
+  if (mode !== undefined && mode !== "official") {
+    return {
+      ok: false,
+      status: 409,
+      verdict,
+      mode,
+      error:
+        "comparison CSV export requires mode=official (dry-run is not adoption evidence)",
+    };
+  }
   if (verdict === "PASS" || verdict === "FAIL") {
     return { ok: true };
   }
@@ -14,6 +36,7 @@ export function comparisonCsvGate(
     ok: false,
     status: 409,
     verdict,
+    ...(mode ? { mode } : {}),
     error:
       "comparison CSV export requires PASS or FAIL verdict (not INCONCLUSIVE)",
   };

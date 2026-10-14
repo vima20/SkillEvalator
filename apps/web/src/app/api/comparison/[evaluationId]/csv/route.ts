@@ -23,12 +23,13 @@ export async function GET(
         { status: 404 },
       );
     }
-    const gate = comparisonCsvGate(comparison.verdict);
+    const gate = comparisonCsvGate(comparison);
     if (!gate.ok) {
       return NextResponse.json(
         {
           error: gate.error,
           verdict: gate.verdict,
+          ...(gate.mode ? { mode: gate.mode } : {}),
           rationale: comparison.rationale,
         },
         { status: gate.status },

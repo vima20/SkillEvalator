@@ -1,5 +1,8 @@
 import type { ComparisonVerdict, RunComparison } from "./comparison.js";
-import { PASS_SCORE_FLOOR } from "./diffScore.js";
+import {
+  OFFICIAL_USE_SCORE_FLOOR,
+  PASS_SCORE_FLOOR,
+} from "./diffScore.js";
 import type { RunResult } from "./schema.js";
 import { labelForScore, type ScoreLabel } from "./scoring.js";
 
@@ -154,13 +157,13 @@ export function rateSkill(result: RunResult): BenefitRating {
     stars = 2;
   } else if (score < 0.67) {
     stars = 3;
-  } else if (score < 0.99) {
+  } else if (score < OFFICIAL_USE_SCORE_FLOOR) {
     stars = 4;
   } else if (result.mode === "dry-run") {
     // Dry-run never earns 5★ even at a perfect score.
     stars = 4;
   } else {
-    // Official USE gate (≥0.99) aligns with decideSkillUse.
+    // Official USE gate aligns with decideSkillUse + Comparison PASS.
     stars = 5;
   }
 
@@ -256,7 +259,7 @@ export function rateSkill(result: RunResult): BenefitRating {
     ];
   } else if (
     (result.mode === "dry-run" && score < 1) ||
-    (result.mode === "official" && score < 0.99)
+    (result.mode === "official" && score < OFFICIAL_USE_SCORE_FLOOR)
   ) {
     const allSoftPass = failedTasks.length === 0 && total > 0;
     summary = allSoftPass
@@ -272,14 +275,14 @@ export function rateSkill(result: RunResult): BenefitRating {
       },
       {
         heading: "Analysis",
-        body: `${failList} Soft-pass is the harness floor used in scorecards and Comparison PASS (≥0.8 + lift). Benefit USE still requires a near-perfect official aggregate (≥0.99) — grade scripts can pass while output still drifts from expected.`,
+        body: `${failList} Soft-pass (≥${PASS_SCORE_FLOOR}) is the dry-run Comparison floor. Official Comparison PASS and Benefit USE both require aggregate ≥${OFFICIAL_USE_SCORE_FLOOR} plus lift — grade scripts can pass while output still drifts from expected.`,
       },
       {
         heading: "Recommendation",
         body:
           result.mode === "dry-run"
             ? "Do not proceed to official until dry-run reaches a full expected match (score ≈1.0), not only soft-pass. Otherwise official mostly confirms the same incomplete picture at higher cost."
-            : "Do not adopt the skill yet. Official USE needs score ≥0.99. Soft-pass alone is not enough — tighten SKILL.md / fixtures and re-run official (≥3 repeats).",
+            : `Do not adopt the skill yet. Official USE / Comparison PASS needs score ≥${OFFICIAL_USE_SCORE_FLOOR}. Soft-pass alone is not enough — tighten SKILL.md / fixtures and re-run official (≥3 repeats).`,
       },
     ];
   } else if (result.mode === "dry-run") {
@@ -329,7 +332,11 @@ export function rateSkill(result: RunResult): BenefitRating {
     !adoptionBlocked &&
     status !== "cancelled" &&
     status !== "budget_stop" &&
-    !(result.mode === "official" && score !== null && score >= 0.99)
+    !(
+      result.mode === "official" &&
+      score !== null &&
+      score >= OFFICIAL_USE_SCORE_FLOOR
+    )
   ) {
     reviewSections.push({
       heading: "Limitation",
@@ -558,12 +565,12 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
     };
   }
 
-  if (score < 0.99) {
+  if (score < OFFICIAL_USE_SCORE_FLOOR) {
     return {
       recommendation: "do_not_use",
       headline: "DO NOT USE — official not Strong",
       decision: "DO NOT USE — official evaluation below full expected match",
-      rationale: `Official score ${score.toFixed(2)} < 0.99 on task set ${result.taskSetId}. Soft-pass (≥0.8) and Comparison PASS are weaker gates — Benefit USE still needs a near-perfect aggregate (grade can pass while output drifts from expected). Do not use this skill with ${result.modelId} until score ≥0.99.`,
+      rationale: `Official score ${score.toFixed(2)} < ${OFFICIAL_USE_SCORE_FLOOR} on task set ${result.taskSetId}. Soft-pass (≥${PASS_SCORE_FLOOR}) is not enough — official Comparison PASS and Benefit USE share this near-perfect floor. Do not use this skill with ${result.modelId} until score ≥${OFFICIAL_USE_SCORE_FLOOR}.`,
     };
   }
 

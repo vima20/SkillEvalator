@@ -4,6 +4,12 @@ export const DIFF_STRONG_MAX = 0.08;
 /** Below this soft score a task/run is treated as Fail. */
 export const PASS_SCORE_FLOOR = 0.8;
 
+/**
+ * Official Benefit USE + official Comparison PASS floor.
+ * Soft-pass (PASS_SCORE_FLOOR) is weaker — grade can pass while output drifts.
+ */
+export const OFFICIAL_USE_SCORE_FLOOR = 0.99;
+
 /** Normalized Levenshtein distance in [0, 1] for already-sliced windows. */
 function windowDiffRatio(left: string, right: string): number {
   if (left === right) return 0;

@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import { PASS_SCORE_FLOOR } from "./diffScore.js";
+import {
+  OFFICIAL_USE_SCORE_FLOOR,
+  PASS_SCORE_FLOOR,
+} from "./diffScore.js";
 import { readJsonFile } from "./fsJson.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
 import { assertSafeId } from "./paths.js";
@@ -688,6 +691,13 @@ export function compareBaselineCandidate(
   } else if (candScore < PASS_SCORE_FLOOR) {
     verdict = "FAIL";
     rationale = `Candidate score ${candScore.toFixed(3)} is below the soft-pass floor (${PASS_SCORE_FLOOR.toFixed(2)}). Do not adopt.`;
+  } else if (
+    candidate.mode === "official" &&
+    candScore < OFFICIAL_USE_SCORE_FLOOR
+  ) {
+    // Align with Benefit USE: soft-pass + lift must not look like official PASS.
+    verdict = "FAIL";
+    rationale = `Official candidate score ${candScore.toFixed(3)} is below the USE floor (${OFFICIAL_USE_SCORE_FLOOR.toFixed(2)}) — soft-pass (≥${PASS_SCORE_FLOOR.toFixed(2)}) and lift alone are not enough for Comparison PASS. Do not adopt.`;
   } else if (lift >= LIFT_PASS_DELTA) {
     verdict = "PASS";
     rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed.`;
