@@ -95,7 +95,7 @@ export default async function BenefitReportPage({
         />
       </header>
 
-      {(result.role ?? "candidate") === "baseline" ? (
+      {result.role === "baseline" ? (
         <div className="panel callout-warn">
           <strong>Baseline leg</strong>
           <p>
@@ -109,6 +109,14 @@ export default async function BenefitReportPage({
               "Comparison"
             )}{" "}
             for PASS/FAIL lift, or the candidate Benefit Report.
+          </p>
+        </div>
+      ) : result.role !== "candidate" ? (
+        <div className="panel callout-warn">
+          <strong>Missing eval role</strong>
+          <p>
+            This run has no explicit baseline/candidate role. Benefit adoption
+            advice stays locked — re-run as a paired evaluation.
           </p>
         </div>
       ) : (
@@ -238,7 +246,7 @@ export default async function BenefitReportPage({
           <div>
             <dt>Role</dt>
             <dd>
-              <code>{report.config.role ?? "candidate"}</code>
+              <code>{report.config.role ?? "—"}</code>
             </dd>
           </div>
           {report.config.evaluationId ? (

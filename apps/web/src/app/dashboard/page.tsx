@@ -39,10 +39,10 @@ export default function DashboardPage() {
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir());
   const hasActive = allRuns.some((r) => runIsActive(r.status, !!r.result));
-  // Leaderboard: candidate legs only (baseline is Comparison input, not a skill impl).
+  // Leaderboard: explicit candidate legs only (no role invent / baseline).
   const rows: Row[] = allRuns.flatMap((r) => {
     if (!r.result) return [];
-    if ((r.result.role ?? "candidate") === "baseline") return [];
+    if (r.result.role !== "candidate") return [];
     return [
       {
         runId: r.runId,
@@ -54,7 +54,7 @@ export default function DashboardPage() {
         skillId: r.result.evalSkillId,
         skillVersion: r.result.evalSkillVersion,
         evaluationId: r.result.evaluationId,
-        role: r.result.role ?? "candidate",
+        role: r.result.role,
       },
     ];
   });

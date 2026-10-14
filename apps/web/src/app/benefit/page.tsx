@@ -12,7 +12,7 @@ export default function BenefitIndexPage() {
   const runs = listRuns(resultsDir())
     .filter((r) => r.result)
     // Recommend surface: candidate skill only (baseline is Comparison input).
-    .filter((r) => (r.result!.role ?? "candidate") === "candidate")
+    .filter((r) => r.result!.role === "candidate")
     .map((r) => {
       const report = buildBenefitReportForRun(r.result!);
       return {

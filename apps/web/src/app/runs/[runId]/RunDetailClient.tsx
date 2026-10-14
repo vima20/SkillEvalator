@@ -338,7 +338,7 @@ export function RunDetailClient({
         </div>
         {result && !polling ? (
           <p className="hint">
-            {(result.role ?? "candidate") === "baseline" ? (
+            {result.role === "baseline" ? (
               result.evaluationId ? (
                 <Link href={`/comparison/${result.evaluationId}`}>
                   Open paired Comparison →
@@ -346,8 +346,10 @@ export function RunDetailClient({
               ) : (
                 "Baseline leg — use Comparison for PASS/FAIL (no skill Benefit)."
               )
-            ) : (
+            ) : result.role === "candidate" ? (
               <Link href={`/benefit/${runId}`}>Open Benefit Report →</Link>
+            ) : (
+              "Missing eval role — Benefit / Comparison require explicit baseline or candidate."
             )}
           </p>
         ) : null}

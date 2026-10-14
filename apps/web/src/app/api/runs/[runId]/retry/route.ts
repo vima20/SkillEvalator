@@ -243,27 +243,25 @@ export async function POST(
     }) => {
       const metaUpdated = linkComparison(opts.newRunId);
       if (evaluationId && !metaUpdated) {
-        if (!opts.reused) {
-          abortQueuedRun(
-            opts.newRunId,
-            "Comparison link update failed after retry enqueue",
-            {
-              role: role === "baseline" ? "baseline" : "candidate",
-              evaluationId,
-            },
-          );
-          clearRetryMarker(root, runId);
-        }
+        // Fresh or reused: do not leave a live child off the Comparison tip.
+        abortQueuedRun(
+          opts.newRunId,
+          "Comparison link update failed after retry enqueue",
+          {
+            role: role === "baseline" ? "baseline" : "candidate",
+            evaluationId,
+          },
+        );
+        clearRetryMarker(root, runId);
         return NextResponse.json(
           {
             ok: false,
-            error: opts.reused
-              ? "Comparison link update failed — retry again shortly to repair the pair"
-              : "Comparison link update failed — queued retry was aborted; try again shortly",
+            error:
+              "Comparison link update failed — retry child was cancelled; try again shortly",
             runId: opts.newRunId,
             fromRunId: runId,
             reused: opts.reused,
-            aborted: !opts.reused,
+            aborted: true,
             role,
             evaluationId,
             evaluationMetaUpdated: false,

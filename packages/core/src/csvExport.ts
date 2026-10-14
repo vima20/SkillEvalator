@@ -59,7 +59,7 @@ export function runResultToCsv(result: RunResult): string {
       row([
         result.runId,
         result.evaluationId ?? "",
-        result.role ?? "candidate",
+        result.role ?? "",
         result.mode,
         result.modelId,
         result.evalSkillId,
@@ -225,7 +225,7 @@ export function benefitReportToCsv(
       row([
         report.config.runId,
         report.config.evaluationId ?? "",
-        report.config.role ?? "candidate",
+        report.config.role ?? "",
         report.config.mode,
         report.config.modelId,
         report.config.evalSkillId,

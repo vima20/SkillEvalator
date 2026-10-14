@@ -474,7 +474,7 @@ export function applyPairedComparisonGate(opts: {
     };
     rating = withUpdatedRecommendation(
       rating,
-      Math.min(rating.stars, 4) as 1 | 2 | 3 | 4 | 5,
+      Math.min(rating.stars, 4) as 1 | 2 | 3 | 4,
       "Dry-run — not an adoption grade.",
       "Continue to official (≥3 repeats) before reading Benefit as USE / DO NOT USE.",
     );

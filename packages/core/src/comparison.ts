@@ -7,7 +7,8 @@ import {
 import { readJsonFile } from "./fsJson.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
 import { assertSafeId } from "./paths.js";
-import { loadRunResult } from "./results.js";
+import { loadRunResult, loadRunStatus } from "./results.js";
+import { resolveLegRunIdViaRetryChain } from "./retryDedup.js";
 import type { RunResult } from "./schema.js";
 
 /** Unikie alustava PASS: candidate ≥ baseline + 5 percentage points. */
@@ -867,8 +868,9 @@ type EvaluationMetaDisk = {
 };
 
 /**
- * Disk load of paired Comparison (no retry-chain heal — callers that need
- * tip resolution should heal meta first, e.g. web loadEvaluationComparison).
+ * Disk load of paired Comparison. When leg ids come from evaluation.json,
+ * follow retry-of markers in-memory so Benefit caches / worker paths match
+ * web tip resolution (meta file heal remains a separate best-effort step).
  */
 export function loadPairedComparison(opts: {
   resultsDir: string;
@@ -886,13 +888,56 @@ export function loadPairedComparison(opts: {
       meta = null;
     }
   }
-  const baselineRunId =
+  let baselineRunId =
     opts.baselineRunId ??
     (typeof meta?.baselineRunId === "string" ? meta.baselineRunId : undefined);
-  const candidateRunId =
+  let candidateRunId =
     opts.candidateRunId ??
     (typeof meta?.candidateRunId === "string" ? meta.candidateRunId : undefined);
   if (!baselineRunId || !candidateRunId) return null;
+
+  // In-memory tip heal when ids came from meta (explicit overrides stay pinned).
+  if (!opts.baselineRunId || !opts.candidateRunId) {
+    const loadLeg = (runId: string) => {
+      const status = loadRunStatus(opts.resultsDir, runId);
+      if (status) {
+        return {
+          ...(typeof status.evaluationId === "string"
+            ? { evaluationId: status.evaluationId }
+            : {}),
+          ...(status.role === "baseline" || status.role === "candidate"
+            ? { role: status.role }
+            : {}),
+          ...(typeof status.status === "string" ? { status: status.status } : {}),
+        };
+      }
+      const result = loadRunResult(opts.resultsDir, runId);
+      if (!result) return null;
+      return {
+        ...(result.evaluationId ? { evaluationId: result.evaluationId } : {}),
+        ...(result.role ? { role: result.role } : {}),
+        status: result.status,
+      };
+    };
+    if (!opts.baselineRunId) {
+      baselineRunId = resolveLegRunIdViaRetryChain({
+        resultsDir: opts.resultsDir,
+        fromRunId: baselineRunId,
+        evaluationId,
+        role: "baseline",
+        loadLeg,
+      }).runId;
+    }
+    if (!opts.candidateRunId) {
+      candidateRunId = resolveLegRunIdViaRetryChain({
+        resultsDir: opts.resultsDir,
+        fromRunId: candidateRunId,
+        evaluationId,
+        role: "candidate",
+        loadLeg,
+      }).runId;
+    }
+  }
 
   const { baseline, candidate } = resolveComparisonLegs({
     meta: { baselineRunId, candidateRunId },
