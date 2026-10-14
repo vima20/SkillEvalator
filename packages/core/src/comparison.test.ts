@@ -4,6 +4,7 @@ import {
   compareBaselineCandidate,
   pairEvaluationRuns,
   resolveComparisonLegs,
+  resolveEvaluationMetaMode,
   resolvePairedCancelSibling,
 } from "./comparison.js";
 import type { RunResult } from "./schema.js";
@@ -1433,6 +1434,43 @@ describe("compareBaselineCandidate", () => {
     expect(
       c.parity.issues.some((i) => i.includes("evaluation meta mode")),
     ).toBe(true);
+  });
+
+  it("INCONCLUSIVE when evaluation meta mode is explicitly invalid", () => {
+    const pin = resolveEvaluationMetaMode({
+      metaMode: "prod",
+      baselineMode: "dry-run",
+      candidateMode: "dry-run",
+      evaluationMetaPresent: true,
+    });
+    expect(pin.expectedEvaluationMode).toBeUndefined();
+    expect(pin.issues.some((i) => i.includes("invalid"))).toBe(true);
+
+    const c = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.5, mode: "dry-run" }),
+      sample({ runId: "c", role: "candidate", score: 0.95, mode: "dry-run" }),
+      { extraParityIssues: pin.issues },
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+  });
+
+  it("fills expected mode from agreeing legs when meta mode is missing", () => {
+    const pin = resolveEvaluationMetaMode({
+      metaMode: "",
+      baselineMode: "dry-run",
+      candidateMode: "dry-run",
+      evaluationMetaPresent: true,
+    });
+    expect(pin.expectedEvaluationMode).toBe("dry-run");
+    expect(pin.issues).toEqual([]);
+
+    const c = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.5, mode: "dry-run" }),
+      sample({ runId: "c", role: "candidate", score: 0.95, mode: "dry-run" }),
+      { expectedEvaluationMode: pin.expectedEvaluationMode },
+    );
+    expect(c.parity.ok).toBe(true);
+    expect(c.verdict).toBe("PASS");
   });
 
   it("INCONCLUSIVE when decoding.seed or pipeline.grade differs", () => {

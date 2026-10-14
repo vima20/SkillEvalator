@@ -100,6 +100,51 @@ function pushStringFieldParity(
   }
 }
 
+export function isEvalRunMode(value: unknown): value is RunResult["mode"] {
+  return value === "dry-run" || value === "official";
+}
+
+/**
+ * Resolve evaluation.json mode for Comparison parity.
+ * Valid meta.mode wins; missing may be filled from agreeing legs; explicit
+ * invalid meta.mode is fail-closed (never silently skipped).
+ */
+export function resolveEvaluationMetaMode(opts: {
+  metaMode?: string | null;
+  baselineMode: RunResult["mode"];
+  candidateMode: RunResult["mode"];
+  /** True when evaluation.json was loaded. */
+  evaluationMetaPresent: boolean;
+}): {
+  expectedEvaluationMode?: RunResult["mode"];
+  issues: string[];
+} {
+  const issues: string[] = [];
+  const raw = typeof opts.metaMode === "string" ? opts.metaMode.trim() : "";
+  if (isEvalRunMode(raw)) {
+    return { expectedEvaluationMode: raw, issues };
+  }
+  if (!opts.evaluationMetaPresent) {
+    return { issues };
+  }
+  if (raw) {
+    issues.push(
+      `evaluation meta mode invalid: ${JSON.stringify(raw)} (expected dry-run|official)`,
+    );
+    return { issues };
+  }
+  if (
+    isEvalRunMode(opts.baselineMode) &&
+    opts.baselineMode === opts.candidateMode
+  ) {
+    return { expectedEvaluationMode: opts.baselineMode, issues };
+  }
+  issues.push(
+    "evaluation meta mode missing; legs do not share a fillable mode",
+  );
+  return { issues };
+}
+
 /** Assert Unikie parity: same model/mode/tasks/repeats/decoding for fair lift. */
 export function checkComparisonParity(
   baseline: RunResult,
@@ -108,9 +153,11 @@ export function checkComparisonParity(
     expectedEvalSkillId?: string;
     /** evaluation.json mode — legs must match meta, not only each other. */
     expectedEvaluationMode?: RunResult["mode"];
+    /** Extra parity issues (e.g. from resolveEvaluationMetaMode). */
+    extraParityIssues?: string[];
   },
 ): ComparisonParity {
-  const issues: string[] = [];
+  const issues: string[] = [...(opts?.extraParityIssues ?? [])];
   if (baseline.evalSkillId !== candidate.evalSkillId) {
     issues.push(
       `evalSkillId mismatch: baseline=${baseline.evalSkillId} candidate=${candidate.evalSkillId}`,
@@ -482,6 +529,7 @@ export function compareBaselineCandidate(
   opts?: {
     expectedEvalSkillId?: string;
     expectedEvaluationMode?: RunResult["mode"];
+    extraParityIssues?: string[];
   },
 ): RunComparison {
   const evaluationId =

@@ -77,6 +77,50 @@ function sampleResult(opts: {
   };
 }
 
+describe("loadEvaluationComparison meta mode", () => {
+  it("INCONCLUSIVE when evaluation.json mode is garbage even if legs agree", async () => {
+    const evaluationId = "eval_100_badmode";
+    const baselineRunId = "run_100_base_bm";
+    const candidateRunId = "run_100_cand_bm";
+
+    writeJsonFile(path.join(resultsRoot, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "prod",
+      baselineRunId,
+      candidateRunId,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    writeJsonFile(
+      path.join(resultsRoot, baselineRunId, "result.json"),
+      sampleResult({
+        runId: baselineRunId,
+        role: "baseline",
+        mode: "dry-run",
+        evaluationId,
+        score: 0.5,
+      }),
+    );
+    writeJsonFile(
+      path.join(resultsRoot, candidateRunId, "result.json"),
+      sampleResult({
+        runId: candidateRunId,
+        role: "candidate",
+        mode: "dry-run",
+        evaluationId,
+        score: 0.95,
+      }),
+    );
+
+    const { loadEvaluationComparison } = await import("./evaluations.js");
+    const out = loadEvaluationComparison(evaluationId);
+    expect(out.comparison?.verdict).toBe("INCONCLUSIVE");
+    expect(
+      out.comparison?.parity.issues.some((i) => i.includes("invalid")),
+    ).toBe(true);
+  });
+});
+
 describe("updateEvaluationMetaLeg", () => {
   it("syncs mode so comparison meta parity matches retried legs", async () => {
     const evaluationId = "eval_100_modesync";

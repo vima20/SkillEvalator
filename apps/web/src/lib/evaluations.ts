@@ -7,6 +7,7 @@ import {
   readJsonFile,
   releaseWxLock,
   resolveComparisonLegs,
+  resolveEvaluationMetaMode,
   tryAcquireWxLock,
   writeJsonFile,
   type RunComparison,
@@ -110,14 +111,25 @@ export function loadEvaluationComparison(
 
   const comparison =
     baseline && candidate
-      ? compareBaselineCandidate(baseline, candidate, {
-          ...(meta?.evalSkillId
-            ? { expectedEvalSkillId: meta.evalSkillId }
-            : {}),
-          ...(meta?.mode === "dry-run" || meta?.mode === "official"
-            ? { expectedEvaluationMode: meta.mode }
-            : {}),
-        })
+      ? (() => {
+          const modePin = resolveEvaluationMetaMode({
+            metaMode: meta?.mode,
+            baselineMode: baseline.mode,
+            candidateMode: candidate.mode,
+            evaluationMetaPresent: Boolean(meta),
+          });
+          return compareBaselineCandidate(baseline, candidate, {
+            ...(meta?.evalSkillId
+              ? { expectedEvalSkillId: meta.evalSkillId }
+              : {}),
+            ...(modePin.expectedEvaluationMode
+              ? { expectedEvaluationMode: modePin.expectedEvaluationMode }
+              : {}),
+            ...(modePin.issues.length
+              ? { extraParityIssues: modePin.issues }
+              : {}),
+          });
+        })()
       : null;
 
   return { meta, baseline, candidate, comparison };
