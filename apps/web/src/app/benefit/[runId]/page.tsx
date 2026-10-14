@@ -71,9 +71,15 @@ export default async function BenefitReportPage({
     );
   }
 
-  const { report, comparison } = buildBenefitReportBundle(result);
+  const { report, comparison, tipCandidateRunId } =
+    buildBenefitReportBundle(result);
   const markdown = benefitReportToMarkdown(report);
   const exportAllowed = benefitExportGate({ report, comparison }).ok;
+  const supersededTip =
+    tipCandidateRunId && tipCandidateRunId !== runId
+      ? tipCandidateRunId
+      : null;
+  const smokeHarness = result.capture?.env?.fakeProduce === true;
 
   return (
     <div>
@@ -94,6 +100,28 @@ export default async function BenefitReportPage({
           exportAllowed={exportAllowed}
         />
       </header>
+
+      {supersededTip ? (
+        <div className="panel callout-warn">
+          <strong>Superseded candidate leg</strong>
+          <p>
+            Comparison tip is{" "}
+            <Link href={`/benefit/${supersededTip}`}>{supersededTip}</Link>.
+            Adoption USE / DO NOT USE follow that tip only — this run stays
+            INCONCLUSIVE.
+          </p>
+        </div>
+      ) : null}
+
+      {smokeHarness ? (
+        <div className="panel callout-warn">
+          <strong>Smoke harness (FAKE_PRODUCE)</strong>
+          <p>
+            Scores on this run are not adoption evidence. Re-run with live
+            model produce for Benefit USE / DO NOT USE.
+          </p>
+        </div>
+      ) : null}
 
       {result.role === "baseline" ? (
         <div className="panel callout-warn">

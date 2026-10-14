@@ -4,6 +4,10 @@ import {
   loadRunResult,
   syncStatusFromResult,
 } from "@skillevalator/core";
+import {
+  loadEvaluationComparison,
+  resolveTipCandidateRunId,
+} from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { runCsvExportAllowed } from "@/lib/runCsvExportAllowed";
@@ -23,11 +27,17 @@ export async function GET(
     if (!status && !result) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
+    const tipCandidateRunId = result?.evaluationId
+      ? resolveTipCandidateRunId(
+          loadEvaluationComparison(result.evaluationId),
+        )
+      : null;
     return NextResponse.json({
       runId,
       status,
       result,
       csvExportAllowed: runCsvExportAllowed(result),
+      tipCandidateRunId,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";

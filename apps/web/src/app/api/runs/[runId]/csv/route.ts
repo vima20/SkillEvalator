@@ -4,7 +4,11 @@ import {
   loadRunResult,
   runResultToCsv,
 } from "@skillevalator/core";
-import { loadEvaluationComparison } from "@/lib/evaluations";
+import {
+  loadEvaluationComparison,
+  resolveTipBaselineRunId,
+  resolveTipCandidateRunId,
+} from "@/lib/evaluations";
 import { resultsDir } from "@/lib/paths";
 import { runCsvExportGate } from "@/lib/runCsvExport";
 
@@ -28,12 +32,8 @@ export async function GET(
       result,
       comparisonVerdict: packed?.comparison?.verdict ?? null,
       comparisonMode: packed?.comparison?.mode ?? null,
-      baselineRunId:
-        packed?.comparison?.baselineRunId ?? packed?.meta?.baselineRunId ?? null,
-      candidateRunId:
-        packed?.comparison?.candidateRunId ??
-        packed?.meta?.candidateRunId ??
-        null,
+      baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
+      candidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
     });
     if (!gate.ok) {
       return NextResponse.json(

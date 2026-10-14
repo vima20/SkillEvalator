@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { benefitCtaHint } from "@/lib/runDetailHints";
 import { statusBadgeClass } from "@/lib/status";
 
 type PerTask = {
@@ -67,6 +68,8 @@ type Payload = {
   result: Result | null;
   /** Same bar as CSV API gate (official + decisive Comparison + meta leg). */
   csvExportAllowed?: boolean;
+  /** Healed Comparison tip (comparison ?? meta) for Benefit CTA demotion. */
+  tipCandidateRunId?: string | null;
 };
 
 const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
@@ -343,19 +346,49 @@ export function RunDetailClient({
         </div>
         {result && !polling ? (
           <p className="hint">
-            {result.role === "baseline" ? (
-              result.evaluationId ? (
-                <Link href={`/comparison/${result.evaluationId}`}>
-                  Open paired Comparison →
-                </Link>
-              ) : (
-                "Baseline leg — use Comparison for PASS/FAIL (no skill Benefit)."
-              )
-            ) : result.role === "candidate" ? (
-              <Link href={`/benefit/${runId}`}>Open Benefit Report →</Link>
-            ) : (
-              "Missing eval role — Benefit / Comparison require explicit baseline or candidate."
-            )}
+            {(() => {
+              const hint = benefitCtaHint({
+                runId,
+                role: result.role,
+                evaluationId: result.evaluationId,
+                fakeProduce: result.capture?.env?.fakeProduce === true,
+                tipCandidateRunId: data.tipCandidateRunId,
+              });
+              if (hint.kind === "baseline") {
+                return hint.comparisonHref ? (
+                  <Link href={hint.comparisonHref}>
+                    Open paired Comparison →
+                  </Link>
+                ) : (
+                  "Baseline leg — use Comparison for PASS/FAIL (no skill Benefit)."
+                );
+              }
+              if (hint.kind === "missing_role") {
+                return "Missing eval role — Benefit / Comparison require explicit baseline or candidate.";
+              }
+              if (hint.kind === "smoke") {
+                return (
+                  <>
+                    Smoke harness (FAKE_PRODUCE) — not adoption.{" "}
+                    <Link href={`/benefit/${runId}`}>Open report →</Link>
+                  </>
+                );
+              }
+              if (hint.kind === "superseded") {
+                return (
+                  <>
+                    Superseded candidate — tip is{" "}
+                    <Link href={`/benefit/${hint.tipRunId}`}>
+                      {hint.tipRunId}
+                    </Link>
+                    .
+                  </>
+                );
+              }
+              return (
+                <Link href={`/benefit/${runId}`}>Open Benefit Report →</Link>
+              );
+            })()}
           </p>
         ) : null}
       </header>

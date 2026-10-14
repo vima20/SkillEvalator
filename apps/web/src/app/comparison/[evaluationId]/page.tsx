@@ -2,7 +2,11 @@ import Link from "next/link";
 import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
-import { loadEvaluationComparison } from "@/lib/evaluations";
+import {
+  loadEvaluationComparison,
+  resolveTipBaselineRunId,
+  resolveTipCandidateRunId,
+} from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
@@ -68,12 +72,11 @@ export default async function ComparisonDetailPage({
   }
 
   const { meta, baseline, candidate, comparison } = packed;
-  // Tip legs: Comparison object wins (matches verdict); meta is already patched
-  // to healed tips by loadEvaluationComparison.
+  // Tip legs: Comparison first, then healed meta (same helpers as CSV / Dashboard).
   const baselineRunId =
-    comparison?.baselineRunId ?? meta.baselineRunId;
+    resolveTipBaselineRunId(packed) ?? meta.baselineRunId;
   const candidateRunId =
-    comparison?.candidateRunId ?? meta.candidateRunId;
+    resolveTipCandidateRunId(packed) ?? meta.candidateRunId;
   const baselineStatus =
     syncStatusFromResult(root, baselineRunId)?.status ??
     baseline?.status;

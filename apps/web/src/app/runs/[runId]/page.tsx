@@ -5,6 +5,10 @@ import {
   syncStatusFromResult,
 } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
+import {
+  loadEvaluationComparison,
+  resolveTipCandidateRunId,
+} from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { runCsvExportAllowed } from "@/lib/runCsvExportAllowed";
@@ -69,6 +73,10 @@ export default async function RunDetailPage({
     );
   }
 
+  const tipCandidateRunId = result?.evaluationId
+    ? resolveTipCandidateRunId(loadEvaluationComparison(result.evaluationId))
+    : null;
+
   return (
     <RunDetailClient
       runId={runId}
@@ -77,6 +85,7 @@ export default async function RunDetailPage({
         status,
         result,
         csvExportAllowed: runCsvExportAllowed(result),
+        tipCandidateRunId,
       }}
     />
   );
