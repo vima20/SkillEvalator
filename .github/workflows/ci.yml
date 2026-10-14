@@ -35,3 +35,6 @@ jobs:
 
       - name: Official adoption smoke
         run: npm run smoke:official
+
+      - name: Official export gates smoke
+        run: npm run smoke:export

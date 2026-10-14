@@ -309,7 +309,7 @@ export function checkComparisonParity(
       );
     }
   }
-  // Cost/smoke env fields: both missing OK (legacy); XOR or unequal → fail.
+  // Cost/smoke env fields: both missing OK for dry-run; XOR or unequal → fail.
   pushEnvFieldParity(issues, "fakeProduce", {
     baseline: baseline.capture?.env?.fakeProduce,
     candidate: candidate.capture?.env?.fakeProduce,
@@ -354,6 +354,29 @@ export function checkComparisonParity(
     baseline: baseline.capture?.env?.modelOfficial,
     candidate: candidate.capture?.env?.modelOfficial,
   });
+  // Official must pin smoke/cost env explicitly — both-missing must not PASS.
+  if (officialProvenance) {
+    for (const [label, leg] of [
+      ["baseline", baseline],
+      ["candidate", candidate],
+    ] as const) {
+      if (leg.capture?.env?.fakeProduce !== false) {
+        issues.push(
+          `official Comparison requires ${label}.capture.env.fakeProduce=false`,
+        );
+      }
+      if (typeof leg.capture?.env?.costCapUsd !== "number") {
+        issues.push(
+          `official Comparison requires ${label}.capture.env.costCapUsd`,
+        );
+      }
+      if (typeof leg.capture?.env?.costHardStop !== "boolean") {
+        issues.push(
+          `official Comparison requires ${label}.capture.env.costHardStop`,
+        );
+      }
+    }
+  }
 
   // Capture env.grade must agree with the scored pipeline.grade on each leg.
   if (

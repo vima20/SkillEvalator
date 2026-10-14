@@ -42,8 +42,19 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
         ? ("baseline_neutral" as const)
         : ("skill_md" as const),
     env: {
-      // Matching pin so official PASS tests do not launder missing gradeHash.
+      // Matching pins so official PASS tests do not launder missing provenance.
       gradeHash: "gradehash0000001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      fakeProduce: false,
+      costCapUsd: 5,
+      costHardStop: true,
+      allowHostGrade: false,
+      temperature: 0,
+      topP: 1,
+      seed: 42,
+      maxOutputTokens: 1024,
+      modelDryRun: "gpt-4o-mini",
+      modelOfficial: "gpt-4.1-mini",
+      grade: "docker_script" as const,
     },
   };
   return {
@@ -186,6 +197,40 @@ describe("compareBaselineCandidate", () => {
     expect(c.parity.ok).toBe(false);
     expect(c.verdict).toBe("INCONCLUSIVE");
     expect(c.parity.issues.some((i) => /gradeHash/i.test(i))).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when fakeProduce/cost env pins are missing", () => {
+    const stripSmokeCost = (role: "baseline" | "candidate", runId: string) => {
+      const r = sample({
+        runId,
+        role,
+        score: role === "baseline" ? 0.9 : 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      });
+      const {
+        fakeProduce: _fp,
+        costCapUsd: _cap,
+        costHardStop: _stop,
+        ...envRest
+      } = r.capture!.env!;
+      return {
+        ...r,
+        capture: { ...r.capture!, env: envRest },
+      };
+    };
+    const c = compareBaselineCandidate(
+      stripSmokeCost("baseline", "b"),
+      stripSmokeCost("candidate", "c"),
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /fakeProduce=false/i.test(i)),
+    ).toBe(true);
+    expect(c.parity.issues.some((i) => /costCapUsd/i.test(i))).toBe(true);
+    expect(c.parity.issues.some((i) => /costHardStop/i.test(i))).toBe(true);
   });
 
   it("official INCONCLUSIVE when candidate.role is missing (no invent)", () => {

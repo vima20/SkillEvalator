@@ -13,7 +13,8 @@
     "smoke:skills": "npm run build -w @skillevalator/core && node scripts/smoke-skills.mjs",
     "smoke:paired": "npm run build -w @skillevalator/core && node scripts/smoke-paired-evaluation.mjs",
     "smoke:official": "npm run build -w @skillevalator/core && node scripts/smoke-official-adoption.mjs",
-    "ci": "npm test && npm run typecheck && npm run smoke:skills && npm run smoke:paired && npm run smoke:official",
+    "smoke:export": "npm run build -w @skillevalator/core && npm run test -w @skillevalator/web -- src/lib/officialExport.smoke.test.ts",
+    "ci": "npm test && npm run typecheck && npm run smoke:skills && npm run smoke:paired && npm run smoke:official && npm run smoke:export",
     "docker:check": "docker info >nul 2>&1 && echo Docker OK || (echo Docker not available && exit 1)"
   },
   "devDependencies": {

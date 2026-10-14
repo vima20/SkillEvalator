@@ -377,9 +377,24 @@ export async function POST(
       });
       if (!queued.ok) {
         if (evaluationId) {
-          // Best-effort revert tip to parent so Comparison does not point at a
-          // never-queued runId.
-          linkComparison(runId);
+          // Tip already points at newRunId — revert must succeed or pair is stuck.
+          const reverted = linkComparison(runId);
+          if (!reverted) {
+            return NextResponse.json(
+              {
+                ok: false,
+                error:
+                  "enqueue failed and Comparison tip revert failed — repair the pair shortly",
+                errorCode: "evaluation_meta_revert_failed",
+                enqueueError: queued.error,
+                runId: newRunId,
+                fromRunId: runId,
+                evaluationId,
+                evaluationMetaUpdated: false,
+              },
+              { status: 503 },
+            );
+          }
         }
         return NextResponse.json(
           { error: queued.error },
