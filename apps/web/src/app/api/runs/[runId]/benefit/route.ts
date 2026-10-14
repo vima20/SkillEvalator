@@ -5,6 +5,7 @@ import {
   buildBenefitReport,
   loadRunResult,
 } from "@skillevalator/core";
+import { benefitExportGate } from "@/lib/benefitExport";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +22,24 @@ export async function GET(
     }
     const report = buildBenefitReport(result);
     const format = new URL(req.url).searchParams.get("format");
+    if (format === "md" || format === "markdown" || format === "csv") {
+      const gate = benefitExportGate(report.verdict.recommendation);
+      if (!gate.ok) {
+        return NextResponse.json(
+          {
+            error: gate.error,
+            recommendation: gate.recommendation,
+          },
+          { status: gate.status },
+        );
+      }
+    }
     if (format === "md" || format === "markdown") {
       return new NextResponse(benefitReportToMarkdown(report), {
         headers: {
           "content-type": "text/markdown; charset=utf-8",
           "content-disposition": `inline; filename="${runId}-benefit.md"`,
+          "cache-control": "no-store",
         },
       });
     }
