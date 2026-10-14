@@ -29,11 +29,14 @@ export default function ComparisonListPage() {
     // Prefer Comparison tip legs (then healed meta) so Benefit CTA matches PASS/FAIL.
     const tipCandidateRunId =
       c?.candidateRunId ?? packed.meta?.candidateRunId ?? e.candidateRunId;
+    // Chip/label mode from Comparison object (same source as detail), not stale meta.
+    const displayMode = c?.mode ?? e.mode;
     return {
       ...e,
       pending,
       verdict: c?.verdict ?? null,
       lift: c?.lift ?? null,
+      displayMode,
       baselineStatus: packed.baseline?.status,
       candidateStatus: packed.candidate?.status,
       candidateRunId: tipCandidateRunId,
@@ -100,7 +103,7 @@ export default function ComparisonListPage() {
                     </td>
                     <td>
                       <code>{e.evalSkillId}</code>
-                      <div className="cell-meta">{e.mode}</div>
+                      <div className="cell-meta">{e.displayMode}</div>
                     </td>
                     <td>
                       {e.pending ? (
@@ -123,20 +126,21 @@ export default function ComparisonListPage() {
                       {e.verdict ? (
                         <span
                           className={`verdict-chip verdict-${
-                            e.mode === "official" && e.verdict === "PASS"
+                            e.displayMode === "official" && e.verdict === "PASS"
                               ? "use"
-                              : e.mode === "official" && e.verdict === "FAIL"
+                              : e.displayMode === "official" &&
+                                  e.verdict === "FAIL"
                                 ? "do_not_use"
                                 : "inconclusive"
                           }`}
                           title={
-                            e.mode === "dry-run"
+                            e.displayMode === "dry-run"
                               ? "Dry-run — not adoption evidence"
                               : undefined
                           }
                         >
                           {e.verdict}
-                          {e.mode === "dry-run" ? " · dry-run" : ""}
+                          {e.displayMode === "dry-run" ? " · dry-run" : ""}
                         </span>
                       ) : (
                         "—"
