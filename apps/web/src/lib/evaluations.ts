@@ -348,12 +348,9 @@ export function loadEvaluationComparison(
             modePin.expectedEvaluationMode === "official" ||
             baseline.mode === "official" ||
             candidate.mode === "official";
+          // Tip candidate snapshot only — baseline hash must not launder a missing tip pin.
           const expectedGradeHash = officialDisk
-            ? (resolveTrustedGradeHashFromRunResultDir(
-                dir,
-                candidate.runId,
-              ) ??
-              resolveTrustedGradeHashFromRunResultDir(dir, baseline.runId))
+            ? resolveTrustedGradeHashFromRunResultDir(dir, candidate.runId)
             : undefined;
           const extraParityIssues = [
             ...modePin.issues,

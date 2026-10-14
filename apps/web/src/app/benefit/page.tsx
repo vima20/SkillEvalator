@@ -7,7 +7,7 @@ import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 
-type LegKind = "tip" | "superseded" | "smoke" | "single";
+type LegKind = "tip" | "superseded" | "smoke" | "single" | "waiting";
 
 function legKindFor(opts: {
   runId: string;
@@ -17,12 +17,8 @@ function legKindFor(opts: {
 }): LegKind {
   if (opts.fakeProduce) return "smoke";
   if (!opts.evaluationId) return "single";
-  if (
-    opts.tipCandidateRunId &&
-    opts.tipCandidateRunId !== opts.runId
-  ) {
-    return "superseded";
-  }
+  if (!opts.tipCandidateRunId) return "waiting";
+  if (opts.tipCandidateRunId !== opts.runId) return "superseded";
   return "tip";
 }
 
@@ -36,6 +32,8 @@ function legKindLabel(kind: LegKind): string {
       return "smoke (FAKE_PRODUCE)";
     case "single":
       return "unpaired";
+    case "waiting":
+      return "waiting for tip";
   }
 }
 
@@ -66,10 +64,18 @@ export default function BenefitIndexPage() {
         kind,
       };
     })
-    // Tip / unpaired first; superseded + smoke last so adoption rows are visible.
+    // Tip / unpaired first; waiting / superseded / smoke last.
     .sort((a, b) => {
       const rank = (k: LegKind) =>
-        k === "tip" ? 0 : k === "single" ? 1 : k === "superseded" ? 2 : 3;
+        k === "tip"
+          ? 0
+          : k === "single"
+            ? 1
+            : k === "waiting"
+              ? 2
+              : k === "superseded"
+                ? 3
+                : 4;
       const d = rank(a.kind) - rank(b.kind);
       if (d !== 0) return d;
       return b.runId.localeCompare(a.runId);

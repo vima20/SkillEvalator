@@ -1064,15 +1064,9 @@ export function loadPairedComparison(opts: {
     modePin.expectedEvaluationMode === "official" ||
     baseline.mode === "official" ||
     candidate.mode === "official";
+  // Official trusted pin = tip candidate skill-snapshot only (no baseline fallback).
   const expectedGradeHash = officialDisk
-    ? (resolveTrustedGradeHashFromRunResultDir(
-        opts.resultsDir,
-        candidateRunId,
-      ) ??
-      resolveTrustedGradeHashFromRunResultDir(
-        opts.resultsDir,
-        baselineRunId,
-      ))
+    ? resolveTrustedGradeHashFromRunResultDir(opts.resultsDir, candidateRunId)
     : undefined;
   const extraParityIssues = [
     ...modePin.issues,

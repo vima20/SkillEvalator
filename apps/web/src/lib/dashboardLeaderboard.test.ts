@@ -47,7 +47,7 @@ describe("includeInDashboardLeaderboard", () => {
     ).toBe(false);
   });
 
-  it("keeps paired candidate when tip is unknown (caller should pass meta tip)", () => {
+  it("rejects paired candidate when tip is unknown (fail-closed)", () => {
     expect(
       includeInDashboardLeaderboard({
         runId: "run_waiting",
@@ -55,7 +55,7 @@ describe("includeInDashboardLeaderboard", () => {
         evaluationId: "eval_1",
         tipCandidateRunId: null,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("rejects superseded when tip comes from healed meta (no Comparison yet)", () => {
