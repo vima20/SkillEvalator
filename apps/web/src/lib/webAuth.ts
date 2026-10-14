@@ -7,7 +7,7 @@
 import {
   resolveWebAuthConfig as resolveWebAuthConfigCore,
   type WebAuthConfig,
-} from "@skillevalator/core";
+} from "@skillevalator/core/webAuthConfig";
 
 export type { WebAuthConfig };
 

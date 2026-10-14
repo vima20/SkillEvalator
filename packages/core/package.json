@@ -21,6 +21,10 @@
     "./models": {
       "types": "./dist/models.d.ts",
       "import": "./dist/models.js"
+    },
+    "./webAuthConfig": {
+      "types": "./dist/webAuthConfig.d.ts",
+      "import": "./dist/webAuthConfig.js"
     }
   },
   "scripts": {
