@@ -123,8 +123,9 @@ export default async function BenefitReportPage({
         <div className="panel callout-info">
           <strong>Comparison vs Benefit</strong>
           <p>
-            Benefit <strong>USE</strong> unlocks only after official paired{" "}
-            <strong>Comparison PASS</strong>
+            Benefit <strong>USE</strong> needs official paired{" "}
+            <strong>Comparison PASS</strong>; <strong>DO NOT USE</strong> needs{" "}
+            <strong>FAIL</strong>
             {result.evaluationId ? (
               <>
                 {" "}

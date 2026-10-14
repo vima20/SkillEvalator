@@ -40,7 +40,8 @@ export default function BenefitIndexPage() {
         <strong>Comparison vs Benefit</strong>
         <p>
           <Link href="/comparison">Comparison</Link> = baseline↔candidate lift
-          (PASS/FAIL). Benefit USE / 5★ unlocks only when that lift is PASS.
+          (PASS/FAIL). Benefit USE / 5★ unlocks only on official PASS; DO NOT
+          USE follows official FAIL.
           Baseline legs are omitted from this list.
         </p>
       </div>

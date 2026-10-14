@@ -10,7 +10,7 @@ import { statusBadgeClass } from "@/lib/status";
 export const dynamic = "force-dynamic";
 
 function verdictClass(v: string, mode: string): string {
-  // Dry-run PASS must not reuse the adoption "use" styling.
+  // Only official PASS/FAIL get adoption styling (dry-run stays inconclusive).
   if (v === "PASS" && mode === "official") return "verdict-banner verdict-use";
   if (v === "FAIL" && mode === "official")
     return "verdict-banner verdict-do_not_use";
@@ -155,8 +155,9 @@ export default async function ComparisonDetailPage({
           <strong>{comparison.verdict}</strong> here is the paired lift gate
           (baseline↔candidate). Official PASS also requires candidate score ≥
           0.99 (Benefit USE floor). Benefit{" "}
-          <Link href={`/benefit/${candidateRunId}`}>USE / DO NOT USE</Link>{" "}
-          unlocks only after official Comparison PASS.
+          <Link href={`/benefit/${candidateRunId}`}>USE</Link> needs official
+          PASS; <Link href={`/benefit/${candidateRunId}`}>DO NOT USE</Link>{" "}
+          needs official FAIL.
         </p>
       </div>
 
