@@ -28,6 +28,10 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
       resolvedRole === "baseline"
         ? ("baseline_neutral" as const)
         : ("skill_md" as const),
+    env: {
+      // Matching pin so official PASS tests do not launder missing gradeHash.
+      gradeHash: "gradehash0000001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    },
   };
   return {
     evalSkillId: "code-debugging-eval",
@@ -144,6 +148,59 @@ describe("compareBaselineCandidate", () => {
     expect(c.parity.ok).toBe(false);
     expect(c.verdict).toBe("INCONCLUSIVE");
     expect(c.parity.issues.some((i) => /promptKind/i.test(i))).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when both legs omit gradeHash (legacy laundering)", () => {
+    const stripHash = (role: "baseline" | "candidate", runId: string) => {
+      const r = sample({
+        runId,
+        role,
+        score: role === "baseline" ? 0.9 : 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      });
+      const { gradeHash: _drop, ...envRest } = r.capture!.env!;
+      return {
+        ...r,
+        capture: { ...r.capture!, env: envRest },
+      };
+    };
+    const c = compareBaselineCandidate(
+      stripHash("baseline", "b"),
+      stripHash("candidate", "c"),
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.parity.issues.some((i) => /gradeHash/i.test(i))).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when candidate.role is missing (no invent)", () => {
+    const base = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const { role: _drop, ...candRest } = cand;
+    const c = compareBaselineCandidate(base, candRest as RunResult);
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        i.includes("expected candidate.role=candidate"),
+      ),
+    ).toBe(true);
   });
 
   it("INCONCLUSIVE when both legs used fakeProduce smoke", () => {

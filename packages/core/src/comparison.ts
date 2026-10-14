@@ -275,6 +275,10 @@ export function checkComparisonParity(
     baseline: baseline.capture?.githubUrl,
     candidate: candidate.capture?.githubUrl,
   });
+  const officialProvenance =
+    opts?.expectedEvaluationMode === "official" ||
+    baseline.mode === "official" ||
+    candidate.mode === "official";
   const baselineGradeHash = baseline.capture?.env?.gradeHash?.trim() ?? "";
   const candidateGradeHash = candidate.capture?.env?.gradeHash?.trim() ?? "";
   // Pinned/local grade.js drift is invisible to evalSkillVersion on imports.
@@ -291,6 +295,19 @@ export function checkComparisonParity(
     issues.push(
       `capture.env.gradeHash mismatch: baseline=${baselineGradeHash.slice(0, 12)}… candidate=${candidateGradeHash.slice(0, 12)}…`,
     );
+  }
+  // Official adoption PASS must not launder legacy results with no grade pin.
+  if (officialProvenance) {
+    if (!baselineGradeHash) {
+      issues.push(
+        "official Comparison requires baseline.capture.env.gradeHash",
+      );
+    }
+    if (!candidateGradeHash) {
+      issues.push(
+        "official Comparison requires candidate.capture.env.gradeHash",
+      );
+    }
   }
   // Cost/smoke env fields: both missing OK (legacy); XOR or unequal → fail.
   pushEnvFieldParity(issues, "fakeProduce", {
@@ -375,10 +392,6 @@ export function checkComparisonParity(
 
   const baselinePromptKind = baseline.capture?.promptKind;
   const candidatePromptKind = candidate.capture?.promptKind;
-  const officialProvenance =
-    opts?.expectedEvaluationMode === "official" ||
-    baseline.mode === "official" ||
-    candidate.mode === "official";
   if (
     (baselinePromptKind !== undefined) !== (candidatePromptKind !== undefined)
   ) {
@@ -550,28 +563,35 @@ export function checkComparisonParity(
       );
     }
   }
-  if ((baseline.role ?? "candidate") !== "baseline") {
-    issues.push(`expected baseline.role=baseline, got ${baseline.role ?? "candidate"}`);
+  // Do not invent candidate — missing role must fail parity (same as Benefit).
+  if (baseline.role !== "baseline") {
+    issues.push(
+      `expected baseline.role=baseline, got ${baseline.role ?? "missing"}`,
+    );
   }
-  if ((candidate.role ?? "candidate") !== "candidate") {
-    issues.push(`expected candidate.role=candidate, got ${candidate.role}`);
+  if (candidate.role !== "candidate") {
+    issues.push(
+      `expected candidate.role=candidate, got ${candidate.role ?? "missing"}`,
+    );
   }
   const baselineCaptureRole = baseline.capture?.role;
   const candidateCaptureRole = candidate.capture?.role;
   if (
     baselineCaptureRole !== undefined &&
-    baselineCaptureRole !== (baseline.role ?? "candidate")
+    baseline.role !== undefined &&
+    baselineCaptureRole !== baseline.role
   ) {
     issues.push(
-      `baseline.capture.role ${baselineCaptureRole} ≠ result.role ${baseline.role ?? "candidate"}`,
+      `baseline.capture.role ${baselineCaptureRole} ≠ result.role ${baseline.role}`,
     );
   }
   if (
     candidateCaptureRole !== undefined &&
-    candidateCaptureRole !== (candidate.role ?? "candidate")
+    candidate.role !== undefined &&
+    candidateCaptureRole !== candidate.role
   ) {
     issues.push(
-      `candidate.capture.role ${candidateCaptureRole} ≠ result.role ${candidate.role ?? "candidate"}`,
+      `candidate.capture.role ${candidateCaptureRole} ≠ result.role ${candidate.role}`,
     );
   }
 
@@ -766,7 +786,7 @@ function newestForRole(
   runs: RunResult[],
   role: "baseline" | "candidate",
 ): RunResult | null {
-  const matched = runs.filter((r) => (r.role ?? "candidate") === role);
+  const matched = runs.filter((r) => r.role === role);
   if (matched.length === 0) return null;
   matched.sort((a, b) => {
     const ta = Date.parse(a.finishedAt ?? a.startedAt ?? "") || 0;
