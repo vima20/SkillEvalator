@@ -8,7 +8,11 @@ import { resolveTrustedGradeHashFromRunResultDir } from "./dockerGrade.js";
 import { readJsonFile } from "./fsJson.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
 import { assertSafeId } from "./paths.js";
-import { loadRunResult, loadRunStatus } from "./results.js";
+import {
+  loadRunResult,
+  loadRunStatus,
+  unlinkBenefitReportCache,
+} from "./results.js";
 import { resolveLegRunIdViaRetryChain } from "./retryDedup.js";
 import type { RunResult } from "./schema.js";
 
@@ -1004,22 +1008,31 @@ export function loadPairedComparison(opts: {
       };
     };
     if (!opts.baselineRunId) {
-      baselineRunId = resolveLegRunIdViaRetryChain({
+      const baseTip = resolveLegRunIdViaRetryChain({
         resultsDir: opts.resultsDir,
         fromRunId: baselineRunId,
         evaluationId,
         role: "baseline",
         loadLeg,
-      }).runId;
+      });
+      if (baseTip.hops > 0 && baseTip.runId !== baselineRunId) {
+        // Drop superseded tip Benefit so worker path matches web heal unlink.
+        unlinkBenefitReportCache(opts.resultsDir, baselineRunId);
+        baselineRunId = baseTip.runId;
+      }
     }
     if (!opts.candidateRunId) {
-      candidateRunId = resolveLegRunIdViaRetryChain({
+      const candTip = resolveLegRunIdViaRetryChain({
         resultsDir: opts.resultsDir,
         fromRunId: candidateRunId,
         evaluationId,
         role: "candidate",
         loadLeg,
-      }).runId;
+      });
+      if (candTip.hops > 0 && candTip.runId !== candidateRunId) {
+        unlinkBenefitReportCache(opts.resultsDir, candidateRunId);
+        candidateRunId = candTip.runId;
+      }
     }
   }
 

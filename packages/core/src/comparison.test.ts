@@ -2131,6 +2131,10 @@ describe("loadPairedComparison tip heal", () => {
       role: "candidate",
       evaluationId,
     });
+    writeJsonFile(path.join(root, oldCand, "benefit-report.json"), {
+      verdict: { recommendation: "use" },
+      stale: true,
+    });
     saveRetryMarker(root, oldCand, tipCand);
 
     const cmp = loadPairedComparison({
@@ -2141,6 +2145,9 @@ describe("loadPairedComparison tip heal", () => {
     expect(cmp!.baselineRunId).toBe(baselineRunId);
     expect(cmp!.candidateRunId).toBe(tipCand);
     expect(cmp!.verdict).toBe("INCONCLUSIVE");
+    expect(
+      fs.existsSync(path.join(root, oldCand, "benefit-report.json")),
+    ).toBe(false);
   });
 
   it("keeps explicit leg overrides pinned (no tip walk)", () => {

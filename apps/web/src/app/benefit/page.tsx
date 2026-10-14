@@ -1,11 +1,43 @@
 import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
-import { buildBenefitReportForRun } from "@/lib/benefitWithComparison";
+import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
+
+type LegKind = "tip" | "superseded" | "smoke" | "single";
+
+function legKindFor(opts: {
+  runId: string;
+  fakeProduce: boolean;
+  evaluationId?: string;
+  tipCandidateRunId?: string | null;
+}): LegKind {
+  if (opts.fakeProduce) return "smoke";
+  if (!opts.evaluationId) return "single";
+  if (
+    opts.tipCandidateRunId &&
+    opts.tipCandidateRunId !== opts.runId
+  ) {
+    return "superseded";
+  }
+  return "tip";
+}
+
+function legKindLabel(kind: LegKind): string {
+  switch (kind) {
+    case "tip":
+      return "tip candidate";
+    case "superseded":
+      return "superseded";
+    case "smoke":
+      return "smoke (FAKE_PRODUCE)";
+    case "single":
+      return "unpaired";
+  }
+}
 
 export default function BenefitIndexPage() {
   healOrphanStatuses();
@@ -14,7 +46,14 @@ export default function BenefitIndexPage() {
     // Recommend surface: candidate skill only (baseline is Comparison input).
     .filter((r) => r.result!.role === "candidate")
     .map((r) => {
-      const report = buildBenefitReportForRun(r.result!);
+      const { report, comparison } = buildBenefitReportBundle(r.result!);
+      const fakeProduce = r.result!.capture?.env?.fakeProduce === true;
+      const kind = legKindFor({
+        runId: r.runId,
+        fakeProduce,
+        evaluationId: r.result!.evaluationId,
+        tipCandidateRunId: comparison?.candidateRunId,
+      });
       return {
         runId: r.runId,
         score: r.result!.score,
@@ -22,7 +61,16 @@ export default function BenefitIndexPage() {
         evaluationId: r.result!.evaluationId,
         verdict: report.verdict,
         rating: report.rating,
+        kind,
       };
+    })
+    // Tip / unpaired first; superseded + smoke last so adoption rows are visible.
+    .sort((a, b) => {
+      const rank = (k: LegKind) =>
+        k === "tip" ? 0 : k === "single" ? 1 : k === "superseded" ? 2 : 3;
+      const d = rank(a.kind) - rank(b.kind);
+      if (d !== 0) return d;
+      return b.runId.localeCompare(a.runId);
     });
 
   return (
@@ -42,7 +90,8 @@ export default function BenefitIndexPage() {
           <Link href="/comparison">Comparison</Link> = baseline↔candidate lift
           (PASS/FAIL). Benefit USE / 5★ unlocks only on official PASS; DO NOT
           USE follows official FAIL.
-          Baseline legs are omitted from this list.
+          Baseline legs are omitted from this list. Tip candidates sort first;
+          superseded retries and smoke harness rows stay visible but demoted.
         </p>
       </div>
 
@@ -79,7 +128,8 @@ export default function BenefitIndexPage() {
                     <td>
                       <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
                       <div className="cell-meta">
-                        {r.mode} · {r.rating.starsDisplay} {r.rating.grade}
+                        {r.mode} · {legKindLabel(r.kind)} ·{" "}
+                        {r.rating.starsDisplay} {r.rating.grade}
                         {r.evaluationId ? (
                           <>
                             {" · "}
@@ -89,10 +139,14 @@ export default function BenefitIndexPage() {
                           </>
                         ) : null}
                       </div>
+                      {r.verdict.recommendation === "inconclusive" ? (
+                        <div className="cell-meta">{r.verdict.headline}</div>
+                      ) : null}
                     </td>
                     <td>
                       <span
                         className={`verdict-chip verdict-${r.verdict.recommendation}`}
+                        title={r.verdict.headline}
                       >
                         {r.verdict.recommendation === "use"
                           ? "USE"

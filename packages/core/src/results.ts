@@ -124,6 +124,22 @@ function runDir(resultsDir: string, runId: string): string {
   return resolveUnder(resultsDir, assertSafeId(runId, "runId"));
 }
 
+/**
+ * Best-effort drop of a run's cached Benefit (superseded tip after retry-of heal).
+ * Offline readers must not keep USE after the Comparison tip moved.
+ */
+export function unlinkBenefitReportCache(
+  resultsDirPath: string,
+  runId: string,
+): void {
+  try {
+    const p = path.join(runDir(resultsDirPath, runId), "benefit-report.json");
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  } catch {
+    /* best-effort */
+  }
+}
+
 export function listRunIds(resultsDir: string): string[] {
   if (!fs.existsSync(resultsDir)) return [];
   return fs

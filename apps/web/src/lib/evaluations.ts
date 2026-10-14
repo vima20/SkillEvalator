@@ -14,6 +14,7 @@ import {
   resolveLegRunIdViaRetryChain,
   resolveTrustedGradeHashFromRunResultDir,
   tryAcquireWxLock,
+  unlinkBenefitReportCache,
   writeJsonFile,
   type RunComparison,
 } from "@skillevalator/core";
@@ -94,7 +95,7 @@ export function updateEvaluationMetaLeg(opts: {
     writeJsonFile(metaPath, next);
     // Drop superseded tip's cached Benefit so offline USE cannot outlive tip move.
     if (prevLegId && prevLegId !== runId) {
-      unlinkBenefitReportCache(prevLegId);
+      unlinkStaleBenefitReport(prevLegId);
     }
     return true;
   } finally {
@@ -103,17 +104,8 @@ export function updateEvaluationMetaLeg(opts: {
 }
 
 /** Best-effort drop of a run's cached Benefit (superseded tip / heal lock miss). */
-export function unlinkBenefitReportCache(runId: string): void {
-  try {
-    const staleBenefit = path.join(
-      resultsDir(),
-      assertSafeId(runId, "runId"),
-      "benefit-report.json",
-    );
-    if (fs.existsSync(staleBenefit)) fs.unlinkSync(staleBenefit);
-  } catch {
-    /* best-effort */
-  }
+export function unlinkStaleBenefitReport(runId: string): void {
+  unlinkBenefitReportCache(resultsDir(), runId);
 }
 
 /**
@@ -167,7 +159,7 @@ export function resolveHealedMetaLegsForCancel(evaluationId: string): {
       baselineRunId = baseTip.runId;
     } else {
       // In-memory tip only — still drop superseded Benefit so USE cannot linger.
-      unlinkBenefitReportCache(prev);
+      unlinkStaleBenefitReport(prev);
       baselineRunId = baseTip.runId;
     }
   }
@@ -184,7 +176,7 @@ export function resolveHealedMetaLegsForCancel(evaluationId: string): {
     ) {
       candidateRunId = candTip.runId;
     } else {
-      unlinkBenefitReportCache(prev);
+      unlinkStaleBenefitReport(prev);
       candidateRunId = candTip.runId;
     }
   }
@@ -272,7 +264,7 @@ export function loadEvaluationComparison(
         meta = loadEvaluationMeta(evaluationId) ?? meta;
       } else {
         // Lock miss: Comparison still uses tip in memory — drop stale USE cache.
-        if (prev) unlinkBenefitReportCache(prev);
+        if (prev) unlinkStaleBenefitReport(prev);
         baselineRunId = baseTip.runId;
       }
     }
@@ -292,7 +284,7 @@ export function loadEvaluationComparison(
         candidateRunId = candTip.runId;
         meta = loadEvaluationMeta(evaluationId) ?? meta;
       } else {
-        if (prev) unlinkBenefitReportCache(prev);
+        if (prev) unlinkStaleBenefitReport(prev);
         candidateRunId = candTip.runId;
       }
     }
