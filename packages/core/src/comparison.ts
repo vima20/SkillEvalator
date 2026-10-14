@@ -712,6 +712,12 @@ export function compareBaselineCandidate(
     rationale = `Lift ${lift.toFixed(3)} < ${LIFT_PASS_DELTA} (candidate ${candScore.toFixed(3)} vs baseline ${baseScore.toFixed(3)}). Skill does not clear the Unikie PASS delta. Task deltas: ${improvements} improved, ${regressions} regressed.`;
   }
 
+  // Dry-run never yields adoption PASS or FAIL (exploratory only).
+  if (verdict === "FAIL" && candidate.mode !== "official") {
+    verdict = "INCONCLUSIVE";
+    rationale = `Dry-run paired result is not an adoption FAIL. ${rationale} Re-run mode=official for a decisive Comparison verdict.`;
+  }
+
   return {
     evaluationId,
     baselineRunId: baseline.runId,

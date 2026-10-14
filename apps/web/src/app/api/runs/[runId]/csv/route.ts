@@ -4,7 +4,9 @@ import {
   loadRunResult,
   runResultToCsv,
 } from "@skillevalator/core";
+import { loadEvaluationComparison } from "@/lib/evaluations";
 import { resultsDir } from "@/lib/paths";
+import { runCsvExportGate } from "@/lib/runCsvExport";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,20 @@ export async function GET(
     const result = loadRunResult(resultsDir(), runId);
     if (!result) {
       return NextResponse.json({ error: "result not ready" }, { status: 404 });
+    }
+    const packed = result.evaluationId
+      ? loadEvaluationComparison(result.evaluationId)
+      : null;
+    const gate = runCsvExportGate({
+      result,
+      comparisonVerdict: packed?.comparison?.verdict ?? null,
+      comparisonMode: packed?.comparison?.mode ?? null,
+    });
+    if (!gate.ok) {
+      return NextResponse.json(
+        { error: gate.error, errorCode: gate.errorCode },
+        { status: gate.status },
+      );
     }
     const csv = runResultToCsv(result);
     return new NextResponse(csv, {

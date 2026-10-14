@@ -157,13 +157,12 @@ export default async function ComparisonDetailPage({
         </p>
       </div>
 
-      {comparison.mode === "dry-run" &&
-      (comparison.verdict === "PASS" || comparison.verdict === "FAIL") ? (
+      {comparison.mode === "dry-run" ? (
         <div className="panel callout-warn">
           <strong>Dry-run only</strong>
           <p>
-            This verdict is exploratory (cheaper model / subset). It is not
-            Unikie adoption evidence — CSV export is locked until mode=official.
+            Dry-run paired results stay INCONCLUSIVE for adoption (no PASS/FAIL).
+            CSV export is locked until mode=official.
           </p>
         </div>
       ) : null}

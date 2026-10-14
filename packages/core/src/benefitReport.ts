@@ -374,21 +374,41 @@ export function rateSkill(result: RunResult): BenefitRating {
   };
 }
 
+/**
+ * After Comparison demotes USE / 5★, rewrite adoption prose so Result /
+ * What this shows cannot still say “fit for use” / Excellent (5/5).
+ */
 function withUpdatedRecommendation(
   rating: BenefitRating,
   stars: 1 | 2 | 3 | 4,
   summary: string,
   recommendationBody: string,
 ): BenefitRating {
-  const reviewSections = [
-    ...rating.reviewSections.filter((s) => s.heading !== "Recommendation"),
+  const grade = gradeForStars(stars);
+  const kept = rating.reviewSections.filter(
+    (s) =>
+      s.heading !== "Recommendation" &&
+      s.heading !== "Result" &&
+      s.heading !== "What this shows" &&
+      s.heading !== "Analysis",
+  );
+  const reviewSections: ReviewSection[] = [
+    {
+      heading: "Result",
+      body: `Scorecard grade ${grade} (${stars}/5). ${summary} This is not a Benefit USE signal until official Comparison is PASS.`,
+    },
+    {
+      heading: "What this shows",
+      body: "Harness produce→grade may look strong, but Unikie adoption follows official Comparison PASS (lift + USE score floor), not this narrative alone.",
+    },
+    ...kept,
     { heading: "Recommendation", body: recommendationBody },
   ];
   return {
     ...rating,
     stars,
     starsDisplay: starsDisplay(stars),
-    grade: gradeForStars(stars),
+    grade,
     summary,
     reviewSections,
     review: reviewSections.map((s) => `**${s.heading}.** ${s.body}`).join("\n\n"),

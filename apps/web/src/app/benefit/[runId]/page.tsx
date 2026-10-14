@@ -117,20 +117,19 @@ export default async function BenefitReportPage({
         <div className="panel callout-info">
           <strong>Comparison vs Benefit</strong>
           <p>
-            USE / DO NOT USE below is a <em>single-run</em> recommendation.
-            Paired baseline↔candidate <strong>PASS/FAIL</strong>
+            Benefit <strong>USE</strong> unlocks only after official paired{" "}
+            <strong>Comparison PASS</strong>
             {result.evaluationId ? (
               <>
                 {" "}
-                is on{" "}
+                (
                 <Link href={`/comparison/${result.evaluationId}`}>
-                  Comparison
+                  open Comparison
                 </Link>
+                )
               </>
-            ) : (
-              " lives under Comparison when you ran baseline↔candidate"
-            )}
-            .
+            ) : null}
+            . Score alone is not adoption evidence.
           </p>
         </div>
       )}

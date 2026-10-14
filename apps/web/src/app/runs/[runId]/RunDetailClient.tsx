@@ -567,12 +567,25 @@ export function RunDetailClient({
           </div>
 
           <div className="action-row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <a
-              className="btn btn-ghost"
-              href={`/api/runs/${encodeURIComponent(runId)}/csv`}
-            >
-              Download CSV
-            </a>
+            {result.mode === "official" &&
+            result.evaluationId &&
+            !result.capture?.env?.fakeProduce ? (
+              <a
+                className="btn btn-ghost"
+                href={`/api/runs/${encodeURIComponent(runId)}/csv`}
+                title="Requires official Comparison PASS or FAIL (API enforces)"
+              >
+                Download CSV
+              </a>
+            ) : (
+              <span
+                className="hint"
+                style={{ margin: 0, alignSelf: "center" }}
+                title="CSV locked until official paired Comparison PASS/FAIL"
+              >
+                CSV export locked (official + Comparison PASS/FAIL)
+              </span>
+            )}
             <button
               type="button"
               className="btn btn-ghost"

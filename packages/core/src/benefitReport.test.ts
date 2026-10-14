@@ -220,6 +220,9 @@ describe("benefitReport", () => {
     const waiting = buildBenefitReport(official, { comparison: null });
     expect(waiting.verdict.recommendation).toBe("inconclusive");
     expect(waiting.rating.stars).toBe(4);
+    expect(waiting.rating.review).not.toMatch(/fit for use/i);
+    expect(waiting.rating.review).not.toMatch(/\(5\/5\)/);
+    expect(waiting.rating.review).toMatch(/\(4\/5\)/);
 
     const single = buildBenefitReport(
       sample({
@@ -231,6 +234,8 @@ describe("benefitReport", () => {
     );
     expect(single.verdict.recommendation).toBe("inconclusive");
     expect(single.verdict.headline).toMatch(/paired Comparison/i);
+    expect(single.rating.review).not.toMatch(/fit for use/i);
+    expect(single.rating.review).not.toMatch(/\(5\/5\)/);
   });
 
   it("does not give 5 stars on smoke, failed, or role-less official scores", () => {

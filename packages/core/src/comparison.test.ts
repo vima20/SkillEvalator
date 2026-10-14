@@ -160,19 +160,66 @@ describe("compareBaselineCandidate", () => {
     expect(c.rationale).toMatch(/FAKE_PRODUCE|smoke/i);
   });
 
-  it("FAIL when lift too small", () => {
+  it("dry-run small lift is INCONCLUSIVE (not adoption FAIL)", () => {
     const c = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.9 }),
       sample({ runId: "c", role: "candidate", score: 0.92 }),
     );
-    expect(c.verdict).toBe("FAIL");
+    expect(c.mode).toBe("dry-run");
     expect(c.lift).toBeCloseTo(0.02);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.rationale).toMatch(/dry-run|official/i);
   });
 
-  it("FAIL when candidate below soft-pass floor", () => {
+  it("official FAIL when lift too small", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.95,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.995,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+    );
+    expect(c.lift!).toBeLessThan(LIFT_PASS_DELTA);
+    expect(c.verdict).toBe("FAIL");
+  });
+
+  it("dry-run soft-pass miss is INCONCLUSIVE (not adoption FAIL)", () => {
     const c = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.2 }),
       sample({ runId: "c", role: "candidate", score: 0.5 }),
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+  });
+
+  it("official FAIL when candidate below soft-pass floor", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.2,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.5,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
     );
     expect(c.verdict).toBe("FAIL");
   });
