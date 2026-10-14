@@ -14,20 +14,26 @@ import type { RunResult } from "./schema.js";
 function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): RunResult {
   const { runId, role, ...rest } = over;
   const resolvedRole = role ?? "candidate";
+  const defaultCapture = {
+    githubUrl:
+      "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+    commit: "deadbeef",
+    license: "MIT",
+    dependencies: [] as string[],
+    skillVersion: "abc",
+    role: resolvedRole,
+    promptHash:
+      resolvedRole === "baseline" ? "baselinehash0001" : "candidatehash0002",
+    promptKind:
+      resolvedRole === "baseline"
+        ? ("baseline_neutral" as const)
+        : ("skill_md" as const),
+  };
   return {
     evalSkillId: "code-debugging-eval",
     evalSkillVersion: "abc",
     evalSkillGithubUrl:
       "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
-    capture: {
-      githubUrl:
-        "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
-      commit: "deadbeef",
-      license: "MIT",
-      dependencies: [],
-      skillVersion: "abc",
-      role: resolvedRole,
-    },
     evaluationId: "eval_test_1",
     taskSetId: "cde-v1",
     taskIds: ["bug-01"],
@@ -50,6 +56,11 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
     ...rest,
     runId,
     role: resolvedRole,
+    // Default provenance for official PASS; explicit capture is used as-is
+    // (parity tests must omit fields without default fill-in).
+    capture: rest.capture
+      ? { ...rest.capture, role: rest.capture.role ?? resolvedRole }
+      : defaultCapture,
   };
 }
 
@@ -111,6 +122,28 @@ describe("compareBaselineCandidate", () => {
     );
     expect(c.verdict).toBe("PASS");
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
+  it("official INCONCLUSIVE when both legs omit promptKind (legacy laundering)", () => {
+    const stripKind = (role: "baseline" | "candidate", runId: string) => {
+      const r = sample({
+        runId,
+        role,
+        score: role === "baseline" ? 0.9 : 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      });
+      const { promptKind: _drop, ...captureRest } = r.capture!;
+      return { ...r, capture: captureRest };
+    };
+    const c = compareBaselineCandidate(
+      stripKind("baseline", "b"),
+      stripKind("candidate", "c"),
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.parity.issues.some((i) => /promptKind/i.test(i))).toBe(true);
   });
 
   it("INCONCLUSIVE when both legs used fakeProduce smoke", () => {
@@ -1357,41 +1390,44 @@ describe("compareBaselineCandidate", () => {
       allowHostGrade: false,
       grade: "docker_script" as const,
     };
-    const c = compareBaselineCandidate(
-      sample({
-        runId: "b",
+    const baseline = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.5,
+      capture: {
+        githubUrl: "https://github.com/acme/skills",
+        commit: "aaaaaaaaaaaaaaaa",
+        license: "MIT",
+        dependencies: [],
+        skillVersion: "abc",
         role: "baseline",
-        score: 0.5,
-        capture: {
-          githubUrl: "https://github.com/acme/skills",
-          commit: "aaaaaaaaaaaaaaaa",
-          license: "MIT",
-          dependencies: [],
-          skillVersion: "abc",
-          role: "baseline",
-          promptHash: "basehash",
-          promptKind: "baseline_neutral",
-          env,
-          capturedAt: "2026-10-12T00:00:00.000Z",
-        },
-      }),
-      sample({
-        runId: "c",
+        promptHash: "basehash",
+        promptKind: "baseline_neutral",
+        env,
+        capturedAt: "2026-10-12T00:00:00.000Z",
+      },
+    });
+    const candidateFull = sample({
+      runId: "c",
+      role: "candidate",
+      score: 0.95,
+      capture: {
+        githubUrl: "https://github.com/acme/skills",
+        commit: "aaaaaaaaaaaaaaaa",
+        license: "MIT",
+        dependencies: [],
+        skillVersion: "abc",
         role: "candidate",
-        score: 0.95,
-        capture: {
-          githubUrl: "https://github.com/acme/skills",
-          commit: "aaaaaaaaaaaaaaaa",
-          license: "MIT",
-          dependencies: [],
-          skillVersion: "abc",
-          role: "candidate",
-          promptHash: "candhash",
-          env,
-          capturedAt: "2026-10-12T00:00:00.000Z",
-        },
-      }),
-    );
+        promptHash: "candhash",
+        env,
+        capturedAt: "2026-10-12T00:00:00.000Z",
+      },
+    });
+    const { promptKind: _drop, ...candCapture } = candidateFull.capture!;
+    const c = compareBaselineCandidate(baseline, {
+      ...candidateFull,
+      capture: candCapture,
+    });
     expect(c.verdict).toBe("INCONCLUSIVE");
     expect(
       c.parity.issues.some((i) => i.includes("promptKind presence")),

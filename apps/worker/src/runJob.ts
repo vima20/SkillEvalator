@@ -338,9 +338,20 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         );
       }
       // Tip legs only — retries must update evaluation.json before the job is claimable.
-      if (runId !== baselineRunId && runId !== candidateRunId) {
+      const metaSlot =
+        runId === baselineRunId
+          ? ("baseline" as const)
+          : runId === candidateRunId
+            ? ("candidate" as const)
+            : null;
+      if (!metaSlot) {
         throw new Error(
           `official_evaluation_leg_mismatch: run ${runId} is not a current meta leg of ${evalId}`,
+        );
+      }
+      if (role !== metaSlot) {
+        throw new Error(
+          `official_evaluation_role_slot_mismatch: job role ${role} vs meta slot ${metaSlot} for ${runId}`,
         );
       }
     } catch (err) {

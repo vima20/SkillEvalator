@@ -26,9 +26,9 @@ export default function ComparisonListPage() {
     const packed = loadEvaluationComparison(e.evaluationId);
     const c = packed.comparison;
     const pending = !c;
-    // Prefer healed tip meta so Benefit CTA matches the PASS/FAIL row.
+    // Prefer Comparison tip legs (then healed meta) so Benefit CTA matches PASS/FAIL.
     const tipCandidateRunId =
-      packed.meta?.candidateRunId ?? c?.candidateRunId ?? e.candidateRunId;
+      c?.candidateRunId ?? packed.meta?.candidateRunId ?? e.candidateRunId;
     return {
       ...e,
       pending,

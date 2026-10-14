@@ -255,6 +255,21 @@ export function loadEvaluationComparison(
         })()
       : null;
 
+  // Always return tip leg ids in meta (even when disk heal lock failed) so
+  // Comparison UI Benefit/status CTAs match the Comparison verdict legs.
+  if (meta && baselineRunId && candidateRunId) {
+    if (
+      meta.baselineRunId !== baselineRunId ||
+      meta.candidateRunId !== candidateRunId
+    ) {
+      meta = {
+        ...meta,
+        baselineRunId,
+        candidateRunId,
+      };
+    }
+  }
+
   return { meta, baseline, candidate, comparison };
 }
 

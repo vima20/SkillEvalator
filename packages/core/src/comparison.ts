@@ -375,12 +375,29 @@ export function checkComparisonParity(
 
   const baselinePromptKind = baseline.capture?.promptKind;
   const candidatePromptKind = candidate.capture?.promptKind;
+  const officialProvenance =
+    opts?.expectedEvaluationMode === "official" ||
+    baseline.mode === "official" ||
+    candidate.mode === "official";
   if (
     (baselinePromptKind !== undefined) !== (candidatePromptKind !== undefined)
   ) {
     issues.push(
       `capture.promptKind presence mismatch: baseline=${baselinePromptKind !== undefined ? "set" : "missing"} candidate=${candidatePromptKind !== undefined ? "set" : "missing"}`,
     );
+  }
+  // Official adoption PASS must not launder legacy results with no promptKind.
+  if (officialProvenance) {
+    if (baselinePromptKind === undefined) {
+      issues.push(
+        "official Comparison requires baseline.capture.promptKind=baseline_neutral",
+      );
+    }
+    if (candidatePromptKind === undefined) {
+      issues.push(
+        "official Comparison requires candidate.capture.promptKind=skill_md",
+      );
+    }
   }
   if (
     baselinePromptKind !== undefined &&

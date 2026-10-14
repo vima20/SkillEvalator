@@ -68,11 +68,17 @@ export default async function ComparisonDetailPage({
   }
 
   const { meta, baseline, candidate, comparison } = packed;
+  // Tip legs: Comparison object wins (matches verdict); meta is already patched
+  // to healed tips by loadEvaluationComparison.
+  const baselineRunId =
+    comparison?.baselineRunId ?? meta.baselineRunId;
+  const candidateRunId =
+    comparison?.candidateRunId ?? meta.candidateRunId;
   const baselineStatus =
-    syncStatusFromResult(root, meta.baselineRunId)?.status ??
+    syncStatusFromResult(root, baselineRunId)?.status ??
     baseline?.status;
   const candidateStatus =
-    syncStatusFromResult(root, meta.candidateRunId)?.status ??
+    syncStatusFromResult(root, candidateRunId)?.status ??
     candidate?.status;
 
   if (!comparison || !baseline || !candidate) {
@@ -88,8 +94,8 @@ export default async function ComparisonDetailPage({
         </header>
         <ComparisonPending
           evaluationId={evaluationId}
-          baselineRunId={meta.baselineRunId}
-          candidateRunId={meta.candidateRunId}
+          baselineRunId={baselineRunId}
+          candidateRunId={candidateRunId}
           baselineStatus={baselineStatus}
           candidateStatus={candidateStatus}
           baselineHasResult={!!baseline}
@@ -118,18 +124,15 @@ export default async function ComparisonDetailPage({
           </p>
         </div>
         <div className="page-header-actions">
-          <Link className="btn btn-ghost" href={`/runs/${meta.baselineRunId}`}>
+          <Link className="btn btn-ghost" href={`/runs/${baselineRunId}`}>
             Baseline run
           </Link>
-          <Link
-            className="btn btn-ghost"
-            href={`/runs/${meta.candidateRunId}`}
-          >
+          <Link className="btn btn-ghost" href={`/runs/${candidateRunId}`}>
             Candidate run
           </Link>
           <Link
             className="btn btn-primary"
-            href={`/benefit/${meta.candidateRunId}`}
+            href={`/benefit/${candidateRunId}`}
           >
             Benefit Report
           </Link>
@@ -152,7 +155,7 @@ export default async function ComparisonDetailPage({
           <strong>{comparison.verdict}</strong> here is the paired lift gate
           (baseline↔candidate). Official PASS also requires candidate score ≥
           0.99 (Benefit USE floor). Benefit{" "}
-          <Link href={`/benefit/${meta.candidateRunId}`}>USE / DO NOT USE</Link>{" "}
+          <Link href={`/benefit/${candidateRunId}`}>USE / DO NOT USE</Link>{" "}
           unlocks only after official Comparison PASS.
         </p>
       </div>
