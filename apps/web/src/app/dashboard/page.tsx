@@ -2,6 +2,8 @@ import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
+import { includeInDashboardLeaderboard } from "@/lib/dashboardLeaderboard";
+import { loadEvaluationComparison } from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { runIsActive } from "@/lib/status";
@@ -39,10 +41,35 @@ export default function DashboardPage() {
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir());
   const hasActive = allRuns.some((r) => runIsActive(r.status, !!r.result));
-  // Leaderboard: explicit candidate legs only (no role invent / baseline).
+  // Tip candidate per evaluation — supersede smoke/old retries off the board.
+  const tipByEval = new Map<string, string | null>();
+  const tipCandidateId = (evaluationId: string): string | null => {
+    if (!tipByEval.has(evaluationId)) {
+      tipByEval.set(
+        evaluationId,
+        loadEvaluationComparison(evaluationId).comparison?.candidateRunId ??
+          null,
+      );
+    }
+    return tipByEval.get(evaluationId) ?? null;
+  };
+  // Leaderboard: tip (or unpaired) candidates only — never smoke / superseded.
   const rows: Row[] = allRuns.flatMap((r) => {
     if (!r.result) return [];
-    if (r.result.role !== "candidate") return [];
+    const tip = r.result.evaluationId
+      ? tipCandidateId(r.result.evaluationId)
+      : null;
+    if (
+      !includeInDashboardLeaderboard({
+        runId: r.runId,
+        role: r.result.role,
+        fakeProduce: r.result.capture?.env?.fakeProduce === true,
+        evaluationId: r.result.evaluationId,
+        tipCandidateRunId: tip,
+      })
+    ) {
+      return [];
+    }
     return [
       {
         runId: r.runId,
@@ -84,8 +111,9 @@ export default function DashboardPage() {
           <p className="eyebrow">Unikie · Overview</p>
           <h1>Dashboard</h1>
           <p>
-            Candidate runs grouped by task set and model (skill version
-            leaderboard). Baseline↔candidate lift lives under{" "}
+            Tip candidate runs grouped by task set and model (skill version
+            leaderboard). Smoke harness and superseded retries are omitted.
+            Baseline↔candidate lift lives under{" "}
             <Link href="/comparison">Comparison</Link>. Cross-model bake-off is
             out of scope for this MVP.
           </p>

@@ -8,6 +8,7 @@ import {
   clearRetryMarker,
   findReusableRetryRunId,
   hasLiveJobFile,
+  healRunOrphansFs,
   isNonRetryableErrorCode,
   loadRunResult,
   loadRunStatus,
@@ -67,6 +68,9 @@ export async function POST(
     const { runId: raw } = await ctx.params;
     const runId = assertSafeId(raw, "runId");
     const root = resultsDir();
+    // Heal orphan .running.json before live-job gate — budget_stop poll stop
+    // may leave a dead claim that would 409 Retry forever.
+    healRunOrphansFs(jobsDir(), root, runId, isPidAlive);
     const status = loadRunStatus(root, runId);
     if (!status) {
       return NextResponse.json({ error: "not found" }, { status: 404 });

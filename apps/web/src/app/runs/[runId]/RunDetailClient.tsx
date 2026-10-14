@@ -179,14 +179,19 @@ export function RunDetailClient({
   }, [polling, refresh]);
 
   // budget_stop without result should not poll forever (orphan / crashed worker).
+  // Final refresh runs GET /api/runs heal so dead .running.json becomes failed
+  // and Retry is not stuck behind hasLiveJobFile 409.
   useEffect(() => {
     const st = data.status?.status;
     if (st !== "budget_stop" || data.result) return;
     const id = window.setTimeout(() => {
-      setPolling(false);
+      void (async () => {
+        await refresh();
+        setPolling(false);
+      })();
     }, 90_000);
     return () => window.clearTimeout(id);
-  }, [data.status?.status, data.result]);
+  }, [data.status?.status, data.result, refresh]);
 
   const status = data.status?.status ?? "unknown";
   const result = data.result;
