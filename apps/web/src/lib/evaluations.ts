@@ -7,6 +7,7 @@ import {
   readJsonFile,
   releaseWxLock,
   resolveComparisonLegs,
+  resolveEvaluationMetaEvalSkillId,
   resolveEvaluationMetaMode,
   tryAcquireWxLock,
   writeJsonFile,
@@ -112,22 +113,31 @@ export function loadEvaluationComparison(
   const comparison =
     baseline && candidate
       ? (() => {
+          const metaPresent = Boolean(meta);
           const modePin = resolveEvaluationMetaMode({
             metaMode: meta?.mode,
             baselineMode: baseline.mode,
             candidateMode: candidate.mode,
-            evaluationMetaPresent: Boolean(meta),
+            evaluationMetaPresent: metaPresent,
           });
+          const skillPin = resolveEvaluationMetaEvalSkillId({
+            metaEvalSkillId: meta?.evalSkillId,
+            baselineEvalSkillId: baseline.evalSkillId,
+            candidateEvalSkillId: candidate.evalSkillId,
+            evaluationMetaPresent: metaPresent,
+          });
+          const extraParityIssues = [
+            ...modePin.issues,
+            ...skillPin.issues,
+          ];
           return compareBaselineCandidate(baseline, candidate, {
-            ...(meta?.evalSkillId
-              ? { expectedEvalSkillId: meta.evalSkillId }
+            ...(skillPin.expectedEvalSkillId
+              ? { expectedEvalSkillId: skillPin.expectedEvalSkillId }
               : {}),
             ...(modePin.expectedEvaluationMode
               ? { expectedEvaluationMode: modePin.expectedEvaluationMode }
               : {}),
-            ...(modePin.issues.length
-              ? { extraParityIssues: modePin.issues }
-              : {}),
+            ...(extraParityIssues.length ? { extraParityIssues } : {}),
           });
         })()
       : null;

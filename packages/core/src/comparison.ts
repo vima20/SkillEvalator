@@ -145,6 +145,54 @@ export function resolveEvaluationMetaMode(opts: {
   return { issues };
 }
 
+/** Same shape as assertSafeId / skill folder names. */
+const EVAL_SKILL_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+export function isEvalSkillId(value: unknown): value is string {
+  return typeof value === "string" && EVAL_SKILL_ID_RE.test(value);
+}
+
+/**
+ * Resolve evaluation.json evalSkillId for Comparison parity (mirrors mode).
+ * Valid meta id wins; missing may be filled from agreeing legs; explicit
+ * invalid meta id is fail-closed.
+ */
+export function resolveEvaluationMetaEvalSkillId(opts: {
+  metaEvalSkillId?: string | null;
+  baselineEvalSkillId: string;
+  candidateEvalSkillId: string;
+  evaluationMetaPresent: boolean;
+}): {
+  expectedEvalSkillId?: string;
+  issues: string[];
+} {
+  const issues: string[] = [];
+  const raw =
+    typeof opts.metaEvalSkillId === "string" ? opts.metaEvalSkillId.trim() : "";
+  if (isEvalSkillId(raw)) {
+    return { expectedEvalSkillId: raw, issues };
+  }
+  if (!opts.evaluationMetaPresent) {
+    return { issues };
+  }
+  if (raw) {
+    issues.push(
+      `evaluation meta evalSkillId invalid: ${JSON.stringify(raw)}`,
+    );
+    return { issues };
+  }
+  if (
+    isEvalSkillId(opts.baselineEvalSkillId) &&
+    opts.baselineEvalSkillId === opts.candidateEvalSkillId
+  ) {
+    return { expectedEvalSkillId: opts.baselineEvalSkillId, issues };
+  }
+  issues.push(
+    "evaluation meta evalSkillId missing; legs do not share a fillable id",
+  );
+  return { issues };
+}
+
 /** Assert Unikie parity: same model/mode/tasks/repeats/decoding for fair lift. */
 export function checkComparisonParity(
   baseline: RunResult,

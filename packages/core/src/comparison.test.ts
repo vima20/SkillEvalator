@@ -4,6 +4,7 @@ import {
   compareBaselineCandidate,
   pairEvaluationRuns,
   resolveComparisonLegs,
+  resolveEvaluationMetaEvalSkillId,
   resolveEvaluationMetaMode,
   resolvePairedCancelSibling,
 } from "./comparison.js";
@@ -1497,6 +1498,35 @@ describe("compareBaselineCandidate", () => {
     );
     expect(c.parity.ok).toBe(true);
     expect(c.verdict).toBe("PASS");
+  });
+
+  it("INCONCLUSIVE when evaluation meta evalSkillId is invalid", () => {
+    const pin = resolveEvaluationMetaEvalSkillId({
+      metaEvalSkillId: "../evil",
+      baselineEvalSkillId: "code-debugging-eval",
+      candidateEvalSkillId: "code-debugging-eval",
+      evaluationMetaPresent: true,
+    });
+    expect(pin.expectedEvalSkillId).toBeUndefined();
+    expect(pin.issues.some((i) => i.includes("invalid"))).toBe(true);
+
+    const c = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.5 }),
+      sample({ runId: "c", role: "candidate", score: 0.95 }),
+      { extraParityIssues: pin.issues },
+    );
+    expect(c.verdict).toBe("INCONCLUSIVE");
+  });
+
+  it("fills expected evalSkillId from agreeing legs when meta id is missing", () => {
+    const pin = resolveEvaluationMetaEvalSkillId({
+      metaEvalSkillId: "  ",
+      baselineEvalSkillId: "code-debugging-eval",
+      candidateEvalSkillId: "code-debugging-eval",
+      evaluationMetaPresent: true,
+    });
+    expect(pin.expectedEvalSkillId).toBe("code-debugging-eval");
+    expect(pin.issues).toEqual([]);
   });
 
   it("INCONCLUSIVE when decoding.seed or pipeline.grade differs", () => {
