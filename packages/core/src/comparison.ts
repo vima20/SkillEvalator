@@ -1,5 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
 import { PASS_SCORE_FLOOR } from "./diffScore.js";
+import { readJsonFile } from "./fsJson.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
+import { assertSafeId } from "./paths.js";
+import { loadRunResult } from "./results.js";
 import type { RunResult } from "./schema.js";
 
 /** Unikie alustava PASS: candidate ≥ baseline + 5 percentage points. */
@@ -829,4 +834,83 @@ export function resolvePairedCancelSibling(opts: {
   }
   // Ambiguous — refuse to guess.
   return null;
+}
+
+type EvaluationMetaDisk = {
+  evaluationId?: string;
+  evalSkillId?: string;
+  mode?: string;
+  baselineRunId?: string;
+  candidateRunId?: string;
+};
+
+/**
+ * Disk load of paired Comparison (no retry-chain heal — callers that need
+ * tip resolution should heal meta first, e.g. web loadEvaluationComparison).
+ */
+export function loadPairedComparison(opts: {
+  resultsDir: string;
+  evaluationId: string;
+  baselineRunId?: string;
+  candidateRunId?: string;
+}): RunComparison | null {
+  const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
+  const metaPath = path.join(opts.resultsDir, evaluationId, "evaluation.json");
+  let meta: EvaluationMetaDisk | null = null;
+  if (fs.existsSync(metaPath)) {
+    try {
+      meta = readJsonFile(metaPath) as EvaluationMetaDisk;
+    } catch {
+      meta = null;
+    }
+  }
+  const baselineRunId =
+    opts.baselineRunId ??
+    (typeof meta?.baselineRunId === "string" ? meta.baselineRunId : undefined);
+  const candidateRunId =
+    opts.candidateRunId ??
+    (typeof meta?.candidateRunId === "string" ? meta.candidateRunId : undefined);
+  if (!baselineRunId || !candidateRunId) return null;
+
+  const { baseline, candidate } = resolveComparisonLegs({
+    meta: { baselineRunId, candidateRunId },
+    loadResult: (runId) => loadRunResult(opts.resultsDir, runId),
+  });
+  if (!baseline || !candidate) return null;
+
+  const metaPresent = Boolean(meta);
+  const modePin = resolveEvaluationMetaMode({
+    metaMode: meta?.mode,
+    baselineMode: baseline.mode,
+    candidateMode: candidate.mode,
+    evaluationMetaPresent: metaPresent,
+  });
+  const skillPin = resolveEvaluationMetaEvalSkillId({
+    metaEvalSkillId: meta?.evalSkillId,
+    baselineEvalSkillId: baseline.evalSkillId,
+    candidateEvalSkillId: candidate.evalSkillId,
+    evaluationMetaPresent: metaPresent,
+  });
+  const evalIdPin = resolveEvaluationMetaEvaluationId({
+    folderEvaluationId: evaluationId,
+    metaEvaluationId: meta?.evaluationId,
+    evaluationMetaPresent: metaPresent,
+  });
+  const extraParityIssues = [
+    ...modePin.issues,
+    ...skillPin.issues,
+    ...evalIdPin.issues,
+  ];
+  return compareBaselineCandidate(baseline, candidate, {
+    ...(skillPin.expectedEvalSkillId
+      ? { expectedEvalSkillId: skillPin.expectedEvalSkillId }
+      : {}),
+    ...(modePin.expectedEvaluationMode
+      ? { expectedEvaluationMode: modePin.expectedEvaluationMode }
+      : {}),
+    ...(evalIdPin.expectedEvaluationId
+      ? { expectedEvaluationId: evalIdPin.expectedEvaluationId }
+      : {}),
+    ...(extraParityIssues.length ? { extraParityIssues } : {}),
+  });
 }

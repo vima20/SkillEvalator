@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import {
   benefitReportToCsv,
   benefitReportToMarkdown,
-  buildBenefitReport,
   loadRunResult,
 } from "@skillevalator/core";
 import { benefitExportGate } from "@/lib/benefitExport";
+import { buildBenefitReportForRun } from "@/lib/benefitWithComparison";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ error: "result not found" }, { status: 404 });
     }
-    const report = buildBenefitReport(result);
+    const report = buildBenefitReportForRun(result);
     const format = new URL(req.url).searchParams.get("format");
     if (format === "md" || format === "markdown" || format === "csv") {
       const gate = benefitExportGate(report.verdict.recommendation);

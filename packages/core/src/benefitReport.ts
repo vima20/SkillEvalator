@@ -1,3 +1,4 @@
+import type { ComparisonVerdict, RunComparison } from "./comparison.js";
 import { PASS_SCORE_FLOOR } from "./diffScore.js";
 import type { RunResult } from "./schema.js";
 import { labelForScore, type ScoreLabel } from "./scoring.js";
@@ -350,6 +351,132 @@ export function rateSkill(result: RunResult): BenefitRating {
   };
 }
 
+function withUpdatedRecommendation(
+  rating: BenefitRating,
+  stars: 1 | 2 | 3 | 4,
+  summary: string,
+  recommendationBody: string,
+): BenefitRating {
+  const reviewSections = [
+    ...rating.reviewSections.filter((s) => s.heading !== "Recommendation"),
+    { heading: "Recommendation", body: recommendationBody },
+  ];
+  return {
+    ...rating,
+    stars,
+    starsDisplay: starsDisplay(stars),
+    grade: gradeForStars(stars),
+    summary,
+    reviewSections,
+    review: reviewSections.map((s) => `**${s.heading}.** ${s.body}`).join("\n\n"),
+  };
+}
+
+/**
+ * Fail-closed: official candidate USE / 5★ requires Comparison PASS (lift).
+ * Score-only USE without a paired PASS is a false adoption signal.
+ */
+export function applyPairedComparisonGate(opts: {
+  result: RunResult;
+  verdict: BenefitVerdict;
+  rating: BenefitRating;
+  comparison?: RunComparison | null;
+}): { verdict: BenefitVerdict; rating: BenefitRating } {
+  const { result, comparison } = opts;
+  let { verdict, rating } = opts;
+
+  const adoptionClaim =
+    verdict.recommendation === "use" || rating.stars === 5;
+  if (!adoptionClaim) {
+    return { verdict, rating };
+  }
+  if (result.role === "baseline") {
+    return { verdict, rating };
+  }
+  if (result.mode !== "official") {
+    return { verdict, rating };
+  }
+  // Missing / non-candidate role already handled upstream for USE; still
+  // demote orphan 5★ if somehow present without a paired PASS.
+  if (result.role !== undefined && result.role !== "candidate") {
+    return { verdict, rating };
+  }
+
+  const liftTxt =
+    comparison && typeof comparison.lift === "number"
+      ? `lift ${(comparison.lift * 100).toFixed(1)} pp`
+      : "lift unknown";
+
+  if (!result.evaluationId) {
+    verdict = {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — paired Comparison required",
+      decision: "INCONCLUSIVE — official single-leg score is not an adoption verdict",
+      rationale:
+        "Official candidate USE requires a paired baseline↔candidate Comparison PASS (≥ +5 pp lift). This run has no evaluationId — enqueue with baseline↔candidate.",
+    };
+    rating = withUpdatedRecommendation(
+      rating,
+      4,
+      "Paired Comparison required — not an adoption grade yet.",
+      "Re-run as a paired evaluation (baseline↔candidate). Benefit USE stays locked until Comparison is PASS.",
+    );
+    return { verdict, rating };
+  }
+
+  if (!comparison) {
+    verdict = {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — waiting for Comparison",
+      decision: "INCONCLUSIVE — sibling leg or Comparison not ready",
+      rationale: `Paired evaluationId ${result.evaluationId} exists, but Comparison is not available yet (missing sibling result). Official score alone is not USE — wait for baseline↔candidate PASS.`,
+    };
+    rating = withUpdatedRecommendation(
+      rating,
+      4,
+      "Waiting for paired Comparison — USE locked.",
+      `Open Comparison for ${result.evaluationId}. Benefit USE unlocks only when that verdict is PASS.`,
+    );
+    return { verdict, rating };
+  }
+
+  const v: ComparisonVerdict = comparison.verdict;
+  if (v === "PASS") {
+    return { verdict, rating };
+  }
+
+  if (v === "FAIL") {
+    verdict = {
+      recommendation: "do_not_use",
+      headline: "DO NOT USE — Comparison FAIL",
+      decision: "DO NOT USE — candidate did not clear baseline lift",
+      rationale: `Official candidate score met the Benefit floor, but Comparison is FAIL (${liftTxt}; need ≥ +5 pp). Unikie adoption follows Comparison PASS, not score alone.`,
+    };
+    rating = withUpdatedRecommendation(
+      rating,
+      3,
+      "Comparison FAIL — skill not cleared for use.",
+      `Comparison FAIL (${liftTxt}). Fix the skill until baseline↔candidate lift is PASS before adopting.`,
+    );
+    return { verdict, rating };
+  }
+
+  // INCONCLUSIVE
+  verdict = {
+    recommendation: "inconclusive",
+    headline: "INCONCLUSIVE — Comparison not decisive",
+    decision: "INCONCLUSIVE — Comparison INCONCLUSIVE; not an adoption verdict",
+    rationale: `Comparison for ${result.evaluationId} is INCONCLUSIVE (${comparison.rationale}). Official score cannot unlock Benefit USE until Comparison is PASS.`,
+  };
+  rating = withUpdatedRecommendation(
+    rating,
+    4,
+    "Comparison INCONCLUSIVE — USE locked.",
+    `Resolve Comparison parity/status for ${result.evaluationId}. Benefit USE requires Comparison PASS.`,
+  );
+  return { verdict, rating };
+}
+
 /**
  * Official + perfect score → use.
  * Completed run with imperfect score → do not use.
@@ -452,7 +579,10 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
   };
 }
 
-export function buildBenefitReport(result: RunResult): BenefitReport {
+export function buildBenefitReport(
+  result: RunResult,
+  opts?: { comparison?: RunComparison | null },
+): BenefitReport {
   const spread = result.scoreSpread ?? 0;
   const meanDiffRatio = result.subscores?.meanDiffRatio;
   const labelOpts = {
@@ -470,16 +600,20 @@ export function buildBenefitReport(result: RunResult): BenefitReport {
         : {}),
     }),
   }));
-  const verdict = decideSkillUse(result);
-  const rating = rateSkill(result);
+  const gated = applyPairedComparisonGate({
+    result,
+    verdict: decideSkillUse(result),
+    rating: rateSkill(result),
+    comparison: opts?.comparison,
+  });
 
   return {
     title: `Benefit Report · ${result.evalSkillId} · ${result.runId}`,
     generatedAt: new Date().toISOString(),
     disclaimer: DISCLAIMER,
     decisionQuestion: DECISION_QUESTION,
-    verdict,
-    rating,
+    verdict: gated.verdict,
+    rating: gated.rating,
     config: {
       runId: result.runId,
       mode: result.mode,
@@ -523,8 +657,8 @@ export function buildBenefitReport(result: RunResult): BenefitReport {
         ? "Dry-run uses a cheaper model and may use a subset of tasks — not an official claim."
         : "Official run uses the locked official model and full task set.",
       result.evaluationId
-        ? `Paired evaluationId ${result.evaluationId} — open Comparison for baseline↔candidate lift.`
-        : "Single-leg run (no paired baseline). Enable baseline↔candidate on New run for Unikie Comparison.",
+        ? `Paired evaluationId ${result.evaluationId} — Benefit USE / 5★ requires Comparison PASS on this pair.`
+        : "Single-leg run (no paired baseline). Official USE is locked until baseline↔candidate Comparison PASS.",
     ],
     cost: {
       costUsd: result.costUsd,

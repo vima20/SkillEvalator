@@ -1,10 +1,42 @@
 import { describe, expect, it } from "vitest";
+import type { RunComparison } from "./comparison.js";
 import {
+  applyPairedComparisonGate,
   buildBenefitReport,
   benefitReportToMarkdown,
   decideSkillUse,
+  rateSkill,
 } from "./benefitReport.js";
 import type { RunResult } from "./schema.js";
+
+function comparisonStub(
+  verdict: RunComparison["verdict"],
+  lift = 0.1,
+): RunComparison {
+  return {
+    evaluationId: "eval_test",
+    baselineRunId: "b1",
+    candidateRunId: "c1",
+    evalSkillId: "code-debugging-eval",
+    taskSetId: "cde-v1",
+    mode: "official",
+    modelId: "gpt-4.1-mini",
+    baselineScore: 0.9,
+    candidateScore: 0.9 + lift,
+    lift,
+    costUsd: 0.02,
+    latencyMs: 2000,
+    verdict,
+    rationale: `stub ${verdict}`,
+    baselineStatus: "ok",
+    candidateStatus: "ok",
+    capture: undefined,
+    parity: { ok: verdict !== "INCONCLUSIVE", issues: [] },
+    perTask: [],
+    regressions: 0,
+    improvements: 0,
+  };
+}
 
 function sample(overrides: Partial<RunResult> = {}): RunResult {
   return {
@@ -134,12 +166,51 @@ describe("benefitReport", () => {
     expect(md).toMatch(/not proof of Cursor\/KH/i);
   });
 
-  it("gives 5 stars only on official pass", () => {
+  it("gives 5 stars only on official pass with Comparison PASS", () => {
     const report = buildBenefitReport(
-      sample({ mode: "official", score: 1, modelId: "gpt-4.1-mini", repeats: 3 }),
+      sample({
+        mode: "official",
+        score: 1,
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        evaluationId: "eval_test",
+      }),
+      { comparison: comparisonStub("PASS") },
     );
     expect(report.rating.stars).toBe(5);
     expect(report.rating.grade).toBe("Excellent");
+    expect(report.verdict.recommendation).toBe("use");
+  });
+
+  it("locks USE / 5★ when Comparison is FAIL or missing", () => {
+    const official = sample({
+      mode: "official",
+      score: 1,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      evaluationId: "eval_test",
+    });
+    const fail = buildBenefitReport(official, {
+      comparison: comparisonStub("FAIL", 0.02),
+    });
+    expect(fail.verdict.recommendation).toBe("do_not_use");
+    expect(fail.rating.stars).toBeLessThan(5);
+    expect(fail.verdict.headline).toMatch(/Comparison FAIL/i);
+
+    const waiting = buildBenefitReport(official, { comparison: null });
+    expect(waiting.verdict.recommendation).toBe("inconclusive");
+    expect(waiting.rating.stars).toBe(4);
+
+    const single = buildBenefitReport(
+      sample({
+        mode: "official",
+        score: 1,
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+    );
+    expect(single.verdict.recommendation).toBe("inconclusive");
+    expect(single.verdict.headline).toMatch(/paired Comparison/i);
   });
 
   it("does not give 5 stars on smoke, failed, or role-less official scores", () => {
@@ -184,13 +255,14 @@ describe("benefitReport", () => {
     expect(roleless.verdict.recommendation).toBe("inconclusive");
   });
 
-  it("aligns rating prose with USE for official ≥0.99", () => {
+  it("aligns rating prose with USE for official ≥0.99 + Comparison PASS", () => {
     const report = buildBenefitReport(
       sample({
         mode: "official",
         score: 0.995,
         modelId: "gpt-4.1-mini",
         repeats: 3,
+        evaluationId: "eval_test",
         perTask: [
           {
             taskId: "bug-01",
@@ -200,12 +272,45 @@ describe("benefitReport", () => {
           },
         ],
       }),
+      { comparison: comparisonStub("PASS") },
     );
     expect(report.verdict.recommendation).toBe("use");
     expect(report.rating.stars).toBe(5);
     expect(report.rating.summary).toMatch(/Official passed/i);
     expect(report.rating.review).not.toMatch(/short of USE/i);
     expect(report.rating.review).not.toMatch(/Do not adopt the skill yet/i);
+  });
+
+  it("applyPairedComparisonGate keeps USE on PASS only", () => {
+    const result = sample({
+      mode: "official",
+      score: 1,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      evaluationId: "eval_test",
+    });
+    const verdict = decideSkillUse(result);
+    const rating = rateSkill(result);
+    expect(verdict.recommendation).toBe("use");
+    expect(rating.stars).toBe(5);
+
+    const pass = applyPairedComparisonGate({
+      result,
+      verdict,
+      rating,
+      comparison: comparisonStub("PASS"),
+    });
+    expect(pass.verdict.recommendation).toBe("use");
+    expect(pass.rating.stars).toBe(5);
+
+    const inc = applyPairedComparisonGate({
+      result,
+      verdict,
+      rating,
+      comparison: comparisonStub("INCONCLUSIVE"),
+    });
+    expect(inc.verdict.recommendation).toBe("inconclusive");
+    expect(inc.rating.stars).toBe(4);
   });
 
   it("counts soft-pass tasks (>= 0.8) as passed", () => {

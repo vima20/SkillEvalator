@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { buildBenefitReport, listRuns } from "@skillevalator/core";
+import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
+import { buildBenefitReportForRun } from "@/lib/benefitWithComparison";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 
@@ -13,7 +14,7 @@ export default function BenefitIndexPage() {
     // Recommend surface: candidate skill only (baseline is Comparison input).
     .filter((r) => (r.result!.role ?? "candidate") === "candidate")
     .map((r) => {
-      const report = buildBenefitReport(r.result!);
+      const report = buildBenefitReportForRun(r.result!);
       return {
         runId: r.runId,
         score: r.result!.score,
@@ -30,8 +31,8 @@ export default function BenefitIndexPage() {
         <p className="eyebrow">Unikie · Recommend</p>
         <h1>Benefit Report</h1>
         <p>
-          Candidate-skill decision artifact (USE / DO NOT USE). Paired{" "}
-          <strong>PASS/FAIL lift</strong> lives under Comparison — not here.
+          Candidate-skill decision artifact (USE / DO NOT USE). Official{" "}
+          <strong>USE</strong> requires Comparison <strong>PASS</strong> lift.
         </p>
       </header>
 
@@ -39,9 +40,8 @@ export default function BenefitIndexPage() {
         <strong>Comparison vs Benefit</strong>
         <p>
           <Link href="/comparison">Comparison</Link> = baseline↔candidate lift
-          (PASS/FAIL). Benefit = single-run recommendation for the{" "}
-          <em>candidate</em> skill only. Baseline legs are omitted from this
-          list.
+          (PASS/FAIL). Benefit USE / 5★ unlocks only when that lift is PASS.
+          Baseline legs are omitted from this list.
         </p>
       </div>
 

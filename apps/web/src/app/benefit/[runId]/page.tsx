@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   benefitReportToMarkdown,
-  buildBenefitReport,
   healRunOrphansFs,
   loadRunResult,
   syncStatusFromResult,
@@ -9,6 +8,7 @@ import {
 import { BenefitPending } from "@/components/BenefitPending";
 import { EmptyState } from "@/components/EmptyState";
 import { StarRating } from "@/components/StarRating";
+import { buildBenefitReportForRun } from "@/lib/benefitWithComparison";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
@@ -70,7 +70,7 @@ export default async function BenefitReportPage({
     );
   }
 
-  const report = buildBenefitReport(result);
+  const report = buildBenefitReportForRun(result);
   const markdown = benefitReportToMarkdown(report);
 
   return (

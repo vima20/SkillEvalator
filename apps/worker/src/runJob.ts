@@ -7,6 +7,7 @@ import {
   RunResultSchema,
   assertSafeId,
   buildBenefitReport,
+  loadPairedComparison,
   estimateCallCostUsdForCap,
   maxOutputTokensForRemainingBudget,
   gradeInDocker,
@@ -866,10 +867,50 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     });
 
     writeJsonFile(path.join(resultDir, "result.json"), result);
+    const pairedComparison = result.evaluationId
+      ? loadPairedComparison({
+          resultsDir: config.resultsDir,
+          evaluationId: result.evaluationId,
+        })
+      : null;
     writeJsonFile(
       path.join(resultDir, "benefit-report.json"),
-      buildBenefitReport(result),
+      buildBenefitReport(result, { comparison: pairedComparison }),
     );
+    // Sibling may have finished earlier with USE locked — refresh its cache.
+    if (result.evaluationId && pairedComparison) {
+      const metaPath = path.join(
+        config.resultsDir,
+        result.evaluationId,
+        "evaluation.json",
+      );
+      try {
+        const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
+          baselineRunId?: string;
+          candidateRunId?: string;
+        };
+        const siblingId =
+          role === "candidate"
+            ? meta.baselineRunId
+            : role === "baseline"
+              ? meta.candidateRunId
+              : undefined;
+        if (siblingId && siblingId !== runId) {
+          const sibling = loadRunResult(config.resultsDir, siblingId);
+          if (sibling) {
+            writeJsonFile(
+              path.join(
+                resolveUnder(config.resultsDir, siblingId),
+                "benefit-report.json",
+              ),
+              buildBenefitReport(sibling, { comparison: pairedComparison }),
+            );
+          }
+        }
+      } catch {
+        /* best-effort cache refresh */
+      }
+    }
     writeStatus({
       status: result.status,
       costUsd,
