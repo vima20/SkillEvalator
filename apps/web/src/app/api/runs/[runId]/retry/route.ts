@@ -145,7 +145,9 @@ export async function POST(
         mode,
         requireWebAuthConfigured:
           process.env.OFFICIAL_REQUIRES_WEB_AUTH === "true",
-        webAuthOpen: webAuth.kind === "open",
+        webAuthKind: webAuth.kind,
+        // Repeats already on the parent job (normalizeRepeats); do not
+        // re-fail legacy manifests that predate the API floor.
       });
       if (!officialGate.ok) {
         return NextResponse.json(

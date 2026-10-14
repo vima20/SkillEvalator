@@ -50,11 +50,49 @@ describe("officialEnqueueAllowed", () => {
       mode: "official",
       env: { OPENAI_API_KEY: "sk-live" },
       requireWebAuthConfigured: true,
-      webAuthOpen: true,
+      webAuthKind: "open",
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
     expect(out.errorCode).toBe("official_web_auth_required");
+  });
+
+  it("rejects official when WEB_AUTH required but misconfigured", () => {
+    const out = officialEnqueueAllowed({
+      mode: "official",
+      env: { OPENAI_API_KEY: "sk-live" },
+      requireWebAuthConfigured: true,
+      webAuthKind: "misconfigured",
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("official_web_auth_required");
+    expect(out.error).toMatch(/misconfigured|non-empty/i);
+  });
+
+  it("allows official when WEB_AUTH required and kind=required", () => {
+    expect(
+      officialEnqueueAllowed({
+        mode: "official",
+        env: { OPENAI_API_KEY: "sk-live" },
+        requireWebAuthConfigured: true,
+        webAuthKind: "required",
+        withBaseline: true,
+        repeats: 3,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("rejects official when repeats below floor", () => {
+    const out = officialEnqueueAllowed({
+      mode: "official",
+      env: { OPENAI_API_KEY: "sk-live" },
+      withBaseline: true,
+      repeats: 1,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("official_repeats_too_low");
   });
 
   it("rejects official single-leg enqueue (withBaseline false)", () => {

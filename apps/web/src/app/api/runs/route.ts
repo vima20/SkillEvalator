@@ -56,8 +56,9 @@ export async function POST(req: Request) {
       mode: body.mode,
       requireWebAuthConfigured:
         process.env.OFFICIAL_REQUIRES_WEB_AUTH === "true",
-      webAuthOpen: webAuth.kind === "open",
+      webAuthKind: webAuth.kind,
       withBaseline: body.withBaseline,
+      repeats: body.repeats,
     });
     if (!officialGate.ok) {
       return NextResponse.json(

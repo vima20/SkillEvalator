@@ -3,6 +3,9 @@
  * Smoke (FAKE_PRODUCE) and missing API key remain allowed for dry-run only.
  */
 
+import { OFFICIAL_MIN_REPEATS } from "./job.js";
+import type { WebAuthConfig } from "./webAuthConfig.js";
+
 export type OfficialAdmissionOk = { ok: true };
 
 export type OfficialAdmissionDenied = {
@@ -13,7 +16,8 @@ export type OfficialAdmissionDenied = {
     | "official_smoke_forbidden"
     | "official_api_key_missing"
     | "official_web_auth_required"
-    | "official_pair_required";
+    | "official_pair_required"
+    | "official_repeats_too_low";
 };
 
 export type OfficialAdmissionResult =
@@ -24,16 +28,26 @@ export function officialEnqueueAllowed(opts: {
   mode: "dry-run" | "official";
   env?: Record<string, string | undefined>;
   /**
-   * When true (OFFICIAL_REQUIRES_WEB_AUTH), official is blocked if web auth is
-   * open / unset. Pass webAuthOpen from resolveWebAuthConfig().kind === "open".
+   * When true (OFFICIAL_REQUIRES_WEB_AUTH), official requires webAuthKind
+   * "required" (open and misconfigured both blocked).
    */
   requireWebAuthConfigured?: boolean;
+  /** Prefer this over webAuthOpen — pass resolveWebAuthConfig(...).kind. */
+  webAuthKind?: WebAuthConfig["kind"];
+  /**
+   * @deprecated Prefer webAuthKind. When kind omitted, true means open (deny).
+   */
   webAuthOpen?: boolean;
   /**
    * Enqueue only: official must be baseline↔candidate (Benefit USE needs
    * Comparison PASS). Omit on worker fail-fast (job already queued).
    */
   withBaseline?: boolean;
+  /**
+   * Enqueue: reject official below OFFICIAL_MIN_REPEATS (do not silent-bump
+   * at the API boundary). Omit on worker after normalizeRepeats.
+   */
+  repeats?: number;
 }): OfficialAdmissionResult {
   if (opts.mode !== "official") return { ok: true };
 
@@ -55,14 +69,25 @@ export function officialEnqueueAllowed(opts: {
       error: "official mode requires OPENAI_API_KEY in .env",
     };
   }
-  if (opts.requireWebAuthConfigured && opts.webAuthOpen) {
-    return {
-      ok: false,
-      status: 503,
-      errorCode: "official_web_auth_required",
-      error:
-        "official mode requires WEB_AUTH_TOKEN (set a non-empty token; OFFICIAL_REQUIRES_WEB_AUTH is enabled)",
-    };
+  if (opts.requireWebAuthConfigured) {
+    const kind =
+      opts.webAuthKind ??
+      (opts.webAuthOpen === true
+        ? "open"
+        : opts.webAuthOpen === false
+          ? "required"
+          : undefined);
+    if (kind !== undefined && kind !== "required") {
+      return {
+        ok: false,
+        status: 503,
+        errorCode: "official_web_auth_required",
+        error:
+          kind === "misconfigured"
+            ? "official mode requires a non-empty WEB_AUTH_TOKEN (whitespace-only is misconfigured; OFFICIAL_REQUIRES_WEB_AUTH is enabled)"
+            : "official mode requires WEB_AUTH_TOKEN (set a non-empty token; OFFICIAL_REQUIRES_WEB_AUTH is enabled)",
+      };
+    }
   }
   if (opts.withBaseline === false) {
     return {
@@ -71,6 +96,18 @@ export function officialEnqueueAllowed(opts: {
       errorCode: "official_pair_required",
       error:
         "official mode requires baseline↔candidate pair (withBaseline) — single-leg official cannot unlock Benefit USE",
+    };
+  }
+  if (
+    typeof opts.repeats === "number" &&
+    Number.isFinite(opts.repeats) &&
+    opts.repeats < OFFICIAL_MIN_REPEATS
+  ) {
+    return {
+      ok: false,
+      status: 400,
+      errorCode: "official_repeats_too_low",
+      error: `official mode requires at least ${OFFICIAL_MIN_REPEATS} repeats (got ${opts.repeats})`,
     };
   }
   return { ok: true };
