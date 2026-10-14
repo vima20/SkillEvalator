@@ -84,9 +84,10 @@ describe("decideSkillUse", () => {
     expect(v.headline).toMatch(/official/i);
   });
 
-  it("do not use on failing dry-run", () => {
+  it("inconclusive on failing dry-run (not adoption DO NOT USE)", () => {
     const v = decideSkillUse(sample({ mode: "dry-run", score: 0 }));
-    expect(v.recommendation).toBe("do_not_use");
+    expect(v.recommendation).toBe("inconclusive");
+    expect(v.headline).toMatch(/dry-run failed/i);
   });
 
   it("use on passing official", () => {
@@ -267,7 +268,8 @@ describe("benefitReport", () => {
       }),
     );
     expect(failed.rating.stars).toBe(1);
-    expect(failed.verdict.recommendation).toBe("do_not_use");
+    // Unpaired official: decisive DO NOT USE stays locked until Comparison.
+    expect(failed.verdict.recommendation).toBe("inconclusive");
 
     const base = sample({
       mode: "official",
@@ -357,6 +359,41 @@ describe("benefitReport", () => {
     expect(report.verdict.headline).toMatch(/superseded/i);
     expect(report.rating.stars).toBeLessThan(5);
     expect(report.rating.review).toMatch(/run_tip_cand/);
+  });
+
+  it("demotes superseded DO NOT USE and locks tip DO NOT USE until Comparison FAIL", () => {
+    const superseded = sample({
+      runId: "run_old_cand",
+      mode: "official",
+      score: 0.5,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      evaluationId: "eval_test",
+    });
+    const old = buildBenefitReport(superseded, {
+      comparison: comparisonStub("PASS", 0.1, {
+        candidateRunId: "run_tip_cand",
+      }),
+    });
+    expect(old.verdict.recommendation).toBe("inconclusive");
+    expect(old.verdict.headline).toMatch(/superseded/i);
+
+    const tipWeak = sample({
+      runId: "run_test",
+      mode: "official",
+      score: 0.5,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      evaluationId: "eval_test",
+    });
+    const waiting = buildBenefitReport(tipWeak, { comparison: null });
+    expect(waiting.verdict.recommendation).toBe("inconclusive");
+
+    const failed = buildBenefitReport(tipWeak, {
+      comparison: comparisonStub("FAIL", 0.01),
+    });
+    expect(failed.verdict.recommendation).toBe("do_not_use");
+    expect(failed.verdict.headline).toMatch(/Comparison FAIL/i);
   });
 
   it("counts soft-pass tasks (>= 0.8) as passed", () => {

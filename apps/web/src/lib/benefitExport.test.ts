@@ -76,6 +76,16 @@ describe("benefitExportGate", () => {
     ).toBe(true);
   });
 
+  it("blocks DO NOT USE when Comparison is PASS", () => {
+    const out = benefitExportGate({
+      report: officialReport("do_not_use"),
+      comparison: tipComparison("PASS"),
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("benefit_export_comparison_fail_required");
+  });
+
   it("blocks dry-run", () => {
     const out = benefitExportGate({
       report: {

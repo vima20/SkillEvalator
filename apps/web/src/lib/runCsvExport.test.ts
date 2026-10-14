@@ -74,12 +74,23 @@ describe("runCsvExportGate", () => {
     const waiting = runCsvExportGate({
       result: base,
       comparisonVerdict: null,
-      comparisonMode: null,
+      comparisonMode: "official",
       ...tipLegs,
     });
     expect(waiting.ok).toBe(false);
     if (!waiting.ok)
       expect(waiting.errorCode).toBe("run_csv_comparison_not_decisive");
+  });
+
+  it("blocks when comparisonMode is missing", () => {
+    const out = runCsvExportGate({
+      result: base,
+      comparisonVerdict: "PASS",
+      comparisonMode: null,
+      ...tipLegs,
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.errorCode).toBe("run_csv_comparison_not_official");
   });
 
   it("blocks superseded runId not on current meta", () => {

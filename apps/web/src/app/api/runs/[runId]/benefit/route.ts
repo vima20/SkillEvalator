@@ -22,8 +22,8 @@ export async function GET(
     }
     const { report, comparison } = buildBenefitReportBundle(result);
     const format = new URL(req.url).searchParams.get("format");
+    const gate = benefitExportGate({ report, comparison });
     if (format === "md" || format === "markdown" || format === "csv") {
-      const gate = benefitExportGate({ report, comparison });
       if (!gate.ok) {
         return NextResponse.json(
           {
@@ -61,9 +61,21 @@ export async function GET(
         },
       );
     }
+    // JSON: never attach adoption markdown unless the export gate passes.
+    if (!gate.ok) {
+      return NextResponse.json({
+        report,
+        exportAllowed: false,
+        error: gate.error,
+        errorCode: gate.errorCode,
+        recommendation: gate.recommendation,
+        ...(gate.mode ? { mode: gate.mode } : {}),
+      });
+    }
     return NextResponse.json({
       report,
       markdown: benefitReportToMarkdown(report),
+      exportAllowed: true,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";

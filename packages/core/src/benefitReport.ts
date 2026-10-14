@@ -384,7 +384,9 @@ function withUpdatedRecommendation(
   summary: string,
   recommendationBody: string,
 ): BenefitRating {
-  const grade = gradeForStars(stars);
+  // Never inflate stars when locking adoption (e.g. failed run → inconclusive).
+  const capped = Math.min(rating.stars, stars) as 1 | 2 | 3 | 4;
+  const grade = gradeForStars(capped);
   const kept = rating.reviewSections.filter(
     (s) =>
       s.heading !== "Recommendation" &&
@@ -395,7 +397,7 @@ function withUpdatedRecommendation(
   const reviewSections: ReviewSection[] = [
     {
       heading: "Result",
-      body: `Scorecard grade ${grade} (${stars}/5). ${summary} This is not a Benefit USE signal until official Comparison is PASS.`,
+      body: `Scorecard grade ${grade} (${capped}/5). ${summary} This is not a Benefit USE signal until official Comparison is PASS.`,
     },
     {
       heading: "What this shows",
@@ -406,8 +408,8 @@ function withUpdatedRecommendation(
   ];
   return {
     ...rating,
-    stars,
-    starsDisplay: starsDisplay(stars),
+    stars: capped,
+    starsDisplay: starsDisplay(capped),
     grade,
     summary,
     reviewSections,
@@ -416,8 +418,8 @@ function withUpdatedRecommendation(
 }
 
 /**
- * Fail-closed: official candidate USE / 5★ requires Comparison PASS (lift).
- * Score-only USE without a paired PASS is a false adoption signal.
+ * Fail-closed: official tip-candidate USE / DO NOT USE / 5★ follow Comparison.
+ * Score-only decisive verdicts without a paired tip Comparison are false signals.
  */
 export function applyPairedComparisonGate(opts: {
   result: RunResult;
@@ -430,7 +432,20 @@ export function applyPairedComparisonGate(opts: {
 
   if (result.role === "baseline") {
     // Defense-in-depth: never leave Excellent / USE styling on a baseline leg.
-    if (rating.stars >= 5 || verdict.recommendation === "use") {
+    if (
+      rating.stars >= 5 ||
+      verdict.recommendation === "use" ||
+      verdict.recommendation === "do_not_use"
+    ) {
+      if (verdict.recommendation !== "inconclusive") {
+        verdict = {
+          recommendation: "inconclusive",
+          headline: "BASELINE — not an adoption verdict",
+          decision: "INCONCLUSIVE — baseline leg only (no skill SKILL.md)",
+          rationale:
+            "This is the Unikie baseline run (neutral prompt). Open Comparison for the paired candidate lift / PASS–FAIL verdict.",
+        };
+      }
       rating = withUpdatedRecommendation(
         rating,
         3,
@@ -441,16 +456,32 @@ export function applyPairedComparisonGate(opts: {
     return { verdict, rating };
   }
 
-  const adoptionClaim =
-    verdict.recommendation === "use" || rating.stars === 5;
-  if (!adoptionClaim) {
+  const decisiveClaim =
+    verdict.recommendation === "use" ||
+    verdict.recommendation === "do_not_use" ||
+    rating.stars === 5;
+  if (!decisiveClaim) {
     return { verdict, rating };
   }
   if (result.mode !== "official") {
+    // Dry-run must never ship adoption USE / DO NOT USE.
+    verdict = {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — dry-run is not an adoption verdict",
+      decision: "INCONCLUSIVE — run official before USE / DO NOT USE",
+      rationale:
+        "Dry-run Benefit stays inconclusive. Fix the skill if the score is weak, then run mode=official with baseline↔candidate before adoption advice.",
+    };
+    rating = withUpdatedRecommendation(
+      rating,
+      Math.min(rating.stars, 4) as 1 | 2 | 3 | 4 | 5,
+      "Dry-run — not an adoption grade.",
+      "Continue to official (≥3 repeats) before reading Benefit as USE / DO NOT USE.",
+    );
     return { verdict, rating };
   }
   // Missing / non-candidate role already handled upstream for USE; still
-  // demote orphan 5★ if somehow present without a paired PASS.
+  // demote orphan decisive claims if somehow present without a paired PASS.
   if (result.role !== undefined && result.role !== "candidate") {
     return { verdict, rating };
   }
@@ -466,13 +497,13 @@ export function applyPairedComparisonGate(opts: {
       headline: "INCONCLUSIVE — paired Comparison required",
       decision: "INCONCLUSIVE — official single-leg score is not an adoption verdict",
       rationale:
-        "Official candidate USE requires a paired baseline↔candidate Comparison PASS (≥ +5 pp lift). This run has no evaluationId — enqueue with baseline↔candidate.",
+        "Official candidate USE / DO NOT USE require a paired baseline↔candidate Comparison. This run has no evaluationId — enqueue with baseline↔candidate.",
     };
     rating = withUpdatedRecommendation(
       rating,
       4,
       "Paired Comparison required — not an adoption grade yet.",
-      "Re-run as a paired evaluation (baseline↔candidate). Benefit USE stays locked until Comparison is PASS.",
+      "Re-run as a paired evaluation (baseline↔candidate). Benefit stays locked until Comparison is PASS or FAIL.",
     );
     return { verdict, rating };
   }
@@ -482,18 +513,18 @@ export function applyPairedComparisonGate(opts: {
       recommendation: "inconclusive",
       headline: "INCONCLUSIVE — waiting for Comparison",
       decision: "INCONCLUSIVE — sibling leg or Comparison not ready",
-      rationale: `Paired evaluationId ${result.evaluationId} exists, but Comparison is not available yet (missing sibling result). Official score alone is not USE — wait for baseline↔candidate PASS.`,
+      rationale: `Paired evaluationId ${result.evaluationId} exists, but Comparison is not available yet (missing sibling result). Official score alone is not USE / DO NOT USE — wait for baseline↔candidate.`,
     };
     rating = withUpdatedRecommendation(
       rating,
       4,
-      "Waiting for paired Comparison — USE locked.",
-      `Open Comparison for ${result.evaluationId}. Benefit USE unlocks only when that verdict is PASS.`,
+      "Waiting for paired Comparison — adoption locked.",
+      `Open Comparison for ${result.evaluationId}. Benefit USE / DO NOT USE unlock only when that verdict is PASS or FAIL.`,
     );
     return { verdict, rating };
   }
 
-  // Tip Comparison only: a superseded retry leg must not inherit PASS/USE.
+  // Tip Comparison only: a superseded retry leg must not inherit PASS/FAIL.
   if (result.runId !== comparison.candidateRunId) {
     verdict = {
       recommendation: "inconclusive",
@@ -505,7 +536,7 @@ export function applyPairedComparisonGate(opts: {
     rating = withUpdatedRecommendation(
       rating,
       4,
-      "Superseded candidate — USE locked.",
+      "Superseded candidate — adoption locked.",
       `This run was replaced by ${comparison.candidateRunId} on the paired evaluation. Open that Benefit page for the adoption verdict.`,
     );
     return { verdict, rating };
@@ -513,6 +544,7 @@ export function applyPairedComparisonGate(opts: {
 
   const v: ComparisonVerdict = comparison.verdict;
   if (v === "PASS" && comparison.mode === "official") {
+    // Tip PASS: keep score-based USE or DO NOT USE (floor shortfall).
     return { verdict, rating };
   }
   if (v === "PASS" && comparison.mode !== "official") {
@@ -531,12 +563,12 @@ export function applyPairedComparisonGate(opts: {
     return { verdict, rating };
   }
 
-  if (v === "FAIL") {
+  if (v === "FAIL" && comparison.mode === "official") {
     verdict = {
       recommendation: "do_not_use",
       headline: "DO NOT USE — Comparison FAIL",
       decision: "DO NOT USE — candidate did not clear baseline lift",
-      rationale: `Official candidate score met the Benefit floor, but Comparison is FAIL (${liftTxt}; need ≥ +5 pp). Unikie adoption follows Comparison PASS, not score alone.`,
+      rationale: `Official Comparison is FAIL (${liftTxt}; need ≥ +5 pp). Unikie adoption follows Comparison PASS, not score alone.`,
     };
     rating = withUpdatedRecommendation(
       rating,
@@ -547,18 +579,18 @@ export function applyPairedComparisonGate(opts: {
     return { verdict, rating };
   }
 
-  // INCONCLUSIVE
+  // INCONCLUSIVE or non-official FAIL
   verdict = {
     recommendation: "inconclusive",
     headline: "INCONCLUSIVE — Comparison not decisive",
-    decision: "INCONCLUSIVE — Comparison INCONCLUSIVE; not an adoption verdict",
-    rationale: `Comparison for ${result.evaluationId} is INCONCLUSIVE (${comparison.rationale}). Official score cannot unlock Benefit USE until Comparison is PASS.`,
+    decision: "INCONCLUSIVE — Comparison not an adoption verdict yet",
+    rationale: `Comparison for ${result.evaluationId} is ${v}${comparison.mode !== "official" ? ` (${comparison.mode})` : ""} (${comparison.rationale}). Official score cannot unlock Benefit USE / DO NOT USE until Comparison is official PASS or FAIL.`,
   };
   rating = withUpdatedRecommendation(
     rating,
     4,
-    "Comparison INCONCLUSIVE — USE locked.",
-    `Resolve Comparison parity/status for ${result.evaluationId}. Benefit USE requires Comparison PASS.`,
+    "Comparison not decisive — adoption locked.",
+    `Resolve Comparison parity/status for ${result.evaluationId}. Benefit USE needs PASS; DO NOT USE needs FAIL.`,
   );
   return { verdict, rating };
 }
@@ -629,10 +661,10 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
   if (result.mode === "dry-run") {
     if (score < 1) {
       return {
-        recommendation: "do_not_use",
-        headline: "DO NOT USE — dry-run failed",
-        decision: "DO NOT USE — dry-run failed the task set",
-        rationale: `Dry-run score ${score.toFixed(2)} < 1. Fix the skill/model pairing before investing in an official run.`,
+        recommendation: "inconclusive",
+        headline: "INCONCLUSIVE — dry-run failed (fix before official)",
+        decision: "INCONCLUSIVE — dry-run failed; not an adoption DO NOT USE",
+        rationale: `Dry-run score ${score.toFixed(2)} < 1. Fix the skill/model pairing before investing in an official run. Dry-run never emits adoption USE / DO NOT USE.`,
       };
     }
     return {

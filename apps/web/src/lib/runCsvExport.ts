@@ -46,7 +46,7 @@ export function runCsvExportGate(opts: {
         "run CSV export requires paired evaluationId (baseline↔candidate)",
     };
   }
-  if (opts.comparisonMode != null && opts.comparisonMode !== "official") {
+  if (opts.comparisonMode !== "official") {
     return {
       ok: false,
       status: 409,

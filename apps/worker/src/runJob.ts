@@ -310,30 +310,35 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
         mode?: string;
         evalSkillId?: string;
       };
-      if (
-        typeof meta.evaluationId === "string" &&
-        meta.evaluationId !== evalId
-      ) {
+      if (meta.evaluationId !== evalId) {
         throw new Error(
-          `official_evaluation_meta_id_mismatch: folder ${evalId} vs meta.evaluationId ${meta.evaluationId}`,
+          `official_evaluation_meta_id_mismatch: folder ${evalId} vs meta.evaluationId ${String(meta.evaluationId)}`,
         );
       }
-      if (typeof meta.mode === "string" && meta.mode !== job.mode) {
+      if (meta.mode !== "official" || meta.mode !== job.mode) {
         throw new Error(
-          `official_evaluation_mode_mismatch: job mode ${job.mode} vs meta.mode ${meta.mode}`,
+          `official_evaluation_mode_mismatch: job mode ${job.mode} vs meta.mode ${String(meta.mode)}`,
         );
       }
+      if (meta.evalSkillId !== job.evalSkillId) {
+        throw new Error(
+          `official_evaluation_skill_mismatch: job ${job.evalSkillId} vs meta.evalSkillId ${String(meta.evalSkillId)}`,
+        );
+      }
+      const baselineRunId = meta.baselineRunId;
+      const candidateRunId = meta.candidateRunId;
       if (
-        typeof meta.evalSkillId === "string" &&
-        meta.evalSkillId !== job.evalSkillId
+        typeof baselineRunId !== "string" ||
+        !baselineRunId ||
+        typeof candidateRunId !== "string" ||
+        !candidateRunId
       ) {
         throw new Error(
-          `official_evaluation_skill_mismatch: job ${job.evalSkillId} vs meta.evalSkillId ${meta.evalSkillId}`,
+          `official_evaluation_legs_incomplete: ${evalId} requires both baselineRunId and candidateRunId`,
         );
       }
       // Tip legs only — retries must update evaluation.json before the job is claimable.
-      const legs = [meta.baselineRunId, meta.candidateRunId].filter(Boolean);
-      if (!legs.includes(runId)) {
+      if (runId !== baselineRunId && runId !== candidateRunId) {
         throw new Error(
           `official_evaluation_leg_mismatch: run ${runId} is not a current meta leg of ${evalId}`,
         );

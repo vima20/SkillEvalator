@@ -91,19 +91,18 @@ export function benefitExportGate(opts: {
     }
   }
   if (recommendation === "do_not_use") {
-    const v = comparison.verdict;
     if (
       comparison.mode !== "official" ||
-      (v !== "PASS" && v !== "FAIL")
+      comparison.verdict !== ("FAIL" satisfies ComparisonVerdict)
     ) {
       return {
         ok: false,
         status: 409,
-        errorCode: "benefit_export_comparison_decisive_required",
+        errorCode: "benefit_export_comparison_fail_required",
         recommendation,
         mode,
         error:
-          "benefit export DO NOT USE requires official Comparison PASS or FAIL",
+          "benefit export DO NOT USE requires official Comparison FAIL",
       };
     }
   }

@@ -79,6 +79,8 @@ export function updateEvaluationMetaLeg(opts: {
   try {
     const meta = loadEvaluationMeta(evaluationId);
     if (!meta) return false;
+    const prevLegId =
+      opts.role === "baseline" ? meta.baselineRunId : meta.candidateRunId;
     const next: EvaluationMeta = {
       ...meta,
       ...(opts.role === "baseline"
@@ -89,6 +91,19 @@ export function updateEvaluationMetaLeg(opts: {
       updatedAt: new Date().toISOString(),
     };
     writeJsonFile(metaPath, next);
+    // Drop superseded tip's cached Benefit so offline USE cannot outlive tip move.
+    if (prevLegId && prevLegId !== runId) {
+      try {
+        const staleBenefit = path.join(
+          resultsDir(),
+          assertSafeId(prevLegId, "runId"),
+          "benefit-report.json",
+        );
+        if (fs.existsSync(staleBenefit)) fs.unlinkSync(staleBenefit);
+      } catch {
+        /* best-effort */
+      }
+    }
     return true;
   } finally {
     releaseWxLock(lockPath);
