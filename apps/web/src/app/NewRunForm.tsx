@@ -133,6 +133,7 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
     setMode(next);
     if (next === "official") {
       setRepeats((r) => Math.max(r, OFFICIAL_MIN_REPEATS));
+      setWithBaseline(true);
     }
     if (focus) {
       void Promise.resolve().then(() => {
@@ -154,6 +155,13 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
       setError(true);
       setMsg(
         "Official mode requires live OpenAI produce — unset FAKE_PRODUCE (API also rejects).",
+      );
+      return;
+    }
+    if (mode === "official" && !withBaseline) {
+      setError(true);
+      setMsg(
+        "Official mode requires baseline↔candidate pair (API also rejects).",
       );
       return;
     }
@@ -497,8 +505,17 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
             <input
               id="withBaseline"
               type="checkbox"
-              checked={withBaseline}
-              onChange={(e) => setWithBaseline(e.target.checked)}
+              checked={withBaseline || mode === "official"}
+              disabled={mode === "official"}
+              title={
+                mode === "official"
+                  ? "Required for official — Benefit USE needs Comparison PASS"
+                  : undefined
+              }
+              onChange={(e) => {
+                if (mode === "official") return;
+                setWithBaseline(e.target.checked);
+              }}
             />
             <span>
               Unikie baseline↔candidate (neutral prompt + skill SKILL.md)
@@ -507,6 +524,9 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
           <p className="hint">
             Queues two runs with one evaluationId and opens Comparison. Baseline
             does not use the skill SKILL.md.
+            {mode === "official"
+              ? " Official always uses the pair (single-leg blocked)."
+              : ""}
           </p>
         </div>
 

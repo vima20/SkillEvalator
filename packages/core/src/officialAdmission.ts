@@ -12,7 +12,8 @@ export type OfficialAdmissionDenied = {
   errorCode:
     | "official_smoke_forbidden"
     | "official_api_key_missing"
-    | "official_web_auth_required";
+    | "official_web_auth_required"
+    | "official_pair_required";
 };
 
 export type OfficialAdmissionResult =
@@ -28,6 +29,11 @@ export function officialEnqueueAllowed(opts: {
    */
   requireWebAuthConfigured?: boolean;
   webAuthOpen?: boolean;
+  /**
+   * Enqueue only: official must be baseline↔candidate (Benefit USE needs
+   * Comparison PASS). Omit on worker fail-fast (job already queued).
+   */
+  withBaseline?: boolean;
 }): OfficialAdmissionResult {
   if (opts.mode !== "official") return { ok: true };
 
@@ -56,6 +62,15 @@ export function officialEnqueueAllowed(opts: {
       errorCode: "official_web_auth_required",
       error:
         "official mode requires WEB_AUTH_TOKEN (set a non-empty token; OFFICIAL_REQUIRES_WEB_AUTH is enabled)",
+    };
+  }
+  if (opts.withBaseline === false) {
+    return {
+      ok: false,
+      status: 400,
+      errorCode: "official_pair_required",
+      error:
+        "official mode requires baseline↔candidate pair (withBaseline) — single-leg official cannot unlock Benefit USE",
     };
   }
   return { ok: true };

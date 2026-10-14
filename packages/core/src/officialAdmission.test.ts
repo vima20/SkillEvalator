@@ -56,4 +56,36 @@ describe("officialEnqueueAllowed", () => {
     if (out.ok) return;
     expect(out.errorCode).toBe("official_web_auth_required");
   });
+
+  it("rejects official single-leg enqueue (withBaseline false)", () => {
+    const out = officialEnqueueAllowed({
+      mode: "official",
+      env: { OPENAI_API_KEY: "sk-live" },
+      withBaseline: false,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.status).toBe(400);
+    expect(out.errorCode).toBe("official_pair_required");
+  });
+
+  it("allows official paired enqueue (withBaseline true)", () => {
+    expect(
+      officialEnqueueAllowed({
+        mode: "official",
+        env: { OPENAI_API_KEY: "sk-live" },
+        withBaseline: true,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("allows dry-run single-leg", () => {
+    expect(
+      officialEnqueueAllowed({
+        mode: "dry-run",
+        env: { OPENAI_API_KEY: "sk-live" },
+        withBaseline: false,
+      }).ok,
+    ).toBe(true);
+  });
 });

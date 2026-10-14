@@ -57,6 +57,7 @@ export async function POST(req: Request) {
       requireWebAuthConfigured:
         process.env.OFFICIAL_REQUIRES_WEB_AUTH === "true",
       webAuthOpen: webAuth.kind === "open",
+      withBaseline: body.withBaseline,
     });
     if (!officialGate.ok) {
       return NextResponse.json(
