@@ -146,6 +146,9 @@ export async function POST(
         requireWebAuthConfigured:
           process.env.OFFICIAL_REQUIRES_WEB_AUTH === "true",
         webAuthKind: webAuth.kind,
+        // Official retry must stay on a paired evaluation (worker also checks).
+        requireEvaluationId: mode === "official",
+        evaluationId,
         // Repeats already on the parent job (normalizeRepeats); do not
         // re-fail legacy manifests that predate the API floor.
       });

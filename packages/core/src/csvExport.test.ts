@@ -59,17 +59,32 @@ describe("runResultToCsv", () => {
 describe("comparisonToCsv", () => {
   it("exports task deltas and skill attribution", () => {
     const cmp = compareBaselineCandidate(
-      sample({ runId: "b", role: "baseline", score: 0.7 }),
-      sample({ runId: "c", role: "candidate", score: 0.9 }),
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
     );
+    expect(cmp.verdict).toBe("PASS");
     const csv = comparisonToCsv(cmp);
     expect(csv).toContain("delta");
     expect(csv).toContain("bug-01");
     expect(csv).toContain("PASS");
     expect(csv).toContain("evalSkillId");
     expect(csv).toContain("code-debugging-eval");
-    expect(csv).toContain("gpt-4o-mini");
-    expect(csv).toContain("dry-run");
+    expect(csv).toContain("gpt-4.1-mini");
+    expect(csv).toContain("official");
     expect(csv).toContain("cde-v1");
     expect(csv).toContain("parityIssues");
   });
@@ -147,8 +162,14 @@ describe("benefitReportToCsv", () => {
     const report = buildBenefitReport(
       sample({ runId: "r1", role: "candidate", score: 1 }),
     );
-    const csv = benefitReportToCsv(report);
+    const csv = benefitReportToCsv(report, {
+      comparisonVerdict: "PASS",
+      comparisonMode: "official",
+      comparisonLift: 0.1,
+    });
     expect(csv).toContain("recommendation");
+    expect(csv).toContain("comparisonVerdict");
+    expect(csv).toContain("PASS");
     expect(csv).toContain("r1");
     expect(csv).toContain("bug-01");
   });

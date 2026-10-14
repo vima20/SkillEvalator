@@ -171,7 +171,14 @@ export function comparisonToCsv(comparison: RunComparison): string {
 }
 
 /** Benefit Report scorecard as CSV (narrative remains Markdown). */
-export function benefitReportToCsv(report: BenefitReport): string {
+export function benefitReportToCsv(
+  report: BenefitReport,
+  comparison?: {
+    comparisonVerdict?: string;
+    comparisonMode?: string;
+    comparisonLift?: number | null;
+  },
+): string {
   const header = row([
     "runId",
     "evaluationId",
@@ -184,6 +191,9 @@ export function benefitReportToCsv(report: BenefitReport): string {
     "headline",
     "stars",
     "grade",
+    "comparisonVerdict",
+    "comparisonMode",
+    "comparisonLift",
     "runScore",
     "scoreSpread",
     "tasksPassed",
@@ -224,6 +234,9 @@ export function benefitReportToCsv(report: BenefitReport): string {
         report.verdict.headline,
         report.rating.stars,
         report.rating.grade,
+        comparison?.comparisonVerdict ?? "",
+        comparison?.comparisonMode ?? "",
+        comparison?.comparisonLift ?? "",
         report.scorecard.score,
         report.scorecard.scoreSpread,
         report.scorecard.tasksPassed,

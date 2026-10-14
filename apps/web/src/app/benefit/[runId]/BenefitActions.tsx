@@ -75,8 +75,8 @@ export function BenefitActions({
         </>
       ) : (
         <p className="hint" style={{ margin: 0 }}>
-          Adoption export locked until mode=official and recommendation is USE
-          or DO NOT USE (API returns 409 otherwise).
+          Adoption export locked until official Comparison is decisive (USE
+          needs PASS; DO NOT USE needs PASS/FAIL). API returns 409 otherwise.
         </p>
       )}
       {error ? (

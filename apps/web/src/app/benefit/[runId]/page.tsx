@@ -8,7 +8,8 @@ import {
 import { BenefitPending } from "@/components/BenefitPending";
 import { EmptyState } from "@/components/EmptyState";
 import { StarRating } from "@/components/StarRating";
-import { buildBenefitReportForRun } from "@/lib/benefitWithComparison";
+import { benefitExportGate } from "@/lib/benefitExport";
+import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { statusBadgeClass } from "@/lib/status";
@@ -70,8 +71,9 @@ export default async function BenefitReportPage({
     );
   }
 
-  const report = buildBenefitReportForRun(result);
+  const { report, comparison } = buildBenefitReportBundle(result);
   const markdown = benefitReportToMarkdown(report);
+  const exportAllowed = benefitExportGate({ report, comparison }).ok;
 
   return (
     <div>
@@ -89,11 +91,7 @@ export default async function BenefitReportPage({
           runId={runId}
           markdown={markdown}
           evaluationId={result.evaluationId}
-          exportAllowed={
-            result.mode === "official" &&
-            (report.verdict.recommendation === "use" ||
-              report.verdict.recommendation === "do_not_use")
-          }
+          exportAllowed={exportAllowed}
         />
       </header>
 

@@ -5,10 +5,12 @@ import type { ComparisonVerdict, RunResult } from "@skillevalator/core";
  * PASS/FAIL (same adoption bar as Comparison CSV) and refuse smoke.
  */
 export function runCsvExportGate(opts: {
-  result: Pick<
-    RunResult,
-    "mode" | "evaluationId" | "status" | "capture"
-  >;
+  result: {
+    mode: RunResult["mode"];
+    evaluationId?: string;
+    status?: RunResult["status"];
+    capture?: { env?: { fakeProduce?: boolean } };
+  };
   comparisonVerdict?: ComparisonVerdict | null;
   comparisonMode?: RunResult["mode"] | null;
 }):

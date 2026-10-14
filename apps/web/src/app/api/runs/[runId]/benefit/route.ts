@@ -5,7 +5,7 @@ import {
   loadRunResult,
 } from "@skillevalator/core";
 import { benefitExportGate } from "@/lib/benefitExport";
-import { buildBenefitReportForRun } from "@/lib/benefitWithComparison";
+import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -20,14 +20,15 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ error: "result not found" }, { status: 404 });
     }
-    const report = buildBenefitReportForRun(result);
+    const { report, comparison } = buildBenefitReportBundle(result);
     const format = new URL(req.url).searchParams.get("format");
     if (format === "md" || format === "markdown" || format === "csv") {
-      const gate = benefitExportGate(report);
+      const gate = benefitExportGate({ report, comparison });
       if (!gate.ok) {
         return NextResponse.json(
           {
             error: gate.error,
+            errorCode: gate.errorCode,
             recommendation: gate.recommendation,
             ...(gate.mode ? { mode: gate.mode } : {}),
           },
@@ -45,13 +46,20 @@ export async function GET(
       });
     }
     if (format === "csv") {
-      return new NextResponse(benefitReportToCsv(report), {
-        headers: {
-          "content-type": "text/csv; charset=utf-8",
-          "content-disposition": `attachment; filename="${runId}-benefit.csv"`,
-          "cache-control": "no-store",
+      return new NextResponse(
+        benefitReportToCsv(report, {
+          comparisonVerdict: comparison?.verdict,
+          comparisonMode: comparison?.mode,
+          comparisonLift: comparison?.lift,
+        }),
+        {
+          headers: {
+            "content-type": "text/csv; charset=utf-8",
+            "content-disposition": `attachment; filename="${runId}-benefit.csv"`,
+            "cache-control": "no-store",
+          },
         },
-      });
+      );
     }
     return NextResponse.json({
       report,

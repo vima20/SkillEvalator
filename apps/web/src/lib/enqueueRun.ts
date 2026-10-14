@@ -46,6 +46,8 @@ export type EnqueueInput = {
   evaluationId?: string;
   /** Retry: pin evalSkillVersion (+ candidate SKILL.md) to prior skill-snapshot. */
   skillSnapshotFromRunId?: string;
+  /** Optional fixed id (paired enqueue writes evaluation.json before jobs). */
+  runId?: string;
 };
 
 export type EnqueueResult =
@@ -129,7 +131,9 @@ function writeQueuedRun(input: EnqueueInput): EnqueueResult {
     : undefined;
   const role = input.role ?? "candidate";
 
-  const runId = `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
+  const runId = input.runId
+    ? assertSafeId(input.runId, "runId")
+    : `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
   const job = createJobManifest({
     runId,
     evalSkillId,
@@ -194,21 +198,54 @@ export function enqueueEvaluationPair(input: {
     if (full) return full;
 
     const evaluationId = `eval_${Date.now()}_${randomUUID().slice(0, 8)}`;
+    // Pre-allocate run ids and write evaluation.json BEFORE job files so the
+    // worker cannot start official legs against a missing paired meta.
+    const baselineRunId = `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
+    const candidateRunId = `run_${Date.now() + 1}_${randomUUID().slice(0, 8)}`;
+
+    try {
+      writeJsonFile(path.join(resultsDir(), evaluationId, "evaluation.json"), {
+        evaluationId,
+        evalSkillId,
+        mode: input.mode,
+        baselineRunId,
+        candidateRunId,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        ok: false,
+        status: 500,
+        error: `failed to write evaluation.json: ${message}`.slice(0, 400),
+      };
+    }
 
     const baseline = writeQueuedRun({
       ...input,
       evalSkillId,
       role: "baseline",
       evaluationId,
+      runId: baselineRunId,
     });
-    if (!baseline.ok) return baseline;
+    if (!baseline.ok) {
+      try {
+        fs.rmSync(path.join(resultsDir(), evaluationId), {
+          recursive: true,
+          force: true,
+        });
+      } catch {
+        /* ignore */
+      }
+      return baseline;
+    }
 
-    // Tiny delay so runIds stay unique under Date.now() collisions.
     const candidate = writeQueuedRun({
       ...input,
       evalSkillId,
       role: "candidate",
       evaluationId,
+      runId: candidateRunId,
     });
     if (!candidate.ok) {
       // Roll back the baseline leg so Comparison is not left half-queued.
@@ -216,37 +253,18 @@ export function enqueueEvaluationPair(input: {
         role: "baseline",
         alreadyHoldingEnqueueLock: true,
       });
+      try {
+        fs.rmSync(path.join(resultsDir(), evaluationId), {
+          recursive: true,
+          force: true,
+        });
+      } catch {
+        /* ignore */
+      }
       return {
         ok: false,
         status: candidate.status,
         error: `candidate enqueue failed after baseline ${baseline.runId}: ${candidate.error}`,
-      };
-    }
-
-    try {
-      writeJsonFile(path.join(resultsDir(), evaluationId, "evaluation.json"), {
-        evaluationId,
-        evalSkillId,
-        mode: input.mode,
-        baselineRunId: baseline.runId,
-        candidateRunId: candidate.runId,
-        createdAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      abortQueuedRun(baseline.runId, `evaluation.json write failed: ${message}`, {
-        role: "baseline",
-        alreadyHoldingEnqueueLock: true,
-      });
-      abortQueuedRun(
-        candidate.runId,
-        `evaluation.json write failed: ${message}`,
-        { role: "candidate", alreadyHoldingEnqueueLock: true },
-      );
-      return {
-        ok: false,
-        status: 500,
-        error: `failed to write evaluation.json: ${message}`.slice(0, 400),
       };
     }
 

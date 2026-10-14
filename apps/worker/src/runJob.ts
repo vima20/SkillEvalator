@@ -289,6 +289,47 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   if (!admission.ok) {
     throw new Error(`${admission.errorCode}: ${admission.error}`);
   }
+  // Official must point at a real paired meta file (not a forged evaluationId).
+  if (job.mode === "official" && job.evaluationId) {
+    const evalId = assertSafeId(job.evaluationId, "evaluationId");
+    const metaPath = path.join(
+      config.resultsDir,
+      evalId,
+      "evaluation.json",
+    );
+    if (!fs.existsSync(metaPath)) {
+      throw new Error(
+        `official_evaluation_meta_missing: official job requires ${evalId}/evaluation.json (paired baseline↔candidate)`,
+      );
+    }
+    try {
+      const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
+        baselineRunId?: string;
+        candidateRunId?: string;
+        evaluationId?: string;
+      };
+      const legs = [meta.baselineRunId, meta.candidateRunId].filter(Boolean);
+      const prior = job.skillSnapshotFromRunId;
+      const onMeta =
+        legs.includes(runId) ||
+        (typeof prior === "string" && legs.includes(prior));
+      if (!onMeta) {
+        throw new Error(
+          `official_evaluation_leg_mismatch: run ${runId} is not a current meta leg of ${evalId}`,
+        );
+      }
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        err.message.startsWith("official_evaluation_")
+      ) {
+        throw err;
+      }
+      throw new Error(
+        `official_evaluation_meta_invalid: cannot read ${evalId}/evaluation.json`,
+      );
+    }
+  }
 
   // Seed Retry pin before loadSkill (parent snapshot or live tree) for both
   // roles so baseline fixture drift cannot spend tokens after a soft fail.
