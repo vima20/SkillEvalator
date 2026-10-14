@@ -568,13 +568,12 @@ export function compareBaselineCandidate(
     rationale =
       "Both legs used FAKE_PRODUCE=known-good (smoke harness). Lift is not an adoption signal — re-run with live model produce.";
   } else if (
-    baseline.status === "cancelled" ||
-    candidate.status === "cancelled" ||
-    baseline.status === "budget_stop" ||
-    candidate.status === "budget_stop"
+    baseline.status !== "ok" ||
+    candidate.status !== "ok"
   ) {
+    // cancelled / budget_stop / failed / unknown — scores are not adoption.
     verdict = "INCONCLUSIVE";
-    rationale = `Run incomplete (baseline ${baseline.status}, candidate ${candidate.status}). Re-run the paired evaluation before adoption.`;
+    rationale = `Run incomplete or failed (baseline ${baseline.status}, candidate ${candidate.status}). Re-run the paired evaluation before adoption.`;
   } else if (baseScore === null || candScore === null || lift === null) {
     verdict = "INCONCLUSIVE";
     rationale =

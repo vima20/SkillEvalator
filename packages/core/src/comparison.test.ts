@@ -134,6 +134,32 @@ describe("compareBaselineCandidate", () => {
     expect(c.verdict).toBe("INCONCLUSIVE");
   });
 
+  it("INCONCLUSIVE when a leg status is failed despite scores", () => {
+    const failedCand = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.5 }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 0.95,
+        status: "failed",
+      }),
+    );
+    expect(failedCand.verdict).toBe("INCONCLUSIVE");
+    expect(failedCand.rationale).toMatch(/failed|incomplete/i);
+
+    // Failed baseline must not yield PASS via lift against an ok candidate.
+    const failedBase = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.4,
+        status: "failed",
+      }),
+      sample({ runId: "c", role: "candidate", score: 0.95 }),
+    );
+    expect(failedBase.verdict).toBe("INCONCLUSIVE");
+  });
+
   it("INCONCLUSIVE on parity mismatch", () => {
     const c = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.5, modelId: "gpt-4o-mini" }),
