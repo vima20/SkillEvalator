@@ -129,12 +129,15 @@ export default async function ComparisonDetailPage({
           >
             Benefit Report
           </Link>
-          <a
-            className="btn btn-ghost"
-            href={`/api/comparison/${evaluationId}/csv`}
-          >
-            Download CSV
-          </a>
+          {(comparison.verdict === "PASS" ||
+            comparison.verdict === "FAIL") && (
+            <a
+              className="btn btn-ghost"
+              href={`/api/comparison/${evaluationId}/csv`}
+            >
+              Download CSV
+            </a>
+          )}
         </div>
       </header>
 

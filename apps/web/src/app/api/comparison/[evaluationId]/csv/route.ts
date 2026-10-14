@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, comparisonToCsv } from "@skillevalator/core";
+import { comparisonCsvGate } from "@/lib/comparisonExport";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,17 @@ export async function GET(
             : "comparison not ready",
         },
         { status: 404 },
+      );
+    }
+    const gate = comparisonCsvGate(comparison.verdict);
+    if (!gate.ok) {
+      return NextResponse.json(
+        {
+          error: gate.error,
+          verdict: gate.verdict,
+          rationale: comparison.rationale,
+        },
+        { status: gate.status },
       );
     }
     const csv = comparisonToCsv(comparison);
