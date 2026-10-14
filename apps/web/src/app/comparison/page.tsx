@@ -44,9 +44,9 @@ export default function ComparisonListPage() {
           <p className="eyebrow">Unikie · Test (paired)</p>
           <h1>Comparison</h1>
           <p>
-            Baseline↔candidate lift on the same task set.{" "}
-            <strong>PASS/FAIL</strong> here is not the same as Benefit{" "}
-            <strong>USE</strong> — open Benefit on the candidate after a pass.
+            Baseline↔candidate lift on the same task set. Official{" "}
+            <strong>PASS</strong> requires candidate ≥0.99 + lift and unlocks
+            Benefit <strong>USE</strong>. Dry-run PASS is exploratory only.
           </p>
         </div>
         <div className="page-header-actions">
@@ -120,14 +120,20 @@ export default function ComparisonListPage() {
                       {e.verdict ? (
                         <span
                           className={`verdict-chip verdict-${
-                            e.verdict === "PASS"
+                            e.mode === "official" && e.verdict === "PASS"
                               ? "use"
-                              : e.verdict === "FAIL"
+                              : e.mode === "official" && e.verdict === "FAIL"
                                 ? "do_not_use"
                                 : "inconclusive"
                           }`}
+                          title={
+                            e.mode === "dry-run"
+                              ? "Dry-run — not adoption evidence"
+                              : undefined
+                          }
                         >
                           {e.verdict}
+                          {e.mode === "dry-run" ? " · dry-run" : ""}
                         </span>
                       ) : (
                         "—"

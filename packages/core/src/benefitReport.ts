@@ -448,7 +448,22 @@ export function applyPairedComparisonGate(opts: {
   }
 
   const v: ComparisonVerdict = comparison.verdict;
-  if (v === "PASS") {
+  if (v === "PASS" && comparison.mode === "official") {
+    return { verdict, rating };
+  }
+  if (v === "PASS" && comparison.mode !== "official") {
+    verdict = {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — Comparison PASS is dry-run only",
+      decision: "INCONCLUSIVE — official Comparison PASS required",
+      rationale: `Comparison reported PASS but mode is ${comparison.mode} (not official). Benefit USE stays locked until an official paired Comparison PASS.`,
+    };
+    rating = withUpdatedRecommendation(
+      rating,
+      4,
+      "Dry-run Comparison PASS — USE locked.",
+      "Re-run mode=official with baseline↔candidate. Benefit USE requires official Comparison PASS.",
+    );
     return { verdict, rating };
   }
 

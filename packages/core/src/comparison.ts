@@ -699,8 +699,14 @@ export function compareBaselineCandidate(
     verdict = "FAIL";
     rationale = `Official candidate score ${candScore.toFixed(3)} is below the USE floor (${OFFICIAL_USE_SCORE_FLOOR.toFixed(2)}) — soft-pass (≥${PASS_SCORE_FLOOR.toFixed(2)}) and lift alone are not enough for Comparison PASS. Do not adopt.`;
   } else if (lift >= LIFT_PASS_DELTA) {
-    verdict = "PASS";
-    rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed.`;
+    if (candidate.mode !== "official") {
+      // Dry-run lift is exploratory — never adoption PASS (CSV/UI already warn).
+      verdict = "INCONCLUSIVE";
+      rationale = `Dry-run lift ${(lift * 100).toFixed(1)} pp (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}) looks encouraging but is not Comparison PASS. Re-run mode=official (≥${OFFICIAL_USE_SCORE_FLOOR} candidate + ≥${(LIFT_PASS_DELTA * 100).toFixed(0)} pp lift) for adoption evidence.`;
+    } else {
+      verdict = "PASS";
+      rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed.`;
+    }
   } else {
     verdict = "FAIL";
     rationale = `Lift ${lift.toFixed(3)} < ${LIFT_PASS_DELTA} (candidate ${candScore.toFixed(3)} vs baseline ${baseScore.toFixed(3)}). Skill does not clear the Unikie PASS delta. Task deltas: ${improvements} improved, ${regressions} regressed.`;

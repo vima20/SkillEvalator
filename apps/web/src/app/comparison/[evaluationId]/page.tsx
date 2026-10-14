@@ -9,9 +9,13 @@ import { statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
-function verdictClass(v: string): string {
-  if (v === "PASS") return "verdict-banner verdict-use";
-  if (v === "FAIL") return "verdict-banner verdict-do_not_use";
+function verdictClass(v: string, mode: string): string {
+  // Dry-run PASS must not reuse the adoption "use" styling.
+  if (v === "PASS" && mode === "official") return "verdict-banner verdict-use";
+  if (v === "FAIL" && mode === "official")
+    return "verdict-banner verdict-do_not_use";
+  if (v === "PASS" || v === "FAIL")
+    return "verdict-banner verdict-inconclusive";
   return "verdict-banner verdict-inconclusive";
 }
 
@@ -129,15 +133,16 @@ export default async function ComparisonDetailPage({
           >
             Benefit Report
           </Link>
-          {(comparison.verdict === "PASS" ||
-            comparison.verdict === "FAIL") && (
-            <a
-              className="btn btn-ghost"
-              href={`/api/comparison/${evaluationId}/csv`}
-            >
-              Download CSV
-            </a>
-          )}
+          {comparison.mode === "official" &&
+            (comparison.verdict === "PASS" ||
+              comparison.verdict === "FAIL") && (
+              <a
+                className="btn btn-ghost"
+                href={`/api/comparison/${evaluationId}/csv`}
+              >
+                Download CSV
+              </a>
+            )}
         </div>
       </header>
 
@@ -145,14 +150,29 @@ export default async function ComparisonDetailPage({
         <strong>Comparison vs Benefit</strong>
         <p>
           <strong>{comparison.verdict}</strong> here is the paired lift gate
-          (baseline↔candidate). Benefit{" "}
+          (baseline↔candidate). Official PASS also requires candidate score ≥
+          0.99 (Benefit USE floor). Benefit{" "}
           <Link href={`/benefit/${meta.candidateRunId}`}>USE / DO NOT USE</Link>{" "}
-          is the candidate adoption narrative — open it after reviewing lift.
+          unlocks only after official Comparison PASS.
         </p>
       </div>
 
-      <section className={verdictClass(comparison.verdict)}>
-        <p className="eyebrow">Unikie paired verdict</p>
+      {comparison.mode === "dry-run" &&
+      (comparison.verdict === "PASS" || comparison.verdict === "FAIL") ? (
+        <div className="panel callout-warn">
+          <strong>Dry-run only</strong>
+          <p>
+            This verdict is exploratory (cheaper model / subset). It is not
+            Unikie adoption evidence — CSV export is locked until mode=official.
+          </p>
+        </div>
+      ) : null}
+
+      <section className={verdictClass(comparison.verdict, comparison.mode)}>
+        <p className="eyebrow">
+          Unikie paired verdict
+          {comparison.mode === "dry-run" ? " · dry-run" : ""}
+        </p>
         <p className="verdict-headline">{comparison.verdict}</p>
         <p className="verdict-decision">
           Lift{" "}

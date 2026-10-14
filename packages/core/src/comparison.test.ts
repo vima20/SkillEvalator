@@ -54,14 +54,16 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
 }
 
 describe("compareBaselineCandidate", () => {
-  it("PASS when lift clears delta", () => {
+  it("dry-run lift is INCONCLUSIVE (not adoption PASS)", () => {
     const c = compareBaselineCandidate(
       sample({ runId: "b", role: "baseline", score: 0.7 }),
       sample({ runId: "c", role: "candidate", score: 0.85 }),
     );
-    expect(c.verdict).toBe("PASS");
+    expect(c.mode).toBe("dry-run");
     expect(c.lift).toBeCloseTo(0.15);
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.rationale).toMatch(/dry-run|official/i);
   });
 
   it("official FAIL when soft-pass + lift but score below USE floor", () => {
@@ -1545,7 +1547,8 @@ describe("compareBaselineCandidate", () => {
       { expectedEvaluationMode: pin.expectedEvaluationMode },
     );
     expect(c.parity.ok).toBe(true);
-    expect(c.verdict).toBe("PASS");
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(c.rationale).toMatch(/dry-run/i);
   });
 
   it("INCONCLUSIVE when evaluation meta evalSkillId is invalid", () => {
