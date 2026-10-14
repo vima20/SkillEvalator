@@ -1,5 +1,9 @@
 import type { RunResult } from "@skillevalator/core";
-import { loadEvaluationComparison } from "@/lib/evaluations";
+import {
+  loadEvaluationComparison,
+  resolveTipBaselineRunId,
+  resolveTipCandidateRunId,
+} from "@/lib/evaluations";
 import { runCsvExportGate } from "@/lib/runCsvExport";
 
 /** Same bar as GET /api/runs/[runId]/csv — for UI affordance. */
@@ -12,9 +16,7 @@ export function runCsvExportAllowed(result: RunResult | null | undefined): boole
     result,
     comparisonVerdict: packed?.comparison?.verdict ?? null,
     comparisonMode: packed?.comparison?.mode ?? null,
-    baselineRunId:
-      packed?.comparison?.baselineRunId ?? packed?.meta?.baselineRunId ?? null,
-    candidateRunId:
-      packed?.comparison?.candidateRunId ?? packed?.meta?.candidateRunId ?? null,
+    baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
+    candidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
   }).ok;
 }

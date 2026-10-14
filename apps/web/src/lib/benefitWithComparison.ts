@@ -4,7 +4,11 @@ import {
   type RunComparison,
   type RunResult,
 } from "@skillevalator/core";
-import { loadEvaluationComparison } from "@/lib/evaluations";
+import {
+  loadEvaluationComparison,
+  resolveTipCandidateRunId,
+  type EvaluationMeta,
+} from "@/lib/evaluations";
 
 /** Benefit with paired Comparison gate (USE / 5★ needs PASS). */
 export function buildBenefitReportForRun(result: RunResult): BenefitReport {
@@ -15,12 +19,18 @@ export function buildBenefitReportForRun(result: RunResult): BenefitReport {
 export function buildBenefitReportBundle(result: RunResult): {
   report: BenefitReport;
   comparison: RunComparison | null;
+  meta: EvaluationMeta | null;
+  tipCandidateRunId: string | null;
 } {
-  const comparison = result.evaluationId
-    ? loadEvaluationComparison(result.evaluationId).comparison
+  const packed = result.evaluationId
+    ? loadEvaluationComparison(result.evaluationId)
     : null;
+  const comparison = packed?.comparison ?? null;
+  const meta = packed?.meta ?? null;
   return {
     report: buildBenefitReport(result, { comparison }),
     comparison,
+    meta,
+    tipCandidateRunId: resolveTipCandidateRunId({ comparison, meta }),
   };
 }

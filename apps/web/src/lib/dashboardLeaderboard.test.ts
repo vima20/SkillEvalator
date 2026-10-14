@@ -47,7 +47,7 @@ describe("includeInDashboardLeaderboard", () => {
     ).toBe(false);
   });
 
-  it("keeps paired candidate when Comparison tip is not ready yet", () => {
+  it("keeps paired candidate when tip is unknown (caller should pass meta tip)", () => {
     expect(
       includeInDashboardLeaderboard({
         runId: "run_waiting",
@@ -56,5 +56,16 @@ describe("includeInDashboardLeaderboard", () => {
         tipCandidateRunId: null,
       }),
     ).toBe(true);
+  });
+
+  it("rejects superseded when tip comes from healed meta (no Comparison yet)", () => {
+    expect(
+      includeInDashboardLeaderboard({
+        runId: "run_old",
+        role: "candidate",
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_tip_from_meta",
+      }),
+    ).toBe(false);
   });
 });

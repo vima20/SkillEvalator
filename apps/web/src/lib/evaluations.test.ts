@@ -77,6 +77,35 @@ function sampleResult(opts: {
   };
 }
 
+describe("resolveTipCandidateRunId", () => {
+  it("prefers Comparison tip, then healed meta", async () => {
+    const { resolveTipCandidateRunId, resolveTipBaselineRunId } = await import(
+      "./evaluations.js"
+    );
+    expect(
+      resolveTipCandidateRunId({
+        comparison: { candidateRunId: "run_cmp" },
+        meta: { candidateRunId: "run_meta" },
+      }),
+    ).toBe("run_cmp");
+    expect(
+      resolveTipCandidateRunId({
+        comparison: null,
+        meta: { candidateRunId: "run_meta" },
+      }),
+    ).toBe("run_meta");
+    expect(resolveTipCandidateRunId({ comparison: null, meta: null })).toBe(
+      null,
+    );
+    expect(
+      resolveTipBaselineRunId({
+        comparison: null,
+        meta: { baselineRunId: "run_base_meta" },
+      }),
+    ).toBe("run_base_meta");
+  });
+});
+
 describe("loadEvaluationComparison meta mode", () => {
   it("INCONCLUSIVE when evaluation.json mode is garbage even if legs agree", async () => {
     const evaluationId = "eval_100_badmode";

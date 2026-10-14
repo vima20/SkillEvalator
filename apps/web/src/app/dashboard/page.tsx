@@ -3,7 +3,10 @@ import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import { includeInDashboardLeaderboard } from "@/lib/dashboardLeaderboard";
-import { loadEvaluationComparison } from "@/lib/evaluations";
+import {
+  loadEvaluationComparison,
+  resolveTipCandidateRunId,
+} from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { runIsActive } from "@/lib/status";
@@ -45,11 +48,8 @@ export default function DashboardPage() {
   const tipByEval = new Map<string, string | null>();
   const tipCandidateId = (evaluationId: string): string | null => {
     if (!tipByEval.has(evaluationId)) {
-      tipByEval.set(
-        evaluationId,
-        loadEvaluationComparison(evaluationId).comparison?.candidateRunId ??
-          null,
-      );
+      const packed = loadEvaluationComparison(evaluationId);
+      tipByEval.set(evaluationId, resolveTipCandidateRunId(packed));
     }
     return tipByEval.get(evaluationId) ?? null;
   };

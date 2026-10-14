@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/EmptyState";
 import {
   listEvaluations,
   loadEvaluationComparison,
+  resolveTipCandidateRunId,
 } from "@/lib/evaluations";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -28,7 +29,7 @@ export default function ComparisonListPage() {
     const pending = !c;
     // Prefer Comparison tip legs (then healed meta) so Benefit CTA matches PASS/FAIL.
     const tipCandidateRunId =
-      c?.candidateRunId ?? packed.meta?.candidateRunId ?? e.candidateRunId;
+      resolveTipCandidateRunId(packed) ?? e.candidateRunId;
     // Chip/label mode from Comparison object (same source as detail), not stale meta.
     const displayMode = c?.mode ?? e.mode;
     return {

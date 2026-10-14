@@ -20,7 +20,7 @@ import {
 } from "@skillevalator/core";
 import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
 import {
-  loadEvaluationMeta,
+  resolveHealedMetaLegsForCancel,
   updateEvaluationMetaLeg,
 } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
@@ -176,11 +176,11 @@ export async function POST(
         );
       }
     }
-    // Paired retry: bind meta update to the tip slot this parent occupies.
+    // Paired retry: bind meta update to the healed tip slot (same as Cancel).
     // Never default a baseline tip to "candidate" (would orphan the real skill leg).
     if (evaluationId) {
-      const meta = loadEvaluationMeta(evaluationId);
-      if (!meta?.baselineRunId || !meta?.candidateRunId) {
+      const healed = resolveHealedMetaLegsForCancel(evaluationId);
+      if (!healed) {
         if (mode === "official") {
           return NextResponse.json(
             {
@@ -193,9 +193,9 @@ export async function POST(
         }
       } else {
         const metaSlot =
-          runId === meta.baselineRunId
+          runId === healed.baselineRunId
             ? ("baseline" as const)
-            : runId === meta.candidateRunId
+            : runId === healed.candidateRunId
               ? ("candidate" as const)
               : null;
         if (!metaSlot) {

@@ -35,6 +35,29 @@ export function evaluationMetaPath(evaluationId: string): string {
   return path.join(resultsDir(), id, "evaluation.json");
 }
 
+/**
+ * Tip candidate runId for UI / leaderboard — same bar as Comparison list + CSV.
+ * Prefer Comparison object, fall back to healed meta when Comparison is pending.
+ */
+export function resolveTipCandidateRunId(packed: {
+  comparison?: { candidateRunId?: string } | null;
+  meta?: { candidateRunId?: string } | null;
+}): string | null {
+  return (
+    packed.comparison?.candidateRunId ?? packed.meta?.candidateRunId ?? null
+  );
+}
+
+/** Tip baseline runId (Comparison first, then healed meta). */
+export function resolveTipBaselineRunId(packed: {
+  comparison?: { baselineRunId?: string } | null;
+  meta?: { baselineRunId?: string } | null;
+}): string | null {
+  return (
+    packed.comparison?.baselineRunId ?? packed.meta?.baselineRunId ?? null
+  );
+}
+
 export function loadEvaluationMeta(
   evaluationId: string,
 ): EvaluationMeta | null {

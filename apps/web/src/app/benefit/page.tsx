@@ -46,13 +46,15 @@ export default function BenefitIndexPage() {
     // Recommend surface: candidate skill only (baseline is Comparison input).
     .filter((r) => r.result!.role === "candidate")
     .map((r) => {
-      const { report, comparison } = buildBenefitReportBundle(r.result!);
+      const { report, tipCandidateRunId } = buildBenefitReportBundle(
+        r.result!,
+      );
       const fakeProduce = r.result!.capture?.env?.fakeProduce === true;
       const kind = legKindFor({
         runId: r.runId,
         fakeProduce,
         evaluationId: r.result!.evaluationId,
-        tipCandidateRunId: comparison?.candidateRunId,
+        tipCandidateRunId,
       });
       return {
         runId: r.runId,
