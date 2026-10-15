@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import {
   DEFAULT_COST_CAP_USD,
@@ -62,6 +64,83 @@ function toSkillRows(
   }));
 }
 
+function gitStdout(root: string, args: string[]): string | null {
+  try {
+    const r = spawnSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      timeout: 4000,
+      windowsHide: true,
+    });
+    if (r.status !== 0) return null;
+    const out = (r.stdout || "").trim();
+    return out || null;
+  } catch {
+    return null;
+  }
+}
+
+export function resolveBuildInfo(repoRoot: string): SettingsSnapshot["build"] {
+  const sha = gitStdout(repoRoot, ["rev-parse", "HEAD"]);
+  if (!sha || !/^[0-9a-f]{7,40}$/i.test(sha)) {
+    return { gitSha: null, gitShaShort: null, dirty: false };
+  }
+  const porcelain = gitStdout(repoRoot, ["status", "--porcelain"]);
+  return {
+    gitSha: sha,
+    gitShaShort: sha.slice(0, 7),
+    dirty: Boolean(porcelain && porcelain.length > 0),
+  };
+}
+
+export function summarizeJobQueue(
+  jobsDir: string,
+): SettingsSnapshot["queue"] {
+  let queued = 0;
+  let running = 0;
+  let activeRunId: string | null = null;
+
+  if (fs.existsSync(jobsDir)) {
+    try {
+      for (const name of fs.readdirSync(jobsDir)) {
+        if (name.endsWith(".running.json")) {
+          running += 1;
+          continue;
+        }
+        if (
+          name.endsWith(".done.json") ||
+          name.endsWith(".tmp.json") ||
+          name.startsWith(".") ||
+          name.endsWith(".worker.pid") ||
+          name.endsWith(".cancel")
+        ) {
+          continue;
+        }
+        if (name.endsWith(".json")) queued += 1;
+      }
+    } catch {
+      // leave zeros
+    }
+
+    try {
+      const raw = JSON.parse(
+        fs.readFileSync(path.join(jobsDir, ".worker"), "utf8"),
+      ) as { busy?: unknown; runId?: unknown };
+      if (
+        raw.busy === true &&
+        typeof raw.runId === "string" &&
+        raw.runId.trim()
+      ) {
+        activeRunId = raw.runId.trim();
+      }
+    } catch {
+      // no heartbeat
+    }
+  }
+
+  return { queued, running, activeRunId };
+}
+
 export function loadSettingsSnapshot(opts?: {
   env?: Record<string, string | undefined>;
   repoRoot?: string;
@@ -71,6 +150,8 @@ export function loadSettingsSnapshot(opts?: {
     bundled?: SkillSummary[];
     imported?: SkillSummary[];
   };
+  build?: SettingsSnapshot["build"];
+  queue?: SettingsSnapshot["queue"];
 }): SettingsSnapshot {
   const env = opts?.env ?? process.env;
   const root =
@@ -195,6 +276,8 @@ export function loadSettingsSnapshot(opts?: {
       jobsDir: rel(root, data.jobsDir),
       resultsDir: rel(root, data.resultsDir),
     },
+    build: opts?.build ?? resolveBuildInfo(root),
+    queue: opts?.queue ?? summarizeJobQueue(data.jobsDir),
     web: {
       port: num(env, "WEB_PORT", 30001),
       bindHint: "127.0.0.1 (loopback)",

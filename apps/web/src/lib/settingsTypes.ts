@@ -89,6 +89,21 @@ export type SettingsSnapshot = {
     jobsDir: string;
     resultsDir: string;
   };
+  /** Repo identity for pilot archive labels (no secrets). */
+  build: {
+    /** Full git SHA when available; otherwise null. */
+    gitSha: string | null;
+    gitShaShort: string | null;
+    /** True when `git status --porcelain` is non-empty. */
+    dirty: boolean;
+  };
+  /** File-queue snapshot from data/jobs (for pilot ops). */
+  queue: {
+    queued: number;
+    running: number;
+    /** Active runId from live worker heartbeat when busy. */
+    activeRunId: string | null;
+  };
   web: {
     port: number;
     /** UI is intended for loopback-only bind (see start scripts). */
@@ -127,6 +142,10 @@ export function isSettingsSnapshot(v: unknown): v is SettingsSnapshot {
   }
   if (!isRecord(v.skills) || !Array.isArray(v.skills.rows)) return false;
   if (!isRecord(v.models) || !isRecord(v.adoption) || !isRecord(v.smoke)) {
+    return false;
+  }
+  if (!isRecord(v.build) || !isRecord(v.queue)) return false;
+  if (typeof v.queue.queued !== "number" || typeof v.queue.running !== "number") {
     return false;
   }
   return true;

@@ -156,9 +156,62 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
               ))}
             </ul>
           )}
+          <p className="settings-cta">
+            {s.pilotReady ? (
+              <Link className="btn btn-primary" href="/">
+                Start official baseline↔candidate
+              </Link>
+            ) : (
+              <Link className="btn btn-ghost" href="/">
+                Open New run (dry-run)
+              </Link>
+            )}
+          </p>
           <p className="hint">
-            Checked {new Date(s.checkedAt).toLocaleString()} ·{" "}
-            <Link href="/">New run</Link> uses the same preflight gate.
+            Checked {new Date(s.checkedAt).toLocaleString()} · New run uses the
+            same preflight gate. See{" "}
+            <code>docs/PILOT-CHECKLIST.md</code>.
+          </p>
+        </section>
+
+        <section className="panel settings-panel">
+          <h2>Build &amp; queue</h2>
+          <dl className="settings-dl">
+            <Row label="Git SHA">
+              {s.build.gitShaShort ? (
+                <span>
+                  <code title={s.build.gitSha ?? undefined}>
+                    {s.build.gitShaShort}
+                  </code>
+                  {s.build.dirty ? (
+                    <>
+                      {" "}
+                      <StatusPill ok={false} tone="wait" label="dirty" />
+                    </>
+                  ) : null}
+                </span>
+              ) : (
+                <span className="hint">unavailable</span>
+              )}
+            </Row>
+            <Row label="Queued">
+              <code>{s.queue.queued}</code>
+            </Row>
+            <Row label="Running">
+              <code>{s.queue.running}</code>
+              {s.queue.activeRunId ? (
+                <>
+                  {" "}
+                  <Link href={`/runs/${s.queue.activeRunId}`}>
+                    {s.queue.activeRunId}
+                  </Link>
+                </>
+              ) : null}
+            </Row>
+          </dl>
+          <p className="hint">
+            Record the git SHA with pilot archives. Queue counts are files under{" "}
+            <code>{s.paths.jobsDir}</code>.
           </p>
         </section>
 

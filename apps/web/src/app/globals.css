@@ -1606,6 +1606,10 @@ a.btn {
   font-size: 14px;
 }
 
+.settings-cta {
+  margin: 12px 0 8px;
+}
+
 @media (max-width: 640px) {
   .settings-dl {
     grid-template-columns: 1fr;

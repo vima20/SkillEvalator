@@ -1,6 +1,24 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadSettingsSnapshot } from "./settingsSnapshot.js";
+import {
+  loadSettingsSnapshot,
+  summarizeJobQueue,
+} from "./settingsSnapshot.js";
 import { isSettingsSnapshot } from "./settingsTypes.js";
+
+const injectedBuild = {
+  gitSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  gitShaShort: "aaaaaaa",
+  dirty: false,
+};
+
+const injectedQueue = {
+  queued: 0,
+  running: 0,
+  activeRunId: null as string | null,
+};
 
 const okPreflight = {
   ok: true,
@@ -28,6 +46,8 @@ describe("loadSettingsSnapshot", () => {
       },
       preflight: okPreflight,
       repoRoot: process.cwd(),
+      build: injectedBuild,
+      queue: injectedQueue,
     });
     expect(s.pilotReady).toBe(true);
     expect(s.pilotBlockers).toEqual([]);
@@ -52,6 +72,8 @@ describe("loadSettingsSnapshot", () => {
       env: { OPENAI_API_KEY: "sk-test" },
       preflight: okPreflight,
       repoRoot: process.cwd(),
+      build: injectedBuild,
+      queue: injectedQueue,
       skills: {
         bundled: [
           {
@@ -94,6 +116,8 @@ describe("loadSettingsSnapshot", () => {
       },
       preflight: { ...okPreflight, fakeProduce: true },
       repoRoot: process.cwd(),
+      build: injectedBuild,
+      queue: injectedQueue,
     });
     expect(s.pilotReady).toBe(false);
     expect(s.smoke.blocksOfficial).toBe(true);
@@ -110,6 +134,8 @@ describe("loadSettingsSnapshot", () => {
       },
       preflight: okPreflight,
       repoRoot: process.cwd(),
+      build: injectedBuild,
+      queue: injectedQueue,
     });
     const json = JSON.stringify(s);
     expect(json).not.toContain("sk-super-secret");
@@ -124,6 +150,8 @@ describe("loadSettingsSnapshot", () => {
       },
       preflight: okPreflight,
       repoRoot: process.cwd(),
+      build: injectedBuild,
+      queue: injectedQueue,
     });
     expect(s.pilotReady).toBe(false);
     expect(
@@ -137,9 +165,34 @@ describe("loadSettingsSnapshot", () => {
       preflight: okPreflight,
       repoRoot: process.cwd(),
       skills: { bundled: [], imported: [] },
+      build: injectedBuild,
+      queue: injectedQueue,
     });
     expect(isSettingsSnapshot(s)).toBe(true);
+    expect(s.build.gitShaShort).toBe("aaaaaaa");
+    expect(s.queue.queued).toBe(0);
     expect(isSettingsSnapshot(null)).toBe(false);
     expect(isSettingsSnapshot({ editableVia: ".env" })).toBe(false);
+  });
+
+  it("summarizeJobQueue counts queued/running and active run", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "se-queue-"));
+    try {
+      fs.writeFileSync(path.join(dir, "run_a.json"), "{}");
+      fs.writeFileSync(path.join(dir, "run_b.running.json"), "{}");
+      fs.writeFileSync(path.join(dir, "run_c.done.json"), "{}");
+      fs.writeFileSync(path.join(dir, "run_d.tmp.json"), "{}");
+      fs.writeFileSync(
+        path.join(dir, ".worker"),
+        JSON.stringify({ busy: true, runId: "run_b", pid: 1, at: new Date().toISOString() }),
+      );
+      expect(summarizeJobQueue(dir)).toEqual({
+        queued: 1,
+        running: 1,
+        activeRunId: "run_b",
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
