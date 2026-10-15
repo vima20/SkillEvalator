@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { ClearOldRuns } from "@/components/ClearOldRuns";
+import { ClearSmokeNoise } from "@/components/ClearSmokeNoise";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
@@ -94,6 +95,7 @@ export default async function RunsPage({
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/runs" pilotFocus={pilotFocus} />
           <RunsAutoRefresh hasActive={hasActive} />
+          <ClearSmokeNoise />
           <ClearOldRuns />
           <Link className="btn btn-primary" href="/">
             New run

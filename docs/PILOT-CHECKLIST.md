@@ -29,6 +29,7 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 ## 4. Tuloksen tulkinta
 
 - [ ] UI:ssa **Pilot focus** (`?focus=pilot`) Runs / Comparison / Benefit — piilottaa smoke / superseded / dry-run -melun
+- [ ] Tarvittaessa Runs → **Clear smoke noise** (poistaa smoke-kasvit diskiltä; ei koske live official -arkistoa)
 - [ ] Official Comparison **PASS** vain jos candidate ≥ USE floor ja lift ≥ kynnys ([ACCEPTANCE.md](./ACCEPTANCE.md))
 - [ ] Benefit **USE** vain PASS:n jälkeen — ei dry-run / smoke
 - [ ] Vie CSV / Benefit tarvittaessa; säilytä `eval_*` + run-kansiot

@@ -7,6 +7,7 @@ import {
   hasLiveJobFile,
   isNonRetryableErrorCode,
   listRuns,
+  purgeSmokeNoiseFs,
   purgeTerminalRunsFs,
   syncStatusFromResult,
 } from "./results.js";
@@ -476,5 +477,131 @@ describe("purgeTerminalRunsFs", () => {
     expect(
       fs.existsSync(path.join(jobsDir, `${stillRunning}.running.json`)),
     ).toBe(true);
+  });
+});
+
+describe("purgeSmokeNoiseFs", () => {
+  it("removes smoke eval pairs and FAKE_PRODUCE orphans; keeps live official", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-smoke-purge-"));
+    temps.push(root);
+    const resultsDir = path.join(root, "results");
+    const jobsDir = path.join(root, "jobs");
+    fs.mkdirSync(jobsDir, { recursive: true });
+
+    const smokeEval = "eval_100_smokeplant";
+    const smokeBase = "run_100_smokebase";
+    const smokeCand = "run_100_smokecand";
+    const liveEval = "eval_100_liveofficial";
+    const liveBase = "run_100_livebase";
+    const liveCand = "run_100_livecand";
+    const fakeOrphan = "run_100_fakeorphan";
+
+    writeJsonFile(path.join(resultsDir, smokeEval, "evaluation.json"), {
+      evaluationId: smokeEval,
+      baselineRunId: smokeBase,
+      candidateRunId: smokeCand,
+      mode: "official",
+      smoke: true,
+    });
+    for (const id of [smokeBase, smokeCand]) {
+      writeJsonFile(path.join(resultsDir, id, "status.json"), {
+        runId: id,
+        status: "ok",
+        mode: "official",
+        evaluationId: smokeEval,
+      });
+      writeJsonFile(path.join(resultsDir, id, "result.json"), {
+        runId: id,
+        status: "ok",
+        mode: "official",
+        evaluationId: smokeEval,
+      });
+    }
+
+    writeJsonFile(path.join(resultsDir, liveEval, "evaluation.json"), {
+      evaluationId: liveEval,
+      baselineRunId: liveBase,
+      candidateRunId: liveCand,
+      mode: "official",
+      smoke: false,
+    });
+    for (const id of [liveBase, liveCand]) {
+      writeJsonFile(path.join(resultsDir, id, "status.json"), {
+        runId: id,
+        status: "ok",
+        mode: "official",
+        evaluationId: liveEval,
+      });
+      writeJsonFile(path.join(resultsDir, id, "result.json"), {
+        runId: id,
+        status: "ok",
+        mode: "official",
+        evaluationId: liveEval,
+        capture: { env: { fakeProduce: false } },
+      });
+    }
+
+    writeJsonFile(path.join(resultsDir, fakeOrphan, "status.json"), {
+      runId: fakeOrphan,
+      status: "ok",
+      mode: "dry-run",
+    });
+    writeJsonFile(path.join(resultsDir, fakeOrphan, "result.json"), {
+      runId: fakeOrphan,
+      status: "ok",
+      mode: "dry-run",
+      capture: { env: { fakeProduce: true } },
+    });
+
+    const out = purgeSmokeNoiseFs(resultsDir, jobsDir);
+    expect(out.removedEvaluations).toContain(smokeEval);
+    expect(out.removed).toEqual(
+      expect.arrayContaining([smokeBase, smokeCand, fakeOrphan]),
+    );
+    expect(out.removed).not.toContain(liveBase);
+    expect(out.removed).not.toContain(liveCand);
+    expect(fs.existsSync(path.join(resultsDir, smokeEval))).toBe(false);
+    expect(fs.existsSync(path.join(resultsDir, liveEval))).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, liveCand))).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, fakeOrphan))).toBe(false);
+  });
+
+  it("skips smoke legs with live job files", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-smoke-live-"));
+    temps.push(root);
+    const resultsDir = path.join(root, "results");
+    const jobsDir = path.join(root, "jobs");
+    fs.mkdirSync(jobsDir, { recursive: true });
+
+    const evalId = "eval_100_smokelive";
+    const base = "run_100_smokeliveb";
+    const cand = "run_100_smokelivec";
+    writeJsonFile(path.join(resultsDir, evalId, "evaluation.json"), {
+      evaluationId: evalId,
+      baselineRunId: base,
+      candidateRunId: cand,
+      smoke: true,
+      mode: "dry-run",
+    });
+    for (const id of [base, cand]) {
+      writeJsonFile(path.join(resultsDir, id, "status.json"), {
+        runId: id,
+        status: "ok",
+      });
+      writeJsonFile(path.join(resultsDir, id, "result.json"), {
+        runId: id,
+        status: "ok",
+        capture: { env: { fakeProduce: true } },
+      });
+    }
+    fs.writeFileSync(path.join(jobsDir, `${cand}.running.json`), "{}");
+
+    const out = purgeSmokeNoiseFs(resultsDir, jobsDir);
+    expect(out.removed).toEqual([]);
+    expect(out.removedEvaluations).toEqual([]);
+    expect(out.skipped.some((s) => s.id === cand && s.reason === "live_job")).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.join(resultsDir, evalId))).toBe(true);
   });
 });

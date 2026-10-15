@@ -425,8 +425,229 @@ type EvaluationMetaFile = {
   evaluationId?: string;
   baselineRunId?: string;
   candidateRunId?: string;
+  smoke?: unknown;
+  mode?: unknown;
   [key: string]: unknown;
 };
+
+function runHasFakeProduceFs(resultsDir: string, runId: string): boolean {
+  try {
+    assertSafeId(runId, "runId");
+  } catch {
+    return false;
+  }
+  const resultPath = path.join(resultsDir, runId, "result.json");
+  if (!fs.existsSync(resultPath)) return false;
+  try {
+    const raw = readJsonFile(resultPath) as {
+      capture?: { env?: { fakeProduce?: unknown } };
+    };
+    return raw.capture?.env?.fakeProduce === true;
+  } catch {
+    return false;
+  }
+}
+
+function terminalStatusForPurge(
+  resultsDir: string,
+  runId: string,
+): string | null {
+  const statusPath = path.join(resultsDir, runId, "status.json");
+  if (!fs.existsSync(statusPath)) return null;
+  try {
+    const raw = StatusFileSchema.parse(readJsonFile(statusPath));
+    return raw.status ?? "unknown";
+  } catch {
+    return null;
+  }
+}
+
+/** True when the run is settled and safe to delete (no live job / wind-down). */
+export function isSettledPurgeableRunFs(
+  resultsDir: string,
+  jobsDir: string,
+  runId: string,
+): boolean {
+  const status = terminalStatusForPurge(resultsDir, runId);
+  if (!status || !TERMINAL_PURGE.has(status)) return false;
+  if (hasLiveJobFile(jobsDir, runId)) return false;
+  if (
+    status === "budget_stop" &&
+    !fs.existsSync(path.join(resultsDir, runId, "result.json"))
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function removeRunDirFs(
+  resultsDir: string,
+  jobsDir: string,
+  runId: string,
+): boolean {
+  try {
+    assertSafeId(runId, "runId");
+    fs.rmSync(path.join(resultsDir, runId), { recursive: true, force: true });
+    removeJobArtifacts(jobsDir, runId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export type SmokePurgeSkipReason =
+  | "live_job"
+  | "not_terminal"
+  | "live_official";
+
+/**
+ * Delete smoke harness noise immediately (no age gate):
+ * - evaluation.json smoke=true pairs (whole eval_* + both legs)
+ * - runs with capture.env.fakeProduce (and their eval_* if linked)
+ * Never deletes live official archives (official mode, not smoke, not fakeProduce).
+ * Never touches queued/running / budget_stop wind-down.
+ */
+export function purgeSmokeNoiseFs(
+  resultsDir: string,
+  jobsDir: string,
+): {
+  removed: string[];
+  removedEvaluations: string[];
+  skipped: Array<{ id: string; reason: SmokePurgeSkipReason }>;
+} {
+  const removed: string[] = [];
+  const removedEvaluations: string[] = [];
+  const skipped: Array<{ id: string; reason: SmokePurgeSkipReason }> = [];
+  const removeRuns = new Set<string>();
+  const removeEvals = new Set<string>();
+
+  if (!fs.existsSync(resultsDir)) {
+    return { removed, removedEvaluations, skipped };
+  }
+
+  const skip = (id: string, reason: SmokePurgeSkipReason) => {
+    if (!skipped.some((s) => s.id === id && s.reason === reason)) {
+      skipped.push({ id, reason });
+    }
+  };
+
+  // Pass 1: smoke evaluations → schedule eval + both legs.
+  for (const name of fs.readdirSync(resultsDir)) {
+    if (!name.startsWith("eval_")) continue;
+    try {
+      assertSafeId(name, "evaluationId");
+    } catch {
+      continue;
+    }
+    const metaPath = path.join(resultsDir, name, "evaluation.json");
+    if (!fs.existsSync(metaPath)) continue;
+    let meta: EvaluationMetaFile;
+    try {
+      meta = readJsonFile(metaPath) as EvaluationMetaFile;
+    } catch {
+      continue;
+    }
+    const baselineRunId =
+      typeof meta.baselineRunId === "string" ? meta.baselineRunId : undefined;
+    const candidateRunId =
+      typeof meta.candidateRunId === "string" ? meta.candidateRunId : undefined;
+    const legs = [baselineRunId, candidateRunId].filter(
+      (id): id is string => typeof id === "string" && id.length > 0,
+    );
+    const smokeMeta = meta.smoke === true;
+    const fakeLeg = legs.some((id) => runHasFakeProduceFs(resultsDir, id));
+    if (!smokeMeta && !fakeLeg) continue;
+
+    let blocked = false;
+    for (const runId of legs) {
+      if (hasLiveJobFile(jobsDir, runId)) {
+        skip(runId, "live_job");
+        blocked = true;
+        continue;
+      }
+      if (!isSettledPurgeableRunFs(resultsDir, jobsDir, runId)) {
+        // Missing leg dir is OK (partial plant); non-terminal / wind-down blocks.
+        if (fs.existsSync(path.join(resultsDir, runId, "status.json"))) {
+          skip(runId, "not_terminal");
+          blocked = true;
+        }
+      }
+    }
+    if (blocked) continue;
+
+    removeEvals.add(name);
+    for (const runId of legs) removeRuns.add(runId);
+  }
+
+  // Pass 2: orphan FAKE_PRODUCE runs only (never half-delete a linked pair).
+  const evalLinked = collectEvalLinkedRunIds(resultsDir);
+  for (const runId of listRunIds(resultsDir)) {
+    if (removeRuns.has(runId)) continue;
+    if (evalLinked.has(runId)) continue;
+    if (!runHasFakeProduceFs(resultsDir, runId)) continue;
+    if (hasLiveJobFile(jobsDir, runId)) {
+      skip(runId, "live_job");
+      continue;
+    }
+    if (!isSettledPurgeableRunFs(resultsDir, jobsDir, runId)) {
+      skip(runId, "not_terminal");
+      continue;
+    }
+    removeRuns.add(runId);
+  }
+
+  // Never schedule live official archive (official + not fakeProduce + not in smoke eval).
+  for (const runId of [...removeRuns]) {
+    if (runHasFakeProduceFs(resultsDir, runId)) continue;
+    if (!isOfficialRunFs(resultsDir, runId)) continue;
+    // Official without fakeProduce should only be removed via smoke eval membership.
+    // If somehow scheduled alone, protect it.
+    let inSmokeEval = false;
+    for (const evalId of removeEvals) {
+      try {
+        const meta = readJsonFile(
+          path.join(resultsDir, evalId, "evaluation.json"),
+        ) as EvaluationMetaFile;
+        if (
+          meta.baselineRunId === runId ||
+          meta.candidateRunId === runId
+        ) {
+          inSmokeEval = true;
+          break;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!inSmokeEval) {
+      removeRuns.delete(runId);
+      skip(runId, "live_official");
+    }
+  }
+
+  for (const runId of removeRuns) {
+    if (removeRunDirFs(resultsDir, jobsDir, runId)) removed.push(runId);
+  }
+
+  for (const evalId of removeEvals) {
+    try {
+      fs.rmSync(path.join(resultsDir, evalId), {
+        recursive: true,
+        force: true,
+      });
+      removedEvaluations.push(evalId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Drop dangling eval_* if a smoke orphan run tore a non-smoke pair (shouldn't).
+  if (removed.length > 0) {
+    healEvaluationMetasAfterPurge(resultsDir, new Set(removed));
+  }
+
+  return { removed, removedEvaluations, skipped };
+}
 
 /** Remove or rewrite evaluation.json when purged runs were referenced. */
 export function healEvaluationMetasAfterPurge(

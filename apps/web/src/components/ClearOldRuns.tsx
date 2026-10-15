@@ -22,7 +22,7 @@ export function ClearOldRuns() {
       const res = await fetch("/api/runs/cleanup", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ olderThanDays: 7 }),
+        body: JSON.stringify({ kind: "age", olderThanDays: 7 }),
       });
       const data = (await res.json()) as {
         error?: string;
