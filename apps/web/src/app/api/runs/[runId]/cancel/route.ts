@@ -3,11 +3,13 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import {
   assertSafeId,
+  healRunOrphansFs,
   loadRunStatus,
   resolvePairedCancelSibling,
   writeJsonFile,
 } from "@skillevalator/core";
 import { resolveHealedMetaLegsForCancel } from "@/lib/evaluations";
+import { isPidAlive } from "@/lib/healOrphans";
 import { cancelGate, pairedCancelPeerStatuses } from "@/lib/runLifecycle";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
@@ -132,7 +134,11 @@ export async function POST(
   try {
     const { runId: raw } = await ctx.params;
     const runId = assertSafeId(raw, "runId");
-    const prior = loadRunStatus(resultsDir(), runId);
+    const root = resultsDir();
+    const jobs = jobsDir();
+    // Reclaim dead .running.json so cancel/cascade see real statuses.
+    healRunOrphansFs(jobs, root, runId, isPidAlive);
+    const prior = loadRunStatus(root, runId);
     const evaluationId =
       typeof prior?.evaluationId === "string" ? prior.evaluationId : null;
     const role = typeof prior?.role === "string" ? prior.role : undefined;
@@ -150,6 +156,7 @@ export async function POST(
       const sibling = pairedSiblingRunId(runId, evaluationId, role);
       if (sibling && sibling !== runId) {
         const safeSibling = assertSafeId(sibling, "runId");
+        healRunOrphansFs(jobs, root, safeSibling, isPidAlive);
         const sib = requestCancelOne(safeSibling);
         if (sib.ok && !sib.already) siblingCancelled = safeSibling;
       }

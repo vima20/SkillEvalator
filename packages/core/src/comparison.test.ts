@@ -258,7 +258,7 @@ describe("compareBaselineCandidate", () => {
     expect(c.parity.issues.some((i) => /gradeHash/i.test(i))).toBe(true);
   });
 
-  it("official INCONCLUSIVE when fakeProduce/cost env pins are missing", () => {
+  it("official INCONCLUSIVE when fakeProduce/cost/allowHostGrade env pins are missing", () => {
     const stripSmokeCost = (role: "baseline" | "candidate", runId: string) => {
       const r = sample({
         runId,
@@ -272,6 +272,7 @@ describe("compareBaselineCandidate", () => {
         fakeProduce: _fp,
         costCapUsd: _cap,
         costHardStop: _stop,
+        allowHostGrade: _host,
         ...envRest
       } = r.capture!.env!;
       return {
@@ -290,6 +291,7 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
     expect(c.parity.issues.some((i) => /costCapUsd/i.test(i))).toBe(true);
     expect(c.parity.issues.some((i) => /costHardStop/i.test(i))).toBe(true);
+    expect(c.parity.issues.some((i) => /allowHostGrade/i.test(i))).toBe(true);
   });
 
   it("official INCONCLUSIVE when candidate.role is missing (no invent)", () => {

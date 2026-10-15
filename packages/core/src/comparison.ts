@@ -402,6 +402,11 @@ export function checkComparisonParity(
           `official Comparison requires ${label}.capture.env.costHardStop`,
         );
       }
+      if (typeof leg.capture?.env?.allowHostGrade !== "boolean") {
+        issues.push(
+          `official Comparison requires ${label}.capture.env.allowHostGrade`,
+        );
+      }
     }
   }
 

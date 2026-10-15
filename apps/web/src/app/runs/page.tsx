@@ -3,8 +3,16 @@ import { listRuns } from "@skillevalator/core";
 import { ClearOldRuns } from "@/components/ClearOldRuns";
 import { EmptyState } from "@/components/EmptyState";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
+import {
+  loadEvaluationComparison,
+  resolveTipCandidateRunId,
+} from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import {
+  candidateRunsListHint,
+  runsListHintLabel,
+} from "@/lib/runsListHints";
 import { runIsActive, statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +26,17 @@ function shortError(msg: string | undefined, max = 72): string | null {
 
 export default function RunsPage() {
   healOrphanStatuses();
+  const tipByEval = new Map<string, string | null>();
+  const tipFor = (evaluationId: string): string | null => {
+    if (!tipByEval.has(evaluationId)) {
+      tipByEval.set(
+        evaluationId,
+        resolveTipCandidateRunId(loadEvaluationComparison(evaluationId)),
+      );
+    }
+    return tipByEval.get(evaluationId) ?? null;
+  };
+
   const runs = listRuns(resultsDir());
   const hasActive = runs.some((r) => runIsActive(r.status, !!r.result));
 
@@ -27,7 +46,10 @@ export default function RunsPage() {
         <div>
           <p className="eyebrow">Unikie · History</p>
           <h1>Runs</h1>
-          <p>Queued and completed evaluation jobs from the local worker.</p>
+          <p>
+            Queued and completed evaluation jobs. Candidate tip / smoke /
+            superseded hints match Benefit demotion.
+          </p>
         </div>
         <div className="page-header-actions">
           <RunsAutoRefresh hasActive={hasActive} />
@@ -67,6 +89,16 @@ export default function RunsPage() {
                   const role = r.result?.role ?? r.role ?? "—";
                   const evaluationId =
                     r.result?.evaluationId ?? r.evaluationId;
+                  const tip = evaluationId ? tipFor(evaluationId) : null;
+                  const hint = candidateRunsListHint({
+                    runId: r.runId,
+                    role: typeof role === "string" ? role : undefined,
+                    fakeProduce:
+                      r.result?.capture?.env?.fakeProduce === true,
+                    evaluationId,
+                    tipCandidateRunId: tip,
+                  });
+                  const hintLabel = runsListHintLabel(hint);
                   return (
                     <tr key={r.runId}>
                       <td>
@@ -76,7 +108,10 @@ export default function RunsPage() {
                             <Link href={`/comparison/${evaluationId}`}>
                               Comparison
                             </Link>
+                            {hintLabel ? ` · ${hintLabel}` : null}
                           </div>
+                        ) : hintLabel ? (
+                          <div className="cell-meta">{hintLabel}</div>
                         ) : null}
                       </td>
                       <td>
@@ -121,7 +156,7 @@ export default function RunsPage() {
                             {r.result.evalSkillId}
                           </a>
                         ) : (
-                          <code>{r.result?.evalSkillId ?? "—"}</code>
+                          (r.result?.evalSkillId ?? "—")
                         )}
                       </td>
                     </tr>
