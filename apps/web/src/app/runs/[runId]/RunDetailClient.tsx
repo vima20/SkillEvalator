@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { formatCaptureEnvEvidence } from "@/lib/captureEnvEvidence";
+import {
+  formatCaptureEnvEvidence,
+  formatCaptureEnvSnapshot,
+  formatCaptureGradePolicy,
+} from "@/lib/captureEnvEvidence";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import { statusBadgeClass } from "@/lib/status";
@@ -50,6 +54,7 @@ type Result = {
       seed?: number;
       costCapUsd?: number;
       grade?: string;
+      allowHostGrade?: boolean;
       fakeProduce?: boolean;
       produceAttested?: boolean;
     };
@@ -738,12 +743,24 @@ export function RunDetailClient({
                       </dd>
                     </div>
                     <div>
+                      <dt>Grade policy</dt>
+                      <dd>
+                        {formatCaptureGradePolicy({
+                          grade: result.capture.env.grade,
+                          allowHostGrade: result.capture.env.allowHostGrade,
+                        })}
+                      </dd>
+                    </div>
+                    <div>
                       <dt>Env snapshot</dt>
                       <dd>
-                        temp={result.capture.env.temperature}, seed=
-                        {result.capture.env.seed}, cap=$
-                        {result.capture.env.costCapUsd}, grade=
-                        {result.capture.env.grade ?? "—"}
+                        {formatCaptureEnvSnapshot({
+                          temperature: result.capture.env.temperature,
+                          seed: result.capture.env.seed,
+                          costCapUsd: result.capture.env.costCapUsd,
+                          grade: result.capture.env.grade,
+                          allowHostGrade: result.capture.env.allowHostGrade,
+                        })}
                       </dd>
                     </div>
                   </>

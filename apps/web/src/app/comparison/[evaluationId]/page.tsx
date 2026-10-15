@@ -3,7 +3,11 @@ import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
-import { formatCaptureEnvEvidence } from "@/lib/captureEnvEvidence";
+import {
+  formatCaptureEnvEvidence,
+  formatCaptureEnvSnapshot,
+  formatCaptureGradePolicy,
+} from "@/lib/captureEnvEvidence";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
@@ -335,6 +339,24 @@ export default async function ComparisonDetailPage({
                 })}
               </dd>
             </div>
+            <div>
+              <dt>Baseline grade</dt>
+              <dd>
+                {formatCaptureGradePolicy({
+                  grade: baseline.capture?.env?.grade,
+                  allowHostGrade: baseline.capture?.env?.allowHostGrade,
+                })}
+              </dd>
+            </div>
+            <div>
+              <dt>Candidate grade</dt>
+              <dd>
+                {formatCaptureGradePolicy({
+                  grade: candidate.capture?.env?.grade,
+                  allowHostGrade: candidate.capture?.env?.allowHostGrade,
+                })}
+              </dd>
+            </div>
           </dl>
         </div>
 
@@ -385,18 +407,34 @@ export default async function ComparisonDetailPage({
               </dd>
             </div>
             {capture?.env ? (
-              <div>
-                <dt>Env snapshot</dt>
-                <dd>
-                  temp={capture.env.temperature}, seed={capture.env.seed}, cap=$
-                  {capture.env.costCapUsd}, grade={capture.env.grade ?? "—"}
-                  {capture.env.fakeProduce === true
-                    ? " · FAKE_PRODUCE"
-                    : capture.env.produceAttested === true
-                      ? " · produceAttested"
-                      : ""}
-                </dd>
-              </div>
+              <>
+                <div>
+                  <dt>Grade policy</dt>
+                  <dd>
+                    {formatCaptureGradePolicy({
+                      grade: capture.env.grade,
+                      allowHostGrade: capture.env.allowHostGrade,
+                    })}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Env snapshot</dt>
+                  <dd>
+                    {formatCaptureEnvSnapshot({
+                      temperature: capture.env.temperature,
+                      seed: capture.env.seed,
+                      costCapUsd: capture.env.costCapUsd,
+                      grade: capture.env.grade,
+                      allowHostGrade: capture.env.allowHostGrade,
+                    })}
+                    {capture.env.fakeProduce === true
+                      ? " · FAKE_PRODUCE"
+                      : capture.env.produceAttested === true
+                        ? " · produceAttested"
+                        : ""}
+                  </dd>
+                </div>
+              </>
             ) : null}
           </dl>
         </div>

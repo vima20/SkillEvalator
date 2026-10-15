@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   captureEnvEvidenceKind,
   formatCaptureEnvEvidence,
+  formatCaptureEnvSnapshot,
+  formatCaptureGradePolicy,
 } from "./captureEnvEvidence.js";
 
 describe("captureEnvEvidence", () => {
@@ -32,5 +34,32 @@ describe("captureEnvEvidence", () => {
     expect(
       formatCaptureEnvEvidence({ fakeProduce: true }),
     ).toMatch(/FAKE_PRODUCE/i);
+  });
+
+  it("formats grade policy and env snapshot with allowHostGrade", () => {
+    expect(
+      formatCaptureGradePolicy({
+        grade: "docker_script",
+        allowHostGrade: false,
+      }),
+    ).toMatch(/official pin/i);
+    expect(
+      formatCaptureGradePolicy({
+        grade: "host_script",
+        allowHostGrade: true,
+      }),
+    ).toMatch(/host grade allowed/i);
+    expect(formatCaptureGradePolicy({ grade: "docker_script" })).toMatch(
+      /not pinned/i,
+    );
+    expect(
+      formatCaptureEnvSnapshot({
+        temperature: 0,
+        seed: 42,
+        costCapUsd: 5,
+        grade: "docker_script",
+        allowHostGrade: false,
+      }),
+    ).toContain("allowHostGrade=false");
   });
 });

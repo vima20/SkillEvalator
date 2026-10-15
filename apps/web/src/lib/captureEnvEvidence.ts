@@ -41,3 +41,44 @@ export function formatCaptureEnvEvidence(opts: {
 }): string {
   return captureEnvEvidenceLabel(captureEnvEvidenceKind(opts));
 }
+
+/**
+ * Official Comparison requires grade=docker_script and allowHostGrade=false.
+ * Missing allowHostGrade is not the same as false (older / incomplete captures).
+ */
+export function formatCaptureGradePolicy(opts: {
+  grade?: string;
+  allowHostGrade?: boolean;
+}): string {
+  const grade = opts.grade?.trim() || "—";
+  if (opts.allowHostGrade === true) {
+    return `${grade} · host grade allowed (not official adoption)`;
+  }
+  if (
+    opts.allowHostGrade === false &&
+    opts.grade === "docker_script"
+  ) {
+    return "docker_script · allowHostGrade=false (official pin)";
+  }
+  if (opts.allowHostGrade === false) {
+    return `${grade} · allowHostGrade=false`;
+  }
+  return `${grade} · allowHostGrade not pinned`;
+}
+
+/** Decoding + cost + grade line for Capture env snapshot. */
+export function formatCaptureEnvSnapshot(opts: {
+  temperature?: number;
+  seed?: number;
+  costCapUsd?: number;
+  grade?: string;
+  allowHostGrade?: boolean;
+}): string {
+  const host =
+    opts.allowHostGrade === true
+      ? "allowHostGrade=true"
+      : opts.allowHostGrade === false
+        ? "allowHostGrade=false"
+        : "allowHostGrade=?";
+  return `temp=${opts.temperature}, seed=${opts.seed}, cap=$${opts.costCapUsd}, grade=${opts.grade ?? "—"}, ${host}`;
+}
