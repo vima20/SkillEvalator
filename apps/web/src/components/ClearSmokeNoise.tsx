@@ -1,20 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function ClearSmokeNoise() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
-  async function onClear() {
+  useEffect(() => {
+    if (!armed) return;
+    const id = window.setTimeout(() => setArmed(false), 12_000);
+    return () => window.clearTimeout(id);
+  }, [armed]);
+
+  async function onConfirm() {
     if (busy) return;
-    const ok = window.confirm(
-      "Delete smoke harness noise now?\n\nRemoves: evaluation.smoke plants and FAKE_PRODUCE runs (and their eval_* when both legs are smoke/fake).\nKept: attested live official legs (produceAttested), queued/running jobs.\nMixed smoke+live pairs are left untouched.",
-    );
-    if (!ok) return;
     setBusy(true);
     setMsg(null);
     setError(false);
@@ -39,6 +42,7 @@ export function ClearSmokeNoise() {
           ? `Removed ${runs} run(s) + ${evals} eval(s); skipped ${skipped}.`
           : `Removed ${runs} run(s) + ${evals} eval(s).`,
       );
+      setArmed(false);
       router.refresh();
     } catch (e) {
       setError(true);
@@ -50,15 +54,46 @@ export function ClearSmokeNoise() {
 
   return (
     <div className="clear-runs">
-      <button
-        type="button"
-        className="btn btn-ghost btn-compact"
-        disabled={busy}
-        onClick={() => void onClear()}
-        title="Remove FAKE_PRODUCE / smoke:paired / smoke:official plants"
-      >
-        {busy ? "Clearing…" : "Clear smoke noise"}
-      </button>
+      {!armed ? (
+        <button
+          type="button"
+          className="btn btn-ghost btn-compact"
+          disabled={busy}
+          onClick={() => {
+            setArmed(true);
+            setMsg(null);
+            setError(false);
+          }}
+          title="Remove FAKE_PRODUCE / smoke:paired / smoke:official plants"
+        >
+          Clear smoke noise
+        </button>
+      ) : (
+        <div className="action-row" style={{ flexWrap: "wrap", gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-compact"
+            disabled={busy}
+            onClick={() => void onConfirm()}
+          >
+            {busy ? "Clearing…" : "Confirm delete smoke"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-compact"
+            disabled={busy}
+            onClick={() => setArmed(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      {armed ? (
+        <p className="hint" style={{ margin: "6px 0 0" }}>
+          Removes evaluation.smoke plants and FAKE_PRODUCE runs. Keeps attested
+          live official (produceAttested). Mixed smoke+live pairs untouched.
+        </p>
+      ) : null}
       {msg ? (
         <p
           className={error ? "form-error" : "clear-runs-ok"}

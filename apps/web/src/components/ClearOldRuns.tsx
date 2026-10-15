@@ -1,20 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function ClearOldRuns() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
-  async function onClear() {
+  useEffect(() => {
+    if (!armed) return;
+    const id = window.setTimeout(() => setArmed(false), 12_000);
+    return () => window.clearTimeout(id);
+  }, [armed]);
+
+  async function onConfirm() {
     if (busy) return;
-    const ok = window.confirm(
-      "Delete terminal runs older than 7 days?\n\nKept: queued/running, official mode, and Comparison-linked baseline/candidate legs (eval_* archive).",
-    );
-    if (!ok) return;
     setBusy(true);
     setMsg(null);
     setError(false);
@@ -36,6 +39,7 @@ export function ClearOldRuns() {
           ? `Removed ${data.removedCount ?? 0} old run(s); kept ${skipped} official/linked.`
           : `Removed ${data.removedCount ?? 0} old run(s).`,
       );
+      setArmed(false);
       router.refresh();
     } catch (e) {
       setError(true);
@@ -47,14 +51,46 @@ export function ClearOldRuns() {
 
   return (
     <div className="clear-runs">
-      <button
-        type="button"
-        className="btn btn-ghost btn-compact"
-        disabled={busy}
-        onClick={() => void onClear()}
-      >
-        {busy ? "Clearing…" : "Clear old runs (7d+)"}
-      </button>
+      {!armed ? (
+        <button
+          type="button"
+          className="btn btn-ghost btn-compact"
+          disabled={busy}
+          onClick={() => {
+            setArmed(true);
+            setMsg(null);
+            setError(false);
+          }}
+          title="Delete terminal runs older than 7 days (keeps official + eval-linked)"
+        >
+          Clear old runs (7d+)
+        </button>
+      ) : (
+        <div className="action-row" style={{ flexWrap: "wrap", gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-compact"
+            disabled={busy}
+            onClick={() => void onConfirm()}
+          >
+            {busy ? "Clearing…" : "Confirm delete 7d+"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-compact"
+            disabled={busy}
+            onClick={() => setArmed(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      {armed ? (
+        <p className="hint" style={{ margin: "6px 0 0" }}>
+          Deletes terminal runs older than 7 days. Keeps queued/running, official
+          mode, and Comparison-linked eval legs.
+        </p>
+      ) : null}
       {msg ? (
         <p
           className={error ? "form-error" : "clear-runs-ok"}
