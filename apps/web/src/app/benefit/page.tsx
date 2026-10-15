@@ -12,17 +12,17 @@ import {
 } from "@/lib/candidateLeg";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
-import { withPilotFocus } from "@/lib/pilotFocusHref";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 
 export const dynamic = "force-dynamic";
 
 export default async function BenefitIndexPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string }>;
+  searchParams: Promise<{ focus?: string | string[] }>;
 }) {
   const sp = await searchParams;
-  const pilotFocus = sp.focus === "pilot";
+  const pilotFocus = isPilotFocusParam(sp.focus);
 
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir())
@@ -135,7 +135,7 @@ export default async function BenefitIndexPage({
             body={
               allRuns.length === 0
                 ? "Finish a candidate run (paired evaluation or single-leg) before opening a Benefit Report."
-                : "All candidate rows are smoke or superseded. Show all rows to inspect them."
+                : "All candidate rows are smoke, superseded, dry-run, or FAKE_PRODUCE. Show all rows to inspect them."
             }
             actionHref={
               allRuns.length === 0

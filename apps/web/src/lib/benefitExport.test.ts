@@ -127,4 +127,24 @@ describe("benefitExportGate", () => {
     if (!fake.ok)
       expect(fake.errorCode).toBe("benefit_export_fake_produce_forbidden");
   });
+
+  it("blocks baseline or candidate FAKE_PRODUCE sibling", () => {
+    const base = benefitExportGate({
+      report: officialReport("use"),
+      comparison: tipComparison("PASS"),
+      baselineFakeProduce: true,
+    });
+    expect(base.ok).toBe(false);
+    if (!base.ok)
+      expect(base.errorCode).toBe("benefit_export_fake_produce_forbidden");
+
+    const cand = benefitExportGate({
+      report: officialReport("use"),
+      comparison: tipComparison("PASS"),
+      candidateFakeProduce: true,
+    });
+    expect(cand.ok).toBe(false);
+    if (!cand.ok)
+      expect(cand.errorCode).toBe("benefit_export_fake_produce_forbidden");
+  });
 });

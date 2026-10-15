@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   healRunOrphansFs,
   loadRunResult,
@@ -47,7 +48,11 @@ export default async function RunDetailPage({
     return (
       <div>
         <header className="page-header">
-          <p className="eyebrow">Unikie · Runs</p>
+          <p className="eyebrow">
+            <Link href={withPilotFocus("/runs", pilotFocus)}>
+              Unikie · Runs
+            </Link>
+          </p>
           <h1>Invalid run</h1>
         </header>
         <div className="panel">
@@ -66,7 +71,11 @@ export default async function RunDetailPage({
     return (
       <div>
         <header className="page-header">
-          <p className="eyebrow">Unikie · Runs</p>
+          <p className="eyebrow">
+            <Link href={withPilotFocus("/runs", pilotFocus)}>
+              Unikie · Runs
+            </Link>
+          </p>
           <h1>Run not found</h1>
         </header>
         <div className="panel">

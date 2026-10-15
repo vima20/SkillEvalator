@@ -20,13 +20,16 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ error: "result not found" }, { status: 404 });
     }
-    const { report, comparison, meta } = buildBenefitReportBundle(result);
+    const { report, comparison, meta, baseline, candidate } =
+      buildBenefitReportBundle(result);
     const format = new URL(req.url).searchParams.get("format");
     const gate = benefitExportGate({
       report,
       comparison,
       metaSmoke: meta?.smoke === true,
       fakeProduce: result.capture?.env?.fakeProduce === true,
+      baselineFakeProduce: baseline?.capture?.env?.fakeProduce === true,
+      candidateFakeProduce: candidate?.capture?.env?.fakeProduce === true,
     });
     if (format === "md" || format === "markdown" || format === "csv") {
       if (!gate.ok) {

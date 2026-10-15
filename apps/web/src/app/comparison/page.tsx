@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
+import { canShowOfficialComparisonDownloads } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
-import { withPilotFocus } from "@/lib/pilotFocusHref";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   listEvaluations,
   loadEvaluationComparison,
@@ -28,10 +29,10 @@ function formatCreated(iso: string): string {
 export default async function ComparisonListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string }>;
+  searchParams: Promise<{ focus?: string | string[] }>;
 }) {
   const sp = await searchParams;
-  const pilotFocus = sp.focus === "pilot";
+  const pilotFocus = isPilotFocusParam(sp.focus);
 
   const allEvaluations = listEvaluations().map((e) => {
     const packed = loadEvaluationComparison(e.evaluationId);
@@ -221,7 +222,17 @@ export default async function ComparisonListPage({
                     </td>
                     <td>{formatCreated(e.createdAt)}</td>
                     <td>
-                      {e.pending ? (
+                      {e.pending ||
+                      !e.verdict ||
+                      !canShowOfficialComparisonDownloads({
+                        comparison: {
+                          verdict: e.verdict,
+                          mode: e.displayMode,
+                        },
+                        metaSmoke: e.smoke === true,
+                        baselineFakeProduce: e.baselineFakeProduce,
+                        candidateFakeProduce: e.candidateFakeProduce,
+                      }) ? (
                         "—"
                       ) : (
                         <Link

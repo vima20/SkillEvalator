@@ -3,6 +3,7 @@ import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
   formatCaptureEnvEvidence,
   formatCaptureEnvSnapshot,
@@ -71,7 +72,11 @@ export default async function ComparisonDetailPage({
     return (
       <div>
         <header className="page-header">
-          <p className="eyebrow">Unikie · Comparison</p>
+          <p className="eyebrow">
+            <Link href={withPilotFocus("/comparison", pilotFocus)}>
+              Unikie · Comparison
+            </Link>
+          </p>
           <h1>Evaluation not found</h1>
         </header>
         <div className="panel">
@@ -153,6 +158,11 @@ export default async function ComparisonDetailPage({
           </p>
         </div>
         <div className="page-header-actions">
+          <PilotFocusToggle
+            pathname="/comparison"
+            pilotFocus={pilotFocus}
+            detailHref={`/comparison/${evaluationId}`}
+          />
           <Link
             className="btn btn-ghost"
             href={withPilotFocus(`/runs/${baselineRunId}`, pilotFocus)}
@@ -165,12 +175,22 @@ export default async function ComparisonDetailPage({
           >
             Candidate run
           </Link>
-          <Link
-            className="btn btn-primary"
-            href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
-          >
-            Benefit Report
-          </Link>
+          {showOfficialDownloads ? (
+            <Link
+              className="btn btn-primary"
+              href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
+            >
+              Benefit Report
+            </Link>
+          ) : (
+            <span
+              className="btn btn-ghost"
+              style={{ opacity: 0.55, pointerEvents: "none" }}
+              title={downloadGate.error}
+            >
+              Benefit Report
+            </span>
+          )}
           {showOfficialDownloads ? (
             <>
               <a
@@ -204,15 +224,26 @@ export default async function ComparisonDetailPage({
         <p>
           <strong>{comparison.verdict}</strong> here is the paired lift gate
           (baseline↔candidate). Official PASS also requires candidate score ≥
-          0.99 (Benefit USE floor).           Benefit{" "}
-          <Link href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}>
-            USE
-          </Link>{" "}
-          needs official PASS;{" "}
-          <Link href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}>
-            DO NOT USE
-          </Link>{" "}
-          needs official FAIL.
+          0.99 (Benefit USE floor). Benefit USE needs official PASS; DO NOT USE
+          needs official FAIL
+          {showOfficialDownloads ? (
+            <>
+              {" "}
+              — open{" "}
+              <Link
+                href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
+              >
+                Benefit Report
+              </Link>
+              .
+            </>
+          ) : (
+            <>
+              {" "}
+              — Benefit handoff locked until official PASS/FAIL without smoke /
+              FAKE_PRODUCE.
+            </>
+          )}
         </p>
       </div>
 

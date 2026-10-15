@@ -1,5 +1,6 @@
 import { listSkills } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { skillsDirs } from "@/lib/paths";
 import { isPilotFocusParam } from "@/lib/pilotFocusHref";
 import { NewRunForm } from "./NewRunForm";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function NewRunPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string }>;
+  searchParams: Promise<{ focus?: string | string[] }>;
 }) {
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
@@ -17,15 +18,20 @@ export default async function NewRunPage({
 
   return (
     <div>
-      <header className="page-header">
-        <p className="eyebrow">Unikie · Evaluation pipeline</p>
-        <h1>New evaluation run</h1>
-        <p>
-          Unikie Contribution Evaluator: baseline (neutral prompt) vs candidate
-          (skill SKILL.md), then Docker grade. Dry-run uses{" "}
-          <code>gpt-4o-mini</code>; official uses <code>gpt-4.1-mini</code> (≥3
-          repeats).
-        </p>
+      <header className="page-header page-header-row">
+        <div>
+          <p className="eyebrow">Unikie · Evaluation pipeline</p>
+          <h1>New evaluation run</h1>
+          <p>
+            Unikie Contribution Evaluator: baseline (neutral prompt) vs
+            candidate (skill SKILL.md), then Docker grade. Dry-run uses{" "}
+            <code>gpt-4o-mini</code>; official uses <code>gpt-4.1-mini</code>{" "}
+            (≥3 repeats).
+          </p>
+        </div>
+        <div className="page-header-actions">
+          <PilotFocusToggle pathname="/" pilotFocus={pilotFocus} />
+        </div>
       </header>
 
       {skills.length === 0 ? (

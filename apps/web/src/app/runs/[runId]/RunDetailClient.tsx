@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
   formatCaptureEnvEvidence,
   formatCaptureEnvSnapshot,
@@ -302,126 +303,131 @@ export function RunDetailClient({
 
   return (
     <div>
-      <header className="page-header">
-        <p className="eyebrow">
-          <Link href={withPilotFocus("/runs", pilotFocus)}>Unikie · Runs</Link>
-          <span aria-hidden="true"> / </span>
-          <span>{runId}</span>
-        </p>
-        <h1 className="run-title">
+      <header className="page-header page-header-row">
+        <div>
+          <p className="eyebrow">
+            <Link href={withPilotFocus("/runs", pilotFocus)}>Unikie · Runs</Link>
+            <span aria-hidden="true"> / </span>
+            <span>{runId}</span>
+          </p>
+          <h1 className="run-title">
+            {result ? (
+              <>
+                {result.evalSkillId}
+                {result.role ? (
+                  <>
+                    {" "}
+                    <span className={`role-chip role-${result.role}`}>
+                      {result.role}
+                    </span>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              runId
+            )}
+          </h1>
           {result ? (
-            <>
-              {result.evalSkillId}
-              {result.role ? (
+            <p className="run-subtitle">
+              <code>{runId}</code> · {result.mode}
+              {result.evaluationId ? (
                 <>
                   {" "}
-                  <span className={`role-chip role-${result.role}`}>
-                    {result.role}
-                  </span>
+                  ·{" "}
+                  <Link
+                    href={withPilotFocus(
+                      `/comparison/${result.evaluationId}`,
+                      pilotFocus,
+                    )}
+                  >
+                    Comparison
+                  </Link>
                 </>
               ) : null}
-            </>
-          ) : (
-            runId
-          )}
-        </h1>
-        {result ? (
-          <p className="run-subtitle">
-            <code>{runId}</code> · {result.mode}
-            {result.evaluationId ? (
-              <>
-                {" "}
-                ·{" "}
-                <Link
-                  href={withPilotFocus(
-                    `/comparison/${result.evaluationId}`,
-                    pilotFocus,
-                  )}
-                >
-                  Comparison
-                </Link>
-              </>
-            ) : null}
+            </p>
+          ) : null}
+          <p>
+            {pollError
+              ? "Live updates paused."
+              : polling
+                ? "Live updating while the worker processes this run."
+                : "Run status, aggregate score, and per-task grades."}
           </p>
-        ) : null}
-        <p>
-          {pollError
-            ? "Live updates paused."
-            : polling
-              ? "Live updating while the worker processes this run."
-              : "Run status, aggregate score, and per-task grades."}
-        </p>
-        <div className="action-row" style={{ marginTop: 10 }}>
-          <button
-            type="button"
-            className="btn btn-ghost btn-compact"
-            disabled={refreshBusy}
-            onClick={() => void onManualRefresh()}
-          >
-            {refreshBusy ? "Refreshing…" : "Refresh"}
-          </button>
         </div>
-        {result && !polling ? (
-          <p className="hint">
-            {(() => {
-              const hint = benefitCtaHint({
-                runId,
-                role: result.role,
-                evaluationId: result.evaluationId,
-                fakeProduce: result.capture?.env?.fakeProduce === true,
-                tipCandidateRunId: data.tipCandidateRunId,
-              });
-              if (hint.kind === "baseline") {
-                return hint.comparisonHref ? (
-                  <Link
-                    href={withPilotFocus(hint.comparisonHref, pilotFocus)}
-                  >
-                    Open paired Comparison →
-                  </Link>
-                ) : (
-                  "Baseline leg — use Comparison for PASS/FAIL (no skill Benefit)."
-                );
-              }
-              if (hint.kind === "missing_role") {
-                return "Missing eval role — Benefit / Comparison require explicit baseline or candidate.";
-              }
-              if (hint.kind === "smoke") {
-                return (
-                  <>
-                    Smoke harness (FAKE_PRODUCE) — not adoption.{" "}
-                    <Link
-                      href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}
-                    >
-                      Open report →
-                    </Link>
-                  </>
-                );
-              }
-              if (hint.kind === "superseded") {
-                return (
-                  <>
-                    Superseded candidate — tip is{" "}
-                    <Link
-                      href={withPilotFocus(
-                        `/benefit/${hint.tipRunId}`,
-                        pilotFocus,
-                      )}
-                    >
-                      {hint.tipRunId}
-                    </Link>
-                    .
-                  </>
-                );
-              }
-              return (
-                <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
-                  Open Benefit Report →
-                </Link>
-              );
-            })()}
-          </p>
-        ) : null}
+        <div className="page-header-actions">
+          <PilotFocusToggle
+            pathname="/runs"
+            pilotFocus={pilotFocus}
+            detailHref={`/runs/${runId}`}
+          />
+        </div>
       </header>
+      <div className="action-row" style={{ marginTop: 10 }}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-compact"
+          disabled={refreshBusy}
+          onClick={() => void onManualRefresh()}
+        >
+          {refreshBusy ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      {result && !polling ? (
+        <p className="hint">
+          {(() => {
+            const hint = benefitCtaHint({
+              runId,
+              role: result.role,
+              evaluationId: result.evaluationId,
+              fakeProduce: result.capture?.env?.fakeProduce === true,
+              tipCandidateRunId: data.tipCandidateRunId,
+            });
+            if (hint.kind === "baseline") {
+              return hint.comparisonHref ? (
+                <Link href={withPilotFocus(hint.comparisonHref, pilotFocus)}>
+                  Open paired Comparison →
+                </Link>
+              ) : (
+                "Baseline leg — use Comparison for PASS/FAIL (no skill Benefit)."
+              );
+            }
+            if (hint.kind === "missing_role") {
+              return "Missing eval role — Benefit / Comparison require explicit baseline or candidate.";
+            }
+            if (hint.kind === "smoke") {
+              return (
+                <>
+                  Smoke harness (FAKE_PRODUCE) — not adoption.{" "}
+                  <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
+                    Open report →
+                  </Link>
+                </>
+              );
+            }
+            if (hint.kind === "superseded") {
+              return (
+                <>
+                  Superseded candidate — tip is{" "}
+                  <Link
+                    href={withPilotFocus(
+                      `/benefit/${hint.tipRunId}`,
+                      pilotFocus,
+                    )}
+                  >
+                    {hint.tipRunId}
+                  </Link>
+                  .
+                </>
+              );
+            }
+            return (
+              <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
+                Open Benefit Report →
+              </Link>
+            );
+          })()}
+        </p>
+      ) : null}
 
       {pollError ? (
         <p className="form-error" role="alert">

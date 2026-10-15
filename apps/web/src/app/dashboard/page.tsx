@@ -10,7 +10,7 @@ import {
 } from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
-import { withPilotFocus } from "@/lib/pilotFocusHref";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +45,10 @@ function mean(scores: number[]): number | null {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string }>;
+  searchParams: Promise<{ focus?: string | string[] }>;
 }) {
   const sp = await searchParams;
-  const pilotFocus = sp.focus === "pilot";
+  const pilotFocus = isPilotFocusParam(sp.focus);
 
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir());

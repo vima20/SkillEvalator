@@ -9,6 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
   isPilotFocusParam,
   withPilotFocus,
@@ -117,14 +118,19 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
 
   return (
     <div>
-      <header className="page-header">
-        <p className="eyebrow">Unikie · Pilot config</p>
-        <h1>Settings</h1>
-        <p>
-          Read-only view of root <code>.env</code> and adoption rules (no
-          secrets). Edit <code>.env</code> and restart web + worker to change
-          env values.
-        </p>
+      <header className="page-header page-header-row">
+        <div>
+          <p className="eyebrow">Unikie · Pilot config</p>
+          <h1>Settings</h1>
+          <p>
+            Read-only view of root <code>.env</code> and adoption rules (no
+            secrets). Edit <code>.env</code> and restart web + worker to change
+            env values.
+          </p>
+        </div>
+        <div className="page-header-actions">
+          <PilotFocusToggle pathname="/settings" pilotFocus={pilotFocus} />
+        </div>
       </header>
 
       <div className="settings-stack">
@@ -242,7 +248,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             </Row>
             {(s.queue.staleRunningRunIds?.length ?? 0) > 0 ? (
               <Row label="Stale running">
-                <StatusPill ok={false} label="orphan" />{" "}
+                <StatusPill ok={false} tone="wait" label="orphan" />{" "}
                 {s.queue.staleRunningRunIds!.map((id, i) => (
                   <span key={id}>
                     {i > 0 ? ", " : null}

@@ -9,7 +9,7 @@ import {
   candidateLegKind,
   includeInPilotFocusRun,
 } from "@/lib/candidateLeg";
-import { withPilotFocus } from "@/lib/pilotFocusHref";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   loadEvaluationComparison,
   resolveTipCandidateRunId,
@@ -34,10 +34,10 @@ function shortError(msg: string | undefined, max = 72): string | null {
 export default async function RunsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string }>;
+  searchParams: Promise<{ focus?: string | string[] }>;
 }) {
   const sp = await searchParams;
-  const pilotFocus = sp.focus === "pilot";
+  const pilotFocus = isPilotFocusParam(sp.focus);
 
   healOrphanStatuses();
   const tipByEval = new Map<string, string | null>();
@@ -122,7 +122,7 @@ export default async function RunsPage({
             body={
               allRuns.length === 0
                 ? "Start a dry-run to queue the first evaluation job."
-                : "All visible rows are smoke or superseded. Show all rows to inspect them."
+                : "All visible rows are smoke, superseded, dry-run, or FAKE_PRODUCE. Show all rows to inspect them."
             }
             actionHref={
               allRuns.length === 0

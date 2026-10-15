@@ -32,7 +32,10 @@ export function benefitExportGate(opts: {
   > | null;
   /** Same evidence bar as Comparison CSV / pilot archive. */
   metaSmoke?: boolean;
+  /** Tip / self capture (legacy); prefer sibling flags when packed. */
   fakeProduce?: boolean;
+  baselineFakeProduce?: boolean;
+  candidateFakeProduce?: boolean;
 }): BenefitExportGateOk | BenefitExportGateDenied {
   const recommendation = opts.report.verdict.recommendation;
   const mode = opts.report.config.mode;
@@ -50,7 +53,11 @@ export function benefitExportGate(opts: {
         "benefit export rejects evaluation.smoke=true (fixture plant)",
     };
   }
-  if (opts.fakeProduce === true) {
+  if (
+    opts.fakeProduce === true ||
+    opts.baselineFakeProduce === true ||
+    opts.candidateFakeProduce === true
+  ) {
     return {
       ok: false,
       status: 409,

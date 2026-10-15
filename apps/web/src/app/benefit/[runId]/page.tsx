@@ -8,6 +8,7 @@ import {
 import { BenefitPending } from "@/components/BenefitPending";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
 import { EmptyState } from "@/components/EmptyState";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
@@ -49,7 +50,11 @@ export default async function BenefitReportPage({
     return (
       <div>
         <header className="page-header">
-          <p className="eyebrow">Unikie · Benefit Report</p>
+          <p className="eyebrow">
+            <Link href={withPilotFocus("/benefit", pilotFocus)}>
+              Unikie · Benefit Report
+            </Link>
+          </p>
           <h1>Invalid run</h1>
         </header>
         <div className="panel">
@@ -92,11 +97,15 @@ export default async function BenefitReportPage({
     candidate,
   } = buildBenefitReportBundle(result);
   const markdown = benefitReportToMarkdown(report);
+  const baselineFakeProduce = baseline?.capture?.env?.fakeProduce === true;
+  const candidateFakeProduce = candidate?.capture?.env?.fakeProduce === true;
   const exportGate = benefitExportGate({
     report,
     comparison,
     metaSmoke: meta?.smoke === true,
     fakeProduce: result.capture?.env?.fakeProduce === true,
+    baselineFakeProduce,
+    candidateFakeProduce,
   });
   const exportAllowed = exportGate.ok;
   const exportBlockReason = exportGate.ok ? null : exportGate.error;
@@ -104,8 +113,6 @@ export default async function BenefitReportPage({
     tipCandidateRunId && tipCandidateRunId !== runId
       ? tipCandidateRunId
       : null;
-  const baselineFakeProduce = baseline?.capture?.env?.fakeProduce === true;
-  const candidateFakeProduce = candidate?.capture?.env?.fakeProduce === true;
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
   const showHarness =
@@ -127,14 +134,21 @@ export default async function BenefitReportPage({
           <h1>{report.title}</h1>
           <p>{report.generatedAt}</p>
         </div>
-        <BenefitActions
-          runId={runId}
-          markdown={markdown}
-          evaluationId={result.evaluationId}
-          exportAllowed={exportAllowed}
-          exportBlockReason={exportBlockReason}
-          pilotFocus={pilotFocus}
-        />
+        <div className="page-header-actions">
+          <PilotFocusToggle
+            pathname="/benefit"
+            pilotFocus={pilotFocus}
+            detailHref={`/benefit/${runId}`}
+          />
+          <BenefitActions
+            runId={runId}
+            markdown={markdown}
+            evaluationId={result.evaluationId}
+            exportAllowed={exportAllowed}
+            exportBlockReason={exportBlockReason}
+            pilotFocus={pilotFocus}
+          />
+        </div>
       </header>
 
       {supersededTip ? (
