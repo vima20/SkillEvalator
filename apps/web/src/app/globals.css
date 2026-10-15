@@ -1582,25 +1582,21 @@ a.btn {
 .settings-dl {
   margin: 0;
   display: grid;
-  gap: 10px;
-}
-
-.settings-row {
-  display: grid;
   grid-template-columns: minmax(120px, 11rem) minmax(0, 1fr);
-  gap: 8px 16px;
+  gap: 10px 16px;
   align-items: baseline;
 }
 
-.settings-row dt {
+.settings-dl dt {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
 }
 
-.settings-row dd {
+.settings-dl dd {
   margin: 0;
   font-size: 14px;
+  min-width: 0;
 }
 
 .settings-blockers {
@@ -1611,9 +1607,13 @@ a.btn {
 }
 
 @media (max-width: 640px) {
-  .settings-row {
+  .settings-dl {
     grid-template-columns: 1fr;
-    gap: 2px;
+    gap: 2px 0;
+  }
+
+  .settings-dl dd {
+    margin-bottom: 8px;
   }
 }
 

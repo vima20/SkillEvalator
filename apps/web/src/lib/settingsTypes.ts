@@ -96,3 +96,38 @@ export type SettingsSnapshot = {
   };
   checkedAt: string;
 };
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function isPreflightCheck(v: unknown): boolean {
+  return (
+    isRecord(v) &&
+    typeof v.ok === "boolean" &&
+    typeof v.detail === "string"
+  );
+}
+
+/** Narrow unknown API JSON before updating client state. */
+export function isSettingsSnapshot(v: unknown): v is SettingsSnapshot {
+  if (!isRecord(v)) return false;
+  if (v.editableVia !== ".env") return false;
+  if (typeof v.pilotReady !== "boolean") return false;
+  if (!Array.isArray(v.pilotBlockers)) return false;
+  if (typeof v.checkedAt !== "string" || !v.checkedAt) return false;
+  if (!isRecord(v.preflight) || !isRecord(v.preflight.checks)) return false;
+  const checks = v.preflight.checks;
+  if (
+    !isPreflightCheck(checks.openaiApiKey) ||
+    !isPreflightCheck(checks.docker) ||
+    !isPreflightCheck(checks.worker)
+  ) {
+    return false;
+  }
+  if (!isRecord(v.skills) || !Array.isArray(v.skills.rows)) return false;
+  if (!isRecord(v.models) || !isRecord(v.adoption) || !isRecord(v.smoke)) {
+    return false;
+  }
+  return true;
+}

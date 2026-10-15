@@ -131,11 +131,24 @@ export function loadSettingsSnapshot(opts?: {
       ? costCapRaw
       : DEFAULT_COST_CAP_USD;
 
+  // Project to the client-safe shape (no accidental extra fields).
+  const preflightView = {
+    ok: preflight.ok,
+    fakeProduce: preflight.fakeProduce,
+    costCapUsd: preflight.costCapUsd,
+    checks: {
+      openaiApiKey: { ...preflight.checks.openaiApiKey },
+      docker: { ...preflight.checks.docker },
+      worker: { ...preflight.checks.worker },
+    },
+    checkedAt: preflight.checkedAt,
+  };
+
   return {
     editableVia: ".env",
     pilotReady: pilotBlockers.length === 0,
     pilotBlockers,
-    preflight,
+    preflight: preflightView,
     models: {
       dryRun: env.MODEL_DRY_RUN?.trim() || MODEL_DRY_RUN,
       official: env.MODEL_OFFICIAL?.trim() || MODEL_OFFICIAL,

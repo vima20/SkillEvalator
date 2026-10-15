@@ -1,15 +1,25 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
-import type { SettingsSnapshot } from "@/lib/settingsTypes";
+import {
+  isSettingsSnapshot,
+  type SettingsPreflightCheck,
+  type SettingsSnapshot,
+} from "@/lib/settingsTypes";
 
 function Row(opts: { label: string; children: ReactNode }) {
   return (
-    <div className="settings-row">
+    <>
       <dt>{opts.label}</dt>
       <dd>{opts.children}</dd>
-    </div>
+    </>
   );
 }
 
@@ -28,6 +38,23 @@ function StatusPill(opts: {
   return <span className={`badge ${cls}`}>{opts.label}</span>;
 }
 
+function CheckRow(opts: {
+  label: string;
+  check: SettingsPreflightCheck;
+  okLabel: string;
+  failLabel: string;
+}) {
+  return (
+    <Row label={opts.label}>
+      <StatusPill
+        ok={opts.check.ok}
+        label={opts.check.ok ? opts.okLabel : opts.failLabel}
+      />{" "}
+      <span className="hint">{opts.check.detail}</span>
+    </Row>
+  );
+}
+
 function pct(n: number): string {
   return `${(n * 100).toFixed(0)}%`;
 }
@@ -36,25 +63,46 @@ function pp(n: number): string {
   return `${(n * 100).toFixed(0)} pp`;
 }
 
+function shortCommit(commit: string): string {
+  return commit.length > 12 ? `${commit.slice(0, 7)}…` : commit;
+}
+
 export function SettingsClient(opts: { initial: SettingsSnapshot }) {
   const [s, setS] = useState(opts.initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/settings", { cache: "no-store" });
+      const res = await fetch("/api/settings", {
+        cache: "no-store",
+        signal: ac.signal,
+      });
       if (!res.ok) {
         throw new Error(`Settings refresh failed (${res.status})`);
       }
-      const next = (await res.json()) as SettingsSnapshot;
+      const next: unknown = await res.json();
+      if (!isSettingsSnapshot(next)) {
+        throw new Error("Settings refresh returned an unexpected payload");
+      }
       setS(next);
     } catch (e) {
+      if (ac.signal.aborted) return;
       setError(e instanceof Error ? e.message : "Settings refresh failed");
     } finally {
-      setBusy(false);
+      if (!ac.signal.aborted) setBusy(false);
     }
   }, []);
 
@@ -115,41 +163,26 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
         </section>
 
         <section className="panel settings-panel">
-          <div className="settings-panel-head">
-            <h2>Preflight</h2>
-            <button
-              type="button"
-              className="btn btn-ghost btn-compact"
-              onClick={() => void refresh()}
-              disabled={busy}
-            >
-              {busy ? "Checking…" : "Refresh"}
-            </button>
-          </div>
+          <h2>Preflight</h2>
           <dl className="settings-dl">
-            <Row label="API key">
-              <StatusPill
-                ok={s.preflight.checks.openaiApiKey.ok}
-                label={s.preflight.checks.openaiApiKey.ok ? "Set" : "Missing"}
-              />{" "}
-              <span className="hint">
-                {s.preflight.checks.openaiApiKey.detail}
-              </span>
-            </Row>
-            <Row label="Docker">
-              <StatusPill
-                ok={s.preflight.checks.docker.ok}
-                label={s.preflight.checks.docker.ok ? "OK" : "Down"}
-              />{" "}
-              <span className="hint">{s.preflight.checks.docker.detail}</span>
-            </Row>
-            <Row label="Worker">
-              <StatusPill
-                ok={s.preflight.checks.worker.ok}
-                label={s.preflight.checks.worker.ok ? "Alive" : "Down"}
-              />{" "}
-              <span className="hint">{s.preflight.checks.worker.detail}</span>
-            </Row>
+            <CheckRow
+              label="API key"
+              check={s.preflight.checks.openaiApiKey}
+              okLabel="Set"
+              failLabel="Missing"
+            />
+            <CheckRow
+              label="Docker"
+              check={s.preflight.checks.docker}
+              okLabel="OK"
+              failLabel="Down"
+            />
+            <CheckRow
+              label="Worker"
+              check={s.preflight.checks.worker}
+              okLabel="Alive"
+              failLabel="Down"
+            />
           </dl>
         </section>
 
@@ -161,12 +194,14 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             </Row>
             <Row label="USE score floor">
               <code>
-                {s.adoption.officialUseScoreFloor} ({pct(s.adoption.officialUseScoreFloor)})
+                {s.adoption.officialUseScoreFloor} (
+                {pct(s.adoption.officialUseScoreFloor)})
               </code>
             </Row>
             <Row label="Soft-pass floor">
               <code>
-                {s.adoption.softPassScoreFloor} ({pct(s.adoption.softPassScoreFloor)})
+                {s.adoption.softPassScoreFloor} (
+                {pct(s.adoption.softPassScoreFloor)})
               </code>
             </Row>
             <Row label="Lift for PASS">
@@ -299,7 +334,11 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
               )}
             </Row>
             <Row label="ALLOW_HOST_GRADE">
-              <code>{s.smoke.allowHostGrade ? "1" : "off"}</code>
+              {s.smoke.allowHostGrade ? (
+                <StatusPill ok={false} tone="wait" label="On (smoke)" />
+              ) : (
+                <StatusPill ok={true} label="Off" />
+              )}
             </Row>
           </dl>
           <p className="hint">
@@ -338,6 +377,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
                     <th>Task set</th>
                     <th>Tasks</th>
                     <th>License</th>
+                    <th>Commit</th>
                     <th>Repo</th>
                   </tr>
                 </thead>
@@ -367,6 +407,15 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
                         </span>
                       </td>
                       <td>{sk.license}</td>
+                      <td>
+                        {sk.commit ? (
+                          <code title={sk.commit}>
+                            {shortCommit(sk.commit)}
+                          </code>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td>
                         {sk.githubUrl ? (
                           <a

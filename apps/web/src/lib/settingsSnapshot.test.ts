@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadSettingsSnapshot } from "./settingsSnapshot.js";
+import { isSettingsSnapshot } from "./settingsTypes.js";
 
 const okPreflight = {
   ok: true,
@@ -128,5 +129,17 @@ describe("loadSettingsSnapshot", () => {
     expect(
       s.pilotBlockers.some((b) => /OFFICIAL_REQUIRES_WEB_AUTH/i.test(b)),
     ).toBe(true);
+  });
+
+  it("produces a payload accepted by isSettingsSnapshot", () => {
+    const s = loadSettingsSnapshot({
+      env: { OPENAI_API_KEY: "sk-test" },
+      preflight: okPreflight,
+      repoRoot: process.cwd(),
+      skills: { bundled: [], imported: [] },
+    });
+    expect(isSettingsSnapshot(s)).toBe(true);
+    expect(isSettingsSnapshot(null)).toBe(false);
+    expect(isSettingsSnapshot({ editableVia: ".env" })).toBe(false);
   });
 });
