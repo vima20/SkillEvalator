@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/EmptyState";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
+import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
 import {
   listEvaluations,
   loadEvaluationComparison,
@@ -22,8 +24,15 @@ function formatCreated(iso: string): string {
   }
 }
 
-export default function ComparisonListPage() {
-  const evaluations = listEvaluations().map((e) => {
+export default async function ComparisonListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
+  const sp = await searchParams;
+  const pilotFocus = sp.focus === "pilot";
+
+  const allEvaluations = listEvaluations().map((e) => {
     const packed = loadEvaluationComparison(e.evaluationId);
     const c = packed.comparison;
     const pending = !c;
@@ -32,6 +41,8 @@ export default function ComparisonListPage() {
       resolveTipCandidateRunId(packed) ?? e.candidateRunId;
     // Chip/label mode from Comparison object (same source as detail), not stale meta.
     const displayMode = c?.mode ?? e.mode;
+    const candidateFakeProduce =
+      packed.candidate?.capture?.env?.fakeProduce === true;
     return {
       ...e,
       pending,
@@ -41,8 +52,19 @@ export default function ComparisonListPage() {
       baselineStatus: packed.baseline?.status,
       candidateStatus: packed.candidate?.status,
       candidateRunId: tipCandidateRunId,
+      candidateFakeProduce,
+      noise: isPilotNoiseEvaluation({
+        smoke: e.smoke,
+        displayMode,
+        candidateFakeProduce,
+      }),
     };
   });
+
+  const evaluations = pilotFocus
+    ? allEvaluations.filter((e) => !e.noise)
+    : allEvaluations;
+  const hidden = allEvaluations.length - evaluations.length;
 
   return (
     <div>
@@ -55,9 +77,17 @@ export default function ComparisonListPage() {
             <strong>PASS</strong> requires candidate ≥0.99 + lift and unlocks
             Benefit <strong>USE</strong>. Dry-run stays{" "}
             <strong>INCONCLUSIVE</strong> (no adoption PASS/FAIL).
+            {pilotFocus ? (
+              <>
+                {" "}
+                <strong>Pilot focus</strong> hides dry-run and smoke
+                {hidden > 0 ? ` (${hidden} hidden)` : ""}.
+              </>
+            ) : null}
           </p>
         </div>
         <div className="page-header-actions">
+          <PilotFocusToggle pathname="/comparison" pilotFocus={pilotFocus} />
           <Link className="btn btn-primary" href="/">
             New evaluation
           </Link>
@@ -76,10 +106,20 @@ export default function ComparisonListPage() {
       <div className="panel">
         {evaluations.length === 0 ? (
           <EmptyState
-            title="No paired evaluations yet"
-            body="Start a run with baseline↔candidate enabled to queue both legs and open Comparison."
-            actionHref="/"
-            actionLabel="New evaluation"
+            title={
+              allEvaluations.length === 0
+                ? "No paired evaluations yet"
+                : "No evaluations in pilot focus"
+            }
+            body={
+              allEvaluations.length === 0
+                ? "Start a run with baseline↔candidate enabled to queue both legs and open Comparison."
+                : "All rows are dry-run or smoke. Show all rows to inspect them."
+            }
+            actionHref={allEvaluations.length === 0 ? "/" : "/comparison"}
+            actionLabel={
+              allEvaluations.length === 0 ? "New evaluation" : "Show all rows"
+            }
           />
         ) : (
           <div className="table-scroll">
@@ -102,6 +142,9 @@ export default function ComparisonListPage() {
                       <Link href={`/comparison/${e.evaluationId}`}>
                         {e.evaluationId}
                       </Link>
+                      {e.smoke || e.candidateFakeProduce ? (
+                        <div className="cell-meta">smoke</div>
+                      ) : null}
                     </td>
                     <td>
                       <code>{e.evalSkillId}</code>

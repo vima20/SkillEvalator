@@ -158,9 +158,17 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           )}
           <p className="settings-cta">
             {s.pilotReady ? (
-              <Link className="btn btn-primary" href="/">
-                Start official baseline↔candidate
-              </Link>
+              <>
+                <Link className="btn btn-primary" href="/">
+                  Start official baseline↔candidate
+                </Link>{" "}
+                <Link
+                  className="btn btn-ghost"
+                  href="/comparison?focus=pilot"
+                >
+                  Comparison (pilot)
+                </Link>
+              </>
             ) : (
               <Link className="btn btn-ghost" href="/">
                 Open New run (dry-run)
@@ -169,7 +177,9 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           </p>
           <p className="hint">
             Checked {new Date(s.checkedAt).toLocaleString()} · New run uses the
-            same preflight gate. See{" "}
+            same preflight gate. Lists:{" "}
+            <Link href="/runs?focus=pilot">Runs</Link> /{" "}
+            <Link href="/benefit?focus=pilot">Benefit</Link> pilot focus. See{" "}
             <code>docs/PILOT-CHECKLIST.md</code>.
           </p>
         </section>

@@ -1,5 +1,8 @@
+import { candidateLegKind } from "@/lib/candidateLeg";
+
 /**
  * Benefit CTA on run detail — tip only for adoption; superseded/smoke demoted.
+ * Waiting tip (paired, tip unknown) still offers Benefit as tip (same as before).
  */
 export function benefitCtaHint(opts: {
   runId: string;
@@ -23,10 +26,16 @@ export function benefitCtaHint(opts: {
     };
   }
   if (opts.role !== "candidate") return { kind: "missing_role" };
-  if (opts.fakeProduce === true) return { kind: "smoke" };
-  if (!opts.evaluationId) return { kind: "unpaired" };
-  if (opts.tipCandidateRunId && opts.tipCandidateRunId !== opts.runId) {
-    return { kind: "superseded", tipRunId: opts.tipCandidateRunId };
+
+  const leg = candidateLegKind(opts);
+  if (leg === "smoke") return { kind: "smoke" };
+  if (leg === "single") return { kind: "unpaired" };
+  if (leg === "superseded") {
+    return {
+      kind: "superseded",
+      tipRunId: opts.tipCandidateRunId as string,
+    };
   }
+  // tip | waiting → offer Benefit on this candidate
   return { kind: "tip" };
 }

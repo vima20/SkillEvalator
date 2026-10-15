@@ -1,10 +1,15 @@
 import Link from "next/link";
 
-/** Server-safe toggle: hide smoke / superseded rows via ?focus=pilot. */
+/** Server-safe toggle: hide smoke / dry-run noise via ?focus=pilot. */
 export function PilotFocusToggle(opts: {
-  pathname: "/runs" | "/benefit";
+  pathname: "/runs" | "/benefit" | "/comparison";
   pilotFocus: boolean;
 }) {
+  const title =
+    opts.pathname === "/comparison"
+      ? "Hide dry-run and smoke evaluations"
+      : "Hide smoke (FAKE_PRODUCE) and superseded candidate retries";
+
   if (opts.pilotFocus) {
     return (
       <Link className="btn btn-ghost btn-compact" href={opts.pathname}>
@@ -16,7 +21,7 @@ export function PilotFocusToggle(opts: {
     <Link
       className="btn btn-ghost btn-compact"
       href={`${opts.pathname}?focus=pilot`}
-      title="Hide smoke (FAKE_PRODUCE) and superseded candidate retries"
+      title={title}
     >
       Pilot focus
     </Link>
