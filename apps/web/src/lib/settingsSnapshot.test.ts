@@ -37,6 +37,13 @@ describe("loadSettingsSnapshot", () => {
     expect(s.smoke.fakeProduce).toBe(false);
     expect(s.editableVia).toBe(".env");
     expect(s.skills.rows.length).toBeGreaterThanOrEqual(0);
+    expect(s.adoption.officialMinRepeats).toBe(3);
+    expect(s.adoption.officialUseScoreFloor).toBe(0.99);
+    expect(s.adoption.softPassScoreFloor).toBe(0.8);
+    expect(s.adoption.liftPassDelta).toBe(0.05);
+    expect(s.grade.livePolicy).toBe("docker_script");
+    expect(s.grade.hostGradeOnlyWithFakeProduce).toBe(true);
+    expect(s.web.bindHint).toMatch(/127\.0\.0\.1|loopback/i);
   });
 
   it("lists injected skills as read-only rows", () => {

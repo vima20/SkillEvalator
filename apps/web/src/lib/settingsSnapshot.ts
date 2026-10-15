@@ -1,8 +1,12 @@
 import path from "node:path";
 import {
   DEFAULT_COST_CAP_USD,
+  LIFT_PASS_DELTA,
   MODEL_DRY_RUN,
   MODEL_OFFICIAL,
+  OFFICIAL_MIN_REPEATS,
+  OFFICIAL_USE_SCORE_FLOOR,
+  PASS_SCORE_FLOOR,
   findRepoRoot,
   listSkills,
   resolveDataPaths,
@@ -58,6 +62,19 @@ export type SettingsSnapshot = {
     /** True when smoke flags would block or weaken official adoption. */
     blocksOfficial: boolean;
   };
+  /** Comparison / Benefit gates (code constants — not .env). */
+  adoption: {
+    officialMinRepeats: number;
+    officialUseScoreFloor: number;
+    softPassScoreFloor: number;
+    liftPassDelta: number;
+  };
+  grade: {
+    /** Live / official produce always grades in Docker. */
+    livePolicy: "docker_script";
+    /** Host grade only with FAKE_PRODUCE=known-good. */
+    hostGradeOnlyWithFakeProduce: boolean;
+  };
   /** Skills on disk for New run — not editable here. */
   skills: {
     rows: SettingsSkillRow[];
@@ -72,6 +89,8 @@ export type SettingsSnapshot = {
   };
   web: {
     port: number;
+    /** UI is intended for loopback-only bind (see start scripts). */
+    bindHint: string;
   };
   checkedAt: string;
 };
@@ -211,6 +230,16 @@ export function loadSettingsSnapshot(opts?: {
       allowHostGrade,
       blocksOfficial: fakeProduce,
     },
+    adoption: {
+      officialMinRepeats: OFFICIAL_MIN_REPEATS,
+      officialUseScoreFloor: OFFICIAL_USE_SCORE_FLOOR,
+      softPassScoreFloor: PASS_SCORE_FLOOR,
+      liftPassDelta: LIFT_PASS_DELTA,
+    },
+    grade: {
+      livePolicy: "docker_script",
+      hostGradeOnlyWithFakeProduce: true,
+    },
     skills: {
       rows: skillRows,
       bundledCount: bundled.length,
@@ -224,6 +253,7 @@ export function loadSettingsSnapshot(opts?: {
     },
     web: {
       port: num(env, "WEB_PORT", 30001),
+      bindHint: "127.0.0.1 (loopback)",
     },
     checkedAt: new Date().toISOString(),
   };
