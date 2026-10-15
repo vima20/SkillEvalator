@@ -2,7 +2,12 @@ import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { ClearOldRuns } from "@/components/ClearOldRuns";
 import { EmptyState } from "@/components/EmptyState";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
+import {
+  candidateLegKind,
+  isPilotNoiseLeg,
+} from "@/lib/candidateLeg";
 import {
   loadEvaluationComparison,
   resolveTipCandidateRunId,
@@ -24,7 +29,14 @@ function shortError(msg: string | undefined, max = 72): string | null {
   return one.length > max ? `${one.slice(0, max - 1)}…` : one;
 }
 
-export default function RunsPage() {
+export default async function RunsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
+  const sp = await searchParams;
+  const pilotFocus = sp.focus === "pilot";
+
   healOrphanStatuses();
   const tipByEval = new Map<string, string | null>();
   const tipFor = (evaluationId: string): string | null => {
@@ -37,8 +49,29 @@ export default function RunsPage() {
     return tipByEval.get(evaluationId) ?? null;
   };
 
-  const runs = listRuns(resultsDir());
-  const hasActive = runs.some((r) => runIsActive(r.status, !!r.result));
+  const allRuns = listRuns(resultsDir());
+  const hasActive = allRuns.some((r) => runIsActive(r.status, !!r.result));
+
+  const runs = pilotFocus
+    ? allRuns.filter((r) => {
+        const fakeProduce = r.result?.capture?.env?.fakeProduce === true;
+        if (fakeProduce) return false;
+        const role = r.result?.role ?? r.role;
+        const evaluationId = r.result?.evaluationId ?? r.evaluationId;
+        const tip = evaluationId ? tipFor(evaluationId) : null;
+        return !isPilotNoiseLeg(
+          candidateLegKind({
+            runId: r.runId,
+            role: typeof role === "string" ? role : undefined,
+            fakeProduce,
+            evaluationId,
+            tipCandidateRunId: tip,
+          }),
+        );
+      })
+    : allRuns;
+
+  const hidden = allRuns.length - runs.length;
 
   return (
     <div>
@@ -49,9 +82,17 @@ export default function RunsPage() {
           <p>
             Queued and completed evaluation jobs. Candidate tip / smoke /
             superseded hints match Benefit demotion.
+            {pilotFocus ? (
+              <>
+                {" "}
+                <strong>Pilot focus</strong> hides smoke and superseded
+                {hidden > 0 ? ` (${hidden} hidden)` : ""}.
+              </>
+            ) : null}
           </p>
         </div>
         <div className="page-header-actions">
+          <PilotFocusToggle pathname="/runs" pilotFocus={pilotFocus} />
           <RunsAutoRefresh hasActive={hasActive} />
           <ClearOldRuns />
           <Link className="btn btn-primary" href="/">
@@ -63,10 +104,18 @@ export default function RunsPage() {
       <div className="panel">
         {runs.length === 0 ? (
           <EmptyState
-            title="No runs yet"
-            body="Start a dry-run to queue the first evaluation job."
-            actionHref="/"
-            actionLabel="Start a run"
+            title={
+              allRuns.length === 0
+                ? "No runs yet"
+                : "No runs in pilot focus"
+            }
+            body={
+              allRuns.length === 0
+                ? "Start a dry-run to queue the first evaluation job."
+                : "All visible rows are smoke or superseded. Show all rows to inspect them."
+            }
+            actionHref={allRuns.length === 0 ? "/" : "/runs"}
+            actionLabel={allRuns.length === 0 ? "Start a run" : "Show all rows"}
           />
         ) : (
           <div className="table-scroll">

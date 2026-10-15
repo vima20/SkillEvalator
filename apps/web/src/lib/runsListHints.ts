@@ -1,5 +1,10 @@
+import {
+  candidateLegKind,
+  type CandidateLegKind,
+} from "@/lib/candidateLeg";
+
 /** Candidate tip/smoke hints on the Runs history list (matches Benefit demotion). */
-export type RunsListLegHint = "tip" | "superseded" | "smoke" | "waiting";
+export type RunsListLegHint = Exclude<CandidateLegKind, "single">;
 
 export function candidateRunsListHint(opts: {
   runId: string;
@@ -8,12 +13,9 @@ export function candidateRunsListHint(opts: {
   evaluationId?: string;
   tipCandidateRunId?: string | null;
 }): RunsListLegHint | null {
-  if (opts.role !== "candidate") return null;
-  if (opts.fakeProduce) return "smoke";
-  if (!opts.evaluationId) return null;
-  if (!opts.tipCandidateRunId) return "waiting";
-  if (opts.tipCandidateRunId !== opts.runId) return "superseded";
-  return "tip";
+  const kind = candidateLegKind(opts);
+  if (kind === null || kind === "single") return null;
+  return kind;
 }
 
 export function runsListHintLabel(hint: RunsListLegHint | null): string | null {

@@ -1,45 +1,30 @@
 import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
+import {
+  candidateLegKind,
+  candidateLegLabel,
+  candidateLegSortRank,
+  isPilotNoiseLeg,
+  type CandidateLegKind,
+} from "@/lib/candidateLeg";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 
-type LegKind = "tip" | "superseded" | "smoke" | "single" | "waiting";
+export default async function BenefitIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
+  const sp = await searchParams;
+  const pilotFocus = sp.focus === "pilot";
 
-function legKindFor(opts: {
-  runId: string;
-  fakeProduce: boolean;
-  evaluationId?: string;
-  tipCandidateRunId?: string | null;
-}): LegKind {
-  if (opts.fakeProduce) return "smoke";
-  if (!opts.evaluationId) return "single";
-  if (!opts.tipCandidateRunId) return "waiting";
-  if (opts.tipCandidateRunId !== opts.runId) return "superseded";
-  return "tip";
-}
-
-function legKindLabel(kind: LegKind): string {
-  switch (kind) {
-    case "tip":
-      return "tip candidate";
-    case "superseded":
-      return "superseded";
-    case "smoke":
-      return "smoke (FAKE_PRODUCE)";
-    case "single":
-      return "unpaired";
-    case "waiting":
-      return "waiting for tip";
-  }
-}
-
-export default function BenefitIndexPage() {
   healOrphanStatuses();
-  const runs = listRuns(resultsDir())
+  const allRuns = listRuns(resultsDir())
     .filter((r) => r.result)
     // Recommend surface: candidate skill only (baseline is Comparison input).
     .filter((r) => r.result!.role === "candidate")
@@ -48,12 +33,13 @@ export default function BenefitIndexPage() {
         r.result!,
       );
       const fakeProduce = r.result!.capture?.env?.fakeProduce === true;
-      const kind = legKindFor({
+      const kind = candidateLegKind({
         runId: r.runId,
+        role: "candidate",
         fakeProduce,
         evaluationId: r.result!.evaluationId,
         tipCandidateRunId,
-      });
+      }) as CandidateLegKind;
       return {
         runId: r.runId,
         score: r.result!.score,
@@ -66,30 +52,37 @@ export default function BenefitIndexPage() {
     })
     // Tip / unpaired first; waiting / superseded / smoke last.
     .sort((a, b) => {
-      const rank = (k: LegKind) =>
-        k === "tip"
-          ? 0
-          : k === "single"
-            ? 1
-            : k === "waiting"
-              ? 2
-              : k === "superseded"
-                ? 3
-                : 4;
-      const d = rank(a.kind) - rank(b.kind);
+      const d = candidateLegSortRank(a.kind) - candidateLegSortRank(b.kind);
       if (d !== 0) return d;
       return b.runId.localeCompare(a.runId);
     });
 
+  const runs = pilotFocus
+    ? allRuns.filter((r) => !isPilotNoiseLeg(r.kind))
+    : allRuns;
+  const hidden = allRuns.length - runs.length;
+
   return (
     <div>
-      <header className="page-header">
-        <p className="eyebrow">Unikie · Recommend</p>
-        <h1>Benefit Report</h1>
-        <p>
-          Candidate-skill decision artifact (USE / DO NOT USE). Official{" "}
-          <strong>USE</strong> requires Comparison <strong>PASS</strong> lift.
-        </p>
+      <header className="page-header page-header-row">
+        <div>
+          <p className="eyebrow">Unikie · Recommend</p>
+          <h1>Benefit Report</h1>
+          <p>
+            Candidate-skill decision artifact (USE / DO NOT USE). Official{" "}
+            <strong>USE</strong> requires Comparison <strong>PASS</strong> lift.
+            {pilotFocus ? (
+              <>
+                {" "}
+                <strong>Pilot focus</strong> hides smoke and superseded
+                {hidden > 0 ? ` (${hidden} hidden)` : ""}.
+              </>
+            ) : null}
+          </p>
+        </div>
+        <div className="page-header-actions">
+          <PilotFocusToggle pathname="/benefit" pilotFocus={pilotFocus} />
+        </div>
       </header>
 
       <div className="panel callout-info">
@@ -99,7 +92,8 @@ export default function BenefitIndexPage() {
           (PASS/FAIL). Benefit USE / 5★ unlocks only on official PASS; DO NOT
           USE follows official FAIL.
           Baseline legs are omitted from this list. Tip candidates sort first;
-          superseded retries and smoke harness rows stay visible but demoted.
+          superseded retries and smoke harness rows stay visible but demoted
+          (or hidden in Pilot focus).
         </p>
       </div>
 
@@ -114,10 +108,20 @@ export default function BenefitIndexPage() {
       <div className="panel">
         {runs.length === 0 ? (
           <EmptyState
-            title="No candidate reports yet"
-            body="Finish a candidate run (paired evaluation or single-leg) before opening a Benefit Report."
-            actionHref="/"
-            actionLabel="Start a run"
+            title={
+              allRuns.length === 0
+                ? "No candidate reports yet"
+                : "No reports in pilot focus"
+            }
+            body={
+              allRuns.length === 0
+                ? "Finish a candidate run (paired evaluation or single-leg) before opening a Benefit Report."
+                : "All candidate rows are smoke or superseded. Show all rows to inspect them."
+            }
+            actionHref={allRuns.length === 0 ? "/" : "/benefit"}
+            actionLabel={
+              allRuns.length === 0 ? "Start a run" : "Show all rows"
+            }
           />
         ) : (
           <div className="table-scroll">
@@ -136,7 +140,7 @@ export default function BenefitIndexPage() {
                     <td>
                       <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
                       <div className="cell-meta">
-                        {r.mode} · {legKindLabel(r.kind)} ·{" "}
+                        {r.mode} · {candidateLegLabel(r.kind)} ·{" "}
                         {r.rating.starsDisplay} {r.rating.grade}
                         {r.evaluationId ? (
                           <>

@@ -1,3 +1,5 @@
+import { candidateLegKind } from "@/lib/candidateLeg";
+
 /**
  * Whether a completed run belongs on the Overview skill leaderboard.
  * Aligns with Benefit tip demotion: no smoke, no superseded paired legs.
@@ -11,11 +13,6 @@ export function includeInDashboardLeaderboard(opts: {
   /** Healed Comparison tip; null = unpaired tip unknown (paired → exclude). */
   tipCandidateRunId?: string | null;
 }): boolean {
-  if (opts.role !== "candidate") return false;
-  if (opts.fakeProduce === true) return false;
-  if (opts.evaluationId) {
-    if (!opts.tipCandidateRunId) return false;
-    if (opts.tipCandidateRunId !== opts.runId) return false;
-  }
-  return true;
+  const kind = candidateLegKind(opts);
+  return kind === "tip" || kind === "single";
 }
