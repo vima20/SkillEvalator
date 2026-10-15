@@ -26,6 +26,9 @@ type PreflightCheck = { ok: boolean; detail: string };
 type Preflight = {
   ok: boolean;
   fakeProduce: boolean;
+  /** Same Ready bar as Settings — blocks official enqueue when false. */
+  pilotReady?: boolean;
+  pilotBlockers?: string[];
   /** Worker COST_CAP_USD (from env / .env via preflight). */
   costCapUsd?: number;
   checks: {
@@ -116,17 +119,27 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
     return () => window.clearInterval(id);
   }, [refreshPreflight]);
 
+  const pilotReady = preflight?.pilotReady !== false;
+  const pilotBlockers = preflight?.pilotBlockers ?? [];
+  const officialBlocked =
+    Boolean(preflight?.fakeProduce) ||
+    (preflight != null && preflight.pilotReady === false);
+
   useEffect(() => {
-    if (preflight?.fakeProduce && mode === "official") {
+    if (officialBlocked && mode === "official") {
       setMode("dry-run");
     }
-  }, [preflight?.fakeProduce, mode]);
+  }, [officialBlocked, mode]);
 
   function selectMode(next: "dry-run" | "official", focus = false) {
-    if (next === "official" && preflight?.fakeProduce) {
+    if (next === "official" && officialBlocked) {
       setError(true);
       setMsg(
-        "Official mode blocked while FAKE_PRODUCE smoke is on — use dry-run or unset FAKE_PRODUCE.",
+        preflight?.fakeProduce
+          ? "Official mode blocked while FAKE_PRODUCE smoke is on — use dry-run or unset FAKE_PRODUCE."
+          : `Official mode blocked — Settings not Ready: ${
+              pilotBlockers.join("; ") || "see Settings"
+            }.`,
       );
       return;
     }
@@ -151,10 +164,14 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
       );
       return;
     }
-    if (mode === "official" && preflight?.fakeProduce) {
+    if (mode === "official" && officialBlocked) {
       setError(true);
       setMsg(
-        "Official mode requires live OpenAI produce — unset FAKE_PRODUCE (API also rejects).",
+        preflight?.fakeProduce
+          ? "Official mode requires live OpenAI produce — unset FAKE_PRODUCE (API also rejects)."
+          : `Official mode blocked — Settings not Ready: ${
+              pilotBlockers.join("; ") || "see Settings"
+            } (API also rejects).`,
       );
       return;
     }
@@ -460,11 +477,13 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
               aria-checked={mode === "official"}
               tabIndex={mode === "official" ? 0 : -1}
               className={mode === "official" ? "is-active" : undefined}
-              disabled={Boolean(preflight?.fakeProduce)}
+              disabled={officialBlocked}
               title={
                 preflight?.fakeProduce
                   ? "Disabled while FAKE_PRODUCE smoke harness is on"
-                  : undefined
+                  : !pilotReady
+                    ? "Disabled until Settings Ready (same blockers as Settings)"
+                    : undefined
               }
               onClick={() => selectMode("official")}
             >
@@ -475,6 +494,12 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
             <p className="hint">
               Smoke harness detected — official enqueue is blocked (dry-run
               only). Unset FAKE_PRODUCE for a live pilot.
+            </p>
+          ) : preflight && !pilotReady ? (
+            <p className="hint">
+              Settings not Ready — official enqueue is blocked. Fix:{" "}
+              {pilotBlockers.join("; ") || "see Settings"}.{" "}
+              <a href="/settings">Open Settings</a>
             </p>
           ) : null}
         </div>

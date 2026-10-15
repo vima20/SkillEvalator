@@ -4,6 +4,7 @@ import { listRuns, officialEnqueueAllowed } from "@skillevalator/core";
 import { enqueueEvaluationPair, enqueueRun } from "@/lib/enqueueRun";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { officialPilotReadyGate } from "@/lib/pilotReady";
 import { runPreflight } from "@/lib/runPreflight";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 
@@ -49,6 +50,20 @@ export async function POST(req: Request) {
           checks: preflight.checks,
         },
         { status: 503 },
+      );
+    }
+    const readyGate = officialPilotReadyGate({
+      mode: body.mode,
+      preflight,
+    });
+    if (!readyGate.ok) {
+      return NextResponse.json(
+        {
+          error: readyGate.error,
+          errorCode: readyGate.errorCode,
+          blockers: readyGate.blockers,
+        },
+        { status: readyGate.status },
       );
     }
     const webAuth = resolveWebAuthConfig(process.env.WEB_AUTH_TOKEN);

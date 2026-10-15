@@ -14,6 +14,7 @@ import {
   resolveDataPaths,
   type SkillSummary,
 } from "@skillevalator/core";
+import { collectPilotBlockers } from "@/lib/pilotReady";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 import { runPreflight } from "@/lib/runPreflight";
 import type {
@@ -181,30 +182,7 @@ export function loadSettingsSnapshot(opts?: {
   const fakeProduce = env.FAKE_PRODUCE === "known-good";
   const allowHostGrade = env.ALLOW_HOST_GRADE === "1";
   const officialRequiresWebAuth = env.OFFICIAL_REQUIRES_WEB_AUTH === "true";
-
-  const pilotBlockers: string[] = [];
-  if (!preflight.checks.openaiApiKey.ok) {
-    pilotBlockers.push("OPENAI_API_KEY missing (live produce)");
-  }
-  if (!preflight.checks.docker.ok) {
-    pilotBlockers.push("Docker not reachable");
-  }
-  if (!preflight.checks.worker.ok) {
-    pilotBlockers.push("Worker not alive");
-  }
-  if (fakeProduce) {
-    pilotBlockers.push(
-      "FAKE_PRODUCE=known-good — unset for official live pilot",
-    );
-  }
-  if (webAuth.kind === "misconfigured") {
-    pilotBlockers.push("WEB_AUTH_TOKEN misconfigured (empty/whitespace)");
-  }
-  if (officialRequiresWebAuth && webAuth.kind !== "required") {
-    pilotBlockers.push(
-      "OFFICIAL_REQUIRES_WEB_AUTH=true but WEB_AUTH_TOKEN is not set",
-    );
-  }
+  const pilotBlockers = collectPilotBlockers({ preflight, env });
 
   const costCapRaw = num(env, "COST_CAP_USD", DEFAULT_COST_CAP_USD);
   const costCapUsd =

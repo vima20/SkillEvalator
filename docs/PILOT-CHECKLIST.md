@@ -36,4 +36,4 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 
 ## 5. Jos Ready = Blocked
 
-Korjaa Settingsin blocker-lista (API-avain, Docker, worker, FAKE_PRODUCE, auth), paina **Refresh**, älä jonota officialia ennen Readyä.
+Korjaa Settingsin blocker-lista (API-avain, Docker, worker, FAKE_PRODUCE, auth), paina **Refresh**. New run / API / retry hylkää officialin kun Ready = Blocked (dry-run edelleen ok).

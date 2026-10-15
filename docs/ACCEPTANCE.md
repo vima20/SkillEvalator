@@ -29,7 +29,7 @@ Official Comparison/Benefit hylkää (tai ei nouse PASS:iin), jos luottamusketju
 
 ## Settings `pilotReady`
 
-UI-polku **Settings → Official pilot readiness = Ready** tarkoittaa: preflight OK (API-avain, Docker, worker), smoke-liput pois, auth-konfiguraatio kelvollinen. Se **ei** ole vielä PASS/USE — se on ehto live official -jonotukselle.
+UI-polku **Settings → Official pilot readiness = Ready** tarkoittaa: preflight OK (API-avain, Docker, worker), smoke-liput pois, auth-konfiguraatio kelvollinen. Se **ei** ole vielä PASS/USE — sama blocker-lista estää official-jonotuksen New runissa, `POST /api/runs` ja retryssä (dry-run ok).
 
 ## Arkisto (luovutus)
 

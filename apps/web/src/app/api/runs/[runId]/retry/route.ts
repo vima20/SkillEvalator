@@ -31,6 +31,7 @@ import {
   roleFromJobRaw,
 } from "@/lib/retryRole";
 import { retryGate, retrySnapshotGate } from "@/lib/runLifecycle";
+import { officialPilotReadyGate } from "@/lib/pilotReady";
 import { runPreflight } from "@/lib/runPreflight";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 
@@ -157,6 +158,17 @@ export async function POST(
       );
     }
     if (mode === "dry-run" || mode === "official") {
+      const readyGate = officialPilotReadyGate({ mode, preflight });
+      if (!readyGate.ok) {
+        return NextResponse.json(
+          {
+            error: readyGate.error,
+            errorCode: readyGate.errorCode,
+            blockers: readyGate.blockers,
+          },
+          { status: readyGate.status },
+        );
+      }
       const webAuth = resolveWebAuthConfig(process.env.WEB_AUTH_TOKEN);
       const officialGate = officialEnqueueAllowed({
         mode,
