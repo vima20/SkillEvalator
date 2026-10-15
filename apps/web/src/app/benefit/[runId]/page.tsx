@@ -71,10 +71,15 @@ export default async function BenefitReportPage({
     );
   }
 
-  const { report, comparison, tipCandidateRunId } =
+  const { report, comparison, meta, tipCandidateRunId } =
     buildBenefitReportBundle(result);
   const markdown = benefitReportToMarkdown(report);
-  const exportAllowed = benefitExportGate({ report, comparison }).ok;
+  const exportAllowed = benefitExportGate({
+    report,
+    comparison,
+    metaSmoke: meta?.smoke === true,
+    fakeProduce: result.capture?.env?.fakeProduce === true,
+  }).ok;
   const supersededTip =
     tipCandidateRunId && tipCandidateRunId !== runId
       ? tipCandidateRunId

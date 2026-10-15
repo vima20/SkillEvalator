@@ -7,7 +7,7 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
   candidateLegKind,
-  isPilotNoiseLeg,
+  includeInPilotFocusRun,
 } from "@/lib/candidateLeg";
 import {
   loadEvaluationComparison,
@@ -56,19 +56,22 @@ export default async function RunsPage({
   const runs = pilotFocus
     ? allRuns.filter((r) => {
         const fakeProduce = r.result?.capture?.env?.fakeProduce === true;
-        if (fakeProduce) return false;
         const role = r.result?.role ?? r.role;
         const evaluationId = r.result?.evaluationId ?? r.evaluationId;
         const tip = evaluationId ? tipFor(evaluationId) : null;
-        return !isPilotNoiseLeg(
-          candidateLegKind({
-            runId: r.runId,
-            role: typeof role === "string" ? role : undefined,
-            fakeProduce,
-            evaluationId,
-            tipCandidateRunId: tip,
-          }),
-        );
+        const kind = candidateLegKind({
+          runId: r.runId,
+          role: typeof role === "string" ? role : undefined,
+          fakeProduce,
+          evaluationId,
+          tipCandidateRunId: tip,
+        });
+        return includeInPilotFocusRun({
+          kind,
+          mode: r.result?.mode,
+          fakeProduce,
+          hasResult: !!r.result,
+        });
       })
     : allRuns;
 
@@ -86,7 +89,8 @@ export default async function RunsPage({
             {pilotFocus ? (
               <>
                 {" "}
-                <strong>Pilot focus</strong> hides smoke and superseded
+                <strong>Pilot focus</strong> hides smoke, superseded, and
+                dry-run
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}

@@ -108,4 +108,23 @@ describe("benefitExportGate", () => {
     if (out.ok) return;
     expect(out.errorCode).toBe("benefit_export_not_decisive");
   });
+
+  it("blocks evaluation.smoke and FAKE_PRODUCE", () => {
+    const smoke = benefitExportGate({
+      report: officialReport("use"),
+      comparison: tipComparison("PASS"),
+      metaSmoke: true,
+    });
+    expect(smoke.ok).toBe(false);
+    if (!smoke.ok) expect(smoke.errorCode).toBe("benefit_export_smoke_forbidden");
+
+    const fake = benefitExportGate({
+      report: officialReport("use"),
+      comparison: tipComparison("PASS"),
+      fakeProduce: true,
+    });
+    expect(fake.ok).toBe(false);
+    if (!fake.ok)
+      expect(fake.errorCode).toBe("benefit_export_fake_produce_forbidden");
+  });
 });

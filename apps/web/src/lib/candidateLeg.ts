@@ -30,6 +30,22 @@ export function isPilotNoiseLeg(kind: CandidateLegKind | null): boolean {
   return kind === "smoke" || kind === "superseded";
 }
 
+/**
+ * Runs / Benefit pilot focus: hide smoke, superseded, FAKE_PRODUCE, and dry-run.
+ * Active rows without a result stay visible (ops).
+ */
+export function includeInPilotFocusRun(opts: {
+  kind: CandidateLegKind | null;
+  mode?: string;
+  fakeProduce?: boolean;
+  hasResult: boolean;
+}): boolean {
+  if (opts.fakeProduce) return false;
+  if (isPilotNoiseLeg(opts.kind)) return false;
+  if (opts.hasResult && opts.mode === "dry-run") return false;
+  return true;
+}
+
 export function candidateLegLabel(kind: CandidateLegKind): string {
   switch (kind) {
     case "tip":

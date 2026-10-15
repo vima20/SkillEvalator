@@ -34,6 +34,7 @@ export async function GET(
       comparisonMode: packed?.comparison?.mode ?? null,
       baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
       candidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
+      metaSmoke: packed?.meta?.smoke === true,
     });
     if (!gate.ok) {
       return NextResponse.json(

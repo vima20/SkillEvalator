@@ -34,8 +34,8 @@ describe("runCsvExportGate", () => {
     ).toBe(true);
   });
 
-  it("blocks smoke", () => {
-    const out = runCsvExportGate({
+  it("blocks FAKE_PRODUCE and evaluation.smoke", () => {
+    const fake = runCsvExportGate({
       result: {
         ...base,
         capture: { env: { fakeProduce: true } },
@@ -44,9 +44,18 @@ describe("runCsvExportGate", () => {
       comparisonMode: "official",
       ...tipLegs,
     });
-    expect(out.ok).toBe(false);
-    if (out.ok) return;
-    expect(out.errorCode).toBe("run_csv_smoke_forbidden");
+    expect(fake.ok).toBe(false);
+    if (!fake.ok) expect(fake.errorCode).toBe("run_csv_smoke_forbidden");
+
+    const meta = runCsvExportGate({
+      result: base,
+      comparisonVerdict: "PASS",
+      comparisonMode: "official",
+      ...tipLegs,
+      metaSmoke: true,
+    });
+    expect(meta.ok).toBe(false);
+    if (!meta.ok) expect(meta.errorCode).toBe("run_csv_eval_smoke_forbidden");
   });
 
   it("blocks dry-run", () => {

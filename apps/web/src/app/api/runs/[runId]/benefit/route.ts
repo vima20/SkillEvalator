@@ -20,9 +20,14 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ error: "result not found" }, { status: 404 });
     }
-    const { report, comparison } = buildBenefitReportBundle(result);
+    const { report, comparison, meta } = buildBenefitReportBundle(result);
     const format = new URL(req.url).searchParams.get("format");
-    const gate = benefitExportGate({ report, comparison });
+    const gate = benefitExportGate({
+      report,
+      comparison,
+      metaSmoke: meta?.smoke === true,
+      fakeProduce: result.capture?.env?.fakeProduce === true,
+    });
     if (format === "md" || format === "markdown" || format === "csv") {
       if (!gate.ok) {
         return NextResponse.json(

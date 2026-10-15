@@ -7,7 +7,7 @@ import {
   candidateLegKind,
   candidateLegLabel,
   candidateLegSortRank,
-  isPilotNoiseLeg,
+  includeInPilotFocusRun,
   type CandidateLegKind,
 } from "@/lib/candidateLeg";
 import { healOrphanStatuses } from "@/lib/healOrphans";
@@ -48,6 +48,7 @@ export default async function BenefitIndexPage({
         verdict: report.verdict,
         rating: report.rating,
         kind,
+        fakeProduce,
       };
     })
     // Tip / unpaired first; waiting / superseded / smoke last.
@@ -58,7 +59,14 @@ export default async function BenefitIndexPage({
     });
 
   const runs = pilotFocus
-    ? allRuns.filter((r) => !isPilotNoiseLeg(r.kind))
+    ? allRuns.filter((r) =>
+        includeInPilotFocusRun({
+          kind: r.kind,
+          mode: r.mode,
+          fakeProduce: r.fakeProduce,
+          hasResult: true,
+        }),
+      )
     : allRuns;
   const hidden = allRuns.length - runs.length;
 
@@ -74,7 +82,8 @@ export default async function BenefitIndexPage({
             {pilotFocus ? (
               <>
                 {" "}
-                <strong>Pilot focus</strong> hides smoke and superseded
+                <strong>Pilot focus</strong> hides smoke, superseded, and
+                dry-run
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}

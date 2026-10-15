@@ -30,11 +30,37 @@ export function benefitExportGate(opts: {
     RunComparison,
     "verdict" | "mode" | "candidateRunId" | "baselineRunId"
   > | null;
+  /** Same evidence bar as Comparison CSV / pilot archive. */
+  metaSmoke?: boolean;
+  fakeProduce?: boolean;
 }): BenefitExportGateOk | BenefitExportGateDenied {
   const recommendation = opts.report.verdict.recommendation;
   const mode = opts.report.config.mode;
   const runId = opts.report.config.runId;
   const comparison = opts.comparison;
+
+  if (opts.metaSmoke === true) {
+    return {
+      ok: false,
+      status: 409,
+      errorCode: "benefit_export_smoke_forbidden",
+      recommendation,
+      mode,
+      error:
+        "benefit export rejects evaluation.smoke=true (fixture plant)",
+    };
+  }
+  if (opts.fakeProduce === true) {
+    return {
+      ok: false,
+      status: 409,
+      errorCode: "benefit_export_fake_produce_forbidden",
+      recommendation,
+      mode,
+      error:
+        "benefit export rejects FAKE_PRODUCE tip legs (not live evidence)",
+    };
+  }
 
   if (mode !== "official") {
     return {

@@ -17,9 +17,20 @@ export function runCsvExportGate(opts: {
   comparisonMode?: RunResult["mode"] | null;
   baselineRunId?: string | null;
   candidateRunId?: string | null;
+  /** Same evidence bar as Comparison CSV / pilot archive. */
+  metaSmoke?: boolean;
 }):
   | { ok: true }
   | { ok: false; status: 409; error: string; errorCode: string } {
+  if (opts.metaSmoke === true) {
+    return {
+      ok: false,
+      status: 409,
+      errorCode: "run_csv_eval_smoke_forbidden",
+      error:
+        "run CSV export rejects evaluation.smoke=true (fixture plant)",
+    };
+  }
   if (opts.result.capture?.env?.fakeProduce === true) {
     return {
       ok: false,

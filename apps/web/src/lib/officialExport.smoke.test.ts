@@ -125,7 +125,14 @@ describe("official export gates smoke", () => {
 
     const report = buildBenefitReport(candidate, { comparison });
     expect(report.verdict.recommendation).toBe("use");
-    expect(benefitExportGate({ report, comparison }).ok).toBe(true);
+    expect(
+      benefitExportGate({
+        report,
+        comparison,
+        metaSmoke: false,
+        fakeProduce: false,
+      }).ok,
+    ).toBe(true);
     expect(
       runCsvExportGate({
         result: candidate,
@@ -133,6 +140,7 @@ describe("official export gates smoke", () => {
         comparisonMode: comparison.mode,
         baselineRunId: comparison.baselineRunId,
         candidateRunId: comparison.candidateRunId,
+        metaSmoke: false,
       }).ok,
     ).toBe(true);
     expect(comparisonCsvGate(comparison).ok).toBe(true);
@@ -170,7 +178,14 @@ describe("official export gates smoke", () => {
 
     const report = buildBenefitReport(candidate, { comparison });
     expect(report.verdict.recommendation).toBe("do_not_use");
-    expect(benefitExportGate({ report, comparison }).ok).toBe(true);
+    expect(
+      benefitExportGate({
+        report,
+        comparison,
+        metaSmoke: false,
+        fakeProduce: false,
+      }).ok,
+    ).toBe(true);
     expect(
       benefitExportGate({
         report: {
@@ -187,6 +202,7 @@ describe("official export gates smoke", () => {
         comparisonMode: comparison.mode,
         baselineRunId: comparison.baselineRunId,
         candidateRunId: comparison.candidateRunId,
+        metaSmoke: false,
       }).ok,
     ).toBe(true);
     expect(comparisonCsvGate(comparison).ok).toBe(true);
@@ -209,6 +225,23 @@ describe("official export gates smoke", () => {
     ).toBe(false);
     expect(
       comparisonCsvGate(comparison, { candidateFakeProduce: true }).ok,
+    ).toBe(false);
+    expect(
+      benefitExportGate({
+        report,
+        comparison,
+        metaSmoke: true,
+      }).ok,
+    ).toBe(false);
+    expect(
+      runCsvExportGate({
+        result: candidate,
+        comparisonVerdict: comparison.verdict,
+        comparisonMode: comparison.mode,
+        baselineRunId: comparison.baselineRunId,
+        candidateRunId: comparison.candidateRunId,
+        metaSmoke: true,
+      }).ok,
     ).toBe(false);
   });
 

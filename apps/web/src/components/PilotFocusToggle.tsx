@@ -10,7 +10,7 @@ export function PilotFocusToggle(opts: {
       ? "Hide dry-run and smoke evaluations"
       : opts.pathname === "/dashboard"
         ? "Show only official tip candidates on the leaderboard"
-        : "Hide smoke (FAKE_PRODUCE) and superseded candidate retries";
+        : "Hide smoke, superseded retries, and dry-run rows";
 
   if (opts.pilotFocus) {
     return (

@@ -18,5 +18,6 @@ export function runCsvExportAllowed(result: RunResult | null | undefined): boole
     comparisonMode: packed?.comparison?.mode ?? null,
     baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
     candidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
+    metaSmoke: packed?.meta?.smoke === true,
   }).ok;
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   candidateLegKind,
   candidateLegSortRank,
+  includeInPilotFocusRun,
   isPilotNoiseLeg,
 } from "./candidateLeg.js";
 
@@ -55,6 +56,45 @@ describe("candidateLegKind", () => {
     expect(isPilotNoiseLeg("tip")).toBe(false);
     expect(isPilotNoiseLeg("waiting")).toBe(false);
     expect(isPilotNoiseLeg(null)).toBe(false);
+  });
+
+  it("pilot focus hides smoke, superseded, fakeProduce, and dry-run", () => {
+    expect(
+      includeInPilotFocusRun({
+        kind: "tip",
+        mode: "official",
+        hasResult: true,
+      }),
+    ).toBe(true);
+    expect(
+      includeInPilotFocusRun({
+        kind: "tip",
+        mode: "dry-run",
+        hasResult: true,
+      }),
+    ).toBe(false);
+    expect(
+      includeInPilotFocusRun({
+        kind: "smoke",
+        mode: "official",
+        hasResult: true,
+      }),
+    ).toBe(false);
+    expect(
+      includeInPilotFocusRun({
+        kind: "tip",
+        mode: "official",
+        fakeProduce: true,
+        hasResult: true,
+      }),
+    ).toBe(false);
+    expect(
+      includeInPilotFocusRun({
+        kind: null,
+        mode: "dry-run",
+        hasResult: false,
+      }),
+    ).toBe(true);
   });
 
   it("ranks tip before smoke", () => {
