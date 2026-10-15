@@ -2,7 +2,7 @@ import Link from "next/link";
 import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
-import { comparisonHarnessHint } from "@/lib/comparisonDetailHints";
+import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
 import { canShowOfficialComparisonDownloads } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
@@ -119,14 +119,6 @@ export default async function ComparisonDetailPage({
     baselineFakeProduce,
     candidateFakeProduce,
   });
-  const harnessHint = comparisonHarnessHint({
-    metaSmoke: meta.smoke === true,
-    baselineFakeProduce,
-    candidateFakeProduce,
-    baselineProduceAttested: baseline.capture?.env?.produceAttested === true,
-    candidateProduceAttested: candidate.capture?.env?.produceAttested === true,
-  });
-
   return (
     <div>
       <header className="page-header page-header-row">
@@ -198,45 +190,19 @@ export default async function ComparisonDetailPage({
         </div>
       ) : null}
 
-      {harnessHint.kind === "both_smoke" ? (
-        <div className="panel callout-warn">
-          <strong>Smoke harness only</strong>
-          <p>
-            Both tip legs used FAKE_PRODUCE — not live adoption evidence. CSV /
-            pilot archive / Benefit export stay locked (same evidence bar).
-            Clear smoke noise can remove the plant when safe.
-          </p>
-        </div>
-      ) : null}
-
-      {harnessHint.kind === "mixed" ? (
-        <div className="panel callout-warn">
-          <strong>Mixed smoke + live pair</strong>
-          <p>
-            {harnessHint.smokeRole === "both_flags"
-              ? "This evaluation is marked smoke while tip legs look live — Clear smoke noise leaves mixed pairs on disk."
-              : `The ${harnessHint.smokeRole} tip used FAKE_PRODUCE while the ${harnessHint.liveRole} tip is live.`}{" "}
-            Do not hand off as adoption evidence. Comparison CSV / pilot archive
-            / Benefit export stay locked. Inspect{" "}
-            <Link href={`/runs/${baselineRunId}`}>baseline</Link> and{" "}
-            <Link href={`/runs/${candidateRunId}`}>candidate</Link>.
-          </p>
-        </div>
-      ) : null}
-
-      {harnessHint.kind === "eval_smoke_with_live" ? (
-        <div className="panel callout-warn">
-          <strong>Smoke evaluation kept with live tip</strong>
-          <p>
-            <code>evaluation.smoke</code> is set but at least one tip leg is
-            produce-attested live. Clear smoke noise does not half-delete mixed
-            pairs — do not treat this as pilot handoff. CSV / archive / Benefit
-            export stay locked. Inspect{" "}
-            <Link href={`/runs/${baselineRunId}`}>baseline</Link> and{" "}
-            <Link href={`/runs/${candidateRunId}`}>candidate</Link>.
-          </p>
-        </div>
-      ) : null}
+      <ComparisonHarnessCallouts
+        metaSmoke={meta.smoke === true}
+        baselineFakeProduce={baselineFakeProduce}
+        candidateFakeProduce={candidateFakeProduce}
+        baselineProduceAttested={
+          baseline.capture?.env?.produceAttested === true
+        }
+        candidateProduceAttested={
+          candidate.capture?.env?.produceAttested === true
+        }
+        baselineRunId={baselineRunId}
+        candidateRunId={candidateRunId}
+      />
 
       <section className={verdictClass(comparison.verdict, comparison.mode)}>
         <p className="eyebrow">

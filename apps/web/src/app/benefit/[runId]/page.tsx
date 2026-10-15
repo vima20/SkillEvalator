@@ -6,6 +6,7 @@ import {
   syncStatusFromResult,
 } from "@skillevalator/core";
 import { BenefitPending } from "@/components/BenefitPending";
+import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
 import { EmptyState } from "@/components/EmptyState";
 import { StarRating } from "@/components/StarRating";
 import { benefitExportGate } from "@/lib/benefitExport";
@@ -71,20 +72,36 @@ export default async function BenefitReportPage({
     );
   }
 
-  const { report, comparison, meta, tipCandidateRunId } =
-    buildBenefitReportBundle(result);
+  const {
+    report,
+    comparison,
+    meta,
+    tipCandidateRunId,
+    tipBaselineRunId,
+    baseline,
+    candidate,
+  } = buildBenefitReportBundle(result);
   const markdown = benefitReportToMarkdown(report);
-  const exportAllowed = benefitExportGate({
+  const exportGate = benefitExportGate({
     report,
     comparison,
     metaSmoke: meta?.smoke === true,
     fakeProduce: result.capture?.env?.fakeProduce === true,
-  }).ok;
+  });
+  const exportAllowed = exportGate.ok;
+  const exportBlockReason = exportGate.ok ? null : exportGate.error;
   const supersededTip =
     tipCandidateRunId && tipCandidateRunId !== runId
       ? tipCandidateRunId
       : null;
-  const smokeHarness = result.capture?.env?.fakeProduce === true;
+  const baselineFakeProduce = baseline?.capture?.env?.fakeProduce === true;
+  const candidateFakeProduce = candidate?.capture?.env?.fakeProduce === true;
+  const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
+  const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
+  const showHarness =
+    Boolean(result.evaluationId) &&
+    Boolean(harnessBaselineId) &&
+    Boolean(harnessCandidateId);
 
   return (
     <div>
@@ -103,6 +120,7 @@ export default async function BenefitReportPage({
           markdown={markdown}
           evaluationId={result.evaluationId}
           exportAllowed={exportAllowed}
+          exportBlockReason={exportBlockReason}
         />
       </header>
 
@@ -118,7 +136,21 @@ export default async function BenefitReportPage({
         </div>
       ) : null}
 
-      {smokeHarness ? (
+      {showHarness ? (
+        <ComparisonHarnessCallouts
+          metaSmoke={meta?.smoke === true}
+          baselineFakeProduce={baselineFakeProduce}
+          candidateFakeProduce={candidateFakeProduce}
+          baselineProduceAttested={
+            baseline?.capture?.env?.produceAttested === true
+          }
+          candidateProduceAttested={
+            candidate?.capture?.env?.produceAttested === true
+          }
+          baselineRunId={harnessBaselineId}
+          candidateRunId={harnessCandidateId}
+        />
+      ) : result.capture?.env?.fakeProduce === true ? (
         <div className="panel callout-warn">
           <strong>Smoke harness (FAKE_PRODUCE)</strong>
           <p>

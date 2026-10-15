@@ -8,22 +8,26 @@ export function BenefitActions({
   markdown,
   evaluationId,
   exportAllowed,
+  exportBlockReason,
 }: {
   runId: string;
   markdown: string;
   evaluationId?: string;
   /** False when recommendation is inconclusive (API also returns 409). */
   exportAllowed: boolean;
+  /** Gate error text when exportAllowed is false (same as API 409). */
+  exportBlockReason?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const lockedHint =
+    exportBlockReason?.trim() ||
+    "Adoption export locked until official Comparison is decisive (USE needs PASS; DO NOT USE needs FAIL). API returns 409 otherwise.";
 
   async function copyMd() {
     setError(null);
     if (!exportAllowed) {
-      setError(
-        "Export blocked — recommendation is inconclusive (smoke, dry-run, baseline, or incomplete).",
-      );
+      setError(lockedHint);
       return;
     }
     try {
@@ -74,9 +78,8 @@ export function BenefitActions({
           </a>
         </>
       ) : (
-        <p className="hint" style={{ margin: 0 }}>
-          Adoption export locked until official Comparison is decisive (USE
-          needs PASS; DO NOT USE needs FAIL). API returns 409 otherwise.
+        <p className="hint" style={{ margin: 0 }} title={lockedHint}>
+          {lockedHint}
         </p>
       )}
       {error ? (

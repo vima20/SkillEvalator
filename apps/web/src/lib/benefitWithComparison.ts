@@ -6,6 +6,7 @@ import {
 } from "@skillevalator/core";
 import {
   loadEvaluationComparison,
+  resolveTipBaselineRunId,
   resolveTipCandidateRunId,
   type EvaluationMeta,
 } from "@/lib/evaluations";
@@ -21,6 +22,9 @@ export function buildBenefitReportBundle(result: RunResult): {
   comparison: RunComparison | null;
   meta: EvaluationMeta | null;
   tipCandidateRunId: string | null;
+  tipBaselineRunId: string | null;
+  baseline: RunResult | null;
+  candidate: RunResult | null;
 } {
   const packed = result.evaluationId
     ? loadEvaluationComparison(result.evaluationId)
@@ -32,5 +36,8 @@ export function buildBenefitReportBundle(result: RunResult): {
     comparison,
     meta,
     tipCandidateRunId: resolveTipCandidateRunId({ comparison, meta }),
+    tipBaselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
+    baseline: packed?.baseline ?? null,
+    candidate: packed?.candidate ?? null,
   };
 }
