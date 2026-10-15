@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { formatCaptureEnvEvidence } from "@/lib/captureEnvEvidence";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -49,6 +50,7 @@ type Result = {
       costCapUsd?: number;
       grade?: string;
       fakeProduce?: boolean;
+      produceAttested?: boolean;
     };
   };
 };
@@ -701,18 +703,26 @@ export function RunDetailClient({
                   </dd>
                 </div>
                 {result.capture.env ? (
-                  <div>
-                    <dt>Env snapshot</dt>
-                    <dd>
-                      temp={result.capture.env.temperature}, seed=
-                      {result.capture.env.seed}, cap=$
-                      {result.capture.env.costCapUsd}, grade=
-                      {result.capture.env.grade ?? "—"}
-                      {result.capture.env.fakeProduce
-                        ? ", FAKE_PRODUCE"
-                        : ""}
-                    </dd>
-                  </div>
+                  <>
+                    <div>
+                      <dt>Produce evidence</dt>
+                      <dd>
+                        {formatCaptureEnvEvidence({
+                          fakeProduce: result.capture.env.fakeProduce,
+                          produceAttested: result.capture.env.produceAttested,
+                        })}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Env snapshot</dt>
+                      <dd>
+                        temp={result.capture.env.temperature}, seed=
+                        {result.capture.env.seed}, cap=$
+                        {result.capture.env.costCapUsd}, grade=
+                        {result.capture.env.grade ?? "—"}
+                      </dd>
+                    </div>
+                  </>
                 ) : null}
               </dl>
               {result.capture.promptPreview ? (

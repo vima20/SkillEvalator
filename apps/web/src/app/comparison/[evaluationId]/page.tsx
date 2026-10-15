@@ -3,6 +3,7 @@ import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
+import { formatCaptureEnvEvidence } from "@/lib/captureEnvEvidence";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
@@ -294,6 +295,24 @@ export default async function ComparisonDetailPage({
                 </span>
               </dd>
             </div>
+            <div>
+              <dt>Baseline produce</dt>
+              <dd>
+                {formatCaptureEnvEvidence({
+                  fakeProduce: baseline.capture?.env?.fakeProduce,
+                  produceAttested: baseline.capture?.env?.produceAttested,
+                })}
+              </dd>
+            </div>
+            <div>
+              <dt>Candidate produce</dt>
+              <dd>
+                {formatCaptureEnvEvidence({
+                  fakeProduce: candidate.capture?.env?.fakeProduce,
+                  produceAttested: candidate.capture?.env?.produceAttested,
+                })}
+              </dd>
+            </div>
           </dl>
         </div>
 
@@ -349,6 +368,11 @@ export default async function ComparisonDetailPage({
                 <dd>
                   temp={capture.env.temperature}, seed={capture.env.seed}, cap=$
                   {capture.env.costCapUsd}, grade={capture.env.grade ?? "—"}
+                  {capture.env.fakeProduce === true
+                    ? " · FAKE_PRODUCE"
+                    : capture.env.produceAttested === true
+                      ? " · produceAttested"
+                      : ""}
                 </dd>
               </div>
             ) : null}
