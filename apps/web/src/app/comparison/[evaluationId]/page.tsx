@@ -74,7 +74,7 @@ export default async function ComparisonDetailPage({
           <EmptyState
             title="Unknown evaluation"
             body="No paired baseline↔candidate evaluation with this id."
-            actionHref="/comparison"
+            actionHref={withPilotFocus("/comparison", pilotFocus)}
             actionLabel="Back to Comparison"
           />
         </div>

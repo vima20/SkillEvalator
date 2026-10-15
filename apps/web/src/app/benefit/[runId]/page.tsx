@@ -56,7 +56,7 @@ export default async function BenefitReportPage({
           <EmptyState
             title="Run id not allowed"
             body="The run id failed validation. Use a run from the Benefit Report list."
-            actionHref="/benefit"
+            actionHref={withPilotFocus("/benefit", pilotFocus)}
             actionLabel="Back to Benefit Report"
           />
         </div>

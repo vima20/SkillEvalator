@@ -11,7 +11,7 @@ import {
 } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
-import { isPilotFocusParam } from "@/lib/pilotFocusHref";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { runCsvExportAllowed } from "@/lib/runCsvExportAllowed";
 import { RunDetailClient } from "./RunDetailClient";
 
@@ -51,7 +51,7 @@ export default async function RunDetailPage({
           <EmptyState
             title="Run id not allowed"
             body="The run id failed validation. Pick a run from the list."
-            actionHref="/runs"
+            actionHref={withPilotFocus("/runs", pilotFocus)}
             actionLabel="Back to runs"
           />
         </div>
@@ -70,7 +70,7 @@ export default async function RunDetailPage({
           <EmptyState
             title="No status or result"
             body="Nothing exists for this run id yet. Start a new evaluation or open an existing run."
-            actionHref="/"
+            actionHref={withPilotFocus("/", pilotFocus)}
             actionLabel="Start a run"
           />
         </div>

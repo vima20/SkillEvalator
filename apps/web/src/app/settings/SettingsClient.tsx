@@ -8,6 +8,11 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import {
+  isPilotFocusParam,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import {
   isSettingsSnapshot,
   type SettingsPreflightCheck,
@@ -68,6 +73,10 @@ function shortCommit(commit: string): string {
 }
 
 export function SettingsClient(opts: { initial: SettingsSnapshot }) {
+  const searchParams = useSearchParams();
+  const pilotFocus = isPilotFocusParam(
+    searchParams.get("focus") ?? undefined,
+  );
   const [s, setS] = useState(opts.initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -214,7 +223,12 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
               {s.queue.activeRunId ? (
                 <>
                   {" "}
-                  <Link href={`/runs/${s.queue.activeRunId}`}>
+                  <Link
+                    href={withPilotFocus(
+                      `/runs/${s.queue.activeRunId}`,
+                      pilotFocus,
+                    )}
+                  >
                     {s.queue.activeRunId}
                   </Link>
                 </>
