@@ -9,6 +9,7 @@ import {
   candidateLegKind,
   includeInPilotFocusRun,
 } from "@/lib/candidateLeg";
+import { withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   loadEvaluationComparison,
   resolveTipCandidateRunId,
@@ -157,10 +158,19 @@ export default async function RunsPage({
                   return (
                     <tr key={r.runId}>
                       <td>
-                        <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
+                        <Link
+                          href={withPilotFocus(`/runs/${r.runId}`, pilotFocus)}
+                        >
+                          {r.runId}
+                        </Link>
                         {evaluationId ? (
                           <div className="cell-meta">
-                            <Link href={`/comparison/${evaluationId}`}>
+                            <Link
+                              href={withPilotFocus(
+                                `/comparison/${evaluationId}`,
+                                pilotFocus,
+                              )}
+                            >
                               Comparison
                             </Link>
                             {hintLabel ? ` · ${hintLabel}` : null}

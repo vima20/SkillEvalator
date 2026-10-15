@@ -10,6 +10,7 @@ import {
 } from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -344,7 +345,14 @@ export default async function DashboardPage({
                             )}
                           </td>
                           <td>
-                            <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
+                            <Link
+                              href={withPilotFocus(
+                                `/runs/${r.runId}`,
+                                pilotFocus,
+                              )}
+                            >
+                              {r.runId}
+                            </Link>
                           </td>
                           <td>{r.mode}</td>
                           <td>
@@ -353,7 +361,10 @@ export default async function DashboardPage({
                           <td>
                             <Link
                               className="btn btn-ghost btn-compact"
-                              href={`/benefit/${r.runId}`}
+                              href={withPilotFocus(
+                                `/benefit/${r.runId}`,
+                                pilotFocus,
+                              )}
                             >
                               Benefit
                             </Link>
@@ -362,7 +373,10 @@ export default async function DashboardPage({
                                 {" "}
                                 <Link
                                   className="btn btn-ghost btn-compact"
-                                  href={`/comparison/${r.evaluationId}`}
+                                  href={withPilotFocus(
+                                    `/comparison/${r.evaluationId}`,
+                                    pilotFocus,
+                                  )}
                                 >
                                   Comparison
                                 </Link>

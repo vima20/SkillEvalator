@@ -13,6 +13,10 @@ import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import {
+  isPilotFocusParam,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import { statusBadgeClass } from "@/lib/status";
 import { BenefitActions } from "./BenefitActions";
 
@@ -20,10 +24,14 @@ export const dynamic = "force-dynamic";
 
 export default async function BenefitReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ runId: string }>;
+  searchParams: Promise<{ focus?: string }>;
 }) {
   const { runId } = await params;
+  const sp = await searchParams;
+  const pilotFocus = isPilotFocusParam(sp.focus);
   let result: ReturnType<typeof loadRunResult> = null;
   let runStatus: string | undefined;
   let invalid = false;
@@ -108,7 +116,9 @@ export default async function BenefitReportPage({
       <header className="page-header page-header-row">
         <div>
           <p className="eyebrow">
-            <Link href="/benefit">Benefit Report</Link>
+            <Link href={withPilotFocus("/benefit", pilotFocus)}>
+              Benefit Report
+            </Link>
             <span aria-hidden="true"> / </span>
             {runId}
           </p>
@@ -121,6 +131,7 @@ export default async function BenefitReportPage({
           evaluationId={result.evaluationId}
           exportAllowed={exportAllowed}
           exportBlockReason={exportBlockReason}
+          pilotFocus={pilotFocus}
         />
       </header>
 
@@ -129,7 +140,12 @@ export default async function BenefitReportPage({
           <strong>Superseded candidate leg</strong>
           <p>
             Comparison tip is{" "}
-            <Link href={`/benefit/${supersededTip}`}>{supersededTip}</Link>.
+            <Link
+              href={withPilotFocus(`/benefit/${supersededTip}`, pilotFocus)}
+            >
+              {supersededTip}
+            </Link>
+            .
             Adoption USE / DO NOT USE follow that tip only — this run stays
             INCONCLUSIVE.
           </p>
@@ -149,6 +165,7 @@ export default async function BenefitReportPage({
           }
           baselineRunId={harnessBaselineId}
           candidateRunId={harnessCandidateId}
+          pilotFocus={pilotFocus}
         />
       ) : result.capture?.env?.fakeProduce === true ? (
         <div className="panel callout-warn">
@@ -167,7 +184,10 @@ export default async function BenefitReportPage({
             This is the neutral-prompt baseline, not a skill recommendation.
             Open{" "}
             {result.evaluationId ? (
-              <Link href={`/comparison/${result.evaluationId}`}>
+              <Link href={withPilotFocus(
+                `/comparison/${result.evaluationId}`,
+                pilotFocus,
+              )}>
                 Comparison
               </Link>
             ) : (
@@ -195,7 +215,10 @@ export default async function BenefitReportPage({
               <>
                 {" "}
                 (
-                <Link href={`/comparison/${result.evaluationId}`}>
+                <Link href={withPilotFocus(
+                `/comparison/${result.evaluationId}`,
+                pilotFocus,
+              )}>
                   open Comparison
                 </Link>
                 )
@@ -319,7 +342,12 @@ export default async function BenefitReportPage({
             <div>
               <dt>Evaluation</dt>
               <dd>
-                <Link href={`/comparison/${report.config.evaluationId}`}>
+                <Link
+                  href={withPilotFocus(
+                    `/comparison/${report.config.evaluationId}`,
+                    pilotFocus,
+                  )}
+                >
                   {report.config.evaluationId}
                 </Link>
               </dd>

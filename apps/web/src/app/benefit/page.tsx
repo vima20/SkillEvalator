@@ -12,6 +12,7 @@ import {
 } from "@/lib/candidateLeg";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { withPilotFocus } from "@/lib/pilotFocusHref";
 
 export const dynamic = "force-dynamic";
 
@@ -147,14 +148,23 @@ export default async function BenefitIndexPage({
                 {runs.map((r) => (
                   <tr key={r.runId}>
                     <td>
-                      <Link href={`/runs/${r.runId}`}>{r.runId}</Link>
+                      <Link
+                        href={withPilotFocus(`/runs/${r.runId}`, pilotFocus)}
+                      >
+                        {r.runId}
+                      </Link>
                       <div className="cell-meta">
                         {r.mode} · {candidateLegLabel(r.kind)} ·{" "}
                         {r.rating.starsDisplay} {r.rating.grade}
                         {r.evaluationId ? (
                           <>
                             {" · "}
-                            <Link href={`/comparison/${r.evaluationId}`}>
+                            <Link
+                              href={withPilotFocus(
+                                `/comparison/${r.evaluationId}`,
+                                pilotFocus,
+                              )}
+                            >
                               Comparison
                             </Link>
                           </>
@@ -182,7 +192,7 @@ export default async function BenefitIndexPage({
                     <td>
                       <Link
                         className="btn btn-ghost btn-compact"
-                        href={`/benefit/${r.runId}`}
+                        href={withPilotFocus(`/benefit/${r.runId}`, pilotFocus)}
                       >
                         Open report
                       </Link>

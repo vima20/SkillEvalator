@@ -12,6 +12,10 @@ import {
 } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import {
+  isPilotFocusParam,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import { statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +36,14 @@ function fmtScore(n: number | null | undefined): string {
 
 export default async function ComparisonDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ evaluationId: string }>;
+  searchParams: Promise<{ focus?: string }>;
 }) {
   const { evaluationId } = await params;
+  const sp = await searchParams;
+  const pilotFocus = isPilotFocusParam(sp.focus);
   const root = resultsDir();
   const jobs = jobsDir();
 
@@ -125,7 +133,9 @@ export default async function ComparisonDetailPage({
       <header className="page-header page-header-row">
         <div>
           <p className="eyebrow">
-            <Link href="/comparison">Comparison</Link>
+            <Link href={withPilotFocus("/comparison", pilotFocus)}>
+              Comparison
+            </Link>
             <span aria-hidden="true"> / </span>
             {evaluationId}
           </p>
@@ -137,15 +147,21 @@ export default async function ComparisonDetailPage({
           </p>
         </div>
         <div className="page-header-actions">
-          <Link className="btn btn-ghost" href={`/runs/${baselineRunId}`}>
+          <Link
+            className="btn btn-ghost"
+            href={withPilotFocus(`/runs/${baselineRunId}`, pilotFocus)}
+          >
             Baseline run
           </Link>
-          <Link className="btn btn-ghost" href={`/runs/${candidateRunId}`}>
+          <Link
+            className="btn btn-ghost"
+            href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}
+          >
             Candidate run
           </Link>
           <Link
             className="btn btn-primary"
-            href={`/benefit/${candidateRunId}`}
+            href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
           >
             Benefit Report
           </Link>
@@ -182,9 +198,14 @@ export default async function ComparisonDetailPage({
         <p>
           <strong>{comparison.verdict}</strong> here is the paired lift gate
           (baseline↔candidate). Official PASS also requires candidate score ≥
-          0.99 (Benefit USE floor). Benefit{" "}
-          <Link href={`/benefit/${candidateRunId}`}>USE</Link> needs official
-          PASS; <Link href={`/benefit/${candidateRunId}`}>DO NOT USE</Link>{" "}
+          0.99 (Benefit USE floor).           Benefit{" "}
+          <Link href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}>
+            USE
+          </Link>{" "}
+          needs official PASS;{" "}
+          <Link href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}>
+            DO NOT USE
+          </Link>{" "}
           needs official FAIL.
         </p>
       </div>
@@ -211,6 +232,7 @@ export default async function ComparisonDetailPage({
         }
         baselineRunId={baselineRunId}
         candidateRunId={candidateRunId}
+        pilotFocus={pilotFocus}
       />
 
       <section className={verdictClass(comparison.verdict, comparison.mode)}>

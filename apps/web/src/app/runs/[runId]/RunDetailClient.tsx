@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { formatCaptureEnvEvidence } from "@/lib/captureEnvEvidence";
+import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -123,9 +124,11 @@ function RetryActions({
 export function RunDetailClient({
   runId,
   initial,
+  pilotFocus = false,
 }: {
   runId: string;
   initial: Payload;
+  pilotFocus?: boolean;
 }) {
   const router = useRouter();
   const [data, setData] = useState(initial);
@@ -236,7 +239,7 @@ export function RunDetailClient({
         setRetrying(false);
         return;
       }
-      router.push(`/runs/${body.runId}`);
+      router.push(withPilotFocus(`/runs/${body.runId}`, pilotFocus));
     } catch {
       setRetryError("Retry failed");
       setRetrying(false);
@@ -294,7 +297,7 @@ export function RunDetailClient({
     <div>
       <header className="page-header">
         <p className="eyebrow">
-          <Link href="/runs">Unikie · Runs</Link>
+          <Link href={withPilotFocus("/runs", pilotFocus)}>Unikie · Runs</Link>
           <span aria-hidden="true"> / </span>
           <span>{runId}</span>
         </p>
@@ -322,7 +325,12 @@ export function RunDetailClient({
               <>
                 {" "}
                 ·{" "}
-                <Link href={`/comparison/${result.evaluationId}`}>
+                <Link
+                  href={withPilotFocus(
+                    `/comparison/${result.evaluationId}`,
+                    pilotFocus,
+                  )}
+                >
                   Comparison
                 </Link>
               </>
@@ -358,7 +366,9 @@ export function RunDetailClient({
               });
               if (hint.kind === "baseline") {
                 return hint.comparisonHref ? (
-                  <Link href={hint.comparisonHref}>
+                  <Link
+                    href={withPilotFocus(hint.comparisonHref, pilotFocus)}
+                  >
                     Open paired Comparison →
                   </Link>
                 ) : (
@@ -372,7 +382,11 @@ export function RunDetailClient({
                 return (
                   <>
                     Smoke harness (FAKE_PRODUCE) — not adoption.{" "}
-                    <Link href={`/benefit/${runId}`}>Open report →</Link>
+                    <Link
+                      href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}
+                    >
+                      Open report →
+                    </Link>
                   </>
                 );
               }
@@ -380,7 +394,12 @@ export function RunDetailClient({
                 return (
                   <>
                     Superseded candidate — tip is{" "}
-                    <Link href={`/benefit/${hint.tipRunId}`}>
+                    <Link
+                      href={withPilotFocus(
+                        `/benefit/${hint.tipRunId}`,
+                        pilotFocus,
+                      )}
+                    >
                       {hint.tipRunId}
                     </Link>
                     .
@@ -388,7 +407,9 @@ export function RunDetailClient({
                 );
               }
               return (
-                <Link href={`/benefit/${runId}`}>Open Benefit Report →</Link>
+                <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
+                  Open Benefit Report →
+                </Link>
               );
             })()}
           </p>
@@ -638,7 +659,10 @@ export function RunDetailClient({
             {result.evaluationId ? (
               <Link
                 className="btn btn-ghost"
-                href={`/comparison/${result.evaluationId}`}
+                href={withPilotFocus(
+                  `/comparison/${result.evaluationId}`,
+                  pilotFocus,
+                )}
               >
                 Comparison
               </Link>

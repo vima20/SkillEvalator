@@ -2,6 +2,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
+import { withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   listEvaluations,
   loadEvaluationComparison,
@@ -145,7 +146,12 @@ export default async function ComparisonListPage({
                 {evaluations.map((e) => (
                   <tr key={e.evaluationId}>
                     <td>
-                      <Link href={`/comparison/${e.evaluationId}`}>
+                      <Link
+                        href={withPilotFocus(
+                          `/comparison/${e.evaluationId}`,
+                          pilotFocus,
+                        )}
+                      >
                         {e.evaluationId}
                       </Link>
                       {e.baselineFakeProduce !== e.candidateFakeProduce ? (
@@ -213,7 +219,10 @@ export default async function ComparisonListPage({
                       ) : (
                         <Link
                           className="btn btn-ghost btn-compact"
-                          href={`/benefit/${e.candidateRunId}`}
+                          href={withPilotFocus(
+                            `/benefit/${e.candidateRunId}`,
+                            pilotFocus,
+                          )}
                         >
                           Candidate
                         </Link>

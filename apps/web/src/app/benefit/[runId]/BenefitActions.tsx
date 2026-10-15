@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { withPilotFocus } from "@/lib/pilotFocusHref";
 
 export function BenefitActions({
   runId,
@@ -9,6 +10,7 @@ export function BenefitActions({
   evaluationId,
   exportAllowed,
   exportBlockReason,
+  pilotFocus = false,
 }: {
   runId: string;
   markdown: string;
@@ -17,6 +19,7 @@ export function BenefitActions({
   exportAllowed: boolean;
   /** Gate error text when exportAllowed is false (same as API 409). */
   exportBlockReason?: string | null;
+  pilotFocus?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +45,16 @@ export function BenefitActions({
 
   return (
     <div className="action-row" style={{ flexWrap: "wrap", gap: 8 }}>
-      <Link className="btn btn-ghost btn-compact" href={`/runs/${runId}`}>
+      <Link
+        className="btn btn-ghost btn-compact"
+        href={withPilotFocus(`/runs/${runId}`, pilotFocus)}
+      >
         Run detail
       </Link>
       {evaluationId ? (
         <Link
           className="btn btn-ghost btn-compact"
-          href={`/comparison/${evaluationId}`}
+          href={withPilotFocus(`/comparison/${evaluationId}`, pilotFocus)}
         >
           Comparison
         </Link>

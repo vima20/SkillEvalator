@@ -3,6 +3,7 @@ import {
   comparisonHarnessHint,
   type ComparisonHarnessHint,
 } from "@/lib/comparisonDetailHints";
+import { withPilotFocus } from "@/lib/pilotFocusHref";
 
 export function ComparisonHarnessCallouts(opts: {
   metaSmoke?: boolean;
@@ -12,15 +13,22 @@ export function ComparisonHarnessCallouts(opts: {
   candidateProduceAttested?: boolean;
   baselineRunId: string;
   candidateRunId: string;
+  pilotFocus?: boolean;
 }): React.ReactNode {
   const hint = comparisonHarnessHint(opts);
-  return renderHarnessCallouts(hint, opts.baselineRunId, opts.candidateRunId);
+  return renderHarnessCallouts(
+    hint,
+    opts.baselineRunId,
+    opts.candidateRunId,
+    opts.pilotFocus === true,
+  );
 }
 
 export function renderHarnessCallouts(
   hint: ComparisonHarnessHint,
   baselineRunId: string,
   candidateRunId: string,
+  pilotFocus = false,
 ): React.ReactNode {
   if (hint.kind === "none") return null;
 
@@ -47,8 +55,14 @@ export function renderHarnessCallouts(
             : `The ${hint.smokeRole} tip used FAKE_PRODUCE while the ${hint.liveRole} tip is live.`}{" "}
           Do not hand off as adoption evidence. Comparison CSV / pilot archive /
           Benefit export stay locked. Inspect{" "}
-          <Link href={`/runs/${baselineRunId}`}>baseline</Link> and{" "}
-          <Link href={`/runs/${candidateRunId}`}>candidate</Link>.
+          <Link href={withPilotFocus(`/runs/${baselineRunId}`, pilotFocus)}>
+            baseline
+          </Link>{" "}
+          and{" "}
+          <Link href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}>
+            candidate
+          </Link>
+          .
         </p>
       </div>
     );
@@ -62,8 +76,14 @@ export function renderHarnessCallouts(
         produce-attested live. Clear smoke noise does not half-delete mixed
         pairs — do not treat this as pilot handoff. CSV / archive / Benefit
         export stay locked. Inspect{" "}
-        <Link href={`/runs/${baselineRunId}`}>baseline</Link> and{" "}
-        <Link href={`/runs/${candidateRunId}`}>candidate</Link>.
+        <Link href={withPilotFocus(`/runs/${baselineRunId}`, pilotFocus)}>
+          baseline
+        </Link>{" "}
+        and{" "}
+        <Link href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}>
+          candidate
+        </Link>
+        .
       </p>
     </div>
   );

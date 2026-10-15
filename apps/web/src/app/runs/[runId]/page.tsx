@@ -11,6 +11,7 @@ import {
 } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import { isPilotFocusParam } from "@/lib/pilotFocusHref";
 import { runCsvExportAllowed } from "@/lib/runCsvExportAllowed";
 import { RunDetailClient } from "./RunDetailClient";
 
@@ -18,10 +19,14 @@ export const dynamic = "force-dynamic";
 
 export default async function RunDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ runId: string }>;
+  searchParams: Promise<{ focus?: string }>;
 }) {
   const { runId } = await params;
+  const sp = await searchParams;
+  const pilotFocus = isPilotFocusParam(sp.focus);
   let status: ReturnType<typeof loadRunStatus> = null;
   let result: ReturnType<typeof loadRunResult> = null;
   let invalid = false;
@@ -80,6 +85,7 @@ export default async function RunDetailPage({
   return (
     <RunDetailClient
       runId={runId}
+      pilotFocus={pilotFocus}
       initial={{
         runId,
         status,
