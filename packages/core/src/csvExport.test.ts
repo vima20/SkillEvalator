@@ -6,6 +6,7 @@ import {
   comparisonToCsv,
   runResultToCsv,
 } from "./csvExport.js";
+import { jobAttestationFromRunResult } from "./jobSnapshot.js";
 import type { RunResult } from "./schema.js";
 
 function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): RunResult {
@@ -93,35 +94,35 @@ function officialCapture(role: "baseline" | "candidate") {
 
 describe("comparisonToCsv", () => {
   it("exports task deltas and skill attribution", () => {
-    const cmp = compareBaselineCandidate(
-      sample({
-        runId: "b",
-        role: "baseline",
-        score: 0.9,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-        capture: officialCapture("baseline"),
-      }),
-      sample({
-        runId: "c",
-        role: "candidate",
-        score: 1,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-        capture: officialCapture("candidate"),
-      }),
-      {
-        expectedGradeHash: TRUSTED_GRADE_HASH,
-        expectedBaselinePromptHash: "baselinehash0001",
-        expectedCandidatePromptHash: "candidatehash0002",
-        expectedBaselineEvalSkillVersion: "abc",
-        expectedCandidateEvalSkillVersion: "abc",
-        expectedBaselinePromptKind: "baseline_neutral" as const,
-        expectedCandidatePromptKind: "skill_md" as const,
-      },
-    );
+    const baseline = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      capture: officialCapture("baseline"),
+    });
+    const candidate = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      capture: officialCapture("candidate"),
+    });
+    const cmp = compareBaselineCandidate(baseline, candidate, {
+      expectedGradeHash: TRUSTED_GRADE_HASH,
+      expectedBaselinePromptHash: "baselinehash0001",
+      expectedCandidatePromptHash: "candidatehash0002",
+      expectedBaselineEvalSkillVersion: "abc",
+      expectedCandidateEvalSkillVersion: "abc",
+      expectedBaselinePromptKind: "baseline_neutral" as const,
+      expectedCandidatePromptKind: "skill_md" as const,
+      expectedBaselineJob: jobAttestationFromRunResult(baseline)!,
+      expectedCandidateJob: jobAttestationFromRunResult(candidate)!,
+    });
     expect(cmp.verdict).toBe("PASS");
     const csv = comparisonToCsv(cmp);
     expect(csv).toContain("delta");

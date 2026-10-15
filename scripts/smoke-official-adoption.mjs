@@ -17,6 +17,7 @@ import {
   findRepoRoot,
   gradeOnHost,
   hashPromptInstruction,
+  jobAttestationFromRunResult,
   loadPairedComparison,
   loadSkill,
   pinTrustedScriptsIntoSkillSnapshot,
@@ -206,6 +207,16 @@ function writePair(evaluationId, baseline, candidate, label) {
         capturedAt: startedAt,
       },
     });
+    writeJsonFile(path.join(snap, "job.json"), {
+      runId: r.runId,
+      evalSkillId: skill.id,
+      mode: "official",
+      modelId: r.modelId,
+      repeats: r.repeats,
+      role: r.role,
+      evaluationId,
+      createdAt: startedAt,
+    });
   }
   writeJsonFile(path.join(resultsDir, evaluationId, "evaluation.json"), {
     evaluationId,
@@ -262,6 +273,10 @@ function writePair(evaluationId, baseline, candidate, label) {
       expectedCandidateEvalSkillVersion: skill.version,
       expectedBaselinePromptKind: "baseline_neutral",
       expectedCandidatePromptKind: "skill_md",
+      expectedBaselineJob: jobAttestationFromRunResult(asAttestedLive(baseline)),
+      expectedCandidateJob: jobAttestationFromRunResult(
+        asAttestedLive(candidate),
+      ),
     },
   );
   const benefit = buildBenefitReport(asAttestedLive(candidate), {

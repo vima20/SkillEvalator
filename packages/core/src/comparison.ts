@@ -6,6 +6,11 @@ import {
 } from "./diffScore.js";
 import { resolveTrustedGradeHashFromRunResultDir } from "./dockerGrade.js";
 import {
+  collectOfficialJobAttestationIssues,
+  resolveTrustedJobAttestationFromRunResultDir,
+  type TrustedJobAttestation,
+} from "./jobSnapshot.js";
+import {
   resolveTrustedPromptHashFromRunResultDir,
   resolveTrustedSnapshotManifestPinsFromRunResultDir,
   type SnapshotPromptKind,
@@ -278,6 +283,12 @@ export function checkComparisonParity(
     /** Trusted promptKind from skill-snapshot/manifest.json `_snapshot`. */
     expectedBaselinePromptKind?: SnapshotPromptKind;
     expectedCandidatePromptKind?: SnapshotPromptKind;
+    /**
+     * Trusted pre-produce job.json (mode/modelId/repeats/role). Official
+     * Comparison must pin these — forged result.json alone must not PASS.
+     */
+    expectedBaselineJob?: TrustedJobAttestation;
+    expectedCandidateJob?: TrustedJobAttestation;
     /** Extra parity issues (e.g. from resolveEvaluationMetaMode). */
     extraParityIssues?: string[];
   },
@@ -607,6 +618,18 @@ export function checkComparisonParity(
         `candidate.capture.promptKind ≠ trusted skill-snapshot (${candidateKindPin ?? "missing"} ≠ ${expectedCandidatePromptKind})`,
       );
     }
+    issues.push(
+      ...collectOfficialJobAttestationIssues(
+        "baseline",
+        baseline,
+        opts?.expectedBaselineJob,
+      ),
+      ...collectOfficialJobAttestationIssues(
+        "candidate",
+        candidate,
+        opts?.expectedCandidateJob,
+      ),
+    );
   }
 
   const baselinePromptKind = baseline.capture?.promptKind;
@@ -902,6 +925,8 @@ export function compareBaselineCandidate(
     expectedCandidateEvalSkillVersion?: string;
     expectedBaselinePromptKind?: SnapshotPromptKind;
     expectedCandidatePromptKind?: SnapshotPromptKind;
+    expectedBaselineJob?: TrustedJobAttestation;
+    expectedCandidateJob?: TrustedJobAttestation;
     extraParityIssues?: string[];
   },
 ): RunComparison {
@@ -1317,6 +1342,18 @@ export function loadPairedComparison(opts: {
         candidateRunId,
       )
     : {};
+  const expectedBaselineJob = officialDisk
+    ? resolveTrustedJobAttestationFromRunResultDir(
+        opts.resultsDir,
+        baselineRunId,
+      )
+    : undefined;
+  const expectedCandidateJob = officialDisk
+    ? resolveTrustedJobAttestationFromRunResultDir(
+        opts.resultsDir,
+        candidateRunId,
+      )
+    : undefined;
   const extraParityIssues = [
     ...modePin.issues,
     ...skillPin.issues,
@@ -1359,6 +1396,8 @@ export function loadPairedComparison(opts: {
     ...(candidateSnapPins.promptKind
       ? { expectedCandidatePromptKind: candidateSnapPins.promptKind }
       : {}),
+    ...(expectedBaselineJob ? { expectedBaselineJob } : {}),
+    ...(expectedCandidateJob ? { expectedCandidateJob } : {}),
     ...(extraParityIssues.length ? { extraParityIssues } : {}),
   });
 }

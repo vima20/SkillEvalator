@@ -14,6 +14,7 @@ import {
   resolvePairedCancelSibling,
 } from "./comparison.js";
 import { writeJsonFile } from "./fsJson.js";
+import { jobAttestationFromRunResult } from "./jobSnapshot.js";
 import { hashPromptInstruction } from "./promptSnapshot.js";
 import { saveRetryMarker } from "./retryDedup.js";
 import type { RunResult } from "./schema.js";
@@ -114,6 +115,19 @@ const OFFICIAL_PINS = {
   expectedCandidatePromptKind: "skill_md" as const,
 };
 
+function officialOpts(
+  baseline: RunResult,
+  candidate: RunResult,
+  extra: Record<string, unknown> = {},
+) {
+  return {
+    ...OFFICIAL_PINS,
+    expectedBaselineJob: jobAttestationFromRunResult(baseline)!,
+    expectedCandidateJob: jobAttestationFromRunResult(candidate)!,
+    ...extra,
+  };
+}
+
 describe("compareBaselineCandidate", () => {
   it("dry-run lift is INCONCLUSIVE (not adoption PASS)", () => {
     const c = compareBaselineCandidate(
@@ -128,52 +142,80 @@ describe("compareBaselineCandidate", () => {
   });
 
   it("official FAIL when soft-pass + lift but score below USE floor", () => {
-    const c = compareBaselineCandidate(
-      sample({
-        runId: "b",
-        role: "baseline",
-        score: 0.8,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-      }),
-      sample({
-        runId: "c",
-        role: "candidate",
-        score: 0.9,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-      }),
-      OFFICIAL_PINS,
-    );
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.8,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
     expect(c.verdict).toBe("FAIL");
     expect(c.rationale).toMatch(/USE floor|0\.99/i);
   });
 
   it("official PASS when score meets USE floor and lift clears delta", () => {
-    const c = compareBaselineCandidate(
-      sample({
-        runId: "b",
-        role: "baseline",
-        score: 0.9,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-      }),
-      sample({
-        runId: "c",
-        role: "candidate",
-        score: 1,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-      }),
-      OFFICIAL_PINS,
-    );
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
     expect(c.verdict).toBe("PASS");
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
+  it("official INCONCLUSIVE when result.repeats ≠ skill-snapshot/job.json", () => {
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const forgedCand = { ...cand, repeats: 1 };
+    const c = compareBaselineCandidate(
+      b,
+      forgedCand,
+      officialOpts(b, cand), // job still attests repeats=3
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        /candidate\.repeats ≠ skill-snapshot\/job\.json/i.test(i),
+      ),
+    ).toBe(true);
   });
 
   it("official INCONCLUSIVE when evalSkillVersion ≠ trusted skill-snapshot manifest", () => {
@@ -674,25 +716,23 @@ describe("compareBaselineCandidate", () => {
   });
 
   it("official FAIL when lift too small", () => {
-    const c = compareBaselineCandidate(
-      sample({
-        runId: "b",
-        role: "baseline",
-        score: 0.95,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-      }),
-      sample({
-        runId: "c",
-        role: "candidate",
-        score: 0.995,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-      }),
-      OFFICIAL_PINS,
-    );
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.95,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 0.995,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
     expect(c.lift!).toBeLessThan(LIFT_PASS_DELTA);
     expect(c.verdict).toBe("FAIL");
   });
@@ -706,25 +746,23 @@ describe("compareBaselineCandidate", () => {
   });
 
   it("official FAIL when candidate below soft-pass floor", () => {
-    const c = compareBaselineCandidate(
-      sample({
-        runId: "b",
-        role: "baseline",
-        score: 0.2,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-      }),
-      sample({
-        runId: "c",
-        role: "candidate",
-        score: 0.5,
-        mode: "official",
-        modelId: "gpt-4.1-mini",
-        repeats: 3,
-      }),
-      OFFICIAL_PINS,
-    );
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.2,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 0.5,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
     expect(c.verdict).toBe("FAIL");
   });
 

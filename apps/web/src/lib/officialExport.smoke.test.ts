@@ -7,6 +7,7 @@ import {
   OFFICIAL_MIN_REPEATS,
   buildBenefitReport,
   compareBaselineCandidate,
+  jobAttestationFromRunResult,
   type RunResult,
 } from "@skillevalator/core";
 import { benefitExportGate } from "./benefitExport.js";
@@ -115,6 +116,8 @@ describe("official export gates smoke", () => {
     const comparison = compareBaselineCandidate(baseline, candidate, {
       ...officialCompareOpts,
       expectedEvaluationId: evaluationId,
+      expectedBaselineJob: jobAttestationFromRunResult(baseline)!,
+      expectedCandidateJob: jobAttestationFromRunResult(candidate)!,
     });
     expect(comparison.parity.ok).toBe(true);
     expect(comparison.verdict).toBe("PASS");
@@ -151,6 +154,8 @@ describe("official export gates smoke", () => {
     const comparison = compareBaselineCandidate(baseline, candidate, {
       ...officialCompareOpts,
       expectedEvaluationId: evaluationId,
+      expectedBaselineJob: jobAttestationFromRunResult(baseline)!,
+      expectedCandidateJob: jobAttestationFromRunResult(candidate)!,
     });
     expect(comparison.verdict).toBe("FAIL");
 

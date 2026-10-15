@@ -13,6 +13,7 @@ import {
   resolveEvaluationMetaMode,
   resolveLegRunIdViaRetryChain,
   resolveTrustedGradeHashFromRunResultDir,
+  resolveTrustedJobAttestationFromRunResultDir,
   resolveTrustedPromptHashFromRunResultDir,
   resolveTrustedSnapshotManifestPinsFromRunResultDir,
   tryAcquireWxLock,
@@ -374,6 +375,12 @@ export function loadEvaluationComparison(
                 candidate.runId,
               )
             : {};
+          const expectedBaselineJob = officialDisk
+            ? resolveTrustedJobAttestationFromRunResultDir(dir, baseline.runId)
+            : undefined;
+          const expectedCandidateJob = officialDisk
+            ? resolveTrustedJobAttestationFromRunResultDir(dir, candidate.runId)
+            : undefined;
           const extraParityIssues = [
             ...modePin.issues,
             ...skillPin.issues,
@@ -419,6 +426,8 @@ export function loadEvaluationComparison(
             ...(candidateSnapPins.promptKind
               ? { expectedCandidatePromptKind: candidateSnapPins.promptKind }
               : {}),
+            ...(expectedBaselineJob ? { expectedBaselineJob } : {}),
+            ...(expectedCandidateJob ? { expectedCandidateJob } : {}),
             ...(extraParityIssues.length ? { extraParityIssues } : {}),
           });
         })()
