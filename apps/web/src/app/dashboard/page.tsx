@@ -133,7 +133,10 @@ export default async function DashboardPage({
             Tip candidate runs grouped by task set and model (skill version
             leaderboard). Smoke harness and superseded retries are omitted.
             Baseline↔candidate lift lives under{" "}
-            <Link href="/comparison">Comparison</Link>. Cross-model bake-off is
+            <Link href={withPilotFocus("/comparison", pilotFocus)}>
+              Comparison
+            </Link>
+            . Cross-model bake-off is
             out of scope for this MVP.
             {pilotFocus ? (
               <>
@@ -147,6 +150,12 @@ export default async function DashboardPage({
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/dashboard" pilotFocus={pilotFocus} />
           <RunsAutoRefresh hasActive={hasActive} />
+          <Link
+            className="btn btn-primary"
+            href={withPilotFocus("/", pilotFocus)}
+          >
+            New run
+          </Link>
         </div>
       </header>
 
@@ -182,7 +191,11 @@ export default async function DashboardPage({
                 ? "Finish a dry-run or official evaluation to populate the dashboard."
                 : "Leaderboard tips are dry-run or unpaired. Show all rows, or run an official baseline↔candidate pair."
             }
-            actionHref={boardCount === 0 ? "/" : "/dashboard"}
+            actionHref={
+              boardCount === 0
+                ? withPilotFocus("/", pilotFocus)
+                : "/dashboard"
+            }
             actionLabel={boardCount === 0 ? "Start a run" : "Show all rows"}
           />
         </div>

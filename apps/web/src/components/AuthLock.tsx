@@ -34,6 +34,13 @@ export function AuthLock() {
       aria-label="Lock session and require the access token again"
       title="Lock session"
       onClick={() => {
+        if (
+          !window.confirm(
+            "Lock this session? You will need the access token again to continue.",
+          )
+        ) {
+          return;
+        }
         setBusy(true);
         void fetch("/api/auth", { method: "DELETE" }).finally(() => {
           window.location.reload();

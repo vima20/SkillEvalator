@@ -292,7 +292,8 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           <p className="hint">
             Official Comparison PASS needs candidate ≥ USE floor and lift ≥{" "}
             {pp(s.adoption.liftPassDelta)}. Soft-pass alone is not USE. These
-            are code constants — not editable via <code>.env</code>.
+            are code constants — not editable via <code>.env</code>. See{" "}
+            <code>docs/ACCEPTANCE.md</code>.
           </p>
         </section>
 
@@ -313,8 +314,16 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             </Row>
           </dl>
           <p className="hint">
-            Adoption evidence must use Docker grade. Host grade is smoke/CI
-            only.
+            Official Comparison requires <code>grade=docker_script</code>,{" "}
+            <code>pipeline.grade=docker_script</code> and{" "}
+            <code>allowHostGrade=false</code> on capture (same as{" "}
+            <code>docs/ACCEPTANCE.md</code>). Live runs use{" "}
+            <code>{s.grade.livePolicy}</code> in Docker; host grade is
+            smoke/CI only
+            {s.grade.hostGradeOnlyWithFakeProduce
+              ? " (host allowed only with FAKE_PRODUCE=known-good)"
+              : ""}
+            .
           </p>
         </section>
 

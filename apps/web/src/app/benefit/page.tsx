@@ -92,13 +92,22 @@ export default async function BenefitIndexPage({
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/benefit" pilotFocus={pilotFocus} />
+          <Link
+            className="btn btn-primary"
+            href={withPilotFocus("/", pilotFocus)}
+          >
+            New run
+          </Link>
         </div>
       </header>
 
       <div className="panel callout-info">
         <strong>Comparison vs Benefit</strong>
         <p>
-          <Link href="/comparison">Comparison</Link> = baseline↔candidate lift
+          <Link href={withPilotFocus("/comparison", pilotFocus)}>
+            Comparison
+          </Link>{" "}
+          = baseline↔candidate lift
           (PASS/FAIL). Benefit USE / 5★ unlocks only on official PASS; DO NOT
           USE follows official FAIL.
           Baseline legs are omitted from this list. Tip candidates sort first;
@@ -128,7 +137,11 @@ export default async function BenefitIndexPage({
                 ? "Finish a candidate run (paired evaluation or single-leg) before opening a Benefit Report."
                 : "All candidate rows are smoke or superseded. Show all rows to inspect them."
             }
-            actionHref={allRuns.length === 0 ? "/" : "/benefit"}
+            actionHref={
+              allRuns.length === 0
+                ? withPilotFocus("/", pilotFocus)
+                : "/benefit"
+            }
             actionLabel={
               allRuns.length === 0 ? "Start a run" : "Show all rows"
             }

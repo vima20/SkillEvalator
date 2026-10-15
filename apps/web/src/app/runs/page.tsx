@@ -124,7 +124,11 @@ export default async function RunsPage({
                 ? "Start a dry-run to queue the first evaluation job."
                 : "All visible rows are smoke or superseded. Show all rows to inspect them."
             }
-            actionHref={allRuns.length === 0 ? "/" : "/runs"}
+            actionHref={
+              allRuns.length === 0
+                ? withPilotFocus("/", pilotFocus)
+                : "/runs"
+            }
             actionLabel={allRuns.length === 0 ? "Start a run" : "Show all rows"}
           />
         ) : (

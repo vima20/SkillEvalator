@@ -126,7 +126,11 @@ export default async function ComparisonListPage({
                 ? "Start a run with baseline↔candidate enabled to queue both legs and open Comparison."
                 : "All rows are dry-run, smoke, or official INCONCLUSIVE. Show all rows to inspect them."
             }
-            actionHref={allEvaluations.length === 0 ? "/" : "/comparison"}
+            actionHref={
+              allEvaluations.length === 0
+                ? withPilotFocus("/", pilotFocus)
+                : "/comparison"
+            }
             actionLabel={
               allEvaluations.length === 0 ? "New evaluation" : "Show all rows"
             }
