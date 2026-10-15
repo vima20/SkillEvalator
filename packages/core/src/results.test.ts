@@ -566,6 +566,57 @@ describe("purgeSmokeNoiseFs", () => {
     expect(fs.existsSync(path.join(resultsDir, fakeOrphan))).toBe(false);
   });
 
+  it("does not purge mixed smoke eval that still links attested live official", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-smoke-mixed-"));
+    temps.push(root);
+    const resultsDir = path.join(root, "results");
+    const jobsDir = path.join(root, "jobs");
+    fs.mkdirSync(jobsDir, { recursive: true });
+
+    const evalId = "eval_100_mixed";
+    const liveCand = "run_100_mixedlive";
+    const fakeBase = "run_100_mixedfake";
+    writeJsonFile(path.join(resultsDir, evalId, "evaluation.json"), {
+      evaluationId: evalId,
+      baselineRunId: fakeBase,
+      candidateRunId: liveCand,
+      mode: "official",
+      smoke: true,
+    });
+    writeJsonFile(path.join(resultsDir, fakeBase, "status.json"), {
+      runId: fakeBase,
+      status: "ok",
+      mode: "dry-run",
+    });
+    writeJsonFile(path.join(resultsDir, fakeBase, "result.json"), {
+      runId: fakeBase,
+      status: "ok",
+      mode: "dry-run",
+      capture: { env: { fakeProduce: true } },
+    });
+    writeJsonFile(path.join(resultsDir, liveCand, "status.json"), {
+      runId: liveCand,
+      status: "ok",
+      mode: "official",
+    });
+    writeJsonFile(path.join(resultsDir, liveCand, "result.json"), {
+      runId: liveCand,
+      status: "ok",
+      mode: "official",
+      capture: { env: { fakeProduce: false, produceAttested: true } },
+    });
+
+    const out = purgeSmokeNoiseFs(resultsDir, jobsDir);
+    expect(out.removed).toEqual([]);
+    expect(out.removedEvaluations).toEqual([]);
+    expect(
+      out.skipped.some((s) => s.id === liveCand && s.reason === "live_official"),
+    ).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, evalId))).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, liveCand))).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, fakeBase))).toBe(true);
+  });
+
   it("skips smoke legs with live job files", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-smoke-live-"));
     temps.push(root);

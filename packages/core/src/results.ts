@@ -502,9 +502,11 @@ export type SmokePurgeSkipReason =
 
 /**
  * Delete smoke harness noise immediately (no age gate):
- * - evaluation.json smoke=true pairs (whole eval_* + both legs)
- * - runs with capture.env.fakeProduce (and their eval_* if linked)
- * Never deletes live official archives (official mode, not smoke, not fakeProduce).
+ * - evaluation.json smoke=true pairs (whole eval_* + both legs) when no
+ *   attested live official tip remains
+ * - orphan runs with capture.env.fakeProduce
+ * Never deletes attested live official (produceAttested=true, not FAKE_PRODUCE).
+ * Mixed smoke+live pairs are left untouched (no half-delete).
  * Never touches queued/running / budget_stop wind-down.
  */
 export function purgeSmokeNoiseFs(
@@ -531,7 +533,24 @@ export function purgeSmokeNoiseFs(
     }
   };
 
-  // Pass 1: smoke evaluations → schedule eval + both legs.
+  /** Live worker evidence — not smoke:official disk plants (no produceAttested). */
+  const isLiveOfficialEvidenceFs = (runId: string): boolean => {
+    if (!isOfficialRunFs(resultsDir, runId)) return false;
+    if (runHasFakeProduceFs(resultsDir, runId)) return false;
+    const resultPath = path.join(resultsDir, runId, "result.json");
+    if (!fs.existsSync(resultPath)) return false;
+    try {
+      const raw = readJsonFile(resultPath) as {
+        capture?: { env?: { produceAttested?: unknown } };
+      };
+      return raw.capture?.env?.produceAttested === true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Pass 1: smoke evaluations → schedule eval + both legs only when no live
+  // attested official tip remains (smoke:official plants without attest still purge).
   for (const name of fs.readdirSync(resultsDir)) {
     if (!name.startsWith("eval_")) continue;
     try {
@@ -557,6 +576,13 @@ export function purgeSmokeNoiseFs(
     const smokeMeta = meta.smoke === true;
     const fakeLeg = legs.some((id) => runHasFakeProduceFs(resultsDir, id));
     if (!smokeMeta && !fakeLeg) continue;
+
+    const protectedLegs = legs.filter((id) => isLiveOfficialEvidenceFs(id));
+    if (protectedLegs.length > 0) {
+      for (const runId of protectedLegs) skip(runId, "live_official");
+      // Mixed smoke/live pair: leave eval + all legs alone (no half-delete).
+      continue;
+    }
 
     let blocked = false;
     for (const runId of legs) {
@@ -596,32 +622,28 @@ export function purgeSmokeNoiseFs(
     removeRuns.add(runId);
   }
 
-  // Never schedule live official archive (official + not fakeProduce + not in smoke eval).
+  // Hard stop: never delete attested live official archive.
   for (const runId of [...removeRuns]) {
-    if (runHasFakeProduceFs(resultsDir, runId)) continue;
-    if (!isOfficialRunFs(resultsDir, runId)) continue;
-    // Official without fakeProduce should only be removed via smoke eval membership.
-    // If somehow scheduled alone, protect it.
-    let inSmokeEval = false;
-    for (const evalId of removeEvals) {
-      try {
-        const meta = readJsonFile(
-          path.join(resultsDir, evalId, "evaluation.json"),
-        ) as EvaluationMetaFile;
-        if (
-          meta.baselineRunId === runId ||
-          meta.candidateRunId === runId
-        ) {
-          inSmokeEval = true;
-          break;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    if (!inSmokeEval) {
+    if (isLiveOfficialEvidenceFs(runId)) {
       removeRuns.delete(runId);
       skip(runId, "live_official");
+    }
+  }
+
+  // Drop eval_* schedule if a protected live official leg is still linked.
+  for (const evalId of [...removeEvals]) {
+    try {
+      const meta = readJsonFile(
+        path.join(resultsDir, evalId, "evaluation.json"),
+      ) as EvaluationMetaFile;
+      const legs = [meta.baselineRunId, meta.candidateRunId].filter(
+        (id): id is string => typeof id === "string" && id.length > 0,
+      );
+      if (legs.some((id) => isLiveOfficialEvidenceFs(id))) {
+        removeEvals.delete(evalId);
+      }
+    } catch {
+      /* ignore */
     }
   }
 

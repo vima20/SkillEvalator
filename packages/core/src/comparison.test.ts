@@ -626,7 +626,89 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
     expect(c.parity.issues.some((i) => /costCapUsd/i.test(i))).toBe(true);
     expect(c.parity.issues.some((i) => /costHardStop/i.test(i))).toBe(true);
-    expect(c.parity.issues.some((i) => /allowHostGrade/i.test(i))).toBe(true);
+    expect(c.parity.issues.some((i) => /allowHostGrade=false/i.test(i))).toBe(
+      true,
+    );
+  });
+
+  it("official INCONCLUSIVE when allowHostGrade is true or grade is not docker_script", () => {
+    const hostOk = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        capture: {
+          ...sample({ runId: "b", role: "baseline" }).capture!,
+          env: {
+            ...sample({ runId: "b", role: "baseline" }).capture!.env!,
+            allowHostGrade: true,
+            grade: "docker_script",
+          },
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        capture: {
+          ...sample({ runId: "c", role: "candidate" }).capture!,
+          env: {
+            ...sample({ runId: "c", role: "candidate" }).capture!.env!,
+            allowHostGrade: true,
+            grade: "docker_script",
+          },
+        },
+      }),
+    );
+    expect(hostOk.verdict).toBe("INCONCLUSIVE");
+    expect(
+      hostOk.parity.issues.some((i) => /allowHostGrade=false/i.test(i)),
+    ).toBe(true);
+
+    const hostGrade = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.5,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        pipeline: { produce: "model", grade: "host_script" },
+        capture: {
+          ...sample({ runId: "b", role: "baseline" }).capture!,
+          env: {
+            ...sample({ runId: "b", role: "baseline" }).capture!.env!,
+            grade: "host_script",
+          },
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        pipeline: { produce: "model", grade: "host_script" },
+        capture: {
+          ...sample({ runId: "c", role: "candidate" }).capture!,
+          env: {
+            ...sample({ runId: "c", role: "candidate" }).capture!.env!,
+            grade: "host_script",
+          },
+        },
+      }),
+    );
+    expect(hostGrade.verdict).toBe("INCONCLUSIVE");
+    expect(
+      hostGrade.parity.issues.some((i) => /grade=docker_script/i.test(i)),
+    ).toBe(true);
   });
 
   it("official INCONCLUSIVE when candidate.role is missing (no invent)", () => {

@@ -165,11 +165,14 @@ function asAttestedLive(result) {
     ...result,
     findings: [],
     tokens: { promptTokens: 12, completionTokens: 8, totalTokens: 20 },
+    pipeline: { produce: "model", grade: "docker_script" },
     capture: {
       ...result.capture,
       env: {
         ...result.capture.env,
         produceAttested: true,
+        allowHostGrade: false,
+        grade: "docker_script",
       },
     },
   };

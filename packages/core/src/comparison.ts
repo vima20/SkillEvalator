@@ -439,15 +439,20 @@ export function checkComparisonParity(
           `official Comparison requires ${label}.capture.env.costHardStop`,
         );
       }
-      if (typeof leg.capture?.env?.allowHostGrade !== "boolean") {
+      if (leg.capture?.env?.allowHostGrade !== false) {
         issues.push(
-          `official Comparison requires ${label}.capture.env.allowHostGrade`,
+          `official Comparison requires ${label}.capture.env.allowHostGrade=false`,
         );
       }
       const grade = leg.capture?.env?.grade;
-      if (grade !== "docker_script" && grade !== "host_script") {
+      if (grade !== "docker_script") {
         issues.push(
-          `official Comparison requires ${label}.capture.env.grade (docker_script|host_script)`,
+          `official Comparison requires ${label}.capture.env.grade=docker_script`,
+        );
+      }
+      if (leg.pipeline?.grade !== "docker_script") {
+        issues.push(
+          `official Comparison requires ${label}.pipeline.grade=docker_script`,
         );
       }
       if (leg.pipeline?.produce !== "model") {

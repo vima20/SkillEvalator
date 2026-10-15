@@ -12,7 +12,7 @@ export function ClearSmokeNoise() {
   async function onClear() {
     if (busy) return;
     const ok = window.confirm(
-      "Delete smoke harness noise now?\n\nRemoves: evaluation.smoke plants, FAKE_PRODUCE runs, and their eval_* folders.\nKept: live official archives (not smoke), queued/running jobs.",
+      "Delete smoke harness noise now?\n\nRemoves: evaluation.smoke plants and FAKE_PRODUCE runs (and their eval_* when both legs are smoke/fake).\nKept: attested live official legs (produceAttested), queued/running jobs.\nMixed smoke+live pairs are left untouched.",
     );
     if (!ok) return;
     setBusy(true);

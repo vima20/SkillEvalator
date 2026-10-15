@@ -44,6 +44,8 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 
 **Clear old runs (7d+)** ei poista `mode: official` -ajoja eikä `evaluation.json`-linkitettyjä jalkoja — muuten `eval_*` katoaisi healissa.
 
-**Clear smoke noise** poistaa heti `evaluation.smoke` -kasvit ja `FAKE_PRODUCE`-ajot (ml. smoke:official); live official -arkisto ilman smoke/fakeProduce säilyy.
+**Clear smoke noise** poistaa heti `evaluation.smoke` -kasvit ja `FAKE_PRODUCE`-ajot (ml. smoke:official ilman `produceAttested`). Attestoitu live official (`produceAttested=true`) säilyy aina; sekapari smoke+live jätetään koskematta.
 
-**Download pilot archive** (Comparison detail, official PASS/FAIL) pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA). Dry-run / smoke / FAKE_PRODUCE → estetty.
+Official Comparison vaatii `capture.env.grade=docker_script`, `pipeline.grade=docker_script` ja `allowHostGrade=false` (host grade ei ole adoption-todiste).
+
+**Download pilot archive** ja **Comparison CSV** (sama gate): official PASS/FAIL, ei dry-run / smoke / FAKE_PRODUCE. Archive pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA).
