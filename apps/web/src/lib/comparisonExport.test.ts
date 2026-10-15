@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { comparisonCsvGate } from "./comparisonExport.js";
+import {
+  canShowOfficialComparisonDownloads,
+  comparisonCsvGate,
+  officialComparisonExportGate,
+} from "./comparisonExport.js";
+import { pilotArchiveGate } from "./pilotArchive.js";
 
 describe("comparisonCsvGate", () => {
   it("allows official PASS and FAIL", () => {
@@ -30,5 +35,41 @@ describe("comparisonCsvGate", () => {
     expect(out.status).toBe(409);
     expect(out.verdict).toBe("INCONCLUSIVE");
     expect(out.error).toMatch(/INCONCLUSIVE/);
+  });
+
+  it("blocks smoke and FAKE_PRODUCE like pilot archive", () => {
+    const smoke = comparisonCsvGate(
+      { verdict: "PASS", mode: "official" },
+      { metaSmoke: true },
+    );
+    expect(smoke.ok).toBe(false);
+    if (!smoke.ok) {
+      expect(smoke.errorCode).toBe("comparison_export_smoke_forbidden");
+    }
+    const fake = comparisonCsvGate(
+      { verdict: "FAIL", mode: "official" },
+      { candidateFakeProduce: true },
+    );
+    expect(fake.ok).toBe(false);
+    if (!fake.ok) {
+      expect(fake.errorCode).toBe("comparison_export_fake_produce_forbidden");
+    }
+
+    const comparison = { verdict: "PASS" as const, mode: "official" as const };
+    expect(
+      canShowOfficialComparisonDownloads({
+        comparison,
+        metaSmoke: true,
+      }),
+    ).toBe(false);
+    expect(
+      pilotArchiveGate({ comparison, metaSmoke: true }).ok,
+    ).toBe(false);
+    expect(
+      officialComparisonExportGate(comparison, { metaSmoke: true }).ok,
+    ).toBe(false);
+    expect(
+      canShowOfficialComparisonDownloads({ comparison }),
+    ).toBe(true);
   });
 });

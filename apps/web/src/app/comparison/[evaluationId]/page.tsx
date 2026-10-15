@@ -2,6 +2,7 @@ import Link from "next/link";
 import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
+import { canShowOfficialComparisonDownloads } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
   resolveTipBaselineRunId,
@@ -109,6 +110,12 @@ export default async function ComparisonDetailPage({
   }
 
   const capture = comparison.capture;
+  const showOfficialDownloads = canShowOfficialComparisonDownloads({
+    comparison,
+    metaSmoke: meta.smoke === true,
+    baselineFakeProduce: baseline.capture?.env?.fakeProduce === true,
+    candidateFakeProduce: candidate.capture?.env?.fakeProduce === true,
+  });
 
   return (
     <div>
@@ -139,28 +146,23 @@ export default async function ComparisonDetailPage({
           >
             Benefit Report
           </Link>
-          {comparison.mode === "official" &&
-            (comparison.verdict === "PASS" ||
-              comparison.verdict === "FAIL") &&
-            meta.smoke !== true &&
-            baseline.capture?.env?.fakeProduce !== true &&
-            candidate.capture?.env?.fakeProduce !== true && (
-              <>
-                <a
-                  className="btn btn-ghost"
-                  href={`/api/comparison/${evaluationId}/csv`}
-                >
-                  Download CSV
-                </a>
-                <a
-                  className="btn btn-ghost"
-                  href={`/api/comparison/${evaluationId}/archive`}
-                  title="Zip tip legs + evaluation + MANIFEST (git SHA)"
-                >
-                  Download pilot archive
-                </a>
-              </>
-            )}
+          {showOfficialDownloads ? (
+            <>
+              <a
+                className="btn btn-ghost"
+                href={`/api/comparison/${evaluationId}/csv`}
+              >
+                Download CSV
+              </a>
+              <a
+                className="btn btn-ghost"
+                href={`/api/comparison/${evaluationId}/archive`}
+                title="Zip tip legs + evaluation + MANIFEST (git SHA)"
+              >
+                Download pilot archive
+              </a>
+            </>
+          ) : null}
         </div>
       </header>
 

@@ -12,7 +12,8 @@ export async function GET(
   try {
     const { evaluationId: raw } = await ctx.params;
     const evaluationId = assertSafeId(raw, "evaluationId");
-    const { meta, comparison } = loadEvaluationComparison(evaluationId);
+    const { meta, comparison, baseline, candidate } =
+      loadEvaluationComparison(evaluationId);
     if (!meta || !comparison) {
       return NextResponse.json(
         {
@@ -23,13 +24,18 @@ export async function GET(
         { status: 404 },
       );
     }
-    const gate = comparisonCsvGate(comparison);
+    const gate = comparisonCsvGate(comparison, {
+      metaSmoke: meta.smoke === true,
+      baselineFakeProduce: baseline?.capture?.env?.fakeProduce === true,
+      candidateFakeProduce: candidate?.capture?.env?.fakeProduce === true,
+    });
     if (!gate.ok) {
       return NextResponse.json(
         {
           error: gate.error,
+          errorCode: gate.errorCode,
           verdict: gate.verdict,
-          ...(gate.mode ? { mode: gate.mode } : {}),
+          mode: gate.mode,
           rationale: comparison.rationale,
         },
         { status: gate.status },

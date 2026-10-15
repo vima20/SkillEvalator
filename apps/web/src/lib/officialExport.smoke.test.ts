@@ -204,6 +204,12 @@ describe("official export gates smoke", () => {
         metaSmoke: true,
       }).ok,
     ).toBe(false);
+    expect(
+      comparisonCsvGate(comparison, { metaSmoke: true }).ok,
+    ).toBe(false);
+    expect(
+      comparisonCsvGate(comparison, { candidateFakeProduce: true }).ok,
+    ).toBe(false);
   });
 
   it("dry-run Comparison is denied by all adoption export gates", () => {

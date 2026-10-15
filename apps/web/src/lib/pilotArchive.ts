@@ -7,7 +7,11 @@ import {
   type RunComparison,
   writeJsonFile,
 } from "@skillevalator/core";
-import { comparisonCsvGate } from "@/lib/comparisonExport";
+import {
+  officialComparisonExportGate,
+  type OfficialComparisonEvidence,
+  type OfficialComparisonExportDeny,
+} from "@/lib/comparisonExport";
 import type { EvaluationMeta } from "@/lib/evaluations";
 
 export type PilotArchiveBuildInfo = {
@@ -17,60 +21,22 @@ export type PilotArchiveBuildInfo = {
 };
 
 /**
- * Live official pilot archive — PASS or FAIL, never dry-run / smoke / FAKE_PRODUCE.
+ * Live official pilot archive — same evidence bar as Comparison CSV.
  */
 export function pilotArchiveGate(opts: {
   comparison: Pick<RunComparison, "verdict" | "mode">;
-  metaSmoke?: boolean;
-  baselineFakeProduce?: boolean;
-  candidateFakeProduce?: boolean;
-}):
+} & OfficialComparisonEvidence):
   | { ok: true }
-  | {
-      ok: false;
-      status: 409;
-      error: string;
-      errorCode: string;
-      verdict: RunComparison["verdict"];
-      mode: RunComparison["mode"];
-    } {
-  const csv = comparisonCsvGate(opts.comparison);
-  if (!csv.ok) {
-    return {
-      ok: false,
-      status: csv.status,
-      verdict: csv.verdict,
-      mode: csv.mode,
-      errorCode: "pilot_archive_not_official",
-      error: csv.error.replace(
-        "comparison CSV export",
-        "pilot archive download",
-      ),
-    };
-  }
-  if (opts.metaSmoke === true) {
-    return {
-      ok: false,
-      status: 409,
-      verdict: opts.comparison.verdict,
-      mode: opts.comparison.mode,
-      errorCode: "pilot_archive_smoke_forbidden",
-      error:
-        "pilot archive download rejects evaluation.smoke=true (fixture plant)",
-    };
-  }
-  if (opts.baselineFakeProduce || opts.candidateFakeProduce) {
-    return {
-      ok: false,
-      status: 409,
-      verdict: opts.comparison.verdict,
-      mode: opts.comparison.mode,
-      errorCode: "pilot_archive_fake_produce_forbidden",
-      error:
-        "pilot archive download rejects FAKE_PRODUCE tip legs (not live evidence)",
-    };
-  }
-  return { ok: true };
+  | OfficialComparisonExportDeny {
+  return officialComparisonExportGate(
+    opts.comparison,
+    {
+      metaSmoke: opts.metaSmoke,
+      baselineFakeProduce: opts.baselineFakeProduce,
+      candidateFakeProduce: opts.candidateFakeProduce,
+    },
+    "pilot archive download",
+  );
 }
 
 const RUN_FILE_ALLOWLIST = [

@@ -41,14 +41,17 @@ describe("pilotArchiveGate", () => {
       metaSmoke: true,
     });
     expect(smoke.ok).toBe(false);
-    if (!smoke.ok) expect(smoke.errorCode).toBe("pilot_archive_smoke_forbidden");
+    if (!smoke.ok) {
+      expect(smoke.errorCode).toBe("comparison_export_smoke_forbidden");
+      expect(smoke.error).toMatch(/pilot archive/i);
+    }
     const fake = pilotArchiveGate({
       comparison: { verdict: "FAIL", mode: "official" },
       candidateFakeProduce: true,
     });
     expect(fake.ok).toBe(false);
     if (!fake.ok) {
-      expect(fake.errorCode).toBe("pilot_archive_fake_produce_forbidden");
+      expect(fake.errorCode).toBe("comparison_export_fake_produce_forbidden");
     }
   });
 });
