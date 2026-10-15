@@ -12,6 +12,7 @@ import {
 } from "@skillevalator/core";
 import { benefitExportGate } from "./benefitExport.js";
 import { comparisonCsvGate } from "./comparisonExport.js";
+import { pilotArchiveGate } from "./pilotArchive.js";
 import { runCsvExportGate } from "./runCsvExport.js";
 
 /** Fixture trusted pins (export smoke has no skill-snapshot on disk). */
@@ -135,6 +136,14 @@ describe("official export gates smoke", () => {
       }).ok,
     ).toBe(true);
     expect(comparisonCsvGate(comparison).ok).toBe(true);
+    expect(
+      pilotArchiveGate({
+        comparison,
+        metaSmoke: false,
+        baselineFakeProduce: false,
+        candidateFakeProduce: false,
+      }).ok,
+    ).toBe(true);
   });
 
   it("FAIL unlocks DO NOT USE Benefit + run/Comparison CSV; blocks USE", () => {
@@ -181,6 +190,20 @@ describe("official export gates smoke", () => {
       }).ok,
     ).toBe(true);
     expect(comparisonCsvGate(comparison).ok).toBe(true);
+    expect(
+      pilotArchiveGate({
+        comparison,
+        metaSmoke: false,
+        baselineFakeProduce: false,
+        candidateFakeProduce: false,
+      }).ok,
+    ).toBe(true);
+    expect(
+      pilotArchiveGate({
+        comparison,
+        metaSmoke: true,
+      }).ok,
+    ).toBe(false);
   });
 
   it("dry-run Comparison is denied by all adoption export gates", () => {
@@ -210,6 +233,7 @@ describe("official export gates smoke", () => {
     const comparison = compareBaselineCandidate(baseline, candidate);
     expect(comparison.verdict).toBe("INCONCLUSIVE");
     expect(comparisonCsvGate(comparison).ok).toBe(false);
+    expect(pilotArchiveGate({ comparison }).ok).toBe(false);
 
     const report = buildBenefitReport(candidate, { comparison });
     expect(report.verdict.recommendation).toBe("inconclusive");

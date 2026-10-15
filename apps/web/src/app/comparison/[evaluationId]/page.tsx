@@ -141,13 +141,25 @@ export default async function ComparisonDetailPage({
           </Link>
           {comparison.mode === "official" &&
             (comparison.verdict === "PASS" ||
-              comparison.verdict === "FAIL") && (
-              <a
-                className="btn btn-ghost"
-                href={`/api/comparison/${evaluationId}/csv`}
-              >
-                Download CSV
-              </a>
+              comparison.verdict === "FAIL") &&
+            meta.smoke !== true &&
+            baseline.capture?.env?.fakeProduce !== true &&
+            candidate.capture?.env?.fakeProduce !== true && (
+              <>
+                <a
+                  className="btn btn-ghost"
+                  href={`/api/comparison/${evaluationId}/csv`}
+                >
+                  Download CSV
+                </a>
+                <a
+                  className="btn btn-ghost"
+                  href={`/api/comparison/${evaluationId}/archive`}
+                  title="Zip tip legs + evaluation + MANIFEST (git SHA)"
+                >
+                  Download pilot archive
+                </a>
+              </>
             )}
         </div>
       </header>

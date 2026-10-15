@@ -32,7 +32,7 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 - [ ] Tarvittaessa Runs → **Clear smoke noise** (poistaa smoke-kasvit diskiltä; ei koske live official -arkistoa)
 - [ ] Official Comparison **PASS** vain jos candidate ≥ USE floor ja lift ≥ kynnys ([ACCEPTANCE.md](./ACCEPTANCE.md))
 - [ ] Benefit **USE** vain PASS:n jälkeen — ei dry-run / smoke
-- [ ] Vie CSV / Benefit tarvittaessa; säilytä `eval_*` + run-kansiot
+- [ ] Vie CSV / **Download pilot archive** / Benefit tarvittaessa; säilytä zip + `eval_*` + run-kansiot
 
 ## 5. Jos Ready = Blocked
 

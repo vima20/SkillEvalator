@@ -45,3 +45,5 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 **Clear old runs (7d+)** ei poista `mode: official` -ajoja eikä `evaluation.json`-linkitettyjä jalkoja — muuten `eval_*` katoaisi healissa.
 
 **Clear smoke noise** poistaa heti `evaluation.smoke` -kasvit ja `FAKE_PRODUCE`-ajot (ml. smoke:official); live official -arkisto ilman smoke/fakeProduce säilyy.
+
+**Download pilot archive** (Comparison detail, official PASS/FAIL) pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA). Dry-run / smoke / FAKE_PRODUCE → estetty.
