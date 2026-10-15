@@ -35,6 +35,10 @@ export async function GET(
       baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
       candidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
       metaSmoke: packed?.meta?.smoke === true,
+      baselineFakeProduce:
+        packed?.baseline?.capture?.env?.fakeProduce === true,
+      candidateFakeProduce:
+        packed?.candidate?.capture?.env?.fakeProduce === true,
     });
     if (!gate.ok) {
       return NextResponse.json(

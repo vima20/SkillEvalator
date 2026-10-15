@@ -41,6 +41,8 @@ export default async function ComparisonListPage({
       resolveTipCandidateRunId(packed) ?? e.candidateRunId;
     // Chip/label mode from Comparison object (same source as detail), not stale meta.
     const displayMode = c?.mode ?? e.mode;
+    const baselineFakeProduce =
+      packed.baseline?.capture?.env?.fakeProduce === true;
     const candidateFakeProduce =
       packed.candidate?.capture?.env?.fakeProduce === true;
     return {
@@ -52,10 +54,12 @@ export default async function ComparisonListPage({
       baselineStatus: packed.baseline?.status,
       candidateStatus: packed.candidate?.status,
       candidateRunId: tipCandidateRunId,
+      baselineFakeProduce,
       candidateFakeProduce,
       noise: isPilotNoiseEvaluation({
         smoke: e.smoke,
         displayMode,
+        baselineFakeProduce,
         candidateFakeProduce,
       }),
     };
@@ -81,6 +85,7 @@ export default async function ComparisonListPage({
               <>
                 {" "}
                 <strong>Pilot focus</strong> hides dry-run and smoke
+                (either tip leg)
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}
@@ -142,7 +147,9 @@ export default async function ComparisonListPage({
                       <Link href={`/comparison/${e.evaluationId}`}>
                         {e.evaluationId}
                       </Link>
-                      {e.smoke || e.candidateFakeProduce ? (
+                      {e.smoke ||
+                      e.baselineFakeProduce ||
+                      e.candidateFakeProduce ? (
                         <div className="cell-meta">smoke</div>
                       ) : null}
                     </td>

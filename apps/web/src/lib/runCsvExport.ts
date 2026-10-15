@@ -19,6 +19,8 @@ export function runCsvExportGate(opts: {
   candidateRunId?: string | null;
   /** Same evidence bar as Comparison CSV / pilot archive. */
   metaSmoke?: boolean;
+  baselineFakeProduce?: boolean;
+  candidateFakeProduce?: boolean;
 }):
   | { ok: true }
   | { ok: false; status: 409; error: string; errorCode: string } {
@@ -31,7 +33,11 @@ export function runCsvExportGate(opts: {
         "run CSV export rejects evaluation.smoke=true (fixture plant)",
     };
   }
-  if (opts.result.capture?.env?.fakeProduce === true) {
+  if (
+    opts.result.capture?.env?.fakeProduce === true ||
+    opts.baselineFakeProduce === true ||
+    opts.candidateFakeProduce === true
+  ) {
     return {
       ok: false,
       status: 409,

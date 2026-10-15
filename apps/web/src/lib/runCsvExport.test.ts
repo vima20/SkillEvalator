@@ -34,7 +34,7 @@ describe("runCsvExportGate", () => {
     ).toBe(true);
   });
 
-  it("blocks FAKE_PRODUCE and evaluation.smoke", () => {
+  it("blocks FAKE_PRODUCE (self or sibling) and evaluation.smoke", () => {
     const fake = runCsvExportGate({
       result: {
         ...base,
@@ -46,6 +46,16 @@ describe("runCsvExportGate", () => {
     });
     expect(fake.ok).toBe(false);
     if (!fake.ok) expect(fake.errorCode).toBe("run_csv_smoke_forbidden");
+
+    const sibling = runCsvExportGate({
+      result: base,
+      comparisonVerdict: "PASS",
+      comparisonMode: "official",
+      ...tipLegs,
+      baselineFakeProduce: true,
+    });
+    expect(sibling.ok).toBe(false);
+    if (!sibling.ok) expect(sibling.errorCode).toBe("run_csv_smoke_forbidden");
 
     const meta = runCsvExportGate({
       result: base,
