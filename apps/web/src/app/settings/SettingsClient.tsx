@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
-import type { SettingsSnapshot } from "@/lib/settingsSnapshot";
+import type { SettingsSnapshot } from "@/lib/settingsTypes";
 
 function Row(opts: { label: string; children: ReactNode }) {
   return (
