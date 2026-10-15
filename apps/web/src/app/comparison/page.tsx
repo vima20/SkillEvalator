@@ -59,6 +59,7 @@ export default async function ComparisonListPage({
       noise: isPilotNoiseEvaluation({
         smoke: e.smoke,
         displayMode,
+        verdict: c?.verdict ?? null,
         baselineFakeProduce,
         candidateFakeProduce,
       }),
@@ -84,8 +85,8 @@ export default async function ComparisonListPage({
             {pilotFocus ? (
               <>
                 {" "}
-                <strong>Pilot focus</strong> hides dry-run and smoke
-                (either tip leg)
+                <strong>Pilot focus</strong> hides dry-run, smoke (either tip
+                leg), and official INCONCLUSIVE
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}
@@ -119,7 +120,7 @@ export default async function ComparisonListPage({
             body={
               allEvaluations.length === 0
                 ? "Start a run with baseline↔candidate enabled to queue both legs and open Comparison."
-                : "All rows are dry-run or smoke. Show all rows to inspect them."
+                : "All rows are dry-run, smoke, or official INCONCLUSIVE. Show all rows to inspect them."
             }
             actionHref={allEvaluations.length === 0 ? "/" : "/comparison"}
             actionLabel={

@@ -7,7 +7,7 @@ export function PilotFocusToggle(opts: {
 }) {
   const title =
     opts.pathname === "/comparison"
-      ? "Hide dry-run and smoke (either tip leg)"
+      ? "Hide dry-run, smoke (either tip leg), and official INCONCLUSIVE"
       : opts.pathname === "/dashboard"
         ? "Show only official tip candidates on the leaderboard"
         : "Hide smoke, superseded retries, and dry-run rows";

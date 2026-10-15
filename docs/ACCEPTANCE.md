@@ -42,7 +42,7 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 
 **Pilot focus** (`?focus=pilot`):
 - **Runs / Benefit** — piilottaa smoke, superseded, FAKE_PRODUCE ja dry-run -rivit (waiting/unpaired voivat jäädä näkyviin)
-- **Comparison** — piilottaa dry-run, `evaluation.smoke` ja FAKE_PRODUCE joko tip-jalalla (superseded on run-tason käsite)
+- **Comparison** — piilottaa dry-run, `evaluation.smoke`, FAKE_PRODUCE joko tip-jalalla ja official INCONCLUSIVE (näyttää PASS/FAIL + waiting; superseded on run-tason käsite)
 - **Dashboard** — vain official tip -kandidaatit
 
 **Clear old runs (7d+)** ei poista `mode: official` -ajoja eikä `evaluation.json`-linkitettyjä jalkoja — muuten `eval_*` katoaisi healissa.
