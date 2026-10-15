@@ -157,7 +157,9 @@ code {
 .nav {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
 .nav a {
@@ -166,6 +168,8 @@ code {
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
