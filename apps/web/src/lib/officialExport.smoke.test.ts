@@ -21,6 +21,10 @@ const officialCompareOpts = {
   expectedGradeHash: GRADE_HASH,
   expectedBaselinePromptHash: "basehash_export",
   expectedCandidatePromptHash: "candhash_export",
+  expectedBaselineEvalSkillVersion: "abc",
+  expectedCandidateEvalSkillVersion: "abc",
+  expectedBaselinePromptKind: "baseline_neutral" as const,
+  expectedCandidatePromptKind: "skill_md" as const,
 };
 
 function officialLeg(

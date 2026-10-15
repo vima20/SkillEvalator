@@ -14,6 +14,7 @@ import {
   resolvePairedCancelSibling,
 } from "./comparison.js";
 import { writeJsonFile } from "./fsJson.js";
+import { hashPromptInstruction } from "./promptSnapshot.js";
 import { saveRetryMarker } from "./retryDedup.js";
 import type { RunResult } from "./schema.js";
 
@@ -107,6 +108,10 @@ const OFFICIAL_PINS = {
   expectedGradeHash: TRUSTED_GRADE_HASH,
   expectedBaselinePromptHash: TRUSTED_BASELINE_PROMPT_HASH,
   expectedCandidatePromptHash: TRUSTED_CANDIDATE_PROMPT_HASH,
+  expectedBaselineEvalSkillVersion: "abc",
+  expectedCandidateEvalSkillVersion: "abc",
+  expectedBaselinePromptKind: "baseline_neutral" as const,
+  expectedCandidatePromptKind: "skill_md" as const,
 };
 
 describe("compareBaselineCandidate", () => {
@@ -169,6 +174,77 @@ describe("compareBaselineCandidate", () => {
     );
     expect(c.verdict).toBe("PASS");
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
+  it("official INCONCLUSIVE when evalSkillVersion ≠ trusted skill-snapshot manifest", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        evalSkillVersion: "forged_sha",
+        capture: {
+          ...sample({ runId: "b", role: "baseline" }).capture!,
+          skillVersion: "forged_sha",
+        },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        evalSkillVersion: "forged_sha",
+        capture: {
+          ...sample({ runId: "c", role: "candidate" }).capture!,
+          skillVersion: "forged_sha",
+        },
+      }),
+      OFFICIAL_PINS,
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        /evalSkillVersion ≠ trusted skill-snapshot/i.test(i),
+      ),
+    ).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when promptKind ≠ trusted skill-snapshot manifest", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      {
+        ...OFFICIAL_PINS,
+        expectedCandidatePromptKind: "baseline_neutral",
+      },
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        /candidate\.capture\.promptKind ≠ trusted skill-snapshot/i.test(i),
+      ),
+    ).toBe(true);
   });
 
   it("official INCONCLUSIVE when promptHash ≠ trusted skill-snapshot pin", () => {
@@ -2300,6 +2376,70 @@ describe("resolvePairedCancelSibling", () => {
 });
 
 describe("loadPairedComparison official prompt pin", () => {
+  it("INCONCLUSIVE when result evalSkillVersion ≠ snapshot manifest", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-ver-disk-"));
+    pairedTemps.push(root);
+    const evaluationId = "eval_100_version";
+    const baselineRunId = "run_100_basevers";
+    const candidateRunId = "run_100_candvers";
+    writeJsonFile(path.join(root, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "official",
+      baselineRunId,
+      candidateRunId,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    for (const [id, role, score] of [
+      [baselineRunId, "baseline", 0.9],
+      [candidateRunId, "candidate", 1],
+    ] as const) {
+      const body =
+        role === "baseline" ? "neutral baseline body" : "candidate skill body";
+      const base = sample({
+        runId: id,
+        role,
+        evaluationId,
+        score,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        evalSkillVersion: "forged_version",
+      });
+      writeJsonFile(path.join(root, id, "result.json"), {
+        ...base,
+        capture: {
+          ...base.capture!,
+          skillVersion: "forged_version",
+          promptHash: hashPromptInstruction(body),
+        },
+      });
+      const snap = path.join(root, id, "skill-snapshot");
+      fs.mkdirSync(path.join(snap, "scripts"), { recursive: true });
+      fs.writeFileSync(
+        path.join(snap, "scripts", "grade.js"),
+        "module.exports = {};\n",
+        "utf8",
+      );
+      fs.writeFileSync(path.join(snap, "SKILL.md"), `${body}\n`, "utf8");
+      writeJsonFile(path.join(snap, "manifest.json"), {
+        _snapshot: {
+          evalSkillVersion: "real_snapshot_sha",
+          promptKind: role === "baseline" ? "baseline_neutral" : "skill_md",
+        },
+      });
+    }
+    const cmp = loadPairedComparison({ resultsDir: root, evaluationId });
+    expect(cmp).not.toBeNull();
+    expect(cmp!.parity.ok).toBe(false);
+    expect(cmp!.verdict).toBe("INCONCLUSIVE");
+    expect(
+      cmp!.parity.issues.some((i) =>
+        /evalSkillVersion ≠ trusted skill-snapshot/i.test(i),
+      ),
+    ).toBe(true);
+  });
+
   it("INCONCLUSIVE when skill-snapshot SKILL.md missing on official disk", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-prompt-disk-"));
     pairedTemps.push(root);

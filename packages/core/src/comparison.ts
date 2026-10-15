@@ -5,7 +5,11 @@ import {
   PASS_SCORE_FLOOR,
 } from "./diffScore.js";
 import { resolveTrustedGradeHashFromRunResultDir } from "./dockerGrade.js";
-import { resolveTrustedPromptHashFromRunResultDir } from "./promptSnapshot.js";
+import {
+  resolveTrustedPromptHashFromRunResultDir,
+  resolveTrustedSnapshotManifestPinsFromRunResultDir,
+  type SnapshotPromptKind,
+} from "./promptSnapshot.js";
 import { readJsonFile, writeJsonFile } from "./fsJson.js";
 import { releaseWxLock, tryAcquireWxLock } from "./fsSafe.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
@@ -265,6 +269,15 @@ export function checkComparisonParity(
      */
     expectedBaselinePromptHash?: string;
     expectedCandidatePromptHash?: string;
+    /**
+     * Trusted evalSkillVersion from skill-snapshot/manifest.json `_snapshot`.
+     * Official Comparison must pin these — forged result.json versions must not PASS.
+     */
+    expectedBaselineEvalSkillVersion?: string;
+    expectedCandidateEvalSkillVersion?: string;
+    /** Trusted promptKind from skill-snapshot/manifest.json `_snapshot`. */
+    expectedBaselinePromptKind?: SnapshotPromptKind;
+    expectedCandidatePromptKind?: SnapshotPromptKind;
     /** Extra parity issues (e.g. from resolveEvaluationMetaMode). */
     extraParityIssues?: string[];
   },
@@ -524,6 +537,74 @@ export function checkComparisonParity(
     ) {
       issues.push(
         `candidate.capture.promptHash ≠ trusted skill-snapshot promptHash (${candidatePromptHash.slice(0, 12)}…)`,
+      );
+    }
+    const expectedBaselineEvalSkillVersion =
+      opts?.expectedBaselineEvalSkillVersion?.trim() ?? "";
+    const expectedCandidateEvalSkillVersion =
+      opts?.expectedCandidateEvalSkillVersion?.trim() ?? "";
+    if (!expectedBaselineEvalSkillVersion) {
+      issues.push(
+        "official Comparison requires trusted expectedBaselineEvalSkillVersion (skill-snapshot manifest)",
+      );
+    } else if (baseline.evalSkillVersion !== expectedBaselineEvalSkillVersion) {
+      issues.push(
+        `baseline.evalSkillVersion ≠ trusted skill-snapshot (${baseline.evalSkillVersion} ≠ ${expectedBaselineEvalSkillVersion})`,
+      );
+    } else {
+      const capVer = baseline.capture?.skillVersion?.trim() ?? "";
+      if (!capVer) {
+        issues.push(
+          "official Comparison requires baseline.capture.skillVersion",
+        );
+      } else if (capVer !== expectedBaselineEvalSkillVersion) {
+        issues.push(
+          `baseline.capture.skillVersion ≠ trusted skill-snapshot (${capVer} ≠ ${expectedBaselineEvalSkillVersion})`,
+        );
+      }
+    }
+    if (!expectedCandidateEvalSkillVersion) {
+      issues.push(
+        "official Comparison requires trusted expectedCandidateEvalSkillVersion (skill-snapshot manifest)",
+      );
+    } else if (
+      candidate.evalSkillVersion !== expectedCandidateEvalSkillVersion
+    ) {
+      issues.push(
+        `candidate.evalSkillVersion ≠ trusted skill-snapshot (${candidate.evalSkillVersion} ≠ ${expectedCandidateEvalSkillVersion})`,
+      );
+    } else {
+      const capVer = candidate.capture?.skillVersion?.trim() ?? "";
+      if (!capVer) {
+        issues.push(
+          "official Comparison requires candidate.capture.skillVersion",
+        );
+      } else if (capVer !== expectedCandidateEvalSkillVersion) {
+        issues.push(
+          `candidate.capture.skillVersion ≠ trusted skill-snapshot (${capVer} ≠ ${expectedCandidateEvalSkillVersion})`,
+        );
+      }
+    }
+    const expectedBaselinePromptKind = opts?.expectedBaselinePromptKind;
+    const expectedCandidatePromptKind = opts?.expectedCandidatePromptKind;
+    const baselineKindPin = baseline.capture?.promptKind;
+    const candidateKindPin = candidate.capture?.promptKind;
+    if (!expectedBaselinePromptKind) {
+      issues.push(
+        "official Comparison requires trusted expectedBaselinePromptKind (skill-snapshot manifest)",
+      );
+    } else if (baselineKindPin !== expectedBaselinePromptKind) {
+      issues.push(
+        `baseline.capture.promptKind ≠ trusted skill-snapshot (${baselineKindPin ?? "missing"} ≠ ${expectedBaselinePromptKind})`,
+      );
+    }
+    if (!expectedCandidatePromptKind) {
+      issues.push(
+        "official Comparison requires trusted expectedCandidatePromptKind (skill-snapshot manifest)",
+      );
+    } else if (candidateKindPin !== expectedCandidatePromptKind) {
+      issues.push(
+        `candidate.capture.promptKind ≠ trusted skill-snapshot (${candidateKindPin ?? "missing"} ≠ ${expectedCandidatePromptKind})`,
       );
     }
   }
@@ -817,6 +898,10 @@ export function compareBaselineCandidate(
     expectedGradeHash?: string;
     expectedBaselinePromptHash?: string;
     expectedCandidatePromptHash?: string;
+    expectedBaselineEvalSkillVersion?: string;
+    expectedCandidateEvalSkillVersion?: string;
+    expectedBaselinePromptKind?: SnapshotPromptKind;
+    expectedCandidatePromptKind?: SnapshotPromptKind;
     extraParityIssues?: string[];
   },
 ): RunComparison {
@@ -1220,6 +1305,18 @@ export function loadPairedComparison(opts: {
   const expectedCandidatePromptHash = officialDisk
     ? resolveTrustedPromptHashFromRunResultDir(opts.resultsDir, candidateRunId)
     : undefined;
+  const baselineSnapPins = officialDisk
+    ? resolveTrustedSnapshotManifestPinsFromRunResultDir(
+        opts.resultsDir,
+        baselineRunId,
+      )
+    : {};
+  const candidateSnapPins = officialDisk
+    ? resolveTrustedSnapshotManifestPinsFromRunResultDir(
+        opts.resultsDir,
+        candidateRunId,
+      )
+    : {};
   const extraParityIssues = [
     ...modePin.issues,
     ...skillPin.issues,
@@ -1247,6 +1344,20 @@ export function loadPairedComparison(opts: {
       : {}),
     ...(expectedCandidatePromptHash
       ? { expectedCandidatePromptHash }
+      : {}),
+    ...(baselineSnapPins.evalSkillVersion
+      ? { expectedBaselineEvalSkillVersion: baselineSnapPins.evalSkillVersion }
+      : {}),
+    ...(candidateSnapPins.evalSkillVersion
+      ? {
+          expectedCandidateEvalSkillVersion: candidateSnapPins.evalSkillVersion,
+        }
+      : {}),
+    ...(baselineSnapPins.promptKind
+      ? { expectedBaselinePromptKind: baselineSnapPins.promptKind }
+      : {}),
+    ...(candidateSnapPins.promptKind
+      ? { expectedCandidatePromptKind: candidateSnapPins.promptKind }
       : {}),
     ...(extraParityIssues.length ? { extraParityIssues } : {}),
   });

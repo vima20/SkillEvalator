@@ -2,10 +2,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { writeJsonFile } from "./fsJson.js";
 import {
   hashPromptInstruction,
   resolveTrustedPromptHashFromRunResultDir,
   resolveTrustedPromptHashFromSnapshotDir,
+  resolveTrustedSnapshotManifestPinsFromRunResultDir,
+  resolveTrustedSnapshotManifestPinsFromSnapshotDir,
 } from "./promptSnapshot.js";
 
 const temps: string[] = [];
@@ -54,5 +57,52 @@ describe("resolveTrustedPromptHashFromRunResultDir", () => {
     expect(resolveTrustedPromptHashFromRunResultDir(root, runId)).toBe(
       hashPromptInstruction("candidate skill"),
     );
+  });
+});
+
+describe("resolveTrustedSnapshotManifestPinsFromSnapshotDir", () => {
+  it("reads evalSkillVersion and promptKind from _snapshot", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-manif-pin-"));
+    temps.push(root);
+    writeJsonFile(path.join(root, "manifest.json"), {
+      _snapshot: {
+        evalSkillVersion: "  deadbeef  ",
+        promptKind: "skill_md",
+      },
+    });
+    expect(resolveTrustedSnapshotManifestPinsFromSnapshotDir(root)).toEqual({
+      evalSkillVersion: "deadbeef",
+      promptKind: "skill_md",
+    });
+  });
+
+  it("returns empty when manifest missing", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-manif-miss-"));
+    temps.push(root);
+    expect(resolveTrustedSnapshotManifestPinsFromSnapshotDir(root)).toEqual(
+      {},
+    );
+  });
+});
+
+describe("resolveTrustedSnapshotManifestPinsFromRunResultDir", () => {
+  it("reads run skill-snapshot manifest", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-manif-run-"));
+    temps.push(root);
+    const runId = "run_manif_1";
+    const snap = path.join(root, runId, "skill-snapshot");
+    fs.mkdirSync(snap, { recursive: true });
+    writeJsonFile(path.join(snap, "manifest.json"), {
+      _snapshot: {
+        evalSkillVersion: "abc123",
+        promptKind: "baseline_neutral",
+      },
+    });
+    expect(
+      resolveTrustedSnapshotManifestPinsFromRunResultDir(root, runId),
+    ).toEqual({
+      evalSkillVersion: "abc123",
+      promptKind: "baseline_neutral",
+    });
   });
 });

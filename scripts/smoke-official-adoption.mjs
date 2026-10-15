@@ -195,6 +195,17 @@ function writePair(evaluationId, baseline, candidate, label) {
       `${promptBodyFor(r.role)}\n`,
       "utf8",
     );
+    writeJsonFile(path.join(snap, "manifest.json"), {
+      ...skill.manifest,
+      _snapshot: {
+        evalSkillId: skill.id,
+        evalSkillVersion: skill.version,
+        role: r.role,
+        promptHash: r.capture.promptHash,
+        promptKind: r.capture.promptKind,
+        capturedAt: startedAt,
+      },
+    });
   }
   writeJsonFile(path.join(resultsDir, evaluationId, "evaluation.json"), {
     evaluationId,
@@ -247,6 +258,10 @@ function writePair(evaluationId, baseline, candidate, label) {
       expectedCandidatePromptHash: hashPromptInstruction(
         promptBodyFor("candidate"),
       ),
+      expectedBaselineEvalSkillVersion: skill.version,
+      expectedCandidateEvalSkillVersion: skill.version,
+      expectedBaselinePromptKind: "baseline_neutral",
+      expectedCandidatePromptKind: "skill_md",
     },
   );
   const benefit = buildBenefitReport(asAttestedLive(candidate), {

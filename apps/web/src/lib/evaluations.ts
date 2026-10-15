@@ -14,6 +14,7 @@ import {
   resolveLegRunIdViaRetryChain,
   resolveTrustedGradeHashFromRunResultDir,
   resolveTrustedPromptHashFromRunResultDir,
+  resolveTrustedSnapshotManifestPinsFromRunResultDir,
   tryAcquireWxLock,
   unlinkBenefitReportCache,
   writeJsonFile,
@@ -361,6 +362,18 @@ export function loadEvaluationComparison(
           const expectedCandidatePromptHash = officialDisk
             ? resolveTrustedPromptHashFromRunResultDir(dir, candidate.runId)
             : undefined;
+          const baselineSnapPins = officialDisk
+            ? resolveTrustedSnapshotManifestPinsFromRunResultDir(
+                dir,
+                baseline.runId,
+              )
+            : {};
+          const candidateSnapPins = officialDisk
+            ? resolveTrustedSnapshotManifestPinsFromRunResultDir(
+                dir,
+                candidate.runId,
+              )
+            : {};
           const extraParityIssues = [
             ...modePin.issues,
             ...skillPin.issues,
@@ -387,6 +400,24 @@ export function loadEvaluationComparison(
               : {}),
             ...(expectedCandidatePromptHash
               ? { expectedCandidatePromptHash }
+              : {}),
+            ...(baselineSnapPins.evalSkillVersion
+              ? {
+                  expectedBaselineEvalSkillVersion:
+                    baselineSnapPins.evalSkillVersion,
+                }
+              : {}),
+            ...(candidateSnapPins.evalSkillVersion
+              ? {
+                  expectedCandidateEvalSkillVersion:
+                    candidateSnapPins.evalSkillVersion,
+                }
+              : {}),
+            ...(baselineSnapPins.promptKind
+              ? { expectedBaselinePromptKind: baselineSnapPins.promptKind }
+              : {}),
+            ...(candidateSnapPins.promptKind
+              ? { expectedCandidatePromptKind: candidateSnapPins.promptKind }
               : {}),
             ...(extraParityIssues.length ? { extraParityIssues } : {}),
           });

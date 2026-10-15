@@ -1,7 +1,16 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { readJsonFile } from "./fsJson.js";
 import { assertSafeId } from "./paths.js";
+
+export type SnapshotPromptKind = "baseline_neutral" | "skill_md";
+
+/** Pins from skill-snapshot/manifest.json `_snapshot` (worker write). */
+export type TrustedSnapshotManifestPins = {
+  evalSkillVersion?: string;
+  promptKind?: SnapshotPromptKind;
+};
 
 /**
  * Same rule as worker runJob: sha256(instruction).hex.slice(0, 16).
@@ -48,5 +57,51 @@ export function resolveTrustedPromptHashFromRunResultDir(
     return resolveTrustedPromptHashFromSnapshotDir(snapRoot);
   } catch {
     return undefined;
+  }
+}
+
+/** Read `_snapshot.evalSkillVersion` / `promptKind` from skill-snapshot/manifest.json. */
+export function resolveTrustedSnapshotManifestPinsFromSnapshotDir(
+  snapshotDir: string,
+): TrustedSnapshotManifestPins {
+  try {
+    const manPath = path.join(snapshotDir, "manifest.json");
+    const st = fs.lstatSync(manPath);
+    if (st.isSymbolicLink() || !st.isFile()) return {};
+    const raw = readJsonFile(manPath) as {
+      _snapshot?: {
+        evalSkillVersion?: unknown;
+        promptKind?: unknown;
+      };
+    };
+    const snap = raw?._snapshot;
+    if (!snap || typeof snap !== "object") return {};
+    const version =
+      typeof snap.evalSkillVersion === "string"
+        ? snap.evalSkillVersion.trim()
+        : "";
+    const kind = snap.promptKind;
+    const promptKind: SnapshotPromptKind | undefined =
+      kind === "baseline_neutral" || kind === "skill_md" ? kind : undefined;
+    return {
+      ...(version ? { evalSkillVersion: version } : {}),
+      ...(promptKind ? { promptKind } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+export function resolveTrustedSnapshotManifestPinsFromRunResultDir(
+  resultsDirPath: string,
+  runId: string,
+): TrustedSnapshotManifestPins {
+  try {
+    const id = assertSafeId(runId, "runId");
+    const snapRoot = path.join(resultsDirPath, id, "skill-snapshot");
+    if (!fs.existsSync(snapRoot)) return {};
+    return resolveTrustedSnapshotManifestPinsFromSnapshotDir(snapRoot);
+  } catch {
+    return {};
   }
 }

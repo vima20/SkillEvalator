@@ -116,6 +116,10 @@ describe("comparisonToCsv", () => {
         expectedGradeHash: TRUSTED_GRADE_HASH,
         expectedBaselinePromptHash: "baselinehash0001",
         expectedCandidatePromptHash: "candidatehash0002",
+        expectedBaselineEvalSkillVersion: "abc",
+        expectedCandidateEvalSkillVersion: "abc",
+        expectedBaselinePromptKind: "baseline_neutral" as const,
+        expectedCandidatePromptKind: "skill_md" as const,
       },
     );
     expect(cmp.verdict).toBe("PASS");
