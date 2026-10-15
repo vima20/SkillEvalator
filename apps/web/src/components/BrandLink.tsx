@@ -34,13 +34,10 @@ export function BrandLink(opts: {
   return (
     <Suspense
       fallback={
-        <Link
-          className={opts.className}
-          href="/"
-          aria-label={opts["aria-label"]}
-        >
+        // Non-navigable until searchParams hydrate — avoids dropping ?focus=pilot.
+        <span className={opts.className} aria-label={opts["aria-label"]}>
           {opts.children}
-        </Link>
+        </span>
       }
     >
       <BrandLinkInner {...opts} />

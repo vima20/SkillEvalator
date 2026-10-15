@@ -203,12 +203,39 @@ export default async function BenefitIndexPage({
                       <strong>{r.score ?? "—"}</strong>
                     </td>
                     <td>
-                      <Link
-                        className="btn btn-ghost btn-compact"
-                        href={withPilotFocus(`/benefit/${r.runId}`, pilotFocus)}
-                      >
-                        Open report
-                      </Link>
+                      {r.kind === "smoke" ? (
+                        <Link
+                          className="btn btn-ghost btn-compact"
+                          href={withPilotFocus(
+                            `/benefit/${r.runId}`,
+                            pilotFocus,
+                          )}
+                          title="Smoke harness (FAKE_PRODUCE) — not adoption evidence"
+                        >
+                          Open smoke report
+                        </Link>
+                      ) : r.kind === "superseded" ? (
+                        <Link
+                          className="btn btn-ghost btn-compact"
+                          href={withPilotFocus(
+                            `/benefit/${r.runId}`,
+                            pilotFocus,
+                          )}
+                          title="Superseded candidate — tip leg owns USE / DO NOT USE"
+                        >
+                          Open superseded
+                        </Link>
+                      ) : (
+                        <Link
+                          className="btn btn-ghost btn-compact"
+                          href={withPilotFocus(
+                            `/benefit/${r.runId}`,
+                            pilotFocus,
+                          )}
+                        >
+                          Open report
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}

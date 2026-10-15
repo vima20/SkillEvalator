@@ -59,9 +59,8 @@ export function Nav() {
     <nav className="nav" aria-label="Primary">
       <Suspense
         fallback={items.map((item) => (
-          <Link key={item.href} href={item.href}>
-            {item.label}
-          </Link>
+          // Non-navigable until searchParams hydrate — avoids dropping focus.
+          <span key={item.href}>{item.label}</span>
         ))}
       >
         <NavLinks />

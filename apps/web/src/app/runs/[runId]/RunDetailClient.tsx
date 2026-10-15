@@ -399,7 +399,7 @@ export function RunDetailClient({
                 <>
                   Smoke harness (FAKE_PRODUCE) — not adoption.{" "}
                   <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
-                    Open report →
+                    Open smoke report →
                   </Link>
                 </>
               );

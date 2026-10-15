@@ -143,11 +143,9 @@ export function NewRunForm({
     if (next === "official" && officialBlocked) {
       setError(true);
       setMsg(
-        preflight?.fakeProduce
-          ? "Official mode blocked while FAKE_PRODUCE smoke is on — use dry-run or unset FAKE_PRODUCE."
-          : `Official mode blocked — Settings not Ready: ${
-              pilotBlockers.join("; ") || "see Settings"
-            }.`,
+        `Official mode blocked — Settings not Ready: ${
+          pilotBlockers.join("; ") || "see Settings"
+        }.`,
       );
       return;
     }
@@ -175,11 +173,9 @@ export function NewRunForm({
     if (mode === "official" && officialBlocked) {
       setError(true);
       setMsg(
-        preflight?.fakeProduce
-          ? "Official mode requires live OpenAI produce — unset FAKE_PRODUCE (API also rejects)."
-          : `Official mode blocked — Settings not Ready: ${
-              pilotBlockers.join("; ") || "see Settings"
-            } (API also rejects).`,
+        `Official mode blocked — Settings not Ready: ${
+          pilotBlockers.join("; ") || "see Settings"
+        } (API also rejects).`,
       );
       return;
     }
@@ -489,29 +485,26 @@ export function NewRunForm({
               className={mode === "official" ? "is-active" : undefined}
               disabled={officialBlocked}
               title={
-                preflight?.fakeProduce
-                  ? "Disabled while FAKE_PRODUCE smoke harness is on"
-                  : !pilotReady
-                    ? "Disabled until Settings Ready (same blockers as Settings)"
-                    : undefined
+                officialBlocked
+                  ? "Disabled until Settings Ready (same blockers as Settings)"
+                  : undefined
               }
               onClick={() => selectMode("official")}
             >
               official
             </button>
           </div>
-          {preflight?.fakeProduce ? (
-            <p className="hint">
-              Smoke harness detected — official enqueue is blocked (dry-run
-              only). Unset FAKE_PRODUCE for a live pilot.
-            </p>
-          ) : preflight && !pilotReady ? (
+          {preflight && !pilotReady ? (
             <div className="hint">
               <p style={{ margin: "0 0 0.4rem" }}>
-                Settings not Ready — official enqueue is blocked.{" "}
+                Settings not Ready — official enqueue is blocked (dry-run still
+                ok).{" "}
                 <Link href={withPilotFocus("/settings", pilotFocus)}>
                   Open Settings
                 </Link>
+                {preflight.fakeProduce
+                  ? " Unset FAKE_PRODUCE for a live pilot."
+                  : ""}
               </p>
               {pilotBlockers.length > 0 ? (
                 <ul className="settings-blockers" style={{ margin: 0 }}>
