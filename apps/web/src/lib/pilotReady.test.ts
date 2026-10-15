@@ -96,4 +96,20 @@ describe("collectPilotBlockers / officialPilotReadyGate", () => {
       );
     }
   });
+
+  it("blocks official when ALLOW_HOST_GRADE=1", () => {
+    const out = officialPilotReadyGate({
+      mode: "official",
+      preflight: { checks: okChecks },
+      env: {
+        OPENAI_API_KEY: "sk",
+        WEB_AUTH_TOKEN: "secret",
+        ALLOW_HOST_GRADE: "1",
+      },
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.blockers.some((b) => /ALLOW_HOST_GRADE/i.test(b))).toBe(true);
+    }
+  });
 });

@@ -265,7 +265,7 @@ export function loadSettingsSnapshot(opts?: {
     smoke: {
       fakeProduce,
       allowHostGrade,
-      blocksOfficial: fakeProduce,
+      blocksOfficial: fakeProduce || allowHostGrade,
     },
     adoption: {
       officialMinRepeats: OFFICIAL_MIN_REPEATS,

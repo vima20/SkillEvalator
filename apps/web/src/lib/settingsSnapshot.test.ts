@@ -127,6 +127,26 @@ describe("loadSettingsSnapshot", () => {
     ).toBe(true);
   });
 
+  it("blocks pilot when ALLOW_HOST_GRADE=1", () => {
+    const s = loadSettingsSnapshot({
+      env: {
+        ALLOW_HOST_GRADE: "1",
+        OPENAI_API_KEY: "sk-test",
+        WEB_AUTH_TOKEN: "secret",
+      },
+      preflight: okPreflight,
+      repoRoot: process.cwd(),
+      build: injectedBuild,
+      queue: injectedQueue,
+    });
+    expect(s.pilotReady).toBe(false);
+    expect(s.smoke.allowHostGrade).toBe(true);
+    expect(s.smoke.blocksOfficial).toBe(true);
+    expect(
+      s.pilotBlockers.some((b) => /ALLOW_HOST_GRADE/i.test(b)),
+    ).toBe(true);
+  });
+
   it("never exposes secret values", () => {
     const s = loadSettingsSnapshot({
       env: {

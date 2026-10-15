@@ -13,6 +13,7 @@ export function collectPilotBlockers(opts: {
   const env = opts.env ?? process.env;
   const webAuth = resolveWebAuthConfig(env.WEB_AUTH_TOKEN);
   const fakeProduce = env.FAKE_PRODUCE === "known-good";
+  const allowHostGrade = env.ALLOW_HOST_GRADE === "1";
   const officialRequiresWebAuth = env.OFFICIAL_REQUIRES_WEB_AUTH === "true";
 
   const pilotBlockers: string[] = [];
@@ -28,6 +29,11 @@ export function collectPilotBlockers(opts: {
   if (fakeProduce) {
     pilotBlockers.push(
       "FAKE_PRODUCE=known-good — unset for official live pilot",
+    );
+  }
+  if (allowHostGrade) {
+    pilotBlockers.push(
+      "ALLOW_HOST_GRADE=1 — unset for official (capture pin / Comparison)",
     );
   }
   if (webAuth.kind === "misconfigured") {

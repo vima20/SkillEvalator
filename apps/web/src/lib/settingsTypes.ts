@@ -61,7 +61,7 @@ export type SettingsSnapshot = {
   smoke: {
     fakeProduce: boolean;
     allowHostGrade: boolean;
-    /** True when smoke flags would block or weaken official adoption. */
+    /** True when FAKE_PRODUCE or ALLOW_HOST_GRADE would block official Ready. */
     blocksOfficial: boolean;
   };
   /** Comparison / Benefit gates (code constants — not .env). */

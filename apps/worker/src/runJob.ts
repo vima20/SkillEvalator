@@ -580,7 +580,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       fakeProduce: process.env.FAKE_PRODUCE === "known-good",
       // Live worker produce only — fixture/smoke JSON must not forge official PASS.
       produceAttested: process.env.FAKE_PRODUCE !== "known-good",
-      allowHostGrade: config.allowHostGrade,
+      // Pin what grading actually used — not the raw env flag (ignored without FAKE).
+      allowHostGrade: hostGrade,
       grade: hostGrade ? "host_script" : "docker_script",
       gradeHash,
     },

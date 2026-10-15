@@ -6,6 +6,7 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 
 - [ ] `.env` kopioitu `.env.example`sta; `OPENAI_API_KEY` asetettu
 - [ ] `FAKE_PRODUCE` **ei** ole `known-good`
+- [ ] `ALLOW_HOST_GRADE` **ei** ole `1`
 - [ ] Docker Desktop / daemon käynnissä
 - [ ] `start.bat` / `.\start.ps1` (web + worker)
 - [ ] Avaa http://127.0.0.1:30001 → **Settings**
@@ -14,7 +15,7 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 
 - [ ] Official pilot readiness: **Ready** (ei blockereita)
 - [ ] Preflight: API key / Docker / Worker OK
-- [ ] Smoke harness: FAKE_PRODUCE **Off**
+- [ ] Smoke harness: FAKE_PRODUCE **Off** ja ALLOW_HOST_GRADE **Off**
 - [ ] Auth: pilottiin suositellaan `WEB_AUTH_TOKEN` + `OFFICIAL_REQUIRES_WEB_AUTH=true`
 - [ ] Kirjaa **Build git SHA** (ja dirty jos näkyy) arkistoon
 - [ ] Queue: ei **Stale running** -rivejä (orphan `.running.json`); jos näkyy → **Refresh** (heals) ja tarkista Ready uudelleen
@@ -36,4 +37,4 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 
 ## 5. Jos Ready = Blocked
 
-Korjaa Settingsin blocker-lista (API-avain, Docker, worker, FAKE_PRODUCE, auth, stale queue), paina **Refresh** (heals orphan `.running.json`). New run / preflight / retry healaavat jonon ennen gatea; official hylätään kun Ready = Blocked (dry-run edelleen ok).
+Korjaa Settingsin blocker-lista (API-avain, Docker, worker, FAKE_PRODUCE, ALLOW_HOST_GRADE, auth, stale queue), paina **Refresh** (heals orphan `.running.json`). New run / preflight / retry healaavat jonon ennen gatea; official hylätään kun Ready = Blocked (dry-run edelleen ok).

@@ -168,18 +168,24 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           <p className="settings-cta">
             {s.pilotReady ? (
               <>
-                <Link className="btn btn-primary" href="/">
+                <Link
+                  className="btn btn-primary"
+                  href={withPilotFocus("/", true)}
+                >
                   Start official baseline↔candidate
                 </Link>{" "}
                 <Link
                   className="btn btn-ghost"
-                  href="/comparison?focus=pilot"
+                  href={withPilotFocus("/comparison", true)}
                 >
                   Comparison (pilot)
                 </Link>
               </>
             ) : (
-              <Link className="btn btn-ghost" href="/">
+              <Link
+                className="btn btn-ghost"
+                href={withPilotFocus("/", pilotFocus)}
+              >
                 Open New run (dry-run)
               </Link>
             )}
@@ -438,15 +444,16 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             </Row>
             <Row label="ALLOW_HOST_GRADE">
               {s.smoke.allowHostGrade ? (
-                <StatusPill ok={false} tone="wait" label="On (smoke)" />
+                <StatusPill ok={false} label="On (blocks Ready)" />
               ) : (
                 <StatusPill ok={true} label="Off" />
               )}
             </Row>
           </dl>
           <p className="hint">
-            Smoke is dry-run / CI only. Official enqueue rejects FAKE_PRODUCE;
-            host grade is ignored without smoke.
+            Smoke is dry-run / CI only. Official Ready / enqueue reject{" "}
+            <code>FAKE_PRODUCE</code> and <code>ALLOW_HOST_GRADE=1</code> (host
+            grade is smoke/CI only; leave both Off for live pilot).
           </p>
         </section>
 
@@ -461,8 +468,9 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           <p className="hint">
             Read-only. Edit <code>SKILL.md</code> under{" "}
             <code>{s.paths.evalSkillsDir}</code> or re-import via{" "}
-            <Link href="/">New run</Link> Find/Receive — then start a new
-            evaluation (Retry keeps the pinned snapshot).
+            <Link href={withPilotFocus("/", pilotFocus)}>New run</Link>{" "}
+            Find/Receive — then start a new evaluation (Retry keeps the pinned
+            snapshot).
           </p>
           {s.skills.rows.length === 0 ? (
             <p className="hint">
