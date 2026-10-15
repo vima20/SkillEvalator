@@ -39,3 +39,9 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 - baseline- ja candidate-`run_*` (`result.json`, status, capture)
 - Benefit Report + CSV-vienti kun USE/PASS
 - Settingsissä näkyvä **git SHA** (ja dirty-varoitus) arkistolabeliin
+
+**Pilot focus** (`?focus=pilot` Runs / Comparison / Benefit / Dashboard) piilottaa smoke / superseded / dry-run -melun; Dashboard näyttää vain official tip -kandidaatit.
+
+**Clear old runs (7d+)** ei poista `mode: official` -ajoja eikä `evaluation.json`-linkitettyjä jalkoja — muuten `eval_*` katoaisi healissa.
+
+**Clear smoke noise** poistaa heti `evaluation.smoke` -kasvit ja `FAKE_PRODUCE`-ajot (ml. smoke:official); live official -arkisto ilman smoke/fakeProduce säilyy.
