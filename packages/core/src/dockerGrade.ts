@@ -180,6 +180,66 @@ export function resolveTrustedGradeHashFromRunResultDir(
   }
 }
 
+function copyRegularFiles(srcDir: string, destDir: string): number {
+  fs.mkdirSync(destDir, { recursive: true });
+  let n = 0;
+  for (const name of fs.readdirSync(srcDir)) {
+    const src = path.join(srcDir, name);
+    let st: fs.Stats;
+    try {
+      st = fs.lstatSync(src);
+    } catch {
+      continue;
+    }
+    if (st.isSymbolicLink() || !st.isFile()) continue;
+    fs.copyFileSync(src, path.join(destDir, name));
+    n += 1;
+  }
+  return n;
+}
+
+/**
+ * Copy trusted harness scripts (at least grade.js) into skill-snapshot/scripts
+ * so disk Comparison can resolve expectedGradeHash without opts injection.
+ * Returns sha256 of the pinned snapshot grade.js.
+ */
+export function pinTrustedScriptsIntoSkillSnapshot(
+  skillRoot: string,
+  snapshotDir: string,
+): string {
+  const resolved = resolveTrustedScriptsDir(skillRoot);
+  const destScripts = path.join(snapshotDir, "scripts");
+  const copied = copyRegularFiles(resolved.scriptsDir, destScripts);
+  if (copied === 0) {
+    throw new Error(
+      `no trusted scripts to pin from ${resolved.scriptsDir} into ${destScripts}`,
+    );
+  }
+  const hash = hashGradeJsFile(path.join(destScripts, "grade.js"))?.trim();
+  if (!hash) {
+    throw new Error(
+      `grade.js missing or unreadable after pin into ${destScripts}`,
+    );
+  }
+  return hash;
+}
+
+/** Copy skill-snapshot/scripts from a prior run (Retry seed). */
+export function copySkillSnapshotScripts(opts: {
+  fromSnapshotDir: string;
+  toSnapshotDir: string;
+}): boolean {
+  const src = path.join(opts.fromSnapshotDir, "scripts");
+  if (!fs.existsSync(src)) return false;
+  try {
+    const dest = path.join(opts.toSnapshotDir, "scripts");
+    copyRegularFiles(src, dest);
+    return Boolean(hashGradeJsFile(path.join(dest, "grade.js")));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * For imported skills (.import.json), prefer a trusted local harness
  * under eval-skills/<id>/scripts — never the imported grade.js.

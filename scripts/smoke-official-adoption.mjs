@@ -14,11 +14,13 @@ import {
   OFFICIAL_MIN_REPEATS,
   OFFICIAL_USE_SCORE_FLOOR,
   buildBenefitReport,
-  compareBaselineCandidate,
   findRepoRoot,
   gradeOnHost,
+  loadPairedComparison,
   loadSkill,
+  pinTrustedScriptsIntoSkillSnapshot,
   resolveDataPaths,
+  resolveTrustedGradeHashFromRunResultDir,
   resolveTrustedScriptsDir,
   taskIdsForMode,
   taskPaths,
@@ -167,6 +169,10 @@ function writePair(evaluationId, baseline, candidate, label) {
       evaluationId,
       costUsd: 0,
     });
+    // Disk official path: expectedGradeHash from tip candidate skill-snapshot.
+    const snap = path.join(dir, "skill-snapshot");
+    fs.mkdirSync(snap, { recursive: true });
+    pinTrustedScriptsIntoSkillSnapshot(skill.root, snap);
   }
   writeJsonFile(path.join(resultsDir, evaluationId, "evaluation.json"), {
     evaluationId,
@@ -178,12 +184,23 @@ function writePair(evaluationId, baseline, candidate, label) {
     smoke: true,
     label,
   });
-  const comparison = compareBaselineCandidate(baseline, candidate, {
-    expectedEvalSkillId: skill.id,
-    expectedEvaluationMode: "official",
-    expectedEvaluationId: evaluationId,
-    expectedGradeHash: gradeHash,
+  const diskHash = resolveTrustedGradeHashFromRunResultDir(
+    resultsDir,
+    candidate.runId,
+  );
+  if (!diskHash || diskHash !== gradeHash) {
+    fail(
+      `disk expectedGradeHash mismatch (got ${diskHash ?? "missing"}, want ${gradeHash.slice(0, 12)}…)`,
+    );
+  }
+  // Same loader the web/worker use — no injected expectedGradeHash.
+  const comparison = loadPairedComparison({
+    resultsDir,
+    evaluationId,
   });
+  if (!comparison) {
+    fail("loadPairedComparison returned null");
+  }
   writeJsonFile(
     path.join(resultsDir, evaluationId, "comparison.json"),
     comparison,

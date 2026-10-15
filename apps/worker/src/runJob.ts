@@ -10,11 +10,13 @@ import {
   loadPairedComparison,
   estimateCallCostUsdForCap,
   maxOutputTokensForRemainingBudget,
+  copySkillSnapshotScripts,
   gradeInDocker,
   gradeOnHost,
   liveRunStatusForProgress,
   loadRunResult,
   loadSkill,
+  pinTrustedScriptsIntoSkillSnapshot,
   tryProvisionalSkillPin,
   resolveEvalRole,
   resolveFinalRunStop,
@@ -203,6 +205,8 @@ function writeSkillSnapshot(opts: {
     skillSnapshotFromRunId: opts.job.skillSnapshotFromRunId,
     createdAt: opts.job.createdAt,
   });
+  // Pin trusted grade.js so disk Comparison can resolve expectedGradeHash.
+  pinTrustedScriptsIntoSkillSnapshot(opts.skill.root, snapshotDir);
   return snapshotDir;
 }
 
@@ -236,6 +240,7 @@ function seedSkillSnapshotFromPrior(opts: {
   } catch {
     /* leave partial; writeSkillSnapshot refreshes after load */
   }
+  copySkillSnapshotScripts({ fromSnapshotDir: priorSnap, toSnapshotDir: dest });
   writeJsonFile(path.join(dest, "job.json"), {
     runId: opts.job.runId,
     evalSkillId: opts.job.evalSkillId,
@@ -292,6 +297,17 @@ function seedSkillSnapshotFromLive(opts: {
     provisional: true,
     seededAt: opts.startedAt,
   });
+  // Best-effort early pin; writeSkillSnapshot refreshes after loadSkill.
+  for (const dir of config.skillsDirs) {
+    const root = path.join(dir, pin.id);
+    if (!fs.existsSync(root)) continue;
+    try {
+      pinTrustedScriptsIntoSkillSnapshot(root, dest);
+      break;
+    } catch {
+      /* try next skills root */
+    }
+  }
   return true;
 }
 
@@ -517,7 +533,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
   const lastByTask = new Map<string, RunResult["perTask"][number]>();
   let stop: "cancelled" | "budget_stop" | null = null;
   // Pin grade.js hash before paid produce — fail closed if harness cannot
-  // be resolved (imports) or grade.js is missing/unreadable.
+  // be resolved (imports) or grade.js is missing/unreadable. Snapshot must
+  // match so disk Comparison expectedGradeHash ≡ capture.env.gradeHash.
   let gradeHash: string;
   try {
     const resolved = resolveTrustedScriptsDir(skill.root);
@@ -525,6 +542,19 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     if (!hash) {
       throw new Error(
         `grade.js hash unavailable under ${resolved.scriptsDir}`,
+      );
+    }
+    const snapHash = resolveTrustedScriptsDir(
+      path.join(resultDir, "skill-snapshot"),
+    ).gradeHash?.trim();
+    if (!snapHash) {
+      throw new Error(
+        "skill-snapshot/scripts/grade.js missing after pin (disk Comparison would lack expectedGradeHash)",
+      );
+    }
+    if (snapHash !== hash) {
+      throw new Error(
+        `skill-snapshot grade.js hash ≠ trusted harness (${snapHash.slice(0, 12)}… ≠ ${hash.slice(0, 12)}…)`,
       );
     }
     gradeHash = hash;
