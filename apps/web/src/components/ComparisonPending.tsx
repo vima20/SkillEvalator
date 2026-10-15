@@ -172,7 +172,9 @@ function ComparisonPendingInner({
       </dl>
       {unavailable ? (
         <p className="hint" style={{ marginTop: 12 }}>
-          <Link href="/">Start a new baseline↔candidate run</Link>
+          <Link href={withPilotFocus("/", pilotFocus)}>
+            Start a new baseline↔candidate run
+          </Link>
         </p>
       ) : null}
     </div>

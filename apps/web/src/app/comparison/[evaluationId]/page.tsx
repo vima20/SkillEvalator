@@ -104,7 +104,9 @@ export default async function ComparisonDetailPage({
       <div>
         <header className="page-header">
           <p className="eyebrow">
-            <Link href="/comparison">Comparison</Link>
+            <Link href={withPilotFocus("/comparison", pilotFocus)}>
+              Comparison
+            </Link>
             <span aria-hidden="true"> / </span>
             {evaluationId}
           </p>

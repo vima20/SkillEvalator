@@ -1,11 +1,18 @@
 import { listSkills } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { skillsDirs } from "@/lib/paths";
+import { isPilotFocusParam } from "@/lib/pilotFocusHref";
 import { NewRunForm } from "./NewRunForm";
 
 export const dynamic = "force-dynamic";
 
-export default function NewRunPage() {
+export default async function NewRunPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
+  const sp = await searchParams;
+  const pilotFocus = isPilotFocusParam(sp.focus);
   const skills = listSkills(skillsDirs());
 
   return (
@@ -31,7 +38,7 @@ export default function NewRunPage() {
           />
         </div>
       ) : (
-        <NewRunForm skills={skills} />
+        <NewRunForm skills={skills} pilotFocus={pilotFocus} />
       )}
     </div>
   );

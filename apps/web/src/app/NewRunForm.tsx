@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { estimateRunCostUsd } from "@skillevalator/core/costEstimate";
@@ -9,6 +10,7 @@ import {
   MODEL_DRY_RUN,
   MODEL_OFFICIAL,
 } from "@skillevalator/core/models";
+import { withPilotFocus } from "@/lib/pilotFocusHref";
 
 export type SkillOption = {
   id: string;
@@ -38,7 +40,13 @@ type Preflight = {
   };
 };
 
-export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] }) {
+export function NewRunForm({
+  skills: initialSkills,
+  pilotFocus = false,
+}: {
+  skills: SkillOption[];
+  pilotFocus?: boolean;
+}) {
   const router = useRouter();
   const [skills, setSkills] = useState(initialSkills);
   const [evalSkillId, setEvalSkillId] = useState(
@@ -204,10 +212,12 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
       if (!res.ok) throw new Error(data.error ?? "failed");
       if (withBaseline && data.evaluationId) {
         setMsg(`Queued evaluation ${data.evaluationId}`);
-        router.push(`/comparison/${data.evaluationId}`);
+        router.push(
+          withPilotFocus(`/comparison/${data.evaluationId}`, pilotFocus),
+        );
       } else {
         setMsg(`Queued ${data.runId}`);
-        router.push(`/runs/${data.runId}`);
+        router.push(withPilotFocus(`/runs/${data.runId}`, pilotFocus));
       }
     } catch (err) {
       setError(true);
@@ -499,7 +509,9 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
             <div className="hint">
               <p style={{ margin: "0 0 0.4rem" }}>
                 Settings not Ready — official enqueue is blocked.{" "}
-                <a href="/settings">Open Settings</a>
+                <Link href={withPilotFocus("/settings", pilotFocus)}>
+                  Open Settings
+                </Link>
               </p>
               {pilotBlockers.length > 0 ? (
                 <ul className="settings-blockers" style={{ margin: 0 }}>

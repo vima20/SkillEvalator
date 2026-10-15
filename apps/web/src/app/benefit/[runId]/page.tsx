@@ -69,7 +69,9 @@ export default async function BenefitReportPage({
       <div>
         <header className="page-header">
           <p className="eyebrow">
-            <Link href="/benefit">Benefit Report</Link>
+            <Link href={withPilotFocus("/benefit", pilotFocus)}>
+              Benefit Report
+            </Link>
             <span aria-hidden="true"> / </span>
             {runId}
           </p>
