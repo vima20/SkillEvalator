@@ -100,9 +100,12 @@ export default async function RunsPage({
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/runs" pilotFocus={pilotFocus} />
           <RunsAutoRefresh hasActive={hasActive} />
-          <ClearSmokeNoise />
+          {pilotFocus ? null : <ClearSmokeNoise />}
           <ClearOldRuns />
-          <Link className="btn btn-primary" href="/">
+          <Link
+            className="btn btn-primary"
+            href={withPilotFocus("/", pilotFocus)}
+          >
             New run
           </Link>
         </div>

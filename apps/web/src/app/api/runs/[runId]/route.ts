@@ -10,7 +10,10 @@ import {
 } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
-import { runCsvExportAllowed } from "@/lib/runCsvExportAllowed";
+import {
+  runCsvExportAllowed,
+  runCsvExportBlockReason,
+} from "@/lib/runCsvExportAllowed";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +40,7 @@ export async function GET(
       status,
       result,
       csvExportAllowed: runCsvExportAllowed(result),
+      csvExportBlockReason: runCsvExportBlockReason(result),
       tipCandidateRunId,
     });
   } catch (err) {

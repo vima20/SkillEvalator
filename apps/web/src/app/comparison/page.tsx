@@ -95,7 +95,10 @@ export default async function ComparisonListPage({
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/comparison" pilotFocus={pilotFocus} />
-          <Link className="btn btn-primary" href="/">
+          <Link
+            className="btn btn-primary"
+            href={withPilotFocus("/", pilotFocus)}
+          >
             New evaluation
           </Link>
         </div>

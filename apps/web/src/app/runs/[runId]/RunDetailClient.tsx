@@ -76,6 +76,8 @@ type Payload = {
   result: Result | null;
   /** Same bar as CSV API gate (official + decisive Comparison + meta leg). */
   csvExportAllowed?: boolean;
+  /** Same string as API 409 when CSV is locked. */
+  csvExportBlockReason?: string | null;
   /** Healed Comparison tip (comparison ?? meta) for Benefit CTA demotion. */
   tipCandidateRunId?: string | null;
 };
@@ -648,10 +650,14 @@ export function RunDetailClient({
             ) : (
               <span
                 className="hint"
-                style={{ margin: 0, alignSelf: "center" }}
-                title="CSV locked until official paired Comparison PASS/FAIL on this meta leg"
+                style={{ margin: 0, alignSelf: "center", maxWidth: "28rem" }}
+                title={
+                  data.csvExportBlockReason ??
+                  "CSV locked until official paired Comparison PASS/FAIL on this meta leg"
+                }
               >
-                CSV export locked (official + Comparison PASS/FAIL)
+                {data.csvExportBlockReason ??
+                  "CSV export locked (official + Comparison PASS/FAIL)"}
               </span>
             )}
             <button

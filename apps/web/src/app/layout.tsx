@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import { AuthGate } from "@/components/AuthGate";
 import { AuthLock } from "@/components/AuthLock";
+import { BrandLink } from "@/components/BrandLink";
 import { Nav } from "@/components/Nav";
 import "./globals.css";
 
@@ -45,7 +45,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </a>
         <div className="app-shell">
           <header className="topbar">
-            <Link className="brand" href="/" aria-label="Unikie SkillEvalator home">
+            <BrandLink
+              className="brand"
+              aria-label="Unikie SkillEvalator home"
+            >
               <span className="brand-mark">
                 <BrandMark />
               </span>
@@ -53,7 +56,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <span className="brand-org">Unikie</span>
                 <span className="brand-product">SkillEvalator</span>
               </span>
-            </Link>
+            </BrandLink>
             <div className="topbar-end">
               <Nav />
               <AuthLock />

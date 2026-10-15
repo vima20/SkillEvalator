@@ -12,7 +12,10 @@ import {
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
-import { runCsvExportAllowed } from "@/lib/runCsvExportAllowed";
+import {
+  runCsvExportAllowed,
+  runCsvExportBlockReason,
+} from "@/lib/runCsvExportAllowed";
 import { RunDetailClient } from "./RunDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +94,7 @@ export default async function RunDetailPage({
         status,
         result,
         csvExportAllowed: runCsvExportAllowed(result),
+        csvExportBlockReason: runCsvExportBlockReason(result),
         tipCandidateRunId,
       }}
     />

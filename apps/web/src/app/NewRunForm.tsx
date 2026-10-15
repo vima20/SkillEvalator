@@ -496,11 +496,19 @@ export function NewRunForm({ skills: initialSkills }: { skills: SkillOption[] })
               only). Unset FAKE_PRODUCE for a live pilot.
             </p>
           ) : preflight && !pilotReady ? (
-            <p className="hint">
-              Settings not Ready — official enqueue is blocked. Fix:{" "}
-              {pilotBlockers.join("; ") || "see Settings"}.{" "}
-              <a href="/settings">Open Settings</a>
-            </p>
+            <div className="hint">
+              <p style={{ margin: "0 0 0.4rem" }}>
+                Settings not Ready — official enqueue is blocked.{" "}
+                <a href="/settings">Open Settings</a>
+              </p>
+              {pilotBlockers.length > 0 ? (
+                <ul className="settings-blockers" style={{ margin: 0 }}>
+                  {pilotBlockers.map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
