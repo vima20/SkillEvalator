@@ -28,6 +28,8 @@ export type EvaluationMeta = {
   candidateRunId: string;
   createdAt: string;
   updatedAt?: string;
+  /** Fixture plant (smoke:official) — never adoption PASS on disk. */
+  smoke?: boolean;
 };
 
 export function evaluationMetaPath(evaluationId: string): string {
@@ -357,6 +359,11 @@ export function loadEvaluationComparison(
             ...skillPin.issues,
             ...evalIdPin.issues,
           ];
+          if (officialDisk && meta?.smoke === true) {
+            extraParityIssues.push(
+              "official Comparison rejects evaluation.json smoke=true (fixture plant)",
+            );
+          }
           return compareBaselineCandidate(baseline, candidate, {
             ...(skillPin.expectedEvalSkillId
               ? { expectedEvalSkillId: skillPin.expectedEvalSkillId }

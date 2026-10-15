@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Unikie official adoption smoke without OpenAI:
- * fixture scores → Comparison PASS/FAIL → Benefit USE / DO NOT USE.
- * Guards the CI chain that dry-run smoke (INCONCLUSIVE) cannot cover.
+ * 1) In-memory Comparison PASS/FAIL → Benefit USE / DO NOT USE (algorithm guard).
+ * 2) Disk plant with smoke markers must stay INCONCLUSIVE (no adoption pollution).
  *
  * Usage: npm run smoke:official
  */
@@ -14,6 +14,7 @@ import {
   OFFICIAL_MIN_REPEATS,
   OFFICIAL_USE_SCORE_FLOOR,
   buildBenefitReport,
+  compareBaselineCandidate,
   findRepoRoot,
   gradeOnHost,
   loadPairedComparison,
@@ -84,6 +85,7 @@ function scoreArtifact(kind) {
   return { perTask, score: mean };
 }
 
+/** Disk plant: looks official but must not unlock adoption (no produce attest). */
 function buildOfficialResult(opts) {
   const { runId, role, evaluationId, perTask, score } = opts;
   const promptKind = role === "baseline" ? "baseline_neutral" : "skill_md";
@@ -112,7 +114,6 @@ function buildOfficialResult(opts) {
       promptPreview: promptBody.slice(0, 500),
       promptKind,
       env: {
-        // No fakeProduce — official smoke must not hit smoke INCONCLUSIVE path.
         grade: "host_script",
         gradeHash,
         temperature: 0,
@@ -125,6 +126,7 @@ function buildOfficialResult(opts) {
         costHardStop: true,
         fakeProduce: false,
         allowHostGrade: true,
+        // Intentionally omitted: produceAttested — disk plant must stay closed.
       },
       capturedAt: startedAt,
     },
@@ -156,6 +158,22 @@ function buildOfficialResult(opts) {
   };
 }
 
+/** Worker-shaped copy for in-memory algorithm check only (not written to disk). */
+function asAttestedLive(result) {
+  return {
+    ...result,
+    findings: [],
+    tokens: { promptTokens: 12, completionTokens: 8, totalTokens: 20 },
+    capture: {
+      ...result.capture,
+      env: {
+        ...result.capture.env,
+        produceAttested: true,
+      },
+    },
+  };
+}
+
 function writePair(evaluationId, baseline, candidate, label) {
   for (const r of [baseline, candidate]) {
     const dir = path.join(resultsDir, r.runId);
@@ -169,7 +187,6 @@ function writePair(evaluationId, baseline, candidate, label) {
       evaluationId,
       costUsd: 0,
     });
-    // Disk official path: expectedGradeHash from tip candidate skill-snapshot.
     const snap = path.join(dir, "skill-snapshot");
     fs.mkdirSync(snap, { recursive: true });
     pinTrustedScriptsIntoSkillSnapshot(skill.root, snap);
@@ -193,24 +210,44 @@ function writePair(evaluationId, baseline, candidate, label) {
       `disk expectedGradeHash mismatch (got ${diskHash ?? "missing"}, want ${gradeHash.slice(0, 12)}…)`,
     );
   }
-  // Same loader the web/worker use — no injected expectedGradeHash.
-  const comparison = loadPairedComparison({
+
+  // Disk path (web/worker loader): smoke plant must never unlock adoption.
+  const diskComparison = loadPairedComparison({
     resultsDir,
     evaluationId,
   });
-  if (!comparison) {
+  if (!diskComparison) {
     fail("loadPairedComparison returned null");
+  }
+  if (diskComparison.parity.ok || diskComparison.verdict !== "INCONCLUSIVE") {
+    fail(
+      `disk plant must stay INCONCLUSIVE (parity.ok=${diskComparison.parity.ok} verdict=${diskComparison.verdict})`,
+    );
   }
   writeJsonFile(
     path.join(resultsDir, evaluationId, "comparison.json"),
-    comparison,
+    diskComparison,
   );
-  const benefit = buildBenefitReport(candidate, { comparison });
+
+  // Algorithm path: same score/lift math with worker-shaped attestation.
+  const comparison = compareBaselineCandidate(
+    asAttestedLive(baseline),
+    asAttestedLive(candidate),
+    {
+      expectedEvalSkillId: skill.id,
+      expectedEvaluationMode: "official",
+      expectedEvaluationId: evaluationId,
+      expectedGradeHash: gradeHash,
+    },
+  );
+  const benefit = buildBenefitReport(asAttestedLive(candidate), {
+    comparison,
+  });
   writeJsonFile(
     path.join(resultsDir, candidate.runId, "benefit-report.json"),
     benefit,
   );
-  return { comparison, benefit };
+  return { comparison, benefit, diskComparison };
 }
 
 // --- PASS case: known-bad baseline vs known-good candidate ---
@@ -246,6 +283,8 @@ console.log(
   pass.comparison.lift,
   "benefit",
   pass.benefit.verdict.recommendation,
+  "disk",
+  pass.diskComparison.verdict,
 );
 if (!pass.comparison.parity.ok) {
   fail(`PASS parity: ${pass.comparison.parity.issues.join("; ")}`);
@@ -294,6 +333,8 @@ console.log(
   failOut.comparison.lift,
   "benefit",
   failOut.benefit.verdict.recommendation,
+  "disk",
+  failOut.diskComparison.verdict,
 );
 if (!failOut.comparison.parity.ok) {
   fail(`FAIL parity: ${failOut.comparison.parity.issues.join("; ")}`);

@@ -125,6 +125,11 @@ export const RunEnvSnapshotSchema = z.object({
   grade: z.enum(["docker_script", "host_script"]).optional(),
   /** sha256 of the grade.js that actually runs (pinned harness for imports). */
   gradeHash: z.string().optional(),
+  /**
+   * Worker-only: true when produce used live model path (not FAKE_PRODUCE).
+   * Official Comparison requires this — fixture JSON alone must not PASS.
+   */
+  produceAttested: z.boolean().optional(),
 });
 
 export type RunEnvSnapshot = z.output<typeof RunEnvSnapshotSchema>;

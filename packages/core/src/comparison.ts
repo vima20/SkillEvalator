@@ -393,6 +393,11 @@ export function checkComparisonParity(
           `official Comparison requires ${label}.capture.env.fakeProduce=false`,
         );
       }
+      if (leg.capture?.env?.produceAttested !== true) {
+        issues.push(
+          `official Comparison requires ${label}.capture.env.produceAttested=true (live worker produce)`,
+        );
+      }
       if (typeof leg.capture?.env?.costCapUsd !== "number") {
         issues.push(
           `official Comparison requires ${label}.capture.env.costCapUsd`,
@@ -414,8 +419,32 @@ export function checkComparisonParity(
           `official Comparison requires ${label}.capture.env.grade (docker_script|host_script)`,
         );
       }
+      if (leg.pipeline?.produce !== "model") {
+        issues.push(
+          `official Comparison requires ${label}.pipeline.produce=model`,
+        );
+      }
+      const totalTokens = leg.tokens?.totalTokens ?? 0;
+      if (!(typeof totalTokens === "number" && totalTokens > 0)) {
+        issues.push(
+          `official Comparison requires ${label}.tokens.totalTokens > 0 (live produce)`,
+        );
+      }
+      if (
+        (leg.findings ?? []).some((f) =>
+          /smoke-official-adoption|smoke-paired-evaluation/i.test(f),
+        )
+      ) {
+        issues.push(
+          `official Comparison rejects ${label} smoke harness finding`,
+        );
+      }
     }
   }
+  pushEnvFieldParity(issues, "produceAttested", {
+    baseline: baseline.capture?.env?.produceAttested,
+    candidate: candidate.capture?.env?.produceAttested,
+  });
 
   // Capture env.grade must agree with the scored pipeline.grade on each leg.
   if (
@@ -979,6 +1008,8 @@ type EvaluationMetaDisk = {
   candidateRunId?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** Fixture plant (smoke:official) — never adoption PASS on disk. */
+  smoke?: boolean;
 };
 
 /**
@@ -1151,6 +1182,12 @@ export function loadPairedComparison(opts: {
     ...skillPin.issues,
     ...evalIdPin.issues,
   ];
+  // smoke:official plants evaluation.json.smoke — disk adoption must stay closed.
+  if (officialDisk && meta?.smoke === true) {
+    extraParityIssues.push(
+      "official Comparison rejects evaluation.json smoke=true (fixture plant)",
+    );
+  }
   return compareBaselineCandidate(baseline, candidate, {
     ...(skillPin.expectedEvalSkillId
       ? { expectedEvalSkillId: skillPin.expectedEvalSkillId }

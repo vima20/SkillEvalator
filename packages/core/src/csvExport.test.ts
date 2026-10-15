@@ -76,6 +76,7 @@ function officialCapture(role: "baseline" | "candidate") {
     env: {
       gradeHash: TRUSTED_GRADE_HASH,
       fakeProduce: false,
+      produceAttested: true,
       costCapUsd: 5,
       costHardStop: true,
       allowHostGrade: false,

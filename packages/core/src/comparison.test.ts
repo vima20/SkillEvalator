@@ -45,6 +45,7 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
       // Matching pins so official PASS tests do not launder missing provenance.
       gradeHash: "gradehash0000001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       fakeProduce: false,
+      produceAttested: true,
       costCapUsd: 5,
       costHardStop: true,
       allowHostGrade: false,
@@ -89,6 +90,11 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
     capture: rest.capture
       ? { ...rest.capture, role: rest.capture.role ?? resolvedRole }
       : defaultCapture,
+    // Live-produce attestation: default tokens unless the test overrides.
+    tokens:
+      rest.tokens !== undefined
+        ? rest.tokens
+        : { promptTokens: 10, completionTokens: 10, totalTokens: 20 },
   };
 }
 
@@ -156,6 +162,92 @@ describe("compareBaselineCandidate", () => {
     );
     expect(c.verdict).toBe("PASS");
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
+  it("official INCONCLUSIVE when produceAttested missing (fixture plant)", () => {
+    const stripAttest = (role: "baseline" | "candidate", runId: string) => {
+      const r = sample({
+        runId,
+        role,
+        score: role === "baseline" ? 0.9 : 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      });
+      const { produceAttested: _drop, ...envRest } = r.capture!.env!;
+      return {
+        ...r,
+        capture: { ...r.capture!, env: envRest },
+      };
+    };
+    const c = compareBaselineCandidate(
+      stripAttest("baseline", "b"),
+      stripAttest("candidate", "c"),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /produceAttested=true/i.test(i)),
+    ).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when tokens.totalTokens is 0 (no live produce)", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        tokens: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        tokens: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      }),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /tokens\.totalTokens > 0/i.test(i)),
+    ).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when smoke harness finding present", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        findings: ["smoke-official-adoption"],
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        findings: ["smoke-official-adoption"],
+      }),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /smoke harness finding/i.test(i)),
+    ).toBe(true);
   });
 
   it("official INCONCLUSIVE when expectedGradeHash missing (forged leg match)", () => {

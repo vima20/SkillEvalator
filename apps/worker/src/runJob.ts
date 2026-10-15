@@ -582,6 +582,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       costCapUsd: config.costCapUsd,
       costHardStop: config.costHardStop,
       fakeProduce: process.env.FAKE_PRODUCE === "known-good",
+      // Live worker produce only — fixture/smoke JSON must not forge official PASS.
+      produceAttested: process.env.FAKE_PRODUCE !== "known-good",
       allowHostGrade: config.allowHostGrade,
       grade: hostGrade ? "host_script" : "docker_script",
       gradeHash,

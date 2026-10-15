@@ -73,6 +73,7 @@ function officialLeg(
       promptKind,
       env: {
         fakeProduce: false,
+        produceAttested: true,
         costCapUsd: 5,
         costHardStop: true,
         allowHostGrade: false,
@@ -86,6 +87,7 @@ function officialLeg(
         grade: "docker_script",
       },
     },
+    tokens: { promptTokens: 10, completionTokens: 10, totalTokens: 20 },
   };
 }
 
