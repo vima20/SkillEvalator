@@ -258,6 +258,55 @@ describe("compareBaselineCandidate", () => {
     expect(c.parity.issues.some((i) => /gradeHash/i.test(i))).toBe(true);
   });
 
+  it("official INCONCLUSIVE when promptHash or env.grade pins are missing", () => {
+    const stripPromptHash = (role: "baseline" | "candidate", runId: string) => {
+      const r = sample({
+        runId,
+        role,
+        score: role === "baseline" ? 0.9 : 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      });
+      const { promptHash: _ph, ...capRest } = r.capture!;
+      return { ...r, capture: capRest };
+    };
+    const noHash = compareBaselineCandidate(
+      stripPromptHash("baseline", "b"),
+      stripPromptHash("candidate", "c"),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
+    );
+    expect(noHash.verdict).toBe("INCONCLUSIVE");
+    expect(
+      noHash.parity.issues.some((i) => /promptHash/i.test(i)),
+    ).toBe(true);
+
+    const stripGrade = (role: "baseline" | "candidate", runId: string) => {
+      const r = sample({
+        runId,
+        role,
+        score: role === "baseline" ? 0.9 : 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      });
+      const { grade: _g, ...envRest } = r.capture!.env!;
+      return {
+        ...r,
+        capture: { ...r.capture!, env: envRest },
+      };
+    };
+    const noGrade = compareBaselineCandidate(
+      stripGrade("baseline", "b"),
+      stripGrade("candidate", "c"),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
+    );
+    expect(noGrade.verdict).toBe("INCONCLUSIVE");
+    expect(
+      noGrade.parity.issues.some((i) => /capture\.env\.grade/i.test(i)),
+    ).toBe(true);
+  });
+
   it("official INCONCLUSIVE when fakeProduce/cost/allowHostGrade env pins are missing", () => {
     const stripSmokeCost = (role: "baseline" | "candidate", runId: string) => {
       const r = sample({
@@ -2150,6 +2199,13 @@ describe("loadPairedComparison tip heal", () => {
     expect(
       fs.existsSync(path.join(root, oldCand, "benefit-report.json")),
     ).toBe(false);
+    const metaAfter = JSON.parse(
+      fs.readFileSync(
+        path.join(root, evaluationId, "evaluation.json"),
+        "utf8",
+      ),
+    ) as { candidateRunId: string };
+    expect(metaAfter.candidateRunId).toBe(tipCand);
   });
 
   it("keeps explicit leg overrides pinned (no tip walk)", () => {

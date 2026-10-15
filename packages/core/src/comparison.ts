@@ -5,7 +5,8 @@ import {
   PASS_SCORE_FLOOR,
 } from "./diffScore.js";
 import { resolveTrustedGradeHashFromRunResultDir } from "./dockerGrade.js";
-import { readJsonFile } from "./fsJson.js";
+import { readJsonFile, writeJsonFile } from "./fsJson.js";
+import { releaseWxLock, tryAcquireWxLock } from "./fsSafe.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
 import { assertSafeId } from "./paths.js";
 import {
@@ -407,6 +408,12 @@ export function checkComparisonParity(
           `official Comparison requires ${label}.capture.env.allowHostGrade`,
         );
       }
+      const grade = leg.capture?.env?.grade;
+      if (grade !== "docker_script" && grade !== "host_script") {
+        issues.push(
+          `official Comparison requires ${label}.capture.env.grade (docker_script|host_script)`,
+        );
+      }
     }
   }
 
@@ -443,6 +450,18 @@ export function checkComparisonParity(
     issues.push(
       `capture.promptHash identical on both legs (${baselinePromptHash.slice(0, 12)}…) — candidate may have used neutral prompt`,
     );
+  }
+  if (officialProvenance) {
+    if (!baselinePromptHash) {
+      issues.push(
+        "official Comparison requires baseline.capture.promptHash",
+      );
+    }
+    if (!candidatePromptHash) {
+      issues.push(
+        "official Comparison requires candidate.capture.promptHash",
+      );
+    }
   }
 
   const baselinePromptKind = baseline.capture?.promptKind;
@@ -958,7 +977,49 @@ type EvaluationMetaDisk = {
   mode?: string;
   baselineRunId?: string;
   candidateRunId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
+
+/**
+ * Best-effort tip write to evaluation.json (worker + loadPairedComparison).
+ * Lock miss leaves in-memory tip; callers already unlink superseded Benefit.
+ */
+function tryHealEvaluationMetaTipOnDisk(opts: {
+  resultsDir: string;
+  evaluationId: string;
+  role: "baseline" | "candidate";
+  tipRunId: string;
+}): void {
+  const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
+  const tipRunId = assertSafeId(opts.tipRunId, "runId");
+  const metaPath = path.join(
+    opts.resultsDir,
+    evaluationId,
+    "evaluation.json",
+  );
+  const lockPath = `${metaPath}.lock`;
+  if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: 40 })) {
+    return;
+  }
+  try {
+    if (!fs.existsSync(metaPath)) return;
+    const meta = readJsonFile(metaPath) as EvaluationMetaDisk;
+    if (meta.evaluationId !== evaluationId) return;
+    const key =
+      opts.role === "baseline" ? "baselineRunId" : "candidateRunId";
+    if (meta[key] === tipRunId) return;
+    writeJsonFile(metaPath, {
+      ...meta,
+      [key]: tipRunId,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch {
+    /* best-effort */
+  } finally {
+    releaseWxLock(lockPath);
+  }
+}
 
 /**
  * Disk load of paired Comparison. When leg ids come from evaluation.json,
@@ -1021,8 +1082,14 @@ export function loadPairedComparison(opts: {
         loadLeg,
       });
       if (baseTip.hops > 0 && baseTip.runId !== baselineRunId) {
-        // Drop superseded tip Benefit so worker path matches web heal unlink.
+        // Drop superseded tip Benefit + patch disk meta (Cancel/Retry/worker share tip).
         unlinkBenefitReportCache(opts.resultsDir, baselineRunId);
+        tryHealEvaluationMetaTipOnDisk({
+          resultsDir: opts.resultsDir,
+          evaluationId,
+          role: "baseline",
+          tipRunId: baseTip.runId,
+        });
         baselineRunId = baseTip.runId;
       }
     }
@@ -1036,6 +1103,12 @@ export function loadPairedComparison(opts: {
       });
       if (candTip.hops > 0 && candTip.runId !== candidateRunId) {
         unlinkBenefitReportCache(opts.resultsDir, candidateRunId);
+        tryHealEvaluationMetaTipOnDisk({
+          resultsDir: opts.resultsDir,
+          evaluationId,
+          role: "candidate",
+          tipRunId: candTip.runId,
+        });
         candidateRunId = candTip.runId;
       }
     }
