@@ -294,19 +294,80 @@ export function hasLiveJobFile(jobsDir: string, runId: string): boolean {
 }
 
 /**
+ * Run ids named as baseline/candidate in any evaluation.json.
+ * Purge must not delete these — healEvaluationMetasAfterPurge would drop the
+ * whole eval_* Comparison archive.
+ */
+export function collectEvalLinkedRunIds(resultsDir: string): Set<string> {
+  const linked = new Set<string>();
+  if (!fs.existsSync(resultsDir)) return linked;
+  for (const name of fs.readdirSync(resultsDir)) {
+    if (!name.startsWith("eval_")) continue;
+    try {
+      assertSafeId(name, "evaluationId");
+    } catch {
+      continue;
+    }
+    const metaPath = path.join(resultsDir, name, "evaluation.json");
+    if (!fs.existsSync(metaPath)) continue;
+    try {
+      const meta = readJsonFile(metaPath) as EvaluationMetaFile;
+      if (typeof meta.baselineRunId === "string" && meta.baselineRunId) {
+        linked.add(meta.baselineRunId);
+      }
+      if (typeof meta.candidateRunId === "string" && meta.candidateRunId) {
+        linked.add(meta.candidateRunId);
+      }
+    } catch {
+      /* ignore unreadable meta */
+    }
+  }
+  return linked;
+}
+
+/** Official mode on result.json or status.json — pilot archive, never age-purge. */
+export function isOfficialRunFs(resultsDir: string, runId: string): boolean {
+  try {
+    assertSafeId(runId, "runId");
+  } catch {
+    return false;
+  }
+  for (const fileName of ["result.json", "status.json"] as const) {
+    const filePath = path.join(resultsDir, runId, fileName);
+    if (!fs.existsSync(filePath)) continue;
+    try {
+      const raw = readJsonFile(filePath) as { mode?: unknown };
+      if (raw.mode === "official") return true;
+    } catch {
+      // Unreadable result with a status sibling: keep scanning.
+    }
+  }
+  return false;
+}
+
+export type PurgeSkipReason = "official" | "eval_linked";
+
+/**
  * Delete terminal runs older than `olderThanMs` (by status.json mtime).
  * Never touches queued/running jobs (live .json / .running.json / .tmp.json).
  * `budget_stop` without result.json is wind-down — not purgeable yet.
+ * Never deletes official runs or legs named in evaluation.json (pilot archive).
  * After removals, drops or rewrites evaluation.json that pointed at purged runs.
  */
 export function purgeTerminalRunsFs(
   resultsDir: string,
   jobsDir: string,
   opts: { olderThanMs: number },
-): { removed: string[] } {
+): {
+  removed: string[];
+  skipped: Array<{ runId: string; reason: PurgeSkipReason }>;
+} {
   const removed: string[] = [];
+  const skipped: Array<{ runId: string; reason: PurgeSkipReason }> = [];
   const cutoff = Date.now() - Math.max(0, opts.olderThanMs);
-  if (!fs.existsSync(resultsDir)) return { removed };
+  if (!fs.existsSync(resultsDir)) return { removed, skipped };
+
+  const evalLinked = collectEvalLinkedRunIds(resultsDir);
 
   for (const runId of listRunIds(resultsDir)) {
     const statusPath = path.join(resultsDir, runId, "status.json");
@@ -336,6 +397,15 @@ export function purgeTerminalRunsFs(
     }
     if (mtime > cutoff) continue;
 
+    if (isOfficialRunFs(resultsDir, runId)) {
+      skipped.push({ runId, reason: "official" });
+      continue;
+    }
+    if (evalLinked.has(runId)) {
+      skipped.push({ runId, reason: "eval_linked" });
+      continue;
+    }
+
     try {
       fs.rmSync(path.join(resultsDir, runId), { recursive: true, force: true });
       removeJobArtifacts(jobsDir, runId);
@@ -348,7 +418,7 @@ export function purgeTerminalRunsFs(
   if (removed.length > 0) {
     healEvaluationMetasAfterPurge(resultsDir, new Set(removed));
   }
-  return { removed };
+  return { removed, skipped };
 }
 
 type EvaluationMetaFile = {

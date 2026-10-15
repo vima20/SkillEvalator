@@ -12,7 +12,7 @@ export function ClearOldRuns() {
   async function onClear() {
     if (busy) return;
     const ok = window.confirm(
-      "Delete terminal runs older than 7 days? Queued/running jobs are kept.",
+      "Delete terminal runs older than 7 days?\n\nKept: queued/running, official mode, and Comparison-linked baseline/candidate legs (eval_* archive).",
     );
     if (!ok) return;
     setBusy(true);
@@ -27,9 +27,15 @@ export function ClearOldRuns() {
       const data = (await res.json()) as {
         error?: string;
         removedCount?: number;
+        skippedCount?: number;
       };
       if (!res.ok) throw new Error(data.error ?? "cleanup failed");
-      setMsg(`Removed ${data.removedCount ?? 0} old run(s).`);
+      const skipped = data.skippedCount ?? 0;
+      setMsg(
+        skipped > 0
+          ? `Removed ${data.removedCount ?? 0} old run(s); kept ${skipped} official/linked.`
+          : `Removed ${data.removedCount ?? 0} old run(s).`,
+      );
       router.refresh();
     } catch (e) {
       setError(true);

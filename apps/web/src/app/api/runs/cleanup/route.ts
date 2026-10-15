@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json().catch(() => ({})));
     const olderThanMs = body.olderThanDays * 24 * 60 * 60 * 1000;
-    const { removed } = purgeTerminalRunsFs(
+    const { removed, skipped } = purgeTerminalRunsFs(
       resultsDir(),
       jobsDir(),
       { olderThanMs },
@@ -31,6 +31,8 @@ export async function POST(req: Request) {
       olderThanDays: body.olderThanDays,
       removedCount: removed.length,
       removed,
+      skippedCount: skipped.length,
+      skipped: skipped.slice(0, 50),
     });
   } catch (err) {
     if (err instanceof ZodError) {

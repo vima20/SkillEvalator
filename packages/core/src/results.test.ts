@@ -324,7 +324,7 @@ describe("purgeTerminalRunsFs", () => {
     );
   });
 
-  it("clears evaluationId from surviving leg status and result", () => {
+  it("keeps evaluation-linked legs and preserves eval_* archive", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-purge-eval-"));
     temps.push(root);
     const resultsDir = path.join(root, "results");
@@ -334,48 +334,104 @@ describe("purgeTerminalRunsFs", () => {
     const evalId = "eval_100_pairpurge";
     const oldBase = "run_100_oldbase";
     const survCand = "run_100_survcand";
+    const orphanOld = "run_100_orphanold";
 
     writeJsonFile(path.join(resultsDir, oldBase, "status.json"), {
       runId: oldBase,
       status: "failed",
       evaluationId: evalId,
       role: "baseline",
+      mode: "dry-run",
     });
     writeJsonFile(path.join(resultsDir, survCand, "status.json"), {
       runId: survCand,
       status: "ok",
       evaluationId: evalId,
       role: "candidate",
+      mode: "dry-run",
     });
     writeJsonFile(path.join(resultsDir, survCand, "result.json"), {
       runId: survCand,
       evaluationId: evalId,
       status: "ok",
+      mode: "dry-run",
     });
     writeJsonFile(path.join(resultsDir, evalId, "evaluation.json"), {
       evaluationId: evalId,
       baselineRunId: oldBase,
       candidateRunId: survCand,
     });
+    writeJsonFile(path.join(resultsDir, orphanOld, "status.json"), {
+      runId: orphanOld,
+      status: "failed",
+      mode: "dry-run",
+    });
 
-    const oldStatus = path.join(resultsDir, oldBase, "status.json");
     const past = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
-    fs.utimesSync(oldStatus, past, past);
+    for (const id of [oldBase, orphanOld]) {
+      fs.utimesSync(path.join(resultsDir, id, "status.json"), past, past);
+    }
 
     const out = purgeTerminalRunsFs(resultsDir, jobsDir, {
       olderThanMs: 7 * 24 * 60 * 60 * 1000,
     });
-    expect(out.removed).toEqual([oldBase]);
-    expect(fs.existsSync(path.join(resultsDir, evalId))).toBe(false);
+    expect(out.removed).toEqual([orphanOld]);
+    expect(out.skipped).toContainEqual({
+      runId: oldBase,
+      reason: "eval_linked",
+    });
+    expect(fs.existsSync(path.join(resultsDir, evalId))).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, oldBase))).toBe(true);
+    expect(fs.existsSync(path.join(resultsDir, orphanOld))).toBe(false);
 
     const survStatus = JSON.parse(
       fs.readFileSync(path.join(resultsDir, survCand, "status.json"), "utf8"),
     ) as { evaluationId?: string };
-    const survResult = JSON.parse(
-      fs.readFileSync(path.join(resultsDir, survCand, "result.json"), "utf8"),
-    ) as { evaluationId?: string };
-    expect(survStatus.evaluationId).toBeUndefined();
-    expect(survResult.evaluationId).toBeUndefined();
+    expect(survStatus.evaluationId).toBe(evalId);
+  });
+
+  it("never purges official runs even when unpaired and old", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-purge-official-"));
+    temps.push(root);
+    const resultsDir = path.join(root, "results");
+    const jobsDir = path.join(root, "jobs");
+    fs.mkdirSync(jobsDir, { recursive: true });
+
+    const officialId = "run_100_officialold";
+    const dryId = "run_100_dryold";
+    writeJsonFile(path.join(resultsDir, officialId, "status.json"), {
+      runId: officialId,
+      status: "ok",
+      mode: "official",
+    });
+    writeJsonFile(path.join(resultsDir, officialId, "result.json"), {
+      runId: officialId,
+      status: "ok",
+      mode: "official",
+    });
+    writeJsonFile(path.join(resultsDir, dryId, "status.json"), {
+      runId: dryId,
+      status: "ok",
+      mode: "dry-run",
+    });
+    writeJsonFile(path.join(resultsDir, dryId, "result.json"), {
+      runId: dryId,
+      status: "ok",
+      mode: "dry-run",
+      fakeProduce: true,
+    });
+
+    const past = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    for (const id of [officialId, dryId]) {
+      fs.utimesSync(path.join(resultsDir, id, "status.json"), past, past);
+    }
+
+    const out = purgeTerminalRunsFs(resultsDir, jobsDir, {
+      olderThanMs: 7 * 24 * 60 * 60 * 1000,
+    });
+    expect(out.removed).toEqual([dryId]);
+    expect(out.skipped).toEqual([{ runId: officialId, reason: "official" }]);
+    expect(fs.existsSync(path.join(resultsDir, officialId))).toBe(true);
   });
 
   it("skips budget_stop wind-down and runs with live job files", () => {
