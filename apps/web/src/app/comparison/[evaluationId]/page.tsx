@@ -3,7 +3,7 @@ import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
-import { canShowOfficialComparisonDownloads } from "@/lib/comparisonExport";
+import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
   resolveTipBaselineRunId,
@@ -113,12 +113,12 @@ export default async function ComparisonDetailPage({
   const capture = comparison.capture;
   const baselineFakeProduce = baseline.capture?.env?.fakeProduce === true;
   const candidateFakeProduce = candidate.capture?.env?.fakeProduce === true;
-  const showOfficialDownloads = canShowOfficialComparisonDownloads({
-    comparison,
+  const downloadGate = officialComparisonExportGate(comparison, {
     metaSmoke: meta.smoke === true,
     baselineFakeProduce,
     candidateFakeProduce,
   });
+  const showOfficialDownloads = downloadGate.ok;
   return (
     <div>
       <header className="page-header page-header-row">
@@ -164,7 +164,15 @@ export default async function ComparisonDetailPage({
                 Download pilot archive
               </a>
             </>
-          ) : null}
+          ) : (
+            <p
+              className="hint"
+              style={{ margin: 0, maxWidth: "22rem" }}
+              title={downloadGate.error}
+            >
+              {downloadGate.error}
+            </p>
+          )}
         </div>
       </header>
 
