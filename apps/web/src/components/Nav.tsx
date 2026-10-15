@@ -21,6 +21,11 @@ const items = [
     label: "Dashboard",
     match: (p: string) => p.startsWith("/dashboard"),
   },
+  {
+    href: "/settings",
+    label: "Settings",
+    match: (p: string) => p.startsWith("/settings"),
+  },
 ] as const;
 
 export function Nav() {
