@@ -16,6 +16,7 @@ import {
   readJsonFile,
   releaseRetryEnqueueLock,
   saveRetryMarker,
+  staleOrphanRunningRunIds,
   tryAcquireRetryEnqueueLock,
 } from "@skillevalator/core";
 import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
@@ -23,7 +24,7 @@ import {
   resolveHealedMetaLegsForCancel,
   updateEvaluationMetaLeg,
 } from "@/lib/evaluations";
-import { isPidAlive } from "@/lib/healOrphans";
+import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import {
   evaluationIdFromSources,
@@ -143,6 +144,7 @@ export async function POST(
       );
     }
 
+    healOrphanStatuses();
     const preflight = runPreflight();
     if (!preflight.ok) {
       const failedChecks = Object.entries(preflight.checks)
@@ -158,7 +160,15 @@ export async function POST(
       );
     }
     if (mode === "dry-run" || mode === "official") {
-      const readyGate = officialPilotReadyGate({ mode, preflight });
+      const readyGate = officialPilotReadyGate({
+        mode,
+        preflight,
+        staleRunningRunIds: staleOrphanRunningRunIds(
+          jobsDir(),
+          resultsDir(),
+          isPidAlive,
+        ),
+      });
       if (!readyGate.ok) {
         return NextResponse.json(
           {

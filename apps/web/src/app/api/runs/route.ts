@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
-import { listRuns, officialEnqueueAllowed } from "@skillevalator/core";
+import {
+  listRuns,
+  officialEnqueueAllowed,
+  staleOrphanRunningRunIds,
+} from "@skillevalator/core";
 import { enqueueEvaluationPair, enqueueRun } from "@/lib/enqueueRun";
-import { healOrphanStatuses } from "@/lib/healOrphans";
-import { resultsDir } from "@/lib/paths";
+import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
+import { jobsDir, resultsDir } from "@/lib/paths";
 import { officialPilotReadyGate } from "@/lib/pilotReady";
 import { runPreflight } from "@/lib/runPreflight";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
@@ -38,6 +42,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
+    healOrphanStatuses();
     const preflight = runPreflight();
     if (!preflight.ok) {
       const failed = Object.entries(preflight.checks)
@@ -55,6 +60,11 @@ export async function POST(req: Request) {
     const readyGate = officialPilotReadyGate({
       mode: body.mode,
       preflight,
+      staleRunningRunIds: staleOrphanRunningRunIds(
+        jobsDir(),
+        resultsDir(),
+        isPidAlive,
+      ),
     });
     if (!readyGate.ok) {
       return NextResponse.json(

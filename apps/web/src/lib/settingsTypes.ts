@@ -103,6 +103,8 @@ export type SettingsSnapshot = {
     running: number;
     /** Active runId from live worker heartbeat when busy. */
     activeRunId: string | null;
+    /** .running.json that would be reclaimed (dead PID / no heartbeat ownership). */
+    staleRunningRunIds: string[];
   };
   web: {
     port: number;
@@ -146,6 +148,12 @@ export function isSettingsSnapshot(v: unknown): v is SettingsSnapshot {
   }
   if (!isRecord(v.build) || !isRecord(v.queue)) return false;
   if (typeof v.queue.queued !== "number" || typeof v.queue.running !== "number") {
+    return false;
+  }
+  if (
+    v.queue.staleRunningRunIds !== undefined &&
+    !Array.isArray(v.queue.staleRunningRunIds)
+  ) {
     return false;
   }
   return true;

@@ -10,10 +10,13 @@ import {
   OFFICIAL_USE_SCORE_FLOOR,
   PASS_SCORE_FLOOR,
   findRepoRoot,
+  healAllOrphansFs,
   listSkills,
   resolveDataPaths,
+  staleOrphanRunningRunIds,
   type SkillSummary,
 } from "@skillevalator/core";
+import { isPidAlive } from "@/lib/healOrphans";
 import { collectPilotBlockers } from "@/lib/pilotReady";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 import { runPreflight } from "@/lib/runPreflight";
@@ -96,6 +99,7 @@ export function resolveBuildInfo(repoRoot: string): SettingsSnapshot["build"] {
 
 export function summarizeJobQueue(
   jobsDir: string,
+  opts?: { staleRunningRunIds?: string[] },
 ): SettingsSnapshot["queue"] {
   let queued = 0;
   let running = 0;
@@ -139,7 +143,12 @@ export function summarizeJobQueue(
     }
   }
 
-  return { queued, running, activeRunId };
+  return {
+    queued,
+    running,
+    activeRunId,
+    staleRunningRunIds: opts?.staleRunningRunIds ?? [],
+  };
 }
 
 export function loadSettingsSnapshot(opts?: {
@@ -153,11 +162,32 @@ export function loadSettingsSnapshot(opts?: {
   };
   build?: SettingsSnapshot["build"];
   queue?: SettingsSnapshot["queue"];
+  /**
+   * When true, reclaim orphan .running.json before inspecting the queue
+   * (Settings Refresh). Default false so first paint can surface blockers.
+   */
+  healQueue?: boolean;
+  /** Injected for tests — skip disk orphan inspect. */
+  staleRunningRunIds?: string[];
+  isPidAlive?: (pid: number) => boolean;
 }): SettingsSnapshot {
   const env = opts?.env ?? process.env;
   const root =
     opts?.repoRoot ?? findRepoRoot(path.resolve(process.cwd()));
   const data = resolveDataPaths(root);
+  const pidAlive = opts?.isPidAlive ?? isPidAlive;
+
+  if (opts?.healQueue) {
+    healAllOrphansFs(data.jobsDir, data.resultsDir, pidAlive);
+  }
+
+  // Injected queue (unit tests) must not scan the real jobsDir for orphans.
+  const staleRunningRunIds =
+    opts?.staleRunningRunIds ??
+    (opts?.queue
+      ? (opts.queue.staleRunningRunIds ?? [])
+      : staleOrphanRunningRunIds(data.jobsDir, data.resultsDir, pidAlive));
+
   const preflight =
     opts?.preflight ??
     runPreflight({
@@ -182,7 +212,11 @@ export function loadSettingsSnapshot(opts?: {
   const fakeProduce = env.FAKE_PRODUCE === "known-good";
   const allowHostGrade = env.ALLOW_HOST_GRADE === "1";
   const officialRequiresWebAuth = env.OFFICIAL_REQUIRES_WEB_AUTH === "true";
-  const pilotBlockers = collectPilotBlockers({ preflight, env });
+  const pilotBlockers = collectPilotBlockers({
+    preflight,
+    env,
+    staleRunningRunIds,
+  });
 
   const costCapRaw = num(env, "COST_CAP_USD", DEFAULT_COST_CAP_USD);
   const costCapUsd =
@@ -255,7 +289,9 @@ export function loadSettingsSnapshot(opts?: {
       resultsDir: rel(root, data.resultsDir),
     },
     build: opts?.build ?? resolveBuildInfo(root),
-    queue: opts?.queue ?? summarizeJobQueue(data.jobsDir),
+    queue:
+      opts?.queue ??
+      summarizeJobQueue(data.jobsDir, { staleRunningRunIds }),
     web: {
       port: num(env, "WEB_PORT", 30001),
       bindHint: "127.0.0.1 (loopback)",

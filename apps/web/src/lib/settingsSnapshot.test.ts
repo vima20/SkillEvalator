@@ -18,6 +18,7 @@ const injectedQueue = {
   queued: 0,
   running: 0,
   activeRunId: null as string | null,
+  staleRunningRunIds: [] as string[],
 };
 
 const okPreflight = {
@@ -190,6 +191,7 @@ describe("loadSettingsSnapshot", () => {
         queued: 1,
         running: 1,
         activeRunId: "run_b",
+        staleRunningRunIds: [],
       });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

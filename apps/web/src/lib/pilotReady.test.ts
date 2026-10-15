@@ -81,4 +81,19 @@ describe("collectPilotBlockers / officialPilotReadyGate", () => {
       ).toBe(true);
     }
   });
+
+  it("blocks official when orphan .running.json runIds are present", () => {
+    const out = officialPilotReadyGate({
+      mode: "official",
+      preflight: { checks: okChecks },
+      env: { OPENAI_API_KEY: "sk", WEB_AUTH_TOKEN: "secret" },
+      staleRunningRunIds: ["run_100_stale"],
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.blockers.some((b) => /Stale queue|orphan/i.test(b))).toBe(
+        true,
+      );
+    }
+  });
 });

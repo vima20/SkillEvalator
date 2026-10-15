@@ -95,7 +95,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/settings", {
+      const res = await fetch("/api/settings?heal=1", {
         cache: "no-store",
         signal: ac.signal,
       });
@@ -234,10 +234,25 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
                 </>
               ) : null}
             </Row>
+            {(s.queue.staleRunningRunIds?.length ?? 0) > 0 ? (
+              <Row label="Stale running">
+                <StatusPill ok={false} label="orphan" />{" "}
+                {s.queue.staleRunningRunIds!.map((id, i) => (
+                  <span key={id}>
+                    {i > 0 ? ", " : null}
+                    <Link href={withPilotFocus(`/runs/${id}`, pilotFocus)}>
+                      {id}
+                    </Link>
+                  </span>
+                ))}
+              </Row>
+            ) : null}
           </dl>
           <p className="hint">
             Record the git SHA with pilot archives. Queue counts are files under{" "}
-            <code>{s.paths.jobsDir}</code>.
+            <code>{s.paths.jobsDir}</code>. Refresh heals orphan{" "}
+            <code>.running.json</code> (dead worker claims) before re-checking
+            Ready.
           </p>
         </section>
 

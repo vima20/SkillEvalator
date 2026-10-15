@@ -7,6 +7,8 @@ import type { RunPreflightResult } from "@/lib/runPreflight";
 export function collectPilotBlockers(opts: {
   preflight: Pick<RunPreflightResult, "checks">;
   env?: Record<string, string | undefined>;
+  /** Stale .running.json runIds (inspect ≠ skip_alive). */
+  staleRunningRunIds?: string[];
 }): string[] {
   const env = opts.env ?? process.env;
   const webAuth = resolveWebAuthConfig(env.WEB_AUTH_TOKEN);
@@ -36,6 +38,14 @@ export function collectPilotBlockers(opts: {
       "OFFICIAL_REQUIRES_WEB_AUTH=true but WEB_AUTH_TOKEN is not set",
     );
   }
+  const stale = (opts.staleRunningRunIds ?? []).filter(Boolean);
+  if (stale.length > 0) {
+    const shown = stale.slice(0, 3).join(", ");
+    const more = stale.length > 3 ? ` (+${stale.length - 3} more)` : "";
+    pilotBlockers.push(
+      `Stale queue: orphan .running.json for ${shown}${more} — Refresh Settings or open Runs to heal`,
+    );
+  }
   return pilotBlockers;
 }
 
@@ -54,6 +64,7 @@ export function officialPilotReadyGate(opts: {
   mode: "dry-run" | "official";
   preflight: Pick<RunPreflightResult, "checks">;
   env?: Record<string, string | undefined>;
+  staleRunningRunIds?: string[];
 }): OfficialPilotReadyOk | OfficialPilotReadyDenied {
   if (opts.mode !== "official") return { ok: true };
   const blockers = collectPilotBlockers(opts);

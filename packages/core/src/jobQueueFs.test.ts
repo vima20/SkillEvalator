@@ -11,8 +11,10 @@ import {
   healOrphanQueuedStatusFs,
   healRunOrphansFs,
   heartbeatOwnsRunFs,
+  inspectOrphanRunningJobsFs,
   parseWorkerPidRecord,
   reclaimOrphanRunningJobsFs,
+  staleOrphanRunningRunIds,
 } from "./jobQueueFs.js";
 import { writeJsonFile } from "./fsJson.js";
 
@@ -152,6 +154,46 @@ describe("heartbeatOwnsRunFs", () => {
       busy: false,
     });
     expect(heartbeatOwnsRunFs(jobsDir, "run_100_zombie", 99)).toBe(false);
+  });
+});
+
+describe("inspectOrphanRunningJobsFs", () => {
+  it("lists fail_orphan and skip_alive without writing", () => {
+    const root = tmpRoot();
+    const jobsDir = path.join(root, "jobs");
+    const resultsDir = path.join(root, "results");
+    fs.mkdirSync(jobsDir, { recursive: true });
+    const dead = "run_100_inspect_dead";
+    const alive = "run_100_inspect_alive";
+    fs.writeFileSync(path.join(jobsDir, `${dead}.running.json`), "{}");
+    writeJsonFile(path.join(resultsDir, dead, "status.json"), {
+      runId: dead,
+      status: "running",
+    });
+    const runningAlive = path.join(jobsDir, `${alive}.running.json`);
+    fs.writeFileSync(runningAlive, "{}");
+    fs.writeFileSync(
+      path.join(jobsDir, `${alive}.worker.pid`),
+      formatWorkerPidRecord({ pid: 999, runId: alive }),
+    );
+    writeJsonFile(path.join(jobsDir, ".worker"), {
+      pid: 999,
+      at: new Date().toISOString(),
+      busy: true,
+      runId: alive,
+    });
+
+    const rows = inspectOrphanRunningJobsFs(jobsDir, resultsDir, (pid) =>
+      pid === 999,
+    );
+    expect(rows.find((r) => r.runId === dead)?.action).toBe("fail_orphan");
+    expect(rows.find((r) => r.runId === alive)?.action).toBe("skip_alive");
+    expect(staleOrphanRunningRunIds(jobsDir, resultsDir, (pid) => pid === 999)).toEqual([
+      dead,
+    ]);
+    expect(fs.existsSync(path.join(jobsDir, `${dead}.running.json`))).toBe(
+      true,
+    );
   });
 });
 

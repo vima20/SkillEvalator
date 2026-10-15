@@ -236,6 +236,104 @@ function markOrphanRunningFailed(resultsDir: string, runId: string): void {
   });
 }
 
+export type OrphanRunningInspectRow = {
+  runId: string;
+  fileName: string;
+  action: OrphanRunningAction;
+};
+
+function classifyOrphanRunningFile(
+  jobsDir: string,
+  resultsDir: string,
+  fileName: string,
+  isPidAlive: (pid: number) => boolean,
+): OrphanRunningInspectRow | null {
+  if (!fileName.endsWith(".running.json")) return null;
+  const running = path.join(jobsDir, fileName);
+  const pidFile = workerPidPath(running);
+  const runId = runIdFromJobPath(running);
+  if (!runId) return null;
+
+  let pidAlive: boolean | null = null;
+  let heartbeatOwnsRun = false;
+  if (fs.existsSync(pidFile)) {
+    try {
+      const rec = parseWorkerPidRecord(fs.readFileSync(pidFile, "utf8"));
+      if (!rec) {
+        pidAlive = false;
+      } else {
+        pidAlive = isPidAlive(rec.pid);
+        if (pidAlive) {
+          heartbeatOwnsRun = heartbeatOwnsRunFs(jobsDir, runId, rec.pid);
+        }
+      }
+    } catch {
+      pidAlive = false;
+    }
+  } else {
+    pidAlive = false;
+  }
+
+  let withinClaimGrace = false;
+  if (pidAlive === true) {
+    try {
+      const runningAge = Date.now() - fs.statSync(running).mtimeMs;
+      const pidAge = fs.existsSync(pidFile)
+        ? Date.now() - fs.statSync(pidFile).mtimeMs
+        : Number.POSITIVE_INFINITY;
+      withinClaimGrace =
+        Math.min(runningAge, pidAge) < RUNNING_CLAIM_GRACE_MS;
+    } catch {
+      withinClaimGrace = false;
+    }
+  }
+
+  const hasResult = fs.existsSync(
+    path.join(resultsDir, runId, "result.json"),
+  );
+  const action = decideOrphanRunningAction({
+    pidAlive,
+    hasResult,
+    heartbeatOwnsRun,
+    withinClaimGrace,
+  });
+  return { runId, fileName, action };
+}
+
+/**
+ * Read-only audit of .running.json files (same decisions as reclaim).
+ * Rows with action !== skip_alive are stale / reclaimable orphans.
+ */
+export function inspectOrphanRunningJobsFs(
+  jobsDir: string,
+  resultsDir: string,
+  isPidAlive: (pid: number) => boolean,
+): OrphanRunningInspectRow[] {
+  const rows: OrphanRunningInspectRow[] = [];
+  if (!fs.existsSync(jobsDir)) return rows;
+  for (const name of fs.readdirSync(jobsDir)) {
+    const row = classifyOrphanRunningFile(
+      jobsDir,
+      resultsDir,
+      name,
+      isPidAlive,
+    );
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
+/** RunIds whose .running.json would be reclaimed (not a live claim). */
+export function staleOrphanRunningRunIds(
+  jobsDir: string,
+  resultsDir: string,
+  isPidAlive: (pid: number) => boolean,
+): string[] {
+  return inspectOrphanRunningJobsFs(jobsDir, resultsDir, isPidAlive)
+    .filter((r) => r.action !== "skip_alive")
+    .map((r) => r.runId);
+}
+
 /**
  * Reclaim .running jobs when worker PID is dead/missing or heartbeat does not own the run.
  * - result.json present → finalize .done (never re-queue)
@@ -250,65 +348,22 @@ export function reclaimOrphanRunningJobsFs(
   const failed: string[] = [];
   if (!fs.existsSync(jobsDir)) return { finalized, failed };
 
-  for (const name of fs.readdirSync(jobsDir)) {
-    if (!name.endsWith(".running.json")) continue;
-    const running = path.join(jobsDir, name);
-    const pidFile = workerPidPath(running);
-    const runId = runIdFromJobPath(running);
-
-    let pidAlive: boolean | null = null;
-    let heartbeatOwnsRun = false;
-    if (fs.existsSync(pidFile)) {
-      try {
-        const rec = parseWorkerPidRecord(fs.readFileSync(pidFile, "utf8"));
-        if (!rec) {
-          pidAlive = false;
-        } else {
-          pidAlive = isPidAlive(rec.pid);
-          if (pidAlive && runId) {
-            heartbeatOwnsRun = heartbeatOwnsRunFs(jobsDir, runId, rec.pid);
-          }
-        }
-      } catch {
-        pidAlive = false;
-      }
-    } else {
-      pidAlive = false;
-    }
-
-    let withinClaimGrace = false;
-    if (pidAlive === true) {
-      try {
-        const runningAge = Date.now() - fs.statSync(running).mtimeMs;
-        const pidAge = fs.existsSync(pidFile)
-          ? Date.now() - fs.statSync(pidFile).mtimeMs
-          : Number.POSITIVE_INFINITY;
-        withinClaimGrace =
-          Math.min(runningAge, pidAge) < RUNNING_CLAIM_GRACE_MS;
-      } catch {
-        withinClaimGrace = false;
-      }
-    }
-
-    const hasResult = Boolean(
-      runId && fs.existsSync(path.join(resultsDir, runId, "result.json")),
-    );
-    const action = decideOrphanRunningAction({
-      pidAlive,
-      hasResult,
-      heartbeatOwnsRun,
-      withinClaimGrace,
-    });
-    if (action === "skip_alive") continue;
-    if (action === "finalize_done") {
+  for (const row of inspectOrphanRunningJobsFs(
+    jobsDir,
+    resultsDir,
+    isPidAlive,
+  )) {
+    if (row.action === "skip_alive") continue;
+    const running = path.join(jobsDir, row.fileName);
+    if (row.action === "finalize_done") {
       finalizeRunningJob(running, "done");
-      if (runId) syncStatusFromResult(resultsDir, runId);
-      finalized.push(name);
+      syncStatusFromResult(resultsDir, row.runId);
+      finalized.push(row.fileName);
       continue;
     }
     finalizeRunningJob(running, "failed");
-    if (runId) markOrphanRunningFailed(resultsDir, runId);
-    failed.push(name);
+    markOrphanRunningFailed(resultsDir, row.runId);
+    failed.push(row.fileName);
   }
   return { finalized, failed };
 }
