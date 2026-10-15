@@ -1,22 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { comparisonPendingState, statusBadgeClass } from "@/lib/status";
 
 /** Orphan wait for budget_stop → result.json per leg. */
 const WIND_DOWN_MS = 90_000;
 
-export function ComparisonPending({
-  evaluationId,
-  baselineRunId,
-  candidateRunId,
-  baselineStatus,
-  candidateStatus,
-  baselineHasResult = false,
-  candidateHasResult = false,
-}: {
+type ComparisonPendingProps = {
   evaluationId: string;
   baselineRunId?: string;
   candidateRunId?: string;
@@ -25,7 +18,36 @@ export function ComparisonPending({
   /** True when that leg already has result.json (budget_stop may be settled). */
   baselineHasResult?: boolean;
   candidateHasResult?: boolean;
-}) {
+};
+
+export function ComparisonPending(props: ComparisonPendingProps) {
+  return (
+    <Suspense
+      fallback={<ComparisonPendingInner {...props} pilotFocus={false} />}
+    >
+      <ComparisonPendingWithFocus {...props} />
+    </Suspense>
+  );
+}
+
+function ComparisonPendingWithFocus(props: ComparisonPendingProps) {
+  const searchParams = useSearchParams();
+  const pilotFocus = isPilotFocusParam(
+    searchParams.get("focus") ?? undefined,
+  );
+  return <ComparisonPendingInner {...props} pilotFocus={pilotFocus} />;
+}
+
+function ComparisonPendingInner({
+  evaluationId,
+  baselineRunId,
+  candidateRunId,
+  baselineStatus,
+  candidateStatus,
+  baselineHasResult = false,
+  candidateHasResult = false,
+  pilotFocus,
+}: ComparisonPendingProps & { pilotFocus: boolean }) {
   const router = useRouter();
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
   const [candidateBudgetTimedOut, setCandidateBudgetTimedOut] = useState(false);
@@ -114,7 +136,11 @@ export function ComparisonPending({
             {baselineRunId ? (
               <>
                 {" "}
-                <Link href={`/runs/${baselineRunId}`}>{baselineRunId}</Link>
+                <Link
+                  href={withPilotFocus(`/runs/${baselineRunId}`, pilotFocus)}
+                >
+                  {baselineRunId}
+                </Link>
               </>
             ) : null}
           </dd>
@@ -128,7 +154,11 @@ export function ComparisonPending({
             {candidateRunId ? (
               <>
                 {" "}
-                <Link href={`/runs/${candidateRunId}`}>{candidateRunId}</Link>
+                <Link
+                  href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}
+                >
+                  {candidateRunId}
+                </Link>
               </>
             ) : null}
           </dd>

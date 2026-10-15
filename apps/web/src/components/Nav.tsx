@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 
 const items = [
   { href: "/", label: "New run", match: (p: string) => p === "/" },
@@ -28,23 +30,42 @@ const items = [
   },
 ] as const;
 
-export function Nav() {
+function NavLinks() {
   const pathname = usePathname() ?? "/";
+  const searchParams = useSearchParams();
+  const pilotFocus = isPilotFocusParam(searchParams.get("focus") ?? undefined);
 
   return (
-    <nav className="nav" aria-label="Primary">
+    <>
       {items.map((item) => {
         const current = item.match(pathname);
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={withPilotFocus(item.href, pilotFocus)}
             aria-current={current ? "page" : undefined}
           >
             {item.label}
           </Link>
         );
       })}
+    </>
+  );
+}
+
+/** Primary nav — preserves ?focus=pilot across tabs when set. */
+export function Nav() {
+  return (
+    <nav className="nav" aria-label="Primary">
+      <Suspense
+        fallback={items.map((item) => (
+          <Link key={item.href} href={item.href}>
+            {item.label}
+          </Link>
+        ))}
+      >
+        <NavLinks />
+      </Suspense>
     </nav>
   );
 }

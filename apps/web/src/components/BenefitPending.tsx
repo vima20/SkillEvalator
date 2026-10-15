@@ -1,17 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { benefitPendingState } from "@/lib/status";
 
 /** Auto-refresh while waiting for result.json / benefit report. */
-export function BenefitPending({
+export function BenefitPending(props: {
+  runId: string;
+  status?: string | null;
+}) {
+  return (
+    <Suspense fallback={<BenefitPendingInner {...props} pilotFocus={false} />}>
+      <BenefitPendingWithFocus {...props} />
+    </Suspense>
+  );
+}
+
+function BenefitPendingWithFocus(props: {
+  runId: string;
+  status?: string | null;
+}) {
+  const searchParams = useSearchParams();
+  const pilotFocus = isPilotFocusParam(
+    searchParams.get("focus") ?? undefined,
+  );
+  return <BenefitPendingInner {...props} pilotFocus={pilotFocus} />;
+}
+
+function BenefitPendingInner({
   runId,
   status,
+  pilotFocus,
 }: {
   runId: string;
   status?: string | null;
+  pilotFocus: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -72,7 +97,10 @@ export function BenefitPending({
               {busy ? "Refreshing…" : "Refresh now"}
             </button>
           ) : null}
-          <Link className="btn btn-primary btn-compact" href={`/runs/${runId}`}>
+          <Link
+            className="btn btn-primary btn-compact"
+            href={withPilotFocus(`/runs/${runId}`, pilotFocus)}
+          >
             Open run
           </Link>
         </div>
