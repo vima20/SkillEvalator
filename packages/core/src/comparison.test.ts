@@ -98,9 +98,16 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
   };
 }
 
-/** Trusted pin matching sample() defaultCapture.env.gradeHash. */
+/** Trusted pins matching sample() defaultCapture hashes. */
 const TRUSTED_GRADE_HASH =
   "gradehash0000001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const TRUSTED_BASELINE_PROMPT_HASH = "baselinehash0001";
+const TRUSTED_CANDIDATE_PROMPT_HASH = "candidatehash0002";
+const OFFICIAL_PINS = {
+  expectedGradeHash: TRUSTED_GRADE_HASH,
+  expectedBaselinePromptHash: TRUSTED_BASELINE_PROMPT_HASH,
+  expectedCandidatePromptHash: TRUSTED_CANDIDATE_PROMPT_HASH,
+};
 
 describe("compareBaselineCandidate", () => {
   it("dry-run lift is INCONCLUSIVE (not adoption PASS)", () => {
@@ -133,7 +140,7 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
     expect(c.verdict).toBe("FAIL");
@@ -158,10 +165,76 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(c.verdict).toBe("PASS");
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
+  it("official INCONCLUSIVE when promptHash ≠ trusted skill-snapshot pin", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      {
+        ...OFFICIAL_PINS,
+        expectedCandidatePromptHash: "snapshot_real_prompt_xx",
+      },
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        /candidate\.capture\.promptHash ≠ trusted skill-snapshot/i.test(i),
+      ),
+    ).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when trusted prompt pins missing (no skill-snapshot SKILL.md)", () => {
+    const c = compareBaselineCandidate(
+      sample({
+        runId: "b",
+        role: "baseline",
+        score: 0.9,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      sample({
+        runId: "c",
+        role: "candidate",
+        score: 1,
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+      }),
+      { expectedGradeHash: TRUSTED_GRADE_HASH },
+    );
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        /trusted expectedBaselinePromptHash/i.test(i),
+      ),
+    ).toBe(true);
+    expect(
+      c.parity.issues.some((i) =>
+        /trusted expectedCandidatePromptHash/i.test(i),
+      ),
+    ).toBe(true);
   });
 
   it("official INCONCLUSIVE when produceAttested missing (fixture plant)", () => {
@@ -183,7 +256,7 @@ describe("compareBaselineCandidate", () => {
     const c = compareBaselineCandidate(
       stripAttest("baseline", "b"),
       stripAttest("candidate", "c"),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(c.parity.ok).toBe(false);
     expect(c.verdict).toBe("INCONCLUSIVE");
@@ -212,7 +285,7 @@ describe("compareBaselineCandidate", () => {
         repeats: 3,
         tokens: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
       }),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(c.parity.ok).toBe(false);
     expect(c.verdict).toBe("INCONCLUSIVE");
@@ -241,7 +314,7 @@ describe("compareBaselineCandidate", () => {
         repeats: 3,
         findings: ["smoke-official-adoption"],
       }),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(c.parity.ok).toBe(false);
     expect(c.verdict).toBe("INCONCLUSIVE");
@@ -294,7 +367,10 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
-      { expectedGradeHash: "trusted_real_gradehash_bbbbbbbbbbbbbbbbbbbb" },
+      {
+        ...OFFICIAL_PINS,
+        expectedGradeHash: "trusted_real_gradehash_bbbbbbbbbbbbbbbbbbbb",
+      },
     );
     expect(c.parity.ok).toBe(false);
     expect(c.verdict).toBe("INCONCLUSIVE");
@@ -366,7 +442,7 @@ describe("compareBaselineCandidate", () => {
     const noHash = compareBaselineCandidate(
       stripPromptHash("baseline", "b"),
       stripPromptHash("candidate", "c"),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(noHash.verdict).toBe("INCONCLUSIVE");
     expect(
@@ -391,7 +467,7 @@ describe("compareBaselineCandidate", () => {
     const noGrade = compareBaselineCandidate(
       stripGrade("baseline", "b"),
       stripGrade("candidate", "c"),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(noGrade.verdict).toBe("INCONCLUSIVE");
     expect(
@@ -539,7 +615,7 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(c.lift!).toBeLessThan(LIFT_PASS_DELTA);
     expect(c.verdict).toBe("FAIL");
@@ -571,7 +647,7 @@ describe("compareBaselineCandidate", () => {
         modelId: "gpt-4.1-mini",
         repeats: 3,
       }),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      OFFICIAL_PINS,
     );
     expect(c.verdict).toBe("FAIL");
   });
@@ -2220,6 +2296,60 @@ describe("resolvePairedCancelSibling", () => {
         ],
       }),
     ).toBeNull();
+  });
+});
+
+describe("loadPairedComparison official prompt pin", () => {
+  it("INCONCLUSIVE when skill-snapshot SKILL.md missing on official disk", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-prompt-disk-"));
+    pairedTemps.push(root);
+    const evaluationId = "eval_100_promptx";
+    const baselineRunId = "run_100_baseprom";
+    const candidateRunId = "run_100_candprom";
+    writeJsonFile(path.join(root, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "official",
+      baselineRunId,
+      candidateRunId,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    for (const [id, role, score] of [
+      [baselineRunId, "baseline", 0.9],
+      [candidateRunId, "candidate", 1],
+    ] as const) {
+      writeJsonFile(
+        path.join(root, id, "result.json"),
+        sample({
+          runId: id,
+          role,
+          evaluationId,
+          score,
+          mode: "official",
+          modelId: "gpt-4.1-mini",
+          repeats: 3,
+        }),
+      );
+      // grade.js pin only — no SKILL.md ⇒ missing expected prompt hashes.
+      const scripts = path.join(root, id, "skill-snapshot", "scripts");
+      fs.mkdirSync(scripts, { recursive: true });
+      fs.writeFileSync(
+        path.join(scripts, "grade.js"),
+        "module.exports = {};\n",
+        "utf8",
+      );
+    }
+    const cmp = loadPairedComparison({ resultsDir: root, evaluationId });
+    expect(cmp).not.toBeNull();
+    expect(cmp!.parity.ok).toBe(false);
+    expect(cmp!.verdict).toBe("INCONCLUSIVE");
+    expect(
+      cmp!.parity.issues.some((i) =>
+        /trusted expectedBaselinePromptHash|trusted expectedCandidatePromptHash/i.test(
+          i,
+        ),
+      ),
+    ).toBe(true);
   });
 });
 

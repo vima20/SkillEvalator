@@ -112,7 +112,11 @@ describe("comparisonToCsv", () => {
         repeats: 3,
         capture: officialCapture("candidate"),
       }),
-      { expectedGradeHash: TRUSTED_GRADE_HASH },
+      {
+        expectedGradeHash: TRUSTED_GRADE_HASH,
+        expectedBaselinePromptHash: "baselinehash0001",
+        expectedCandidatePromptHash: "candidatehash0002",
+      },
     );
     expect(cmp.verdict).toBe("PASS");
     const csv = comparisonToCsv(cmp);

@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -13,6 +12,7 @@ import {
   copySkillSnapshotScripts,
   gradeInDocker,
   gradeOnHost,
+  hashPromptInstruction,
   liveRunStatusForProgress,
   loadRunResult,
   loadSkill,
@@ -478,11 +478,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
           }
           return trimmed;
         })();
-  const promptHash = crypto
-    .createHash("sha256")
-    .update(instructionForCapture)
-    .digest("hex")
-    .slice(0, 16);
+  const promptHash = hashPromptInstruction(instructionForCapture);
   const promptPreview = instructionForCapture.slice(0, 500);
 
   // Pin SKILL.md + evalSkillVersion before model allowlist / repeats so a

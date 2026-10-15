@@ -13,12 +13,14 @@ import { benefitExportGate } from "./benefitExport.js";
 import { comparisonCsvGate } from "./comparisonExport.js";
 import { runCsvExportGate } from "./runCsvExport.js";
 
-/** Fixture trusted pin (export smoke has no skill-snapshot on disk). */
+/** Fixture trusted pins (export smoke has no skill-snapshot on disk). */
 const GRADE_HASH = "gradehash_smoke_export_aaaaaaaaaaaaaaaaaaaa";
 const officialCompareOpts = {
   expectedEvalSkillId: "code-debugging-eval",
   expectedEvaluationMode: "official" as const,
   expectedGradeHash: GRADE_HASH,
+  expectedBaselinePromptHash: "basehash_export",
+  expectedCandidatePromptHash: "candhash_export",
 };
 
 function officialLeg(

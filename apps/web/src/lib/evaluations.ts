@@ -13,6 +13,7 @@ import {
   resolveEvaluationMetaMode,
   resolveLegRunIdViaRetryChain,
   resolveTrustedGradeHashFromRunResultDir,
+  resolveTrustedPromptHashFromRunResultDir,
   tryAcquireWxLock,
   unlinkBenefitReportCache,
   writeJsonFile,
@@ -350,9 +351,15 @@ export function loadEvaluationComparison(
             modePin.expectedEvaluationMode === "official" ||
             baseline.mode === "official" ||
             candidate.mode === "official";
-          // Tip candidate snapshot only — baseline hash must not launder a missing tip pin.
+          // Tip snapshot pins — grade from candidate; prompt hashes from each leg.
           const expectedGradeHash = officialDisk
             ? resolveTrustedGradeHashFromRunResultDir(dir, candidate.runId)
+            : undefined;
+          const expectedBaselinePromptHash = officialDisk
+            ? resolveTrustedPromptHashFromRunResultDir(dir, baseline.runId)
+            : undefined;
+          const expectedCandidatePromptHash = officialDisk
+            ? resolveTrustedPromptHashFromRunResultDir(dir, candidate.runId)
             : undefined;
           const extraParityIssues = [
             ...modePin.issues,
@@ -375,6 +382,12 @@ export function loadEvaluationComparison(
               ? { expectedEvaluationId: evalIdPin.expectedEvaluationId }
               : {}),
             ...(expectedGradeHash ? { expectedGradeHash } : {}),
+            ...(expectedBaselinePromptHash
+              ? { expectedBaselinePromptHash }
+              : {}),
+            ...(expectedCandidatePromptHash
+              ? { expectedCandidatePromptHash }
+              : {}),
             ...(extraParityIssues.length ? { extraParityIssues } : {}),
           });
         })()

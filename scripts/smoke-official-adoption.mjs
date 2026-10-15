@@ -6,7 +6,6 @@
  *
  * Usage: npm run smoke:official
  */
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +16,7 @@ import {
   compareBaselineCandidate,
   findRepoRoot,
   gradeOnHost,
+  hashPromptInstruction,
   loadPairedComparison,
   loadSkill,
   pinTrustedScriptsIntoSkillSnapshot,
@@ -85,19 +85,19 @@ function scoreArtifact(kind) {
   return { perTask, score: mean };
 }
 
+function promptBodyFor(role) {
+  return role === "baseline"
+    ? "neutral-official-smoke-prompt"
+    : skill.skillMd.trim() || "skill-official-smoke";
+}
+
 /** Disk plant: looks official but must not unlock adoption (no produce attest). */
 function buildOfficialResult(opts) {
   const { runId, role, evaluationId, perTask, score } = opts;
   const promptKind = role === "baseline" ? "baseline_neutral" : "skill_md";
-  const promptBody =
-    role === "baseline"
-      ? "neutral-official-smoke-prompt"
-      : skill.skillMd.slice(0, 200) || "skill-official-smoke";
-  const promptHash = crypto
-    .createHash("sha256")
-    .update(`${promptKind}:${promptBody}`)
-    .digest("hex")
-    .slice(0, 16);
+  const promptBody = promptBodyFor(role);
+  // Same rule as worker: hash instruction body only (not promptKind prefix).
+  const promptHash = hashPromptInstruction(promptBody);
   return {
     runId,
     evalSkillId: skill.id,
@@ -190,6 +190,11 @@ function writePair(evaluationId, baseline, candidate, label) {
     const snap = path.join(dir, "skill-snapshot");
     fs.mkdirSync(snap, { recursive: true });
     pinTrustedScriptsIntoSkillSnapshot(skill.root, snap);
+    fs.writeFileSync(
+      path.join(snap, "SKILL.md"),
+      `${promptBodyFor(r.role)}\n`,
+      "utf8",
+    );
   }
   writeJsonFile(path.join(resultsDir, evaluationId, "evaluation.json"), {
     evaluationId,
@@ -238,6 +243,10 @@ function writePair(evaluationId, baseline, candidate, label) {
       expectedEvaluationMode: "official",
       expectedEvaluationId: evaluationId,
       expectedGradeHash: gradeHash,
+      expectedBaselinePromptHash: hashPromptInstruction(promptBodyFor("baseline")),
+      expectedCandidatePromptHash: hashPromptInstruction(
+        promptBodyFor("candidate"),
+      ),
     },
   );
   const benefit = buildBenefitReport(asAttestedLive(candidate), {

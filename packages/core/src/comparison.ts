@@ -5,6 +5,7 @@ import {
   PASS_SCORE_FLOOR,
 } from "./diffScore.js";
 import { resolveTrustedGradeHashFromRunResultDir } from "./dockerGrade.js";
+import { resolveTrustedPromptHashFromRunResultDir } from "./promptSnapshot.js";
 import { readJsonFile, writeJsonFile } from "./fsJson.js";
 import { releaseWxLock, tryAcquireWxLock } from "./fsSafe.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
@@ -258,6 +259,12 @@ export function checkComparisonParity(
      * must pin this — matching forged leg↔leg hashes alone must not PASS.
      */
     expectedGradeHash?: string;
+    /**
+     * Trusted prompt hashes from skill-snapshot/SKILL.md (per leg).
+     * Official Comparison must pin these — forged capture.promptHash alone must not PASS.
+     */
+    expectedBaselinePromptHash?: string;
+    expectedCandidatePromptHash?: string;
     /** Extra parity issues (e.g. from resolveEvaluationMetaMode). */
     extraParityIssues?: string[];
   },
@@ -489,6 +496,34 @@ export function checkComparisonParity(
     if (!candidatePromptHash) {
       issues.push(
         "official Comparison requires candidate.capture.promptHash",
+      );
+    }
+    const expectedBaselinePromptHash =
+      opts?.expectedBaselinePromptHash?.trim() ?? "";
+    const expectedCandidatePromptHash =
+      opts?.expectedCandidatePromptHash?.trim() ?? "";
+    if (!expectedBaselinePromptHash) {
+      issues.push(
+        "official Comparison requires trusted expectedBaselinePromptHash (skill-snapshot SKILL.md)",
+      );
+    } else if (
+      baselinePromptHash &&
+      baselinePromptHash !== expectedBaselinePromptHash
+    ) {
+      issues.push(
+        `baseline.capture.promptHash ≠ trusted skill-snapshot promptHash (${baselinePromptHash.slice(0, 12)}…)`,
+      );
+    }
+    if (!expectedCandidatePromptHash) {
+      issues.push(
+        "official Comparison requires trusted expectedCandidatePromptHash (skill-snapshot SKILL.md)",
+      );
+    } else if (
+      candidatePromptHash &&
+      candidatePromptHash !== expectedCandidatePromptHash
+    ) {
+      issues.push(
+        `candidate.capture.promptHash ≠ trusted skill-snapshot promptHash (${candidatePromptHash.slice(0, 12)}…)`,
       );
     }
   }
@@ -780,6 +815,8 @@ export function compareBaselineCandidate(
     expectedEvaluationMode?: RunResult["mode"];
     expectedEvaluationId?: string;
     expectedGradeHash?: string;
+    expectedBaselinePromptHash?: string;
+    expectedCandidatePromptHash?: string;
     extraParityIssues?: string[];
   },
 ): RunComparison {
@@ -1173,9 +1210,15 @@ export function loadPairedComparison(opts: {
     modePin.expectedEvaluationMode === "official" ||
     baseline.mode === "official" ||
     candidate.mode === "official";
-  // Official trusted pin = tip candidate skill-snapshot only (no baseline fallback).
+  // Official trusted pins from tip legs' skill-snapshots (disk, not result.json).
   const expectedGradeHash = officialDisk
     ? resolveTrustedGradeHashFromRunResultDir(opts.resultsDir, candidateRunId)
+    : undefined;
+  const expectedBaselinePromptHash = officialDisk
+    ? resolveTrustedPromptHashFromRunResultDir(opts.resultsDir, baselineRunId)
+    : undefined;
+  const expectedCandidatePromptHash = officialDisk
+    ? resolveTrustedPromptHashFromRunResultDir(opts.resultsDir, candidateRunId)
     : undefined;
   const extraParityIssues = [
     ...modePin.issues,
@@ -1199,6 +1242,12 @@ export function loadPairedComparison(opts: {
       ? { expectedEvaluationId: evalIdPin.expectedEvaluationId }
       : {}),
     ...(expectedGradeHash ? { expectedGradeHash } : {}),
+    ...(expectedBaselinePromptHash
+      ? { expectedBaselinePromptHash }
+      : {}),
+    ...(expectedCandidatePromptHash
+      ? { expectedCandidatePromptHash }
+      : {}),
     ...(extraParityIssues.length ? { extraParityIssues } : {}),
   });
 }
