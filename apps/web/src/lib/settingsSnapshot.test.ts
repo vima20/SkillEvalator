@@ -36,6 +36,46 @@ describe("loadSettingsSnapshot", () => {
     expect(s.auth.officialRequiresWebAuth).toBe(true);
     expect(s.smoke.fakeProduce).toBe(false);
     expect(s.editableVia).toBe(".env");
+    expect(s.skills.rows.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it("lists injected skills as read-only rows", () => {
+    const s = loadSettingsSnapshot({
+      env: { OPENAI_API_KEY: "sk-test" },
+      preflight: okPreflight,
+      repoRoot: process.cwd(),
+      skills: {
+        bundled: [
+          {
+            id: "code-debugging-eval",
+            githubUrl: "https://github.com/acme/x",
+            taskSetId: "cde-v1",
+            dryRunCount: 2,
+            taskCount: 8,
+            license: "MIT",
+          },
+        ],
+        imported: [
+          {
+            id: "imported-skill",
+            githubUrl: "https://github.com/acme/y",
+            taskSetId: "cde-v1",
+            dryRunCount: 1,
+            taskCount: 3,
+            license: "Apache-2.0",
+          },
+        ],
+      },
+    });
+    expect(s.skills.bundledCount).toBe(1);
+    expect(s.skills.importedCount).toBe(1);
+    expect(s.skills.rows.map((r) => r.id).sort()).toEqual([
+      "code-debugging-eval",
+      "imported-skill",
+    ]);
+    expect(s.skills.rows.find((r) => r.id === "imported-skill")?.source).toBe(
+      "imported",
+    );
   });
 
   it("blocks pilot when FAKE_PRODUCE is set", () => {

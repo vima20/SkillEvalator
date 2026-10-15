@@ -201,6 +201,90 @@ export default function SettingsPage() {
         </section>
 
         <section className="panel settings-panel">
+          <div className="settings-panel-head">
+            <h2>Skills on disk</h2>
+            <span className="badge badge-wait">
+              {s.skills.rows.length} skill
+              {s.skills.rows.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <p className="hint">
+            Read-only. Edit <code>SKILL.md</code> under{" "}
+            <code>{s.paths.evalSkillsDir}</code> or re-import via{" "}
+            <Link href="/">New run</Link> Find/Receive — then start a new
+            evaluation (Retry keeps the pinned snapshot).
+          </p>
+          {s.skills.rows.length === 0 ? (
+            <p className="hint">
+              No valid skills found. Add{" "}
+              <code>fixtures/manifest.json</code> under eval-skills or import
+              a skill.
+            </p>
+          ) : (
+            <div className="settings-table-scroll">
+              <table className="data-table settings-skills-table">
+                <thead>
+                  <tr>
+                    <th>Skill</th>
+                    <th>Source</th>
+                    <th>Task set</th>
+                    <th>Tasks</th>
+                    <th>License</th>
+                    <th>Repo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {s.skills.rows.map((sk) => (
+                    <tr key={`${sk.source}:${sk.id}`}>
+                      <td>
+                        <code>{sk.id}</code>
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${sk.source === "imported" ? "badge-run" : "badge-ok"}`}
+                        >
+                          {sk.source === "imported"
+                            ? "imported"
+                            : "eval-skills"}
+                        </span>
+                      </td>
+                      <td>
+                        <code>{sk.taskSetId}</code>
+                      </td>
+                      <td>
+                        {sk.taskCount}
+                        <span className="hint">
+                          {" "}
+                          ({sk.dryRunCount} dry-run)
+                        </span>
+                      </td>
+                      <td>{sk.license}</td>
+                      <td>
+                        {sk.githubUrl ? (
+                          <a
+                            href={sk.githubUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            GitHub
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="hint">
+            Bundled: {s.skills.bundledCount} · Imported:{" "}
+            {s.skills.importedCount}
+          </p>
+        </section>
+
+        <section className="panel settings-panel">
           <h2>Data paths</h2>
           <dl className="settings-dl">
             <Row label="Eval skills">

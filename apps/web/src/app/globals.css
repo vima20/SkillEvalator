@@ -1609,3 +1609,12 @@ a.btn {
     gap: 2px;
   }
 }
+
+.settings-table-scroll {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.settings-skills-table .hint {
+  display: inline;
+}

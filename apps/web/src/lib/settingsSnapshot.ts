@@ -4,13 +4,27 @@ import {
   MODEL_DRY_RUN,
   MODEL_OFFICIAL,
   findRepoRoot,
+  listSkills,
   resolveDataPaths,
+  type SkillSummary,
 } from "@skillevalator/core";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 import {
   runPreflight,
   type RunPreflightResult,
 } from "@/lib/runPreflight";
+
+/** Skill visible on Settings — read-only (edit on disk / re-import). */
+export type SettingsSkillRow = {
+  id: string;
+  source: "eval-skills" | "imported";
+  taskSetId: string;
+  taskCount: number;
+  dryRunCount: number;
+  githubUrl: string;
+  license: string;
+  commit?: string;
+};
 
 export type SettingsSnapshot = {
   /** Read-only — edit root `.env` and restart web/worker. */
@@ -44,6 +58,12 @@ export type SettingsSnapshot = {
     /** True when smoke flags would block or weaken official adoption. */
     blocksOfficial: boolean;
   };
+  /** Skills on disk for New run — not editable here. */
+  skills: {
+    rows: SettingsSkillRow[];
+    bundledCount: number;
+    importedCount: number;
+  };
   paths: {
     evalSkillsDir: string;
     importedSkillsDir: string;
@@ -76,10 +96,31 @@ function rel(root: string, abs: string): string {
  * Read-only settings view for the Settings page / GET /api/settings.
  * Never includes secrets (API key / WEB_AUTH_TOKEN values).
  */
+function toSkillRows(
+  summaries: SkillSummary[],
+  source: SettingsSkillRow["source"],
+): SettingsSkillRow[] {
+  return summaries.map((s) => ({
+    id: s.id,
+    source,
+    taskSetId: s.taskSetId,
+    taskCount: s.taskCount,
+    dryRunCount: s.dryRunCount,
+    githubUrl: s.githubUrl,
+    license: s.license,
+    ...(s.commit ? { commit: s.commit } : {}),
+  }));
+}
+
 export function loadSettingsSnapshot(opts?: {
   env?: Record<string, string | undefined>;
   repoRoot?: string;
   preflight?: RunPreflightResult;
+  /** Injected for unit tests (skip disk skill scan). */
+  skills?: {
+    bundled?: SkillSummary[];
+    imported?: SkillSummary[];
+  };
 }): SettingsSnapshot {
   const env = opts?.env ?? process.env;
   const root =
@@ -92,6 +133,18 @@ export function loadSettingsSnapshot(opts?: {
       repoRoot: root,
       jobsDir: data.jobsDir,
     });
+
+  const bundled =
+    opts?.skills?.bundled ?? listSkills(data.skillsDir);
+  const importedIds = new Set(bundled.map((s) => s.id));
+  const importedRaw =
+    opts?.skills?.imported ?? listSkills(data.importedSkillsDir);
+  // Prefer bundled id when the same skill id appears in both roots.
+  const imported = importedRaw.filter((s) => !importedIds.has(s.id));
+  const skillRows = [
+    ...toSkillRows(bundled, "eval-skills"),
+    ...toSkillRows(imported, "imported"),
+  ].sort((a, b) => a.id.localeCompare(b.id));
 
   const webAuth = resolveWebAuthConfig(env.WEB_AUTH_TOKEN);
   const fakeProduce = env.FAKE_PRODUCE === "known-good";
@@ -157,6 +210,11 @@ export function loadSettingsSnapshot(opts?: {
       fakeProduce,
       allowHostGrade,
       blocksOfficial: fakeProduce,
+    },
+    skills: {
+      rows: skillRows,
+      bundledCount: bundled.length,
+      importedCount: imported.length,
     },
     paths: {
       evalSkillsDir: rel(root, data.skillsDir),
