@@ -7,6 +7,7 @@ describe("includeInDashboardLeaderboard", () => {
       includeInDashboardLeaderboard({
         runId: "run_tip",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip",
       }),
@@ -15,11 +16,12 @@ describe("includeInDashboardLeaderboard", () => {
       includeInDashboardLeaderboard({
         runId: "run_solo",
         role: "candidate",
+        produceAttested: true,
       }),
     ).toBe(true);
   });
 
-  it("rejects baseline, smoke, and superseded tip", () => {
+  it("rejects baseline, smoke, unattested, and superseded tip", () => {
     expect(
       includeInDashboardLeaderboard({
         runId: "run_base",
@@ -39,8 +41,17 @@ describe("includeInDashboardLeaderboard", () => {
     ).toBe(false);
     expect(
       includeInDashboardLeaderboard({
+        runId: "run_plant",
+        role: "candidate",
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_plant",
+      }),
+    ).toBe(false);
+    expect(
+      includeInDashboardLeaderboard({
         runId: "run_old",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip",
       }),
@@ -52,6 +63,7 @@ describe("includeInDashboardLeaderboard", () => {
       includeInDashboardLeaderboard({
         runId: "run_waiting",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: null,
       }),
@@ -63,6 +75,7 @@ describe("includeInDashboardLeaderboard", () => {
       includeInDashboardLeaderboard({
         runId: "run_old",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip_from_meta",
       }),
@@ -74,6 +87,7 @@ describe("includeInDashboardLeaderboard", () => {
       includeInDashboardLeaderboard({
         runId: "run_tip",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip",
         mode: "official",
@@ -84,6 +98,7 @@ describe("includeInDashboardLeaderboard", () => {
       includeInDashboardLeaderboard({
         runId: "run_tip",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip",
         mode: "dry-run",
@@ -94,6 +109,7 @@ describe("includeInDashboardLeaderboard", () => {
       includeInDashboardLeaderboard({
         runId: "run_solo",
         role: "candidate",
+        produceAttested: true,
         mode: "official",
         pilotFocus: true,
       }),

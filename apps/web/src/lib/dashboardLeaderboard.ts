@@ -10,6 +10,7 @@ export function includeInDashboardLeaderboard(opts: {
   runId: string;
   role?: string;
   fakeProduce?: boolean;
+  produceAttested?: boolean;
   evaluationId?: string;
   /** Healed Comparison tip; null = unpaired tip unknown (paired → exclude). */
   tipCandidateRunId?: string | null;

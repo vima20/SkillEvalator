@@ -47,6 +47,10 @@ export default async function ComparisonListPage({
       packed.baseline?.capture?.env?.fakeProduce === true;
     const candidateFakeProduce =
       packed.candidate?.capture?.env?.fakeProduce === true;
+    const baselineProduceAttested =
+      packed.baseline?.capture?.env?.produceAttested === true;
+    const candidateProduceAttested =
+      packed.candidate?.capture?.env?.produceAttested === true;
     return {
       ...e,
       pending,
@@ -58,6 +62,8 @@ export default async function ComparisonListPage({
       candidateRunId: tipCandidateRunId,
       baselineFakeProduce,
       candidateFakeProduce,
+      baselineProduceAttested,
+      candidateProduceAttested,
       noise: isPilotNoiseEvaluation({
         smoke: e.smoke,
         displayMode,
@@ -232,6 +238,8 @@ export default async function ComparisonListPage({
                         metaSmoke: e.smoke === true,
                         baselineFakeProduce: e.baselineFakeProduce,
                         candidateFakeProduce: e.candidateFakeProduce,
+                        baselineProduceAttested: e.baselineProduceAttested,
+                        candidateProduceAttested: e.candidateProduceAttested,
                       }) ? (
                         "—"
                       ) : (

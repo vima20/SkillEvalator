@@ -4,6 +4,9 @@ export type OfficialComparisonEvidence = {
   metaSmoke?: boolean;
   baselineFakeProduce?: boolean;
   candidateFakeProduce?: boolean;
+  /** Live worker pin — required true on both tip legs for export. */
+  baselineProduceAttested?: boolean;
+  candidateProduceAttested?: boolean;
 };
 
 export type OfficialComparisonExportDeny = {
@@ -17,7 +20,8 @@ export type OfficialComparisonExportDeny = {
 
 /**
  * Shared bar for Comparison CSV + pilot archive + detail download buttons.
- * Official PASS/FAIL only; never dry-run, evaluation.smoke, or FAKE_PRODUCE tips.
+ * Official PASS/FAIL only; never dry-run, evaluation.smoke, FAKE_PRODUCE, or
+ * unattested tip legs (produceAttested must be true on both).
  */
 export function officialComparisonExportGate(
   comparison: Pick<RunComparison, "verdict" | "mode">,
@@ -67,6 +71,19 @@ export function officialComparisonExportGate(
       error: `${product} rejects FAKE_PRODUCE tip legs (not live evidence)`,
     };
   }
+  if (
+    evidence.baselineProduceAttested !== true ||
+    evidence.candidateProduceAttested !== true
+  ) {
+    return {
+      ok: false,
+      status: 409,
+      verdict,
+      mode,
+      errorCode: "comparison_export_not_attested",
+      error: `${product} requires produceAttested=true on both tip legs`,
+    };
+  }
   return { ok: true };
 }
 
@@ -88,15 +105,16 @@ export function comparisonCsvGate(
 }
 
 /** Detail-page visibility for CSV + pilot archive buttons (same bar as APIs). */
-export function canShowOfficialComparisonDownloads(opts: {
-  comparison: Pick<RunComparison, "verdict" | "mode">;
-  metaSmoke?: boolean;
-  baselineFakeProduce?: boolean;
-  candidateFakeProduce?: boolean;
-}): boolean {
+export function canShowOfficialComparisonDownloads(
+  opts: {
+    comparison: Pick<RunComparison, "verdict" | "mode">;
+  } & OfficialComparisonEvidence,
+): boolean {
   return officialComparisonExportGate(opts.comparison, {
     metaSmoke: opts.metaSmoke,
     baselineFakeProduce: opts.baselineFakeProduce,
     candidateFakeProduce: opts.candidateFakeProduce,
+    baselineProduceAttested: opts.baselineProduceAttested,
+    candidateProduceAttested: opts.candidateProduceAttested,
   }).ok;
 }

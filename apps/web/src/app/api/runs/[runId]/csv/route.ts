@@ -39,6 +39,10 @@ export async function GET(
         packed?.baseline?.capture?.env?.fakeProduce === true,
       candidateFakeProduce:
         packed?.candidate?.capture?.env?.fakeProduce === true,
+      baselineProduceAttested:
+        packed?.baseline?.capture?.env?.produceAttested === true,
+      candidateProduceAttested:
+        packed?.candidate?.capture?.env?.produceAttested === true,
     });
     if (!gate.ok) {
       return NextResponse.json(

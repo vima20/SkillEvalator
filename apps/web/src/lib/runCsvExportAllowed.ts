@@ -20,6 +20,10 @@ function runCsvExportGateForResult(result: RunResult) {
     baselineFakeProduce: packed?.baseline?.capture?.env?.fakeProduce === true,
     candidateFakeProduce:
       packed?.candidate?.capture?.env?.fakeProduce === true,
+    baselineProduceAttested:
+      packed?.baseline?.capture?.env?.produceAttested === true,
+    candidateProduceAttested:
+      packed?.candidate?.capture?.env?.produceAttested === true,
   });
 }
 

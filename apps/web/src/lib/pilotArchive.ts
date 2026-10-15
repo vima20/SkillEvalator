@@ -34,6 +34,8 @@ export function pilotArchiveGate(opts: {
       metaSmoke: opts.metaSmoke,
       baselineFakeProduce: opts.baselineFakeProduce,
       candidateFakeProduce: opts.candidateFakeProduce,
+      baselineProduceAttested: opts.baselineProduceAttested,
+      candidateProduceAttested: opts.candidateProduceAttested,
     },
     "pilot archive download",
   );

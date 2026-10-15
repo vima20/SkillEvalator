@@ -99,6 +99,10 @@ export default async function BenefitReportPage({
   const markdown = benefitReportToMarkdown(report);
   const baselineFakeProduce = baseline?.capture?.env?.fakeProduce === true;
   const candidateFakeProduce = candidate?.capture?.env?.fakeProduce === true;
+  const baselineProduceAttested =
+    baseline?.capture?.env?.produceAttested === true;
+  const candidateProduceAttested =
+    candidate?.capture?.env?.produceAttested === true;
   const exportGate = benefitExportGate({
     report,
     comparison,
@@ -106,6 +110,8 @@ export default async function BenefitReportPage({
     fakeProduce: result.capture?.env?.fakeProduce === true,
     baselineFakeProduce,
     candidateFakeProduce,
+    baselineProduceAttested,
+    candidateProduceAttested,
   });
   const exportAllowed = exportGate.ok;
   const exportBlockReason = exportGate.ok ? null : exportGate.error;
@@ -189,6 +195,14 @@ export default async function BenefitReportPage({
           <p>
             Scores on this run are not adoption evidence. Re-run with live
             model produce for Benefit USE / DO NOT USE.
+          </p>
+        </div>
+      ) : result.capture?.env?.produceAttested !== true ? (
+        <div className="panel callout-warn">
+          <strong>Not produce-attested</strong>
+          <p>
+            This run is missing <code>produceAttested=true</code> (fixture /
+            plant — not live worker evidence). Benefit export stays locked.
           </p>
         </div>
       ) : null}

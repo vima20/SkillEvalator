@@ -57,6 +57,8 @@ export default async function RunsPage({
   const runs = pilotFocus
     ? allRuns.filter((r) => {
         const fakeProduce = r.result?.capture?.env?.fakeProduce === true;
+        const produceAttested =
+          r.result?.capture?.env?.produceAttested === true;
         const role = r.result?.role ?? r.role;
         const evaluationId = r.result?.evaluationId ?? r.evaluationId;
         const tip = evaluationId ? tipFor(evaluationId) : null;
@@ -64,6 +66,7 @@ export default async function RunsPage({
           runId: r.runId,
           role: typeof role === "string" ? role : undefined,
           fakeProduce,
+          produceAttested,
           evaluationId,
           tipCandidateRunId: tip,
         });
@@ -71,6 +74,7 @@ export default async function RunsPage({
           kind,
           mode: r.result?.mode,
           fakeProduce,
+          produceAttested,
           hasResult: !!r.result,
         });
       })
@@ -158,6 +162,8 @@ export default async function RunsPage({
                     role: typeof role === "string" ? role : undefined,
                     fakeProduce:
                       r.result?.capture?.env?.fakeProduce === true,
+                    produceAttested:
+                      r.result?.capture?.env?.produceAttested === true,
                     evaluationId,
                     tipCandidateRunId: tip,
                   });

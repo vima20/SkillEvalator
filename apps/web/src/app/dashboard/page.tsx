@@ -74,6 +74,7 @@ export default async function DashboardPage({
       runId: r.runId,
       role: r.result.role,
       fakeProduce: r.result.capture?.env?.fakeProduce === true,
+      produceAttested: r.result.capture?.env?.produceAttested === true,
       evaluationId: r.result.evaluationId,
       tipCandidateRunId: tip,
       mode: r.result.mode,

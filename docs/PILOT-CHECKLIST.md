@@ -29,11 +29,12 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 
 ## 4. Tuloksen tulkinta
 
-- [ ] UI:ssa **Pilot focus** (`?focus=pilot`): New run / Settings / Nav säilyttää focuksen; Runs/Benefit piilottaa smoke / superseded / dry-run; Comparison piilottaa dry-run / smoke / FAKE / official INCONCLUSIVE; Dashboard = vain official tip
+- [ ] UI:ssa **Pilot focus** (`?focus=pilot`): New run / Settings / Nav säilyttää focuksen; Runs/Benefit piilottaa smoke / not_attested / superseded / dry-run; Comparison piilottaa dry-run / smoke / FAKE / official INCONCLUSIVE; Dashboard = vain official tip
+- [ ] Capture: molemmat tip-jalat **Live produce attested** (`produceAttested`)
 - [ ] Tarvittaessa Runs → **Clear smoke noise** (poistaa smoke-kasvit diskiltä; ei koske live official -arkistoa)
 - [ ] Official Comparison **PASS** vain jos candidate ≥ USE floor ja lift ≥ kynnys ([ACCEPTANCE.md](./ACCEPTANCE.md))
-- [ ] Benefit **USE** vain PASS:n jälkeen — ei dry-run / smoke / FAKE_PRODUCE
-- [ ] Vie CSV (run / Comparison / Benefit) / **Download pilot archive** — sama gate (ei smoke); säilytä zip + `eval_*` + run-kansiot
+- [ ] Benefit **USE** vain PASS:n jälkeen — ei dry-run / smoke / FAKE_PRODUCE / unattested
+- [ ] Vie CSV (run / Comparison / Benefit) / **Download pilot archive** — sama gate (ei smoke / unattested); säilytä zip + `eval_*` + run-kansiot
 
 ## 5. Jos Ready = Blocked
 

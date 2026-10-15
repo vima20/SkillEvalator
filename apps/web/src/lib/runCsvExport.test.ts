@@ -6,12 +6,14 @@ const base = {
   mode: "official" as const,
   evaluationId: "eval_1",
   status: "ok" as const,
-  capture: { env: { fakeProduce: false } },
+  capture: { env: { fakeProduce: false, produceAttested: true } },
 };
 
 const tipLegs = {
   baselineRunId: "run_base",
   candidateRunId: "run_cand",
+  baselineProduceAttested: true,
+  candidateProduceAttested: true,
 };
 
 describe("runCsvExportGate", () => {

@@ -6,14 +6,19 @@ import {
 } from "./comparisonExport.js";
 import { pilotArchiveGate } from "./pilotArchive.js";
 
+const liveTips = {
+  baselineProduceAttested: true,
+  candidateProduceAttested: true,
+} as const;
+
 describe("comparisonCsvGate", () => {
   it("allows official PASS and FAIL", () => {
-    expect(comparisonCsvGate({ verdict: "PASS", mode: "official" }).ok).toBe(
-      true,
-    );
-    expect(comparisonCsvGate({ verdict: "FAIL", mode: "official" }).ok).toBe(
-      true,
-    );
+    expect(
+      comparisonCsvGate({ verdict: "PASS", mode: "official" }, liveTips).ok,
+    ).toBe(true);
+    expect(
+      comparisonCsvGate({ verdict: "FAIL", mode: "official" }, liveTips).ok,
+    ).toBe(true);
   });
 
   it("blocks dry-run even with PASS", () => {
@@ -69,7 +74,8 @@ describe("comparisonCsvGate", () => {
       officialComparisonExportGate(comparison, { metaSmoke: true }).ok,
     ).toBe(false);
     expect(
-      canShowOfficialComparisonDownloads({ comparison }),
+      canShowOfficialComparisonDownloads({ comparison, ...liveTips }),
     ).toBe(true);
+    expect(canShowOfficialComparisonDownloads({ comparison })).toBe(false);
   });
 });

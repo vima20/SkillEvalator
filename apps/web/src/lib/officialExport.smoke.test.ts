@@ -125,12 +125,17 @@ describe("official export gates smoke", () => {
 
     const report = buildBenefitReport(candidate, { comparison });
     expect(report.verdict.recommendation).toBe("use");
+    const liveTips = {
+      baselineProduceAttested: true,
+      candidateProduceAttested: true,
+    };
     expect(
       benefitExportGate({
         report,
         comparison,
         metaSmoke: false,
         fakeProduce: false,
+        ...liveTips,
       }).ok,
     ).toBe(true);
     expect(
@@ -141,15 +146,17 @@ describe("official export gates smoke", () => {
         baselineRunId: comparison.baselineRunId,
         candidateRunId: comparison.candidateRunId,
         metaSmoke: false,
+        ...liveTips,
       }).ok,
     ).toBe(true);
-    expect(comparisonCsvGate(comparison).ok).toBe(true);
+    expect(comparisonCsvGate(comparison, liveTips).ok).toBe(true);
     expect(
       pilotArchiveGate({
         comparison,
         metaSmoke: false,
         baselineFakeProduce: false,
         candidateFakeProduce: false,
+        ...liveTips,
       }).ok,
     ).toBe(true);
   });
@@ -178,12 +185,17 @@ describe("official export gates smoke", () => {
 
     const report = buildBenefitReport(candidate, { comparison });
     expect(report.verdict.recommendation).toBe("do_not_use");
+    const liveTips = {
+      baselineProduceAttested: true,
+      candidateProduceAttested: true,
+    };
     expect(
       benefitExportGate({
         report,
         comparison,
         metaSmoke: false,
         fakeProduce: false,
+        ...liveTips,
       }).ok,
     ).toBe(true);
     expect(
@@ -193,6 +205,7 @@ describe("official export gates smoke", () => {
           verdict: { ...report.verdict, recommendation: "use" },
         },
         comparison,
+        ...liveTips,
       }).ok,
     ).toBe(false);
     expect(
@@ -203,15 +216,17 @@ describe("official export gates smoke", () => {
         baselineRunId: comparison.baselineRunId,
         candidateRunId: comparison.candidateRunId,
         metaSmoke: false,
+        ...liveTips,
       }).ok,
     ).toBe(true);
-    expect(comparisonCsvGate(comparison).ok).toBe(true);
+    expect(comparisonCsvGate(comparison, liveTips).ok).toBe(true);
     expect(
       pilotArchiveGate({
         comparison,
         metaSmoke: false,
         baselineFakeProduce: false,
         candidateFakeProduce: false,
+        ...liveTips,
       }).ok,
     ).toBe(true);
     expect(

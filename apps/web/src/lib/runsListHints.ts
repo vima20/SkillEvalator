@@ -10,6 +10,7 @@ export function candidateRunsListHint(opts: {
   runId: string;
   role?: string;
   fakeProduce?: boolean;
+  produceAttested?: boolean;
   evaluationId?: string;
   tipCandidateRunId?: string | null;
 }): RunsListLegHint | null {
@@ -26,6 +27,8 @@ export function runsListHintLabel(hint: RunsListLegHint | null): string | null {
       return "superseded";
     case "smoke":
       return "smoke";
+    case "not_attested":
+      return "not attested";
     case "waiting":
       return "waiting tip";
     default:

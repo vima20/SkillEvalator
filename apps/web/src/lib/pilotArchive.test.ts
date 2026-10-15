@@ -21,11 +21,15 @@ describe("pilotArchiveGate", () => {
     expect(
       pilotArchiveGate({
         comparison: { verdict: "PASS", mode: "official" },
+        baselineProduceAttested: true,
+        candidateProduceAttested: true,
       }).ok,
     ).toBe(true);
     expect(
       pilotArchiveGate({
         comparison: { verdict: "FAIL", mode: "official" },
+        baselineProduceAttested: true,
+        candidateProduceAttested: true,
       }).ok,
     ).toBe(true);
   });

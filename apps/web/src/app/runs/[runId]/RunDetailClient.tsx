@@ -380,6 +380,7 @@ export function RunDetailClient({
               role: result.role,
               evaluationId: result.evaluationId,
               fakeProduce: result.capture?.env?.fakeProduce === true,
+              produceAttested: result.capture?.env?.produceAttested === true,
               tipCandidateRunId: data.tipCandidateRunId,
             });
             if (hint.kind === "baseline") {
@@ -400,6 +401,16 @@ export function RunDetailClient({
                   Smoke harness (FAKE_PRODUCE) — not adoption.{" "}
                   <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
                     Open smoke report →
+                  </Link>
+                </>
+              );
+            }
+            if (hint.kind === "not_attested") {
+              return (
+                <>
+                  Not produce-attested — not live worker evidence.{" "}
+                  <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
+                    Open unattested report →
                   </Link>
                 </>
               );

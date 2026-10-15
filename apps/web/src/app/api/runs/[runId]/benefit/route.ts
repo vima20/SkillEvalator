@@ -30,6 +30,10 @@ export async function GET(
       fakeProduce: result.capture?.env?.fakeProduce === true,
       baselineFakeProduce: baseline?.capture?.env?.fakeProduce === true,
       candidateFakeProduce: candidate?.capture?.env?.fakeProduce === true,
+      baselineProduceAttested:
+        baseline?.capture?.env?.produceAttested === true,
+      candidateProduceAttested:
+        candidate?.capture?.env?.produceAttested === true,
     });
     if (format === "md" || format === "markdown" || format === "csv") {
       if (!gate.ok) {

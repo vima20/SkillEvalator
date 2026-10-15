@@ -36,6 +36,8 @@ export function benefitExportGate(opts: {
   fakeProduce?: boolean;
   baselineFakeProduce?: boolean;
   candidateFakeProduce?: boolean;
+  baselineProduceAttested?: boolean;
+  candidateProduceAttested?: boolean;
 }): BenefitExportGateOk | BenefitExportGateDenied {
   const recommendation = opts.report.verdict.recommendation;
   const mode = opts.report.config.mode;
@@ -138,6 +140,20 @@ export function benefitExportGate(opts: {
           "benefit export DO NOT USE requires official Comparison FAIL",
       };
     }
+  }
+  if (
+    opts.baselineProduceAttested !== true ||
+    opts.candidateProduceAttested !== true
+  ) {
+    return {
+      ok: false,
+      status: 409,
+      errorCode: "benefit_export_not_attested",
+      recommendation,
+      mode,
+      error:
+        "benefit export requires produceAttested=true on both tip legs",
+    };
   }
   return { ok: true };
 }

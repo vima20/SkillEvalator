@@ -5,11 +5,12 @@ import {
 } from "./runsListHints.js";
 
 describe("candidateRunsListHint", () => {
-  it("labels tip, superseded, smoke, and waiting", () => {
+  it("labels tip, superseded, smoke, not_attested, and waiting", () => {
     expect(
       candidateRunsListHint({
         runId: "run_tip",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip",
       }),
@@ -18,6 +19,7 @@ describe("candidateRunsListHint", () => {
       candidateRunsListHint({
         runId: "run_old",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip",
       }),
@@ -33,8 +35,17 @@ describe("candidateRunsListHint", () => {
     ).toBe("smoke");
     expect(
       candidateRunsListHint({
+        runId: "run_plant",
+        role: "candidate",
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_plant",
+      }),
+    ).toBe("not_attested");
+    expect(
+      candidateRunsListHint({
         runId: "run_w",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: null,
       }),
@@ -46,6 +57,7 @@ describe("candidateRunsListHint", () => {
 
   it("formats hint labels", () => {
     expect(runsListHintLabel("waiting")).toBe("waiting tip");
+    expect(runsListHintLabel("not_attested")).toBe("not attested");
     expect(runsListHintLabel(null)).toBeNull();
   });
 });

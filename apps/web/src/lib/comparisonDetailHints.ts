@@ -5,6 +5,7 @@
 export type ComparisonHarnessHint =
   | { kind: "none" }
   | { kind: "both_smoke" }
+  | { kind: "both_unattested" }
   | {
       kind: "mixed";
       smokeRole: "baseline" | "candidate" | "both_flags";
@@ -49,6 +50,11 @@ export function comparisonHarnessHint(opts: {
       smokeRole: "both_flags",
       liveRole: null,
     };
+  }
+
+  // Non-FAKE fixture plants missing produceAttested on both tips
+  if (!baseFake && !candFake && !baseLive && !candLive) {
+    return { kind: "both_unattested" };
   }
 
   return { kind: "none" };

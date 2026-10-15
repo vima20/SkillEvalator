@@ -44,6 +44,10 @@ export async function GET(
       metaSmoke: meta.smoke === true,
       baselineFakeProduce: baseline.capture?.env?.fakeProduce === true,
       candidateFakeProduce: candidate.capture?.env?.fakeProduce === true,
+      baselineProduceAttested:
+        baseline.capture?.env?.produceAttested === true,
+      candidateProduceAttested:
+        candidate.capture?.env?.produceAttested === true,
     });
     if (!gate.ok) {
       return NextResponse.json(

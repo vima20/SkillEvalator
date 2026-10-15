@@ -45,6 +45,19 @@ export function renderHarnessCallouts(
     );
   }
 
+  if (hint.kind === "both_unattested") {
+    return (
+      <div className="panel callout-warn">
+        <strong>Not produce-attested</strong>
+        <p>
+          Tip legs are missing <code>produceAttested=true</code> (fixture /
+          plant — not live worker evidence). CSV / pilot archive / Benefit
+          export stay locked. Official Comparison also stays INCONCLUSIVE.
+        </p>
+      </div>
+    );
+  }
+
   if (hint.kind === "mixed") {
     return (
       <div className="panel callout-warn">

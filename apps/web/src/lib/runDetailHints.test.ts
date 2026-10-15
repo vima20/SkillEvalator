@@ -17,13 +17,14 @@ describe("benefitCtaHint", () => {
       benefitCtaHint({
         runId: "run_tip",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip",
       }),
     ).toEqual({ kind: "tip" });
   });
 
-  it("demotes smoke and superseded candidate", () => {
+  it("demotes smoke, not_attested, and superseded candidate", () => {
     expect(
       benefitCtaHint({
         runId: "run_smoke",
@@ -35,8 +36,17 @@ describe("benefitCtaHint", () => {
     ).toEqual({ kind: "smoke" });
     expect(
       benefitCtaHint({
+        runId: "run_plant",
+        role: "candidate",
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_plant",
+      }),
+    ).toEqual({ kind: "not_attested" });
+    expect(
+      benefitCtaHint({
         runId: "run_old",
         role: "candidate",
+        produceAttested: true,
         evaluationId: "eval_1",
         tipCandidateRunId: "run_tip",
       }),

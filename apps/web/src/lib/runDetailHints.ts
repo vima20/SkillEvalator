@@ -9,11 +9,13 @@ export function benefitCtaHint(opts: {
   role?: string;
   evaluationId?: string;
   fakeProduce?: boolean;
+  produceAttested?: boolean;
   tipCandidateRunId?: string | null;
 }):
   | { kind: "baseline"; comparisonHref?: string }
   | { kind: "missing_role" }
   | { kind: "smoke" }
+  | { kind: "not_attested" }
   | { kind: "superseded"; tipRunId: string }
   | { kind: "tip" }
   | { kind: "unpaired" } {
@@ -29,6 +31,7 @@ export function benefitCtaHint(opts: {
 
   const leg = candidateLegKind(opts);
   if (leg === "smoke") return { kind: "smoke" };
+  if (leg === "not_attested") return { kind: "not_attested" };
   if (leg === "single") return { kind: "unpaired" };
   if (leg === "superseded") {
     return {

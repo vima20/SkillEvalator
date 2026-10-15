@@ -11,7 +11,7 @@ export function runCsvExportGate(opts: {
     mode: RunResult["mode"];
     evaluationId?: string;
     status?: RunResult["status"];
-    capture?: { env?: { fakeProduce?: boolean } };
+    capture?: { env?: { fakeProduce?: boolean; produceAttested?: boolean } };
   };
   comparisonVerdict?: ComparisonVerdict | null;
   comparisonMode?: RunResult["mode"] | null;
@@ -21,6 +21,8 @@ export function runCsvExportGate(opts: {
   metaSmoke?: boolean;
   baselineFakeProduce?: boolean;
   candidateFakeProduce?: boolean;
+  baselineProduceAttested?: boolean;
+  candidateProduceAttested?: boolean;
 }):
   | { ok: true }
   | { ok: false; status: 409; error: string; errorCode: string } {
@@ -92,6 +94,19 @@ export function runCsvExportGate(opts: {
       errorCode: "run_csv_not_meta_leg",
       error:
         "run CSV export requires this runId to be a current Comparison meta leg",
+    };
+  }
+  if (
+    opts.result.capture?.env?.produceAttested !== true ||
+    opts.baselineProduceAttested !== true ||
+    opts.candidateProduceAttested !== true
+  ) {
+    return {
+      ok: false,
+      status: 409,
+      errorCode: "run_csv_not_attested",
+      error:
+        "run CSV export requires produceAttested=true on this run and both tip legs",
     };
   }
   return { ok: true };

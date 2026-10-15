@@ -29,7 +29,7 @@ Official Comparison/Benefit hylkää (tai ei nouse PASS:iin), jos luottamusketju
 
 ## Settings `pilotReady`
 
-UI-polku **Settings → Official pilot readiness = Ready** tarkoittaa: preflight OK (API-avain, Docker, worker), smoke-liput pois, auth-konfiguraatio kelvollinen. Se **ei** ole vielä PASS/USE — sama blocker-lista estää official-jonotuksen New runissa, `POST /api/runs` ja retryssä (dry-run ok).
+UI-polku **Settings → Official pilot readiness = Ready** tarkoittaa: preflight OK (API-avain, Docker, worker), smoke-liput pois (`FAKE_PRODUCE`, `ALLOW_HOST_GRADE`), auth kelvollinen, ei orphan `.running.json`. Se **ei** ole vielä PASS/USE — sama blocker-lista estää official-jonotuksen New runissa, `POST /api/runs` ja retryssä (dry-run ok).
 
 ## Arkisto (luovutus)
 
@@ -41,9 +41,9 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 - Settingsissä näkyvä **git SHA** (ja dirty-varoitus) arkistolabeliin
 
 **Pilot focus** (`?focus=pilot`):
-- **Runs / Benefit** — piilottaa smoke, superseded, FAKE_PRODUCE ja dry-run -rivit (waiting/unpaired voivat jäädä näkyviin)
+- **Runs / Benefit** — piilottaa smoke, not_attested, superseded, FAKE_PRODUCE ja dry-run -rivit (waiting/unpaired attested voivat jäädä näkyviin)
 - **Comparison** — piilottaa dry-run, `evaluation.smoke`, FAKE_PRODUCE joko tip-jalalla ja official INCONCLUSIVE (näyttää PASS/FAIL + waiting; superseded on run-tason käsite)
-- **Dashboard** — vain official tip -kandidaatit
+- **Dashboard** — vain official tip -kandidaatit (`produceAttested`)
 
 **Clear old runs (7d+)** ei poista `mode: official` -ajoja eikä `evaluation.json`-linkitettyjä jalkoja — muuten `eval_*` katoaisi healissa.
 
@@ -51,4 +51,4 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 
 Official Comparison vaatii `capture.env.grade=docker_script`, `pipeline.grade=docker_script` ja `allowHostGrade=false` (host grade ei ole adoption-todiste).
 
-**Download pilot archive**, **Comparison CSV**, **run CSV** ja **Benefit CSV** (sama evidence-palkki): official PASS/FAIL, ei dry-run / `evaluation.smoke` / FAKE_PRODUCE. Archive pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA).
+**Download pilot archive**, **Comparison CSV**, **run CSV** ja **Benefit CSV** (sama evidence-palkki): official PASS/FAIL, ei dry-run / `evaluation.smoke` / FAKE_PRODUCE; molemmat tip-jalat `produceAttested=true`. Archive pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA).

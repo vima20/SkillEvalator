@@ -34,10 +34,13 @@ export default async function BenefitIndexPage({
         r.result!,
       );
       const fakeProduce = r.result!.capture?.env?.fakeProduce === true;
+      const produceAttested =
+        r.result!.capture?.env?.produceAttested === true;
       const kind = candidateLegKind({
         runId: r.runId,
         role: "candidate",
         fakeProduce,
+        produceAttested,
         evaluationId: r.result!.evaluationId,
         tipCandidateRunId,
       }) as CandidateLegKind;
@@ -50,6 +53,7 @@ export default async function BenefitIndexPage({
         rating: report.rating,
         kind,
         fakeProduce,
+        produceAttested,
       };
     })
     // Tip / unpaired first; waiting / superseded / smoke last.
@@ -65,6 +69,7 @@ export default async function BenefitIndexPage({
           kind: r.kind,
           mode: r.mode,
           fakeProduce: r.fakeProduce,
+          produceAttested: r.produceAttested,
           hasResult: true,
         }),
       )
@@ -213,6 +218,17 @@ export default async function BenefitIndexPage({
                           title="Smoke harness (FAKE_PRODUCE) — not adoption evidence"
                         >
                           Open smoke report
+                        </Link>
+                      ) : r.kind === "not_attested" ? (
+                        <Link
+                          className="btn btn-ghost btn-compact"
+                          href={withPilotFocus(
+                            `/benefit/${r.runId}`,
+                            pilotFocus,
+                          )}
+                          title="Missing produceAttested — not live worker evidence"
+                        >
+                          Open unattested
                         </Link>
                       ) : r.kind === "superseded" ? (
                         <Link

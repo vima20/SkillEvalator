@@ -24,12 +24,18 @@ const tipComparison = (
     baselineRunId: "run_base",
   }) as const;
 
+const liveTips = {
+  baselineProduceAttested: true,
+  candidateProduceAttested: true,
+} as const;
+
 describe("benefitExportGate", () => {
   it("allows USE with official Comparison PASS on tip candidate", () => {
     expect(
       benefitExportGate({
         report: officialReport("use"),
         comparison: tipComparison("PASS"),
+        ...liveTips,
       }).ok,
     ).toBe(true);
   });
@@ -48,6 +54,7 @@ describe("benefitExportGate", () => {
     const out = benefitExportGate({
       report: officialReport("use"),
       comparison: tipComparison("FAIL"),
+      ...liveTips,
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
@@ -61,6 +68,7 @@ describe("benefitExportGate", () => {
         config: { mode: "official", runId: "run_old" },
       },
       comparison: tipComparison("PASS"),
+      ...liveTips,
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
@@ -72,6 +80,7 @@ describe("benefitExportGate", () => {
       benefitExportGate({
         report: officialReport("do_not_use"),
         comparison: tipComparison("FAIL"),
+        ...liveTips,
       }).ok,
     ).toBe(true);
   });
@@ -80,6 +89,7 @@ describe("benefitExportGate", () => {
     const out = benefitExportGate({
       report: officialReport("do_not_use"),
       comparison: tipComparison("PASS"),
+      ...liveTips,
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
@@ -103,6 +113,7 @@ describe("benefitExportGate", () => {
     const out = benefitExportGate({
       report: officialReport("inconclusive"),
       comparison: tipComparison("PASS"),
+      ...liveTips,
     });
     expect(out.ok).toBe(false);
     if (out.ok) return;
@@ -114,6 +125,7 @@ describe("benefitExportGate", () => {
       report: officialReport("use"),
       comparison: tipComparison("PASS"),
       metaSmoke: true,
+      ...liveTips,
     });
     expect(smoke.ok).toBe(false);
     if (!smoke.ok) expect(smoke.errorCode).toBe("benefit_export_smoke_forbidden");
@@ -122,6 +134,7 @@ describe("benefitExportGate", () => {
       report: officialReport("use"),
       comparison: tipComparison("PASS"),
       fakeProduce: true,
+      ...liveTips,
     });
     expect(fake.ok).toBe(false);
     if (!fake.ok)
@@ -133,6 +146,7 @@ describe("benefitExportGate", () => {
       report: officialReport("use"),
       comparison: tipComparison("PASS"),
       baselineFakeProduce: true,
+      ...liveTips,
     });
     expect(base.ok).toBe(false);
     if (!base.ok)
@@ -142,9 +156,19 @@ describe("benefitExportGate", () => {
       report: officialReport("use"),
       comparison: tipComparison("PASS"),
       candidateFakeProduce: true,
+      ...liveTips,
     });
     expect(cand.ok).toBe(false);
     if (!cand.ok)
       expect(cand.errorCode).toBe("benefit_export_fake_produce_forbidden");
+  });
+
+  it("blocks missing produceAttested on tip legs", () => {
+    const out = benefitExportGate({
+      report: officialReport("use"),
+      comparison: tipComparison("PASS"),
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.errorCode).toBe("benefit_export_not_attested");
   });
 });

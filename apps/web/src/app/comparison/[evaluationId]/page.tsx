@@ -133,10 +133,16 @@ export default async function ComparisonDetailPage({
   const capture = comparison.capture;
   const baselineFakeProduce = baseline.capture?.env?.fakeProduce === true;
   const candidateFakeProduce = candidate.capture?.env?.fakeProduce === true;
+  const baselineProduceAttested =
+    baseline.capture?.env?.produceAttested === true;
+  const candidateProduceAttested =
+    candidate.capture?.env?.produceAttested === true;
   const downloadGate = officialComparisonExportGate(comparison, {
     metaSmoke: meta.smoke === true,
     baselineFakeProduce,
     candidateFakeProduce,
+    baselineProduceAttested,
+    candidateProduceAttested,
   });
   const showOfficialDownloads = downloadGate.ok;
   return (
@@ -261,12 +267,8 @@ export default async function ComparisonDetailPage({
         metaSmoke={meta.smoke === true}
         baselineFakeProduce={baselineFakeProduce}
         candidateFakeProduce={candidateFakeProduce}
-        baselineProduceAttested={
-          baseline.capture?.env?.produceAttested === true
-        }
-        candidateProduceAttested={
-          candidate.capture?.env?.produceAttested === true
-        }
+        baselineProduceAttested={baselineProduceAttested}
+        candidateProduceAttested={candidateProduceAttested}
         baselineRunId={baselineRunId}
         candidateRunId={candidateRunId}
         pilotFocus={pilotFocus}
