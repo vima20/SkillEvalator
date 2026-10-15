@@ -179,8 +179,10 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             Checked {new Date(s.checkedAt).toLocaleString()} · New run uses the
             same preflight gate. Lists:{" "}
             <Link href="/runs?focus=pilot">Runs</Link> /{" "}
-            <Link href="/benefit?focus=pilot">Benefit</Link> pilot focus. See{" "}
-            <code>docs/PILOT-CHECKLIST.md</code>.
+            <Link href="/comparison?focus=pilot">Comparison</Link> /{" "}
+            <Link href="/benefit?focus=pilot">Benefit</Link> /{" "}
+            <Link href="/dashboard?focus=pilot">Dashboard</Link> pilot focus.
+            See <code>docs/PILOT-CHECKLIST.md</code>.
           </p>
         </section>
 

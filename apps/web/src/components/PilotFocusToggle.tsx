@@ -2,13 +2,15 @@ import Link from "next/link";
 
 /** Server-safe toggle: hide smoke / dry-run noise via ?focus=pilot. */
 export function PilotFocusToggle(opts: {
-  pathname: "/runs" | "/benefit" | "/comparison";
+  pathname: "/runs" | "/benefit" | "/comparison" | "/dashboard";
   pilotFocus: boolean;
 }) {
   const title =
     opts.pathname === "/comparison"
       ? "Hide dry-run and smoke evaluations"
-      : "Hide smoke (FAKE_PRODUCE) and superseded candidate retries";
+      : opts.pathname === "/dashboard"
+        ? "Show only official tip candidates on the leaderboard"
+        : "Hide smoke (FAKE_PRODUCE) and superseded candidate retries";
 
   if (opts.pilotFocus) {
     return (

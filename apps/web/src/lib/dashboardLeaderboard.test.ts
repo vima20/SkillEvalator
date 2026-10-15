@@ -68,4 +68,46 @@ describe("includeInDashboardLeaderboard", () => {
       }),
     ).toBe(false);
   });
+
+  it("pilot focus keeps only official tip candidates", () => {
+    expect(
+      includeInDashboardLeaderboard({
+        runId: "run_tip",
+        role: "candidate",
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_tip",
+        mode: "official",
+        pilotFocus: true,
+      }),
+    ).toBe(true);
+    expect(
+      includeInDashboardLeaderboard({
+        runId: "run_tip",
+        role: "candidate",
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_tip",
+        mode: "dry-run",
+        pilotFocus: true,
+      }),
+    ).toBe(false);
+    expect(
+      includeInDashboardLeaderboard({
+        runId: "run_solo",
+        role: "candidate",
+        mode: "official",
+        pilotFocus: true,
+      }),
+    ).toBe(false);
+    expect(
+      includeInDashboardLeaderboard({
+        runId: "run_smoke",
+        role: "candidate",
+        fakeProduce: true,
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_smoke",
+        mode: "official",
+        pilotFocus: true,
+      }),
+    ).toBe(false);
+  });
 });

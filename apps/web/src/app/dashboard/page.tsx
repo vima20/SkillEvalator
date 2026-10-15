@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
+import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import { includeInDashboardLeaderboard } from "@/lib/dashboardLeaderboard";
 import {
@@ -40,7 +41,14 @@ function mean(scores: number[]): number | null {
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
+  const sp = await searchParams;
+  const pilotFocus = sp.focus === "pilot";
+
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir());
   const hasActive = allRuns.some((r) => runIsActive(r.status, !!r.result));
@@ -54,19 +62,28 @@ export default function DashboardPage() {
     return tipByEval.get(evaluationId) ?? null;
   };
   // Leaderboard: tip (or unpaired) candidates only — never smoke / superseded.
+  // Pilot focus: official tip only.
+  let boardCount = 0;
   const rows: Row[] = allRuns.flatMap((r) => {
     if (!r.result) return [];
     const tip = r.result.evaluationId
       ? tipCandidateId(r.result.evaluationId)
       : null;
+    const baseOpts = {
+      runId: r.runId,
+      role: r.result.role,
+      fakeProduce: r.result.capture?.env?.fakeProduce === true,
+      evaluationId: r.result.evaluationId,
+      tipCandidateRunId: tip,
+      mode: r.result.mode,
+    };
+    if (!includeInDashboardLeaderboard({ ...baseOpts, pilotFocus: false })) {
+      return [];
+    }
+    boardCount += 1;
     if (
-      !includeInDashboardLeaderboard({
-        runId: r.runId,
-        role: r.result.role,
-        fakeProduce: r.result.capture?.env?.fakeProduce === true,
-        evaluationId: r.result.evaluationId,
-        tipCandidateRunId: tip,
-      })
+      pilotFocus &&
+      !includeInDashboardLeaderboard({ ...baseOpts, pilotFocus: true })
     ) {
       return [];
     }
@@ -85,6 +102,7 @@ export default function DashboardPage() {
       },
     ];
   });
+  const hidden = boardCount - rows.length;
 
   const groups = new Map<string, Row[]>();
   for (const r of rows) {
@@ -116,9 +134,17 @@ export default function DashboardPage() {
             Baseline↔candidate lift lives under{" "}
             <Link href="/comparison">Comparison</Link>. Cross-model bake-off is
             out of scope for this MVP.
+            {pilotFocus ? (
+              <>
+                {" "}
+                <strong>Pilot focus</strong> shows official tip candidates only
+                {hidden > 0 ? ` (${hidden} hidden)` : ""}.
+              </>
+            ) : null}
           </p>
         </div>
         <div className="page-header-actions">
+          <PilotFocusToggle pathname="/dashboard" pilotFocus={pilotFocus} />
           <RunsAutoRefresh hasActive={hasActive} />
         </div>
       </header>
@@ -145,10 +171,18 @@ export default function DashboardPage() {
       {rows.length === 0 ? (
         <div className="panel">
           <EmptyState
-            title="No completed runs"
-            body="Finish a dry-run or official evaluation to populate the dashboard."
-            actionHref="/"
-            actionLabel="Start a run"
+            title={
+              boardCount === 0
+                ? "No completed runs"
+                : "No official tips in pilot focus"
+            }
+            body={
+              boardCount === 0
+                ? "Finish a dry-run or official evaluation to populate the dashboard."
+                : "Leaderboard tips are dry-run or unpaired. Show all rows, or run an official baseline↔candidate pair."
+            }
+            actionHref={boardCount === 0 ? "/" : "/dashboard"}
+            actionLabel={boardCount === 0 ? "Start a run" : "Show all rows"}
           />
         </div>
       ) : (
