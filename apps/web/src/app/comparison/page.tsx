@@ -148,9 +148,11 @@ export default async function ComparisonListPage({
                       <Link href={`/comparison/${e.evaluationId}`}>
                         {e.evaluationId}
                       </Link>
-                      {e.smoke ||
-                      e.baselineFakeProduce ||
-                      e.candidateFakeProduce ? (
+                      {e.baselineFakeProduce !== e.candidateFakeProduce ? (
+                        <div className="cell-meta">mixed</div>
+                      ) : e.smoke ||
+                        e.baselineFakeProduce ||
+                        e.candidateFakeProduce ? (
                         <div className="cell-meta">smoke</div>
                       ) : null}
                     </td>
