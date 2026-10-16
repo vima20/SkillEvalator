@@ -2,6 +2,12 @@ import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
+import {
+  benefitListPairBlocksAdoption,
+  benefitListPairChip,
+  benefitListPairLockedLabel,
+  type BenefitListPairChip,
+} from "@/lib/benefitListHints";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import {
   candidateLegKind,
@@ -30,9 +36,14 @@ export default async function BenefitIndexPage({
     // Recommend surface: candidate skill only (baseline is Comparison input).
     .filter((r) => r.result!.role === "candidate")
     .map((r) => {
-      const { report, tipCandidateRunId } = buildBenefitReportBundle(
-        r.result!,
-      );
+      const {
+        report,
+        tipCandidateRunId,
+        tipBaselineRunId,
+        meta,
+        baseline,
+        candidate,
+      } = buildBenefitReportBundle(r.result!);
       const fakeProduce = r.result!.capture?.env?.fakeProduce === true;
       const produceAttested =
         r.result!.capture?.env?.produceAttested === true;
@@ -44,6 +55,31 @@ export default async function BenefitIndexPage({
         evaluationId: r.result!.evaluationId,
         tipCandidateRunId,
       }) as CandidateLegKind;
+      const paired = Boolean(tipBaselineRunId && tipCandidateRunId);
+      const baselineFakeProduce =
+        baseline?.capture?.env?.fakeProduce === true;
+      const candidateFakeProduce =
+        candidate?.capture?.env?.fakeProduce === true;
+      const baselineProduceAttested =
+        baseline?.capture?.env?.produceAttested === true;
+      const candidateProduceAttested =
+        candidate?.capture?.env?.produceAttested === true;
+      const pairEvidence = {
+        metaSmoke: meta?.smoke === true,
+        baselineFakeProduce,
+        candidateFakeProduce,
+        baselineProduceAttested,
+        candidateProduceAttested,
+      };
+      const pairChip: BenefitListPairChip | null = benefitListPairChip({
+        paired,
+        ...pairEvidence,
+        baselineHasResult: Boolean(baseline),
+        candidateHasResult: Boolean(candidate),
+      });
+      // Same wire-up as Run detail: tip ids present → sibling evidence bar.
+      const pairBlocked =
+        paired && benefitListPairBlocksAdoption(pairEvidence);
       return {
         runId: r.runId,
         score: r.result!.score,
@@ -54,24 +90,30 @@ export default async function BenefitIndexPage({
         kind,
         fakeProduce,
         produceAttested,
+        pairChip,
+        pairBlocked,
       };
     })
     // Tip / unpaired first; waiting / superseded / smoke last.
     .sort((a, b) => {
       const d = candidateLegSortRank(a.kind) - candidateLegSortRank(b.kind);
       if (d !== 0) return d;
+      // Pair-blocked tips after clean tips within the same leg kind.
+      if (a.pairBlocked !== b.pairBlocked) return a.pairBlocked ? 1 : -1;
       return b.runId.localeCompare(a.runId);
     });
 
   const runs = pilotFocus
-    ? allRuns.filter((r) =>
-        includeInPilotFocusRun({
-          kind: r.kind,
-          mode: r.mode,
-          fakeProduce: r.fakeProduce,
-          produceAttested: r.produceAttested,
-          hasResult: true,
-        }),
+    ? allRuns.filter(
+        (r) =>
+          !r.pairBlocked &&
+          includeInPilotFocusRun({
+            kind: r.kind,
+            mode: r.mode,
+            fakeProduce: r.fakeProduce,
+            produceAttested: r.produceAttested,
+            hasResult: true,
+          }),
       )
     : allRuns;
   const hidden = allRuns.length - runs.length;
@@ -89,7 +131,7 @@ export default async function BenefitIndexPage({
               <>
                 {" "}
                 <strong>Pilot focus</strong> hides smoke, not_attested,
-                superseded, and dry-run
+                superseded, dry-run, and pair-blocked siblings
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}
@@ -140,7 +182,7 @@ export default async function BenefitIndexPage({
             body={
               allRuns.length === 0
                 ? "Finish a candidate run (paired evaluation or single-leg) before opening a Benefit Report."
-                : "All candidate rows are smoke, not_attested, superseded, dry-run, or FAKE_PRODUCE. Show all rows to inspect them."
+                : "All candidate rows are smoke, not_attested, superseded, dry-run, FAKE_PRODUCE, or pair-blocked. Show all rows to inspect them."
             }
             actionHref={
               allRuns.length === 0
@@ -188,6 +230,9 @@ export default async function BenefitIndexPage({
                           </>
                         ) : null}
                       </div>
+                      {r.pairChip ? (
+                        <div className="cell-meta">{r.pairChip}</div>
+                      ) : null}
                       {r.verdict.recommendation === "inconclusive" ? (
                         <div className="cell-meta">{r.verdict.headline}</div>
                       ) : null}
@@ -240,6 +285,17 @@ export default async function BenefitIndexPage({
                           title="Superseded candidate — tip leg owns USE / DO NOT USE"
                         >
                           Open superseded
+                        </Link>
+                      ) : r.pairBlocked ? (
+                        <Link
+                          className="btn btn-ghost btn-compact"
+                          href={withPilotFocus(
+                            `/benefit/${r.runId}`,
+                            pilotFocus,
+                          )}
+                          title="Pair evidence blocked (sibling smoke / unattested) — not adoption"
+                        >
+                          {benefitListPairLockedLabel(r.pairChip)}
                         </Link>
                       ) : (
                         <Link
