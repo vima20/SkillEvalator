@@ -135,7 +135,7 @@ export default async function ComparisonListPage({
             body={
               allEvaluations.length === 0
                 ? "Start a run with baseline↔candidate enabled to queue both legs and open Comparison."
-                : "All rows are dry-run, smoke, or official INCONCLUSIVE. Show all rows to inspect them."
+                : "All rows are dry-run, smoke, unattested, or official INCONCLUSIVE. Show all rows to inspect them."
             }
             actionHref={
               allEvaluations.length === 0
@@ -178,6 +178,12 @@ export default async function ComparisonListPage({
                         e.baselineFakeProduce ||
                         e.candidateFakeProduce ? (
                         <div className="cell-meta">smoke</div>
+                      ) : !e.pending &&
+                        ((e.baselineStatus != null &&
+                          e.baselineProduceAttested !== true) ||
+                          (e.candidateStatus != null &&
+                            e.candidateProduceAttested !== true)) ? (
+                        <div className="cell-meta">not attested</div>
                       ) : null}
                     </td>
                     <td>

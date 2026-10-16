@@ -25,6 +25,13 @@ D1 task family: [docs/D1-TASK-FAMILY.md](docs/D1-TASK-FAMILY.md).
 Live pilot: [docs/PILOT-CHECKLIST.md](docs/PILOT-CHECKLIST.md) · acceptance: [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).  
 In the UI, **Settings** shows `pilotReady`, preflight, adoption rules, git SHA, and the job queue.
 
+### Live pilot / evidence (short)
+
+- **Settings Ready** ≠ Comparison PASS / Benefit USE — same blockers gate official enqueue (API key, Docker, worker, unset `FAKE_PRODUCE` + `ALLOW_HOST_GRADE`, auth, no orphan `.running.json`).
+- **`?focus=pilot`**: hides smoke / not_attested / dry-run noise on lists; New run / Settings / Nav keep the focus.
+- Live official pins **`produceAttested=true`** on both tip legs. CSV / Benefit / pilot archive reject smoke, FAKE, and unattested tips.
+- Optional: `WEB_AUTH_TOKEN` + `OFFICIAL_REQUIRES_WEB_AUTH=true` for pilot lock-down.
+
 ## Models
 
 | Mode | Model |
@@ -63,7 +70,7 @@ Official adoption smoke (fixture scores → Comparison PASS→Benefit USE and FA
 npm run smoke:official
 ```
 
-Official export-gate smoke (Benefit / run CSV / Comparison CSV gates on PASS/FAIL/dry-run):
+Official export-gate smoke (Benefit / run CSV / Comparison CSV / archive: PASS/FAIL only; blocks dry-run, smoke, FAKE_PRODUCE, unattested):
 
 ```bat
 npm run smoke:export

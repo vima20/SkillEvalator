@@ -45,7 +45,14 @@ export async function GET(
         { status: gate.status },
       );
     }
-    const csv = comparisonToCsv(comparison);
+    const csv = comparisonToCsv(comparison, {
+      baselineFakeProduce: baseline?.capture?.env?.fakeProduce === true,
+      baselineProduceAttested:
+        baseline?.capture?.env?.produceAttested === true,
+      candidateFakeProduce: candidate?.capture?.env?.fakeProduce === true,
+      candidateProduceAttested:
+        candidate?.capture?.env?.produceAttested === true,
+    });
     return new NextResponse(csv, {
       status: 200,
       headers: {

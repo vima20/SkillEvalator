@@ -70,6 +70,14 @@ export async function GET(
       comparison,
       meta,
       build: resolveBuildInfo(root),
+      tipEvidence: {
+        baselineFakeProduce: baseline.capture?.env?.fakeProduce === true,
+        baselineProduceAttested:
+          baseline.capture?.env?.produceAttested === true,
+        candidateFakeProduce: candidate.capture?.env?.fakeProduce === true,
+        candidateProduceAttested:
+          candidate.capture?.env?.produceAttested === true,
+      },
     });
 
     return new NextResponse(new Uint8Array(zip), {

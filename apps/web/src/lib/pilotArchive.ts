@@ -100,6 +100,13 @@ export function buildPilotArchiveZip(opts: {
   meta: EvaluationMeta;
   build: PilotArchiveBuildInfo;
   createdAt?: string;
+  /** Tip-leg evidence for MANIFEST (same bar as export gates). */
+  tipEvidence?: {
+    baselineFakeProduce?: boolean;
+    baselineProduceAttested?: boolean;
+    candidateFakeProduce?: boolean;
+    candidateProduceAttested?: boolean;
+  };
 }): Buffer {
   const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "se-pilot-archive-"));
@@ -132,9 +139,14 @@ export function buildPilotArchiveZip(opts: {
       modelId: opts.comparison.modelId,
       baselineRunId: opts.baselineRunId,
       candidateRunId: opts.candidateRunId,
+      baselineFakeProduce: opts.tipEvidence?.baselineFakeProduce === true,
+      baselineProduceAttested:
+        opts.tipEvidence?.baselineProduceAttested === true,
       candidateFakeProduce:
+        opts.tipEvidence?.candidateFakeProduce === true ||
         opts.comparison.capture?.env?.fakeProduce === true,
       candidateProduceAttested:
+        opts.tipEvidence?.candidateProduceAttested === true ||
         opts.comparison.capture?.env?.produceAttested === true,
       build: opts.build,
       notes:

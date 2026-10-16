@@ -82,4 +82,15 @@ describe("comparisonHarnessHint", () => {
       }),
     ).toEqual({ kind: "both_unattested" });
   });
+
+  it("flags one tip missing produceAttested", () => {
+    expect(
+      comparisonHarnessHint({
+        baselineFakeProduce: false,
+        candidateFakeProduce: false,
+        baselineProduceAttested: true,
+        candidateProduceAttested: false,
+      }),
+    ).toEqual({ kind: "one_unattested", unattestedRole: "candidate" });
+  });
 });

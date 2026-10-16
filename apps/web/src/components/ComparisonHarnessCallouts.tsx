@@ -58,6 +58,27 @@ export function renderHarnessCallouts(
     );
   }
 
+  if (hint.kind === "one_unattested") {
+    return (
+      <div className="panel callout-warn">
+        <strong>Mixed attestation</strong>
+        <p>
+          The {hint.unattestedRole} tip is missing{" "}
+          <code>produceAttested=true</code> while the other tip is live. CSV /
+          pilot archive / Benefit export stay locked. Inspect{" "}
+          <Link href={withPilotFocus(`/runs/${baselineRunId}`, pilotFocus)}>
+            baseline
+          </Link>{" "}
+          and{" "}
+          <Link href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}>
+            candidate
+          </Link>
+          .
+        </p>
+      </div>
+    );
+  }
+
   if (hint.kind === "mixed") {
     return (
       <div className="panel callout-warn">

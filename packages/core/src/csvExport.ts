@@ -90,8 +90,19 @@ export function runResultToCsv(result: RunResult): string {
   return `${lines.join("\n")}\n`;
 }
 
+/** Tip-leg smoke / attestation pins for Comparison CSV audit columns. */
+export type ComparisonCsvTipEvidence = {
+  baselineFakeProduce?: boolean;
+  baselineProduceAttested?: boolean;
+  candidateFakeProduce?: boolean;
+  candidateProduceAttested?: boolean;
+};
+
 /** Task-level regression CSV for a paired comparison. */
-export function comparisonToCsv(comparison: RunComparison): string {
+export function comparisonToCsv(
+  comparison: RunComparison,
+  tips: ComparisonCsvTipEvidence = {},
+): string {
   const parityIssues = comparison.parity.issues.join("; ");
   const header = row([
     "evaluationId",
@@ -115,6 +126,8 @@ export function comparisonToCsv(comparison: RunComparison): string {
     "parityIssues",
     "commit",
     "license",
+    "baselineFakeProduce",
+    "baselineProduceAttested",
     "candidateFakeProduce",
     "candidateProduceAttested",
   ]);
@@ -128,11 +141,17 @@ export function comparisonToCsv(comparison: RunComparison): string {
     comparison.baselineRunId,
     comparison.candidateRunId,
   ] as const;
+  const candFake =
+    tips.candidateFakeProduce ?? comparison.capture?.env?.fakeProduce;
+  const candAttested =
+    tips.candidateProduceAttested ?? comparison.capture?.env?.produceAttested;
   const captureCells = [
     comparison.capture?.commit ?? "",
     comparison.capture?.license ?? "",
-    comparison.capture?.env?.fakeProduce ?? "",
-    comparison.capture?.env?.produceAttested ?? "",
+    tips.baselineFakeProduce ?? "",
+    tips.baselineProduceAttested ?? "",
+    candFake ?? "",
+    candAttested ?? "",
   ] as const;
 
   for (const t of comparison.perTask ?? []) {

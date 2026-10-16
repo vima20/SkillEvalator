@@ -148,8 +148,17 @@ describe("comparisonToCsv", () => {
     expect(csv).toContain("official");
     expect(csv).toContain("cde-v1");
     expect(csv).toContain("parityIssues");
+    expect(csv).toContain("baselineFakeProduce");
+    expect(csv).toContain("baselineProduceAttested");
     expect(csv).toContain("candidateFakeProduce");
     expect(csv).toContain("candidateProduceAttested");
+    const withTips = comparisonToCsv(cmp, {
+      baselineFakeProduce: false,
+      baselineProduceAttested: true,
+      candidateFakeProduce: false,
+      candidateProduceAttested: true,
+    });
+    expect(withTips).toContain("baselineProduceAttested");
   });
 
   it("exports candidate Capture commit and license", () => {
