@@ -1,0 +1,91 @@
+import { describe, expect, it } from "vitest";
+import {
+  loadRunDetailEvaluationPack,
+  resolveRunDetailEvaluationId,
+} from "./runDetailEvaluationPack.js";
+
+describe("resolveRunDetailEvaluationId", () => {
+  it("prefers status over job over result", () => {
+    expect(
+      resolveRunDetailEvaluationId({
+        runId: "run_x",
+        status: { evaluationId: "eval_status" },
+        result: { evaluationId: "eval_result" },
+        jobEvaluationId: "eval_job",
+      }),
+    ).toBe("eval_status");
+  });
+
+  it("uses job when status missing (failed without result.json)", () => {
+    expect(
+      resolveRunDetailEvaluationId({
+        runId: "run_x",
+        status: {},
+        result: null,
+        jobEvaluationId: "eval_from_job",
+      }),
+    ).toBe("eval_from_job");
+  });
+
+  it("falls back to result evaluationId", () => {
+    expect(
+      resolveRunDetailEvaluationId({
+        runId: "run_x",
+        status: null,
+        result: { evaluationId: "eval_result" },
+        jobEvaluationId: null,
+      }),
+    ).toBe("eval_result");
+  });
+});
+
+describe("loadRunDetailEvaluationPack", () => {
+  it("builds pairHarness from status-only evaluationId", () => {
+    const out = loadRunDetailEvaluationPack({
+      runId: "run_failed",
+      status: { evaluationId: "eval_1" },
+      result: null,
+      jobEvaluationId: null,
+      loadPacked: () =>
+        ({
+          meta: {
+            smoke: false,
+            baselineRunId: "run_b",
+            candidateRunId: "run_failed",
+          },
+          comparison: null,
+          baseline: {
+            capture: { env: { fakeProduce: false, produceAttested: true } },
+          },
+          candidate: {
+            capture: { env: { fakeProduce: true, produceAttested: false } },
+          },
+        }) as ReturnType<
+          typeof import("@/lib/evaluations").loadEvaluationComparison
+        >,
+    });
+    expect(out.evaluationId).toBe("eval_1");
+    expect(out.tipCandidateRunId).toBe("run_failed");
+    expect(out.pairHarness).toMatchObject({
+      baselineRunId: "run_b",
+      candidateRunId: "run_failed",
+      candidateFakeProduce: true,
+      baselineProduceAttested: true,
+    });
+  });
+
+  it("returns null pack when no evaluationId source", () => {
+    expect(
+      loadRunDetailEvaluationPack({
+        runId: "run_none",
+        status: null,
+        result: null,
+        jobEvaluationId: null,
+      }),
+    ).toEqual({
+      evaluationId: null,
+      tipCandidateRunId: null,
+      pairHarness: null,
+    });
+  });
+});

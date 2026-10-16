@@ -4,17 +4,13 @@ import {
   loadRunResult,
   syncStatusFromResult,
 } from "@skillevalator/core";
-import {
-  loadEvaluationComparison,
-  resolveTipCandidateRunId,
-} from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
 } from "@/lib/runCsvExportAllowed";
-import { runDetailPairHarness } from "@/lib/runDetailPairHarness";
+import { loadRunDetailEvaluationPack } from "@/lib/runDetailEvaluationPack";
 import { runDetailRetryAdmissionForRun } from "@/lib/runDetailRetryAdmission";
 import { runPreflight } from "@/lib/runPreflight";
 
@@ -33,13 +29,11 @@ export async function GET(
     if (!status && !result) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
-    const packed = result?.evaluationId
-      ? loadEvaluationComparison(result.evaluationId)
-      : null;
-    const tipCandidateRunId = packed
-      ? resolveTipCandidateRunId(packed)
-      : null;
-    const pairHarness = runDetailPairHarness(packed);
+    const { tipCandidateRunId, pairHarness } = loadRunDetailEvaluationPack({
+      runId,
+      result,
+      status,
+    });
     const preflight = runPreflight();
     const retryAdmission = runDetailRetryAdmissionForRun({
       runId,

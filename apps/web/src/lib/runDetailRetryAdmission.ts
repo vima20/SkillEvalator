@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   JobManifestSchema,
-  evaluationIdFromSources,
   hasLiveJobFile,
   isNonRetryableErrorCode,
   officialEnqueueAllowed,
@@ -16,6 +15,7 @@ import { resolveHealedMetaLegsForCancel } from "@/lib/evaluations";
 import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { collectPilotBlockers } from "@/lib/pilotReady";
+import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
   RETRY_STILL_FINISHING_ERROR,
@@ -264,20 +264,6 @@ function loadFailedJobRaw(runId: string): unknown | null {
   return null;
 }
 
-function loadJobEvaluationId(runId: string): string | undefined {
-  const raw = loadFailedJobRaw(runId);
-  if (!raw) return undefined;
-  try {
-    const job = JobManifestSchema.parse(raw);
-    if (typeof job.evaluationId === "string" && job.evaluationId) {
-      return job.evaluationId;
-    }
-  } catch {
-    /* ignore */
-  }
-  return undefined;
-}
-
 /** Live admission for GET run detail / SSR (mirrors POST /retry gates). */
 export function runDetailRetryAdmissionForRun(opts: {
   runId: string;
@@ -323,12 +309,11 @@ export function runDetailRetryAdmissionForRun(opts: {
   });
   const mode = costParams?.mode ?? opts.result?.mode ?? null;
   const jobRaw = loadFailedJobRaw(opts.runId);
-  const evaluationId =
-    evaluationIdFromSources({
-      statusEvaluationId: opts.status?.evaluationId,
-      jobEvaluationId: loadJobEvaluationId(opts.runId),
-      resultEvaluationId: opts.result?.evaluationId,
-    }) ?? null;
+  const evaluationId = resolveRunDetailEvaluationId({
+    runId: opts.runId,
+    status: opts.status,
+    result: opts.result,
+  });
 
   const statusRole =
     opts.status?.role === "baseline" || opts.status?.role === "candidate"

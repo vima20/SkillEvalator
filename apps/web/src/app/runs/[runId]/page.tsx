@@ -6,10 +6,6 @@ import {
   syncStatusFromResult,
 } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
-import {
-  loadEvaluationComparison,
-  resolveTipCandidateRunId,
-} from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
@@ -17,7 +13,7 @@ import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
 } from "@/lib/runCsvExportAllowed";
-import { runDetailPairHarness } from "@/lib/runDetailPairHarness";
+import { loadRunDetailEvaluationPack } from "@/lib/runDetailEvaluationPack";
 import { runDetailRetryAdmissionForRun } from "@/lib/runDetailRetryAdmission";
 import { runPreflight } from "@/lib/runPreflight";
 import { RunDetailClient } from "./RunDetailClient";
@@ -93,13 +89,11 @@ export default async function RunDetailPage({
     );
   }
 
-  const packed = result?.evaluationId
-    ? loadEvaluationComparison(result.evaluationId)
-    : null;
-  const tipCandidateRunId = packed
-    ? resolveTipCandidateRunId(packed)
-    : null;
-  const pairHarness = runDetailPairHarness(packed);
+  const { tipCandidateRunId, pairHarness } = loadRunDetailEvaluationPack({
+    runId,
+    result,
+    status,
+  });
 
   const preflight = runPreflight();
   const retryAdmission = runDetailRetryAdmissionForRun({
