@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
+import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import {
   isPilotFocusParam,
   withPilotFocus,
@@ -99,7 +100,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
       setError(null);
     }
     try {
-      const res = await fetch("/api/settings?heal=1", {
+      const res = await apiFetch("/api/settings?heal=1", {
         cache: "no-store",
         signal: ac.signal,
       });
@@ -113,6 +114,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
       setS(next);
     } catch (e) {
       if (ac.signal.aborted) return;
+      if (e instanceof UnauthorizedError) return;
       if (!silent) {
         setError(e instanceof Error ? e.message : "Settings refresh failed");
       }

@@ -10,6 +10,7 @@ import {
   MODEL_DRY_RUN,
   MODEL_OFFICIAL,
 } from "@skillevalator/core/models";
+import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 
 export type SkillOption = {
@@ -105,14 +106,15 @@ export function NewRunForm({
   const refreshPreflight = useCallback(async () => {
     setPreflightBusy(true);
     try {
-      const res = await fetch("/api/preflight", { cache: "no-store" });
+      const res = await apiFetch("/api/preflight", { cache: "no-store" });
       if (!res.ok) {
         setPreflightError(`Preflight failed (HTTP ${res.status}).`);
         return;
       }
       setPreflightError(null);
       setPreflight((await res.json()) as Preflight);
-    } catch {
+    } catch (e) {
+      if (e instanceof UnauthorizedError) return;
       setPreflightError("Preflight network error — is the web server up?");
     } finally {
       setPreflightBusy(false);
@@ -207,7 +209,7 @@ export function NewRunForm({
         ? Math.max(repeatsSafe, OFFICIAL_MIN_REPEATS)
         : Math.max(1, repeatsSafe);
     try {
-      const res = await fetch("/api/runs", {
+      const res = await apiFetch("/api/runs", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -229,6 +231,7 @@ export function NewRunForm({
         router.push(withPilotFocus(`/runs/${data.runId}`, pilotFocus));
       }
     } catch (err) {
+      if (err instanceof UnauthorizedError) return;
       setError(true);
       setMsg(err instanceof Error ? err.message : "error");
     } finally {
@@ -329,7 +332,7 @@ export function NewRunForm({
                   setMsg("");
                   setError(false);
                   try {
-                    const res = await fetch("/api/skills", {
+                    const res = await apiFetch("/api/skills", {
                       method: "POST",
                       headers: { "content-type": "application/json" },
                       body: JSON.stringify({ url: importUrl.trim() }),
@@ -348,6 +351,7 @@ export function NewRunForm({
                       `Imported ${data.skills?.length ?? 0} skill(s) from GitHub`,
                     );
                   } catch (err) {
+                    if (err instanceof UnauthorizedError) return;
                     setError(true);
                     setMsg(err instanceof Error ? err.message : "import error");
                   } finally {
@@ -385,7 +389,7 @@ export function NewRunForm({
                   try {
                     const body = new FormData();
                     body.append("file", importZip, importZip.name);
-                    const res = await fetch("/api/skills", {
+                    const res = await apiFetch("/api/skills", {
                       method: "POST",
                       body,
                     });
@@ -404,6 +408,7 @@ export function NewRunForm({
                     );
                     setImportZip(null);
                   } catch (err) {
+                    if (err instanceof UnauthorizedError) return;
                     setError(true);
                     setMsg(err instanceof Error ? err.message : "import error");
                   } finally {

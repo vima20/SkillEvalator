@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 
 export function ClearOldRuns() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export function ClearOldRuns() {
     setMsg(null);
     setError(false);
     try {
-      const res = await fetch("/api/runs/cleanup", {
+      const res = await apiFetch("/api/runs/cleanup", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ kind: "age", olderThanDays: 7 }),
@@ -42,6 +43,7 @@ export function ClearOldRuns() {
       setArmed(false);
       router.refresh();
     } catch (e) {
+      if (e instanceof UnauthorizedError) return;
       setError(true);
       setMsg(e instanceof Error ? e.message : "cleanup failed");
     } finally {

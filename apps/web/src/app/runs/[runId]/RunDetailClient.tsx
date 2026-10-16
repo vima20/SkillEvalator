@@ -11,6 +11,7 @@ import {
   formatCaptureEnvSnapshot,
   formatCaptureGradePolicy,
 } from "@/lib/captureEnvEvidence";
+import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import { statusBadgeClass } from "@/lib/status";
@@ -170,17 +171,12 @@ export function RunDetailClient({
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
+      const res = await apiFetch(`/api/runs/${encodeURIComponent(runId)}`, {
         cache: "no-store",
       });
       if (res.status === 404) {
         setPolling(false);
         setPollError("Run not found.");
-        return;
-      }
-      if (res.status === 401) {
-        setPolling(false);
-        setPollError("Unauthorized — unlock with WEB_AUTH_TOKEN, then refresh.");
         return;
       }
       if (!res.ok) {
@@ -197,7 +193,11 @@ export function RunDetailClient({
       } else {
         setPolling(true);
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof UnauthorizedError) {
+        setPolling(false);
+        return;
+      }
       setPolling(false);
       setPollError("Network error while refreshing run status.");
     }
@@ -278,7 +278,7 @@ export function RunDetailClient({
     let cancelled = false;
     async function loadPreflight() {
       try {
-        const res = await fetch("/api/preflight", { cache: "no-store" });
+        const res = await apiFetch("/api/preflight", { cache: "no-store" });
         if (!res.ok || cancelled) return;
         const body = (await res.json()) as {
           ok?: boolean;
@@ -293,7 +293,8 @@ export function RunDetailClient({
             ? body.pilotBlockers.filter((b): b is string => typeof b === "string")
             : [],
         });
-      } catch {
+      } catch (e) {
+        if (e instanceof UnauthorizedError) return;
         /* keep last snapshot */
       }
     }
@@ -310,7 +311,7 @@ export function RunDetailClient({
     setRetryError(null);
     setRetrying(true);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/runs/${encodeURIComponent(runId)}/retry`,
         { method: "POST" },
       );
@@ -324,7 +325,11 @@ export function RunDetailClient({
         return;
       }
       router.push(withPilotFocus(`/runs/${body.runId}`, pilotFocus));
-    } catch {
+    } catch (e) {
+      if (e instanceof UnauthorizedError) {
+        setRetrying(false);
+        return;
+      }
       setRetryError("Retry failed");
       setRetrying(false);
     }
@@ -335,7 +340,7 @@ export function RunDetailClient({
     setCancelError(null);
     setCancelling(true);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/runs/${encodeURIComponent(runId)}/cancel`,
         { method: "POST" },
       );
@@ -350,7 +355,11 @@ export function RunDetailClient({
       }
       setPolling(true);
       await refresh();
-    } catch {
+    } catch (e) {
+      if (e instanceof UnauthorizedError) {
+        setCancelling(false);
+        return;
+      }
       setCancelError("Cancel failed");
       setCancelling(false);
     }

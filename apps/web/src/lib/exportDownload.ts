@@ -1,3 +1,5 @@
+import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+
 /** Parse Content-Disposition filename= / filename*= (RFC 5987). */
 export function parseContentDispositionFilename(
   header: string | null,
@@ -43,8 +45,14 @@ export async function downloadExport(
 ): Promise<DownloadExportResult> {
   let res: Response;
   try {
-    res = await fetch(href, { cache: "no-store", credentials: "same-origin" });
-  } catch {
+    res = await apiFetch(href, {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+  } catch (e) {
+    if (e instanceof UnauthorizedError) {
+      return { ok: false, error: "Session expired — redirecting to unlock" };
+    }
     return { ok: false, error: "Download failed — network error" };
   }
 
