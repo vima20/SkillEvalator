@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ExportDownloadButton } from "@/components/ExportDownloadButton";
+import {
+  ExportDownloadButton,
+  ExportDownloadRow,
+} from "@/components/ExportDownloadButton";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 
 export function BenefitActions({
@@ -69,20 +72,22 @@ export function BenefitActions({
           >
             {copied ? "Copied" : "Copy Markdown"}
           </button>
-          <ExportDownloadButton
-            className="btn btn-primary btn-compact"
-            href={`/api/runs/${encodeURIComponent(runId)}/benefit?format=md`}
-            filename={`${runId}-benefit.md`}
-          >
-            Download .md
-          </ExportDownloadButton>
-          <ExportDownloadButton
-            className="btn btn-ghost btn-compact"
-            href={`/api/runs/${encodeURIComponent(runId)}/benefit?format=csv`}
-            filename={`${runId}-benefit.csv`}
-          >
-            Download CSV
-          </ExportDownloadButton>
+          <ExportDownloadRow>
+            <ExportDownloadButton
+              className="btn btn-primary btn-compact"
+              href={`/api/runs/${encodeURIComponent(runId)}/benefit?format=md`}
+              filename={`${runId}-benefit.md`}
+            >
+              Download .md
+            </ExportDownloadButton>
+            <ExportDownloadButton
+              className="btn btn-ghost btn-compact"
+              href={`/api/runs/${encodeURIComponent(runId)}/benefit?format=csv`}
+              filename={`${runId}-benefit.csv`}
+            >
+              Download CSV
+            </ExportDownloadButton>
+          </ExportDownloadRow>
         </>
       ) : (
         <p className="hint" style={{ margin: 0 }} title={lockedHint}>

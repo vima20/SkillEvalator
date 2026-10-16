@@ -43,29 +43,32 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a className="skip-link" href="#main-content">
           Skip to content
         </a>
-        <div className="app-shell">
-          <header className="topbar">
-            <BrandLink
-              className="brand"
-              aria-label="Unikie SkillEvalator home"
-            >
-              <span className="brand-mark">
-                <BrandMark />
-              </span>
-              <span className="brand-copy">
-                <span className="brand-org">Unikie</span>
-                <span className="brand-product">SkillEvalator</span>
-              </span>
-            </BrandLink>
-            <div className="topbar-end">
-              <Nav />
-              <AuthLock />
-            </div>
-          </header>
-          <main id="main-content" className="main" tabIndex={-1}>
-            <AuthGate>{children}</AuthGate>
-          </main>
-        </div>
+        {/* AuthGate wraps the shell so Nav/brand stay hidden while locked. */}
+        <AuthGate>
+          <div className="app-shell">
+            <header className="topbar">
+              <BrandLink
+                className="brand"
+                aria-label="Unikie SkillEvalator home"
+              >
+                <span className="brand-mark">
+                  <BrandMark />
+                </span>
+                <span className="brand-copy">
+                  <span className="brand-org">Unikie</span>
+                  <span className="brand-product">SkillEvalator</span>
+                </span>
+              </BrandLink>
+              <div className="topbar-end">
+                <Nav />
+                <AuthLock />
+              </div>
+            </header>
+            <main id="main-content" className="main" tabIndex={-1}>
+              {children}
+            </main>
+          </div>
+        </AuthGate>
       </body>
     </html>
   );

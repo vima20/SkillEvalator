@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
+  safeUnlockNext,
+  unlockNextFromRequest,
+} from "@/lib/safeUnlockNext";
+import {
   parseSeAuthCookie,
   resolveWebAuthConfig,
   webAuthMatches,
@@ -49,7 +53,8 @@ export async function middleware(req: NextRequest) {
 
   if (pathname === "/unlock" || pathname.startsWith("/unlock/")) {
     if (ok) {
-      return NextResponse.redirect(new URL("/", req.url));
+      const next = safeUnlockNext(req.nextUrl.searchParams.get("next"));
+      return NextResponse.redirect(new URL(next, req.url));
     }
     return NextResponse.next();
   }
@@ -64,8 +69,9 @@ export async function middleware(req: NextRequest) {
   const dest = req.nextUrl.clone();
   dest.pathname = "/unlock";
   dest.search = "";
-  if (pathname && pathname !== "/") {
-    dest.searchParams.set("next", pathname);
+  const next = unlockNextFromRequest(pathname, req.nextUrl.searchParams);
+  if (next) {
+    dest.searchParams.set("next", next);
   }
   return NextResponse.redirect(dest);
 }

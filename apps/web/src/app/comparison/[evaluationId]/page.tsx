@@ -3,7 +3,10 @@ import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
-import { ExportDownloadButton } from "@/components/ExportDownloadButton";
+import {
+  ExportDownloadButton,
+  ExportDownloadRow,
+} from "@/components/ExportDownloadButton";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
   formatCaptureEnvEvidence,
@@ -213,7 +216,7 @@ export default async function ComparisonDetailPage({
             </Link>
           )}
           {showOfficialDownloads ? (
-            <>
+            <ExportDownloadRow>
               <ExportDownloadButton
                 className="btn btn-ghost"
                 href={`/api/comparison/${encodeURIComponent(evaluationId)}/csv`}
@@ -229,7 +232,7 @@ export default async function ComparisonDetailPage({
               >
                 Download pilot archive
               </ExportDownloadButton>
-            </>
+            </ExportDownloadRow>
           ) : (
             <p
               className="hint"

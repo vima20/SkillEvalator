@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { safeUnlockNext } from "@/lib/safeUnlockNext";
 
-export function AuthGate({ children }: { children: React.ReactNode }) {
+export function AuthGate({ children }: { children: ReactNode }) {
   const [needed, setNeeded] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
   const [ready, setReady] = useState(false);
@@ -115,9 +116,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       setNeeded(false);
       // Full navigation so middleware sees the new cookie before RSC.
       const params = new URLSearchParams(window.location.search);
-      const nextRaw = params.get("next") || "/";
-      const next =
-        nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/";
+      const next = safeUnlockNext(params.get("next"));
       if (
         window.location.pathname === "/unlock" ||
         window.location.pathname.startsWith("/unlock/")
@@ -147,43 +146,47 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (needed) {
     return (
-      <div className="auth-gate">
-        <form className="panel form-grid auth-card" onSubmit={unlock}>
-          <p className="eyebrow">Unikie · Access</p>
-          <h1>{checkFailed ? "Access check failed" : "Unlock SkillEvalator"}</h1>
-          <p className="skill-card-body">
-            {checkFailed
-              ? "The browser could not confirm API access. Retry the check, or enter the access token from your admin."
-              : "Enter the access token provided by your admin to unlock this local evaluator."}
-          </p>
-          <div className="field">
-            <label htmlFor="webAuthToken">Access token</label>
-            <input
-              id="webAuthToken"
-              type="password"
-              autoComplete="current-password"
-              autoFocus
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              required={!checkFailed}
-            />
-          </div>
-          <div className="action-row">
-            <button className="btn btn-primary" type="submit" disabled={busy}>
-              {busy
-                ? "Checking…"
-                : checkFailed && !token.trim()
-                  ? "Retry check"
-                  : "Unlock"}
-            </button>
-          </div>
-          {error ? (
-            <p className="msg error" role="alert">
-              {error}
+      <main id="main-content" className="main" tabIndex={-1}>
+        <div className="auth-gate">
+          <form className="panel form-grid auth-card" onSubmit={unlock}>
+            <p className="eyebrow">Unikie · Access</p>
+            <h1>
+              {checkFailed ? "Access check failed" : "Unlock SkillEvalator"}
+            </h1>
+            <p className="skill-card-body">
+              {checkFailed
+                ? "The browser could not confirm API access. Retry the check, or enter the access token from your admin."
+                : "Enter the access token provided by your admin to unlock this local evaluator."}
             </p>
-          ) : null}
-        </form>
-      </div>
+            <div className="field">
+              <label htmlFor="webAuthToken">Access token</label>
+              <input
+                id="webAuthToken"
+                type="password"
+                autoComplete="current-password"
+                autoFocus
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                required={!checkFailed}
+              />
+            </div>
+            <div className="action-row">
+              <button className="btn btn-primary" type="submit" disabled={busy}>
+                {busy
+                  ? "Checking…"
+                  : checkFailed && !token.trim()
+                    ? "Retry check"
+                    : "Unlock"}
+              </button>
+            </div>
+            {error ? (
+              <p className="msg error" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </form>
+        </div>
+      </main>
     );
   }
 
