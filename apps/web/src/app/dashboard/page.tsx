@@ -19,6 +19,7 @@ import {
 } from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { runIsActive } from "@/lib/status";
 
@@ -63,7 +64,9 @@ export default async function DashboardPage({
 
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir());
-  const hasActive = allRuns.some((r) => runIsActive(r.status, !!r.result));
+  const hasActive =
+    allRuns.some((r) => runIsActive(r.status, !!r.result)) ||
+    hasPendingEvaluations();
   // Tip + pair evidence per evaluation — supersede smoke/old retries / siblings.
   const pairByEval = new Map<
     string,

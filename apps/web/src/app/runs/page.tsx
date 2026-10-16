@@ -21,6 +21,7 @@ import {
 } from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import {
   candidateRunsListHint,
   runsListHintLabel,
@@ -75,7 +76,9 @@ export default async function RunsPage({
   };
 
   const allRuns = listRuns(resultsDir());
-  const hasActive = allRuns.some((r) => runIsActive(r.status, !!r.result));
+  const hasActive =
+    allRuns.some((r) => runIsActive(r.status, !!r.result)) ||
+    hasPendingEvaluations();
 
   const runs = pilotFocus
     ? allRuns.filter((r) => {

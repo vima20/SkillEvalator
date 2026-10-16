@@ -130,8 +130,9 @@ export function NewRunForm({
   const pilotReady = preflight?.pilotReady !== false;
   const pilotBlockers = preflight?.pilotBlockers ?? [];
   const officialBlocked =
-    Boolean(preflight?.fakeProduce) ||
-    (preflight != null && preflight.pilotReady === false);
+    preflight == null ||
+    Boolean(preflight.fakeProduce) ||
+    preflight.pilotReady === false;
   /** API POST /api/runs rejects every mode with 503 when preflight fails. */
   const canQueue = preflight?.ok === true && !preflightError;
 

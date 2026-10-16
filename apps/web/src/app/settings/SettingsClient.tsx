@@ -122,7 +122,9 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
   }, []);
 
   const needsQueuePoll =
-    s.queue.running > 0 || (s.queue.staleRunningRunIds?.length ?? 0) > 0;
+    s.queue.queued > 0 ||
+    s.queue.running > 0 ||
+    (s.queue.staleRunningRunIds?.length ?? 0) > 0;
 
   useEffect(() => {
     if (!needsQueuePoll) return;
@@ -228,8 +230,8 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           <h2>Build &amp; queue</h2>
           {needsQueuePoll ? (
             <p className="hint">
-              Auto-refreshing every 8s while runs are active or stale (heals
-              orphans).
+              Auto-refreshing every 8s while jobs are queued, running, or stale
+              (heals orphans).
             </p>
           ) : null}
           <dl className="settings-dl">

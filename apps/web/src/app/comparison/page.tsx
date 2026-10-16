@@ -22,6 +22,7 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { runIsActive, statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -126,8 +127,7 @@ export default async function ComparisonListPage({
     ? allEvaluations.filter((e) => !e.noise)
     : allEvaluations;
   const hidden = allEvaluations.length - evaluations.length;
-  const hasPendingEval = evaluations.some((e) => e.pending);
-  const hasActive = hasActiveRuns || hasPendingEval;
+  const hasActive = hasActiveRuns || hasPendingEvaluations();
 
   return (
     <div>

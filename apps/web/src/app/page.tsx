@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { listSkills } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { skillsDirs } from "@/lib/paths";
-import { isPilotFocusParam } from "@/lib/pilotFocusHref";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { NewRunForm } from "./NewRunForm";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,17 @@ export default async function NewRunPage({
           <PilotFocusToggle pathname="/" pilotFocus={pilotFocus} />
         </div>
       </header>
+
+      <div className="panel callout-info">
+        <strong>Live official pilot</strong>
+        <p>
+          Confirm{" "}
+          <Link href={withPilotFocus("/settings", pilotFocus)}>Settings</Link>{" "}
+          is <strong>Ready</strong> (preflight green, no smoke flags) before
+          official enqueue. Ready ≠ Comparison PASS / Benefit USE — see{" "}
+          <code>docs/PILOT-CHECKLIST.md</code>.
+        </p>
+      </div>
 
       {skills.length === 0 ? (
         <div className="panel">

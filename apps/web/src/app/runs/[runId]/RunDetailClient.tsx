@@ -162,6 +162,11 @@ export function RunDetailClient({
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [refreshBusy, setRefreshBusy] = useState(false);
+  const [retryPreflight, setRetryPreflight] = useState<{
+    ok: boolean;
+    pilotReady?: boolean;
+    pilotBlockers?: string[];
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -232,14 +237,73 @@ export function RunDetailClient({
     !cancelRequested &&
     !pollError;
   const quotaBlocked = data.status?.errorCode === "insufficient_quota";
+  const retryTerminal =
+    status === "failed" ||
+    status === "cancelled" ||
+    status === "budget_stop";
+  const officialRetry = result?.mode === "official";
+  // Fail-closed until preflight loads (same bar as New run / API 503).
+  const preflightBlocksRetry =
+    retryPreflight == null || retryPreflight.ok !== true;
+  const readyBlocksOfficialRetry =
+    officialRetry &&
+    (retryPreflight == null || retryPreflight.pilotReady === false);
   // Match API: budget_stop is retryable even before result.json (job fallback).
+  // Official also needs Settings Ready; all modes need preflight green (503).
   const canRetry =
-    (status === "failed" ||
-      status === "cancelled" ||
-      status === "budget_stop") &&
+    retryTerminal &&
     !quotaBlocked &&
     !retrying &&
-    !budgetStopping;
+    !budgetStopping &&
+    !preflightBlocksRetry &&
+    !readyBlocksOfficialRetry;
+
+  const retryBlockedReason = quotaBlocked
+    ? "Retry blocked: no OpenAI credits. Add billing credits first."
+    : retryPreflight == null
+      ? "Checking preflight before retry…"
+      : preflightBlocksRetry
+        ? "Retry blocked — preflight not green (API key, Docker, or worker). Open Settings, then retry."
+        : readyBlocksOfficialRetry
+          ? `Official retry blocked — Settings not Ready: ${(
+              retryPreflight.pilotBlockers ?? []
+            ).join("; ") || "see Settings"}.`
+          : null;
+
+  useEffect(() => {
+    if (!retryTerminal || budgetStopping) {
+      setRetryPreflight(null);
+      return;
+    }
+    let cancelled = false;
+    async function loadPreflight() {
+      try {
+        const res = await fetch("/api/preflight", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const body = (await res.json()) as {
+          ok?: boolean;
+          pilotReady?: boolean;
+          pilotBlockers?: string[];
+        };
+        if (cancelled) return;
+        setRetryPreflight({
+          ok: body.ok === true,
+          pilotReady: body.pilotReady,
+          pilotBlockers: Array.isArray(body.pilotBlockers)
+            ? body.pilotBlockers.filter((b): b is string => typeof b === "string")
+            : [],
+        });
+      } catch {
+        /* keep last snapshot */
+      }
+    }
+    void loadPreflight();
+    const id = window.setInterval(() => void loadPreflight(), 8000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [retryTerminal, budgetStopping]);
 
   async function onRetry() {
     if (!canRetry) return;
@@ -862,11 +926,7 @@ export function RunDetailClient({
               canRetry={canRetry}
               retrying={retrying}
               retryError={retryError}
-              blockedReason={
-                quotaBlocked
-                  ? "Retry blocked: no OpenAI credits. Add billing credits first."
-                  : null
-              }
+              blockedReason={retryBlockedReason}
               onRetry={() => void onRetry()}
             />
           ) : null}
@@ -880,6 +940,7 @@ export function RunDetailClient({
             canRetry={canRetry}
             retrying={retrying}
             retryError={retryError}
+            blockedReason={retryBlockedReason}
             onRetry={() => void onRetry()}
           />
         </div>
@@ -914,11 +975,7 @@ export function RunDetailClient({
             canRetry={canRetry}
             retrying={retrying}
             retryError={retryError}
-            blockedReason={
-              quotaBlocked
-                ? "Retry blocked: no OpenAI credits. Add billing credits first."
-                : null
-            }
+            blockedReason={retryBlockedReason}
             onRetry={() => void onRetry()}
           />
         </div>
@@ -929,6 +986,7 @@ export function RunDetailClient({
             canRetry={canRetry}
             retrying={retrying}
             retryError={retryError}
+            blockedReason={retryBlockedReason}
             onRetry={() => void onRetry()}
           />
         </div>
