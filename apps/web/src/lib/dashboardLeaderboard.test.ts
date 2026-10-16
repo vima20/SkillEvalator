@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { includeInDashboardLeaderboard } from "./dashboardLeaderboard.js";
+import {
+  includeInDashboardLeaderboard,
+  includeInDashboardRanking,
+} from "./dashboardLeaderboard.js";
 
 describe("includeInDashboardLeaderboard", () => {
   it("keeps tip candidate and unpaired candidate", () => {
@@ -152,5 +155,13 @@ describe("includeInDashboardLeaderboard", () => {
         pilotFocus: false,
       }),
     ).toBe(true);
+  });
+});
+
+describe("includeInDashboardRanking", () => {
+  it("excludes pair-blocked tips from #1 / best / avg", () => {
+    expect(includeInDashboardRanking({ pairBlocked: true })).toBe(false);
+    expect(includeInDashboardRanking({ pairBlocked: false })).toBe(true);
+    expect(includeInDashboardRanking({})).toBe(true);
   });
 });

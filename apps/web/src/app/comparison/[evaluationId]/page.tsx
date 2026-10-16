@@ -9,6 +9,10 @@ import {
   formatCaptureEnvSnapshot,
   formatCaptureGradePolicy,
 } from "@/lib/captureEnvEvidence";
+import {
+  benefitListPairLockedLabel,
+  benefitPairEvidenceFromPacked,
+} from "@/lib/benefitListHints";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
@@ -131,19 +135,22 @@ export default async function ComparisonDetailPage({
   }
 
   const capture = comparison.capture;
-  const baselineFakeProduce = baseline.capture?.env?.fakeProduce === true;
-  const candidateFakeProduce = candidate.capture?.env?.fakeProduce === true;
-  const baselineProduceAttested =
-    baseline.capture?.env?.produceAttested === true;
-  const candidateProduceAttested =
-    candidate.capture?.env?.produceAttested === true;
-  const downloadGate = officialComparisonExportGate(comparison, {
-    metaSmoke: meta.smoke === true,
-    baselineFakeProduce,
-    candidateFakeProduce,
-    baselineProduceAttested,
-    candidateProduceAttested,
-  });
+  const { pairEvidence, pairChip, pairBlocked } =
+    benefitPairEvidenceFromPacked({
+      tipBaselineRunId: baselineRunId,
+      tipCandidateRunId: candidateRunId,
+      metaSmoke: meta.smoke === true,
+      baseline,
+      candidate,
+    });
+  const baselineFakeProduce = pairEvidence.baselineFakeProduce;
+  const candidateFakeProduce = pairEvidence.candidateFakeProduce;
+  const baselineProduceAttested = pairEvidence.baselineProduceAttested;
+  const candidateProduceAttested = pairEvidence.candidateProduceAttested;
+  const downloadGate = officialComparisonExportGate(
+    comparison,
+    pairEvidence,
+  );
   const showOfficialDownloads = downloadGate.ok;
   return (
     <div>
@@ -189,13 +196,20 @@ export default async function ComparisonDetailPage({
               Benefit Report
             </Link>
           ) : (
-            <span
+            <Link
               className="btn btn-ghost"
-              style={{ opacity: 0.55, pointerEvents: "none" }}
-              title={downloadGate.error}
+              href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
+              title={
+                downloadGate.error ||
+                (pairBlocked
+                  ? "Pair evidence blocked (sibling smoke / unattested) — not adoption"
+                  : "Benefit handoff locked until official Comparison PASS/FAIL")
+              }
             >
-              Benefit Report
-            </span>
+              {pairBlocked || pairChip
+                ? benefitListPairLockedLabel(pairChip)
+                : "Benefit locked"}
+            </Link>
           )}
           {showOfficialDownloads ? (
             <>

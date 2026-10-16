@@ -8,7 +8,10 @@ import {
   benefitPairEvidenceFromPacked,
   type BenefitListPairChip,
 } from "@/lib/benefitListHints";
-import { includeInDashboardLeaderboard } from "@/lib/dashboardLeaderboard";
+import {
+  includeInDashboardLeaderboard,
+  includeInDashboardRanking,
+} from "@/lib/dashboardLeaderboard";
 import {
   loadEvaluationComparison,
   resolveTipBaselineRunId,
@@ -241,15 +244,22 @@ export default async function DashboardPage({
         <div className="dashboard-groups">
           {groupList.map(([key, groupRows]) => {
             const head = groupRows[0]!;
+            // Handoff-eligible tips first; pair-blocked stay visible below.
             const sorted = [...groupRows].sort((a, b) => {
+              if (a.pairBlocked !== b.pairBlocked) {
+                return a.pairBlocked ? 1 : -1;
+              }
               const as = a.score ?? -1;
               const bs = b.score ?? -1;
               if (bs !== as) return bs - as;
               return a.runId.localeCompare(b.runId);
             });
+            const rankingRows = sorted.filter((r) =>
+              includeInDashboardRanking(r),
+            );
 
             const byImpl = new Map<string, Row[]>();
-            for (const r of sorted) {
+            for (const r of rankingRows) {
               const k = implKey(r);
               const list = byImpl.get(k) ?? [];
               list.push(r);
@@ -275,18 +285,25 @@ export default async function DashboardPage({
 
             const leader = implSummaries[0];
             const multiImpl = implSummaries.length > 1;
-            const groupScored = sorted.filter((r) => r.score !== null);
+            const groupScored = rankingRows.filter((r) => r.score !== null);
             const groupAvg = mean(
               groupScored.map((r) => r.score as number),
             );
+            const allPairBlocked =
+              rankingRows.length === 0 &&
+              sorted.some((r) => r.pairBlocked);
+            const implCount = allPairBlocked
+              ? new Set(sorted.map((r) => implKey(r))).size
+              : implSummaries.length;
 
             return (
               <section key={key} className="panel report-section">
                 <header className="group-header">
                   <div>
                     <p className="eyebrow">
-                      {head.modelId} · {implSummaries.length} implementation
-                      {implSummaries.length === 1 ? "" : "s"}
+                      {head.modelId} · {implCount} implementation
+                      {implCount === 1 ? "" : "s"}
+                      {allPairBlocked ? " · not handoff" : ""}
                     </p>
                     <h2>
                       Task set <code>{head.taskSetId}</code>
@@ -302,10 +319,16 @@ export default async function DashboardPage({
                   </div>
                 </header>
 
-                {multiImpl ? (
+                {allPairBlocked ? (
+                  <p className="hint impl-single-hint">
+                    No handoff-eligible tips in this group — pair-blocked rows
+                    stay in the table for diagnostics (not #1 / avg).
+                  </p>
+                ) : multiImpl ? (
                   <div className="impl-compare">
                     <p className="impl-compare-label">
                       Same task set — candidate skill version leaderboard
+                      (pair-blocked tips excluded from #1)
                     </p>
                     <ul className="impl-compare-list">
                       {implSummaries.map((impl, i) => {

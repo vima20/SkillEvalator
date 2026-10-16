@@ -29,3 +29,14 @@ export function includeInDashboardLeaderboard(opts: {
   }
   return true;
 }
+
+/**
+ * Whether a board row crowns #1 / best / avg.
+ * Pair-blocked tips stay in the table for diagnostics but must not win
+ * the skill-version leaderboard (handoff bar matches Benefit).
+ */
+export function includeInDashboardRanking(opts: {
+  pairBlocked?: boolean;
+}): boolean {
+  return opts.pairBlocked !== true;
+}

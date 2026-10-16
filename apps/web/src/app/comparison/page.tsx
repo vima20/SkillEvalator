@@ -5,6 +5,10 @@ import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
+  benefitListPairLockedLabel,
+  benefitPairEvidenceFromPacked,
+} from "@/lib/benefitListHints";
+import {
   canShowOfficialComparisonDownloads,
   officialComparisonExportGate,
 } from "@/lib/comparisonExport";
@@ -60,30 +64,32 @@ export default async function ComparisonListPage({
       resolveTipBaselineRunId(packed) ?? e.baselineRunId;
     // Chip/label mode from Comparison object (same source as detail), not stale meta.
     const displayMode = c?.mode ?? e.mode;
-    const baselineFakeProduce =
-      packed.baseline?.capture?.env?.fakeProduce === true;
-    const candidateFakeProduce =
-      packed.candidate?.capture?.env?.fakeProduce === true;
-    const baselineProduceAttested =
-      packed.baseline?.capture?.env?.produceAttested === true;
-    const candidateProduceAttested =
-      packed.candidate?.capture?.env?.produceAttested === true;
+    const { pairEvidence, pairChip, pairBlocked } =
+      benefitPairEvidenceFromPacked({
+        tipBaselineRunId,
+        tipCandidateRunId,
+        metaSmoke: e.smoke === true,
+        baseline: packed.baseline,
+        candidate: packed.candidate,
+      });
     const baselineStatus =
       syncStatusFromResult(root, tipBaselineRunId)?.status ??
       packed.baseline?.status;
     const candidateStatus =
       syncStatusFromResult(root, tipCandidateRunId)?.status ??
       packed.candidate?.status;
-    const evidence = {
-      metaSmoke: e.smoke === true,
-      baselineFakeProduce,
-      candidateFakeProduce,
-      baselineProduceAttested,
-      candidateProduceAttested,
-    };
     const downloadGate = c
-      ? officialComparisonExportGate(c, evidence)
+      ? officialComparisonExportGate(c, pairEvidence)
       : null;
+    const downloadsOk = c
+      ? canShowOfficialComparisonDownloads({
+          comparison: {
+            verdict: c.verdict,
+            mode: displayMode,
+          },
+          ...pairEvidence,
+        })
+      : false;
     return {
       ...e,
       pending,
@@ -93,20 +99,23 @@ export default async function ComparisonListPage({
       baselineStatus,
       candidateStatus,
       candidateRunId: tipCandidateRunId,
-      baselineFakeProduce,
-      candidateFakeProduce,
-      baselineProduceAttested,
-      candidateProduceAttested,
+      baselineFakeProduce: pairEvidence.baselineFakeProduce,
+      candidateFakeProduce: pairEvidence.candidateFakeProduce,
+      baselineProduceAttested: pairEvidence.baselineProduceAttested,
+      candidateProduceAttested: pairEvidence.candidateProduceAttested,
+      pairChip,
+      pairBlocked,
+      downloadsOk,
       benefitLockedReason:
         downloadGate && !downloadGate.ok ? downloadGate.error : null,
       noise: isPilotNoiseEvaluation({
         smoke: e.smoke,
         displayMode,
         verdict: c?.verdict ?? null,
-        baselineFakeProduce,
-        candidateFakeProduce,
-        baselineProduceAttested,
-        candidateProduceAttested,
+        baselineFakeProduce: pairEvidence.baselineFakeProduce,
+        candidateFakeProduce: pairEvidence.candidateFakeProduce,
+        baselineProduceAttested: pairEvidence.baselineProduceAttested,
+        candidateProduceAttested: pairEvidence.candidateProduceAttested,
         baselineHasResult: Boolean(packed.baseline),
         candidateHasResult: Boolean(packed.candidate),
       }),
@@ -211,18 +220,8 @@ export default async function ComparisonListPage({
                       >
                         {e.evaluationId}
                       </Link>
-                      {e.baselineFakeProduce !== e.candidateFakeProduce ? (
-                        <div className="cell-meta">mixed</div>
-                      ) : e.smoke ||
-                        e.baselineFakeProduce ||
-                        e.candidateFakeProduce ? (
-                        <div className="cell-meta">smoke</div>
-                      ) : !e.pending &&
-                        ((e.baselineStatus != null &&
-                          e.baselineProduceAttested !== true) ||
-                          (e.candidateStatus != null &&
-                            e.candidateProduceAttested !== true)) ? (
-                        <div className="cell-meta">not attested</div>
+                      {e.pairChip ? (
+                        <div className="cell-meta">{e.pairChip}</div>
                       ) : null}
                     </td>
                     <td>
@@ -277,26 +276,14 @@ export default async function ComparisonListPage({
                     </td>
                     <td>{formatCreated(e.createdAt)}</td>
                     <td>
-                      {e.pending ||
-                      !e.verdict ||
-                      !canShowOfficialComparisonDownloads({
-                        comparison: {
-                          verdict: e.verdict,
-                          mode: e.displayMode,
-                        },
-                        metaSmoke: e.smoke === true,
-                        baselineFakeProduce: e.baselineFakeProduce,
-                        candidateFakeProduce: e.candidateFakeProduce,
-                        baselineProduceAttested: e.baselineProduceAttested,
-                        candidateProduceAttested: e.candidateProduceAttested,
-                      }) ? (
+                      {e.pending || !e.candidateRunId ? (
                         <span
                           className="hint"
                           title={e.benefitLockedReason ?? undefined}
                         >
                           —
                         </span>
-                      ) : (
+                      ) : e.downloadsOk ? (
                         <Link
                           className="btn btn-ghost btn-compact"
                           href={withPilotFocus(
@@ -305,6 +292,24 @@ export default async function ComparisonListPage({
                           )}
                         >
                           Candidate
+                        </Link>
+                      ) : (
+                        <Link
+                          className="btn btn-ghost btn-compact"
+                          href={withPilotFocus(
+                            `/benefit/${e.candidateRunId}`,
+                            pilotFocus,
+                          )}
+                          title={
+                            e.benefitLockedReason ??
+                            (e.pairBlocked
+                              ? "Pair evidence blocked (sibling smoke / unattested) — not adoption"
+                              : "Benefit handoff locked until official Comparison PASS/FAIL")
+                          }
+                        >
+                          {e.pairBlocked || e.pairChip
+                            ? benefitListPairLockedLabel(e.pairChip)
+                            : "locked · handoff"}
                         </Link>
                       )}
                     </td>
