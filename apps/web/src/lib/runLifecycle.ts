@@ -38,6 +38,24 @@ export function cancelGate(
   return { allow: true };
 }
 
+/**
+ * Run detail Cancel button — same allow as POST /cancel (cancelGate),
+ * including orphan budget_stop wind-down after poll timeout.
+ */
+export function runDetailCanCancel(opts: {
+  status?: string;
+  hasResult: boolean;
+  cancelling?: boolean;
+  cancelRequested?: boolean;
+  pollError?: boolean;
+}): boolean {
+  if (opts.cancelling || opts.cancelRequested || opts.pollError) {
+    return false;
+  }
+  const gate = cancelGate(opts.status, opts.hasResult);
+  return gate.allow && !gate.alreadyCancelled;
+}
+
 export type RetryGate =
   | { allow: true }
   | { allow: false; error: string };

@@ -6,6 +6,7 @@ import {
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
+  runDetailCanCancel,
 } from "./runLifecycle.js";
 
 describe("cancelGate", () => {
@@ -35,6 +36,27 @@ describe("isRetryBudgetStopping", () => {
     expect(isRetryBudgetStopping("budget_stop", true)).toBe(false);
     expect(isRetryBudgetStopping("failed", false)).toBe(false);
     expect(RETRY_STILL_FINISHING_ERROR).toMatch(/still finishing/);
+  });
+});
+
+describe("runDetailCanCancel", () => {
+  it("allows orphan budget_stop wind-down even when not polling", () => {
+    expect(
+      runDetailCanCancel({ status: "budget_stop", hasResult: false }),
+    ).toBe(true);
+  });
+
+  it("blocks settled budget_stop and cancel_requested UI", () => {
+    expect(
+      runDetailCanCancel({ status: "budget_stop", hasResult: true }),
+    ).toBe(false);
+    expect(
+      runDetailCanCancel({
+        status: "budget_stop",
+        hasResult: false,
+        cancelRequested: true,
+      }),
+    ).toBe(false);
   });
 });
 

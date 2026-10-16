@@ -15,7 +15,11 @@ import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
-import { RETRY_STILL_FINISHING_ERROR } from "@/lib/runLifecycle";
+import {
+  isRetryBudgetStopping,
+  RETRY_STILL_FINISHING_ERROR,
+  runDetailCanCancel,
+} from "@/lib/runLifecycle";
 import { statusBadgeClass } from "@/lib/status";
 
 type PerTask = {
@@ -231,13 +235,19 @@ export function RunDetailClient({
   const status = data.status?.status ?? "unknown";
   const result = data.result;
   const cancelRequested = status === "cancel_requested";
-  const budgetStopping = status === "budget_stop" && !result && polling;
-  // Wind-down budget_stop (no result yet) is cancellable so Retry is not stuck.
-  const canCancel =
-    (status === "queued" || status === "running" || budgetStopping) &&
-    !cancelling &&
-    !cancelRequested &&
-    !pollError;
+  /** Orphan/settling cost-cap — same as POST retry admission + cancelGate. */
+  const budgetStopWindDown = isRetryBudgetStopping(status, Boolean(result));
+  /** Live wind-down while still polling for result.json. */
+  const budgetStoppingLive = budgetStopWindDown && polling;
+  // Cancel matches POST /cancel — including wind-down after 90s poll stop.
+  const canCancel = runDetailCanCancel({
+    status,
+    hasResult: Boolean(result),
+    cancelling,
+    cancelRequested,
+    // Wind-down Cancel must stay available even if live poll failed.
+    pollError: budgetStopWindDown ? false : Boolean(pollError),
+  });
   const retryTerminal =
     status === "failed" ||
     status === "cancelled" ||
@@ -246,9 +256,9 @@ export function RunDetailClient({
   const retryAdmission = data.retryAdmission;
   const canRetry =
     !retrying &&
-    !budgetStopping &&
+    !budgetStopWindDown &&
     retryAdmission?.canRetry === true;
-  const retryBlockedReason = budgetStopping
+  const retryBlockedReason = budgetStopWindDown
     ? RETRY_STILL_FINISHING_ERROR
     : retryAdmission == null && retryTerminal
       ? "Checking retry admission…"
@@ -256,12 +266,12 @@ export function RunDetailClient({
 
   // Terminal: refresh GET so preflight / COST_CAP / Ready update together.
   useEffect(() => {
-    if (!retryTerminal || budgetStopping || polling) return;
+    if (!retryTerminal || budgetStopWindDown || polling) return;
     const id = window.setInterval(() => {
       void refresh();
     }, 8000);
     return () => window.clearInterval(id);
-  }, [retryTerminal, budgetStopping, polling, refresh]);
+  }, [retryTerminal, budgetStopWindDown, polling, refresh]);
 
   async function onRetry() {
     if (!canRetry) return;
@@ -572,53 +582,57 @@ export function RunDetailClient({
         ) : null}
       </div>
 
-      {(status === "running" ||
+      {((status === "running" ||
         status === "queued" ||
-        cancelRequested ||
-        budgetStopping) &&
-        !pollError && (
+        cancelRequested) &&
+        !pollError) ||
+      budgetStopWindDown ? (
         <div className="panel progress-panel">
           <div className="progress-head">
             <strong>
               {cancelRequested
                 ? "Cancel requested — stopping worker"
-                : budgetStopping
-                  ? "Cost cap reached — finishing"
+                : budgetStopWindDown
+                  ? budgetStoppingLive
+                    ? "Cost cap reached — finishing"
+                    : "Cost cap wind-down — no result yet"
                   : isQueued
                     ? "Queued — waiting for worker"
                     : "Running"}
               {!isQueued &&
               !cancelRequested &&
-              !budgetStopping &&
+              !budgetStopWindDown &&
               repeat &&
               repeats
                 ? ` · repeat ${repeat}/${repeats}`
                 : ""}
             </strong>
             <span>
-              {isQueued || cancelRequested || budgetStopping
+              {isQueued || cancelRequested || budgetStopWindDown
                 ? "…"
                 : `${progress}%`}
             </span>
           </div>
           <div
-            className={`progress-track${isQueued || cancelRequested || budgetStopping ? " is-indeterminate" : ""}`}
+            className={`progress-track${isQueued || cancelRequested || budgetStopWindDown ? " is-indeterminate" : ""}`}
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={
-              isQueued || cancelRequested || budgetStopping
+              isQueued || cancelRequested || budgetStopWindDown
                 ? undefined
                 : progress
             }
             aria-busy={
-              isQueued || cancelRequested || budgetStopping || undefined
+              isQueued || cancelRequested || budgetStoppingLive || undefined
             }
             aria-label={
               cancelRequested
                 ? "Cancel requested"
-                : budgetStopping
-                  ? "Cost cap reached, finishing"
+                : budgetStopWindDown
+                  ? budgetStoppingLive
+                    ? "Cost cap reached, finishing"
+                    : "Cost cap wind-down, waiting for result or cancel"
                   : isQueued
                     ? "Queued, waiting for worker"
                     : "Run progress"
@@ -627,7 +641,7 @@ export function RunDetailClient({
             <div
               className="progress-fill"
               style={
-                isQueued || cancelRequested || budgetStopping
+                isQueued || cancelRequested || budgetStopWindDown
                   ? undefined
                   : { width: `${progress}%` }
               }
@@ -637,9 +651,11 @@ export function RunDetailClient({
             <p className="hint">
               {cancelling || cancelRequested
                 ? "Cancel requested — waiting for the worker to stop."
-                : budgetStopping
+                : budgetStoppingLive
                   ? "Cost hard-stop hit — writing final result (no further produce/grade)."
-                  : "Refresh is automatic. You can leave this page open."}
+                  : budgetStopWindDown
+                    ? "Worker may be gone — Cancel to settle, or Refresh after heal. Retry stays blocked until result.json exists."
+                    : "Refresh is automatic. You can leave this page open."}
             </p>
             <button
               type="button"
@@ -656,7 +672,7 @@ export function RunDetailClient({
             </p>
           ) : null}
         </div>
-      )}
+      ) : null}
 
       {result ? (
         <>
@@ -952,18 +968,7 @@ export function RunDetailClient({
             onRetry={() => void onRetry()}
           />
         </div>
-      ) : status === "budget_stop" && !result && !polling ? (
-        <div className="panel">
-          <p className="empty">Run stopped by cost budget before completion.</p>
-          <RetryActions
-            canRetry={canRetry}
-            retrying={retrying}
-            retryError={retryError}
-            blockedReason={retryBlockedReason}
-            onRetry={() => void onRetry()}
-          />
-        </div>
-      ) : (
+      ) : budgetStopWindDown ? null : (
         <div className="panel">
           <p className="empty">
             Waiting for worker to pick up this job…
