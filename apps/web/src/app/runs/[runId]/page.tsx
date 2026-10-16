@@ -8,6 +8,7 @@ import {
 import { EmptyState } from "@/components/EmptyState";
 import {
   loadEvaluationComparison,
+  resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
@@ -90,9 +91,29 @@ export default async function RunDetailPage({
     );
   }
 
-  const tipCandidateRunId = result?.evaluationId
-    ? resolveTipCandidateRunId(loadEvaluationComparison(result.evaluationId))
+  const packed = result?.evaluationId
+    ? loadEvaluationComparison(result.evaluationId)
     : null;
+  const tipCandidateRunId = packed
+    ? resolveTipCandidateRunId(packed)
+    : null;
+  const tipBaselineRunId = packed ? resolveTipBaselineRunId(packed) : null;
+  const pairHarness =
+    packed?.meta && tipBaselineRunId && tipCandidateRunId
+      ? {
+          metaSmoke: packed.meta.smoke === true,
+          baselineFakeProduce:
+            packed.baseline?.capture?.env?.fakeProduce === true,
+          candidateFakeProduce:
+            packed.candidate?.capture?.env?.fakeProduce === true,
+          baselineProduceAttested:
+            packed.baseline?.capture?.env?.produceAttested === true,
+          candidateProduceAttested:
+            packed.candidate?.capture?.env?.produceAttested === true,
+          baselineRunId: tipBaselineRunId,
+          candidateRunId: tipCandidateRunId,
+        }
+      : null;
 
   return (
     <RunDetailClient
@@ -105,6 +126,7 @@ export default async function RunDetailPage({
         csvExportAllowed: runCsvExportAllowed(result),
         csvExportBlockReason: runCsvExportBlockReason(result),
         tipCandidateRunId,
+        pairHarness,
       }}
     />
   );

@@ -1,15 +1,24 @@
 import Link from "next/link";
+import { listRuns, syncStatusFromResult } from "@skillevalator/core";
+import { ClearSmokeNoise } from "@/components/ClearSmokeNoise";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
-import { canShowOfficialComparisonDownloads } from "@/lib/comparisonExport";
+import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
+import {
+  canShowOfficialComparisonDownloads,
+  officialComparisonExportGate,
+} from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
+import { healOrphanStatuses } from "@/lib/healOrphans";
+import { resultsDir } from "@/lib/paths";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   listEvaluations,
   loadEvaluationComparison,
+  resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
-import { statusBadgeClass } from "@/lib/status";
+import { runIsActive, statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +43,12 @@ export default async function ComparisonListPage({
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
 
+  healOrphanStatuses();
+  const root = resultsDir();
+  const hasActiveRuns = listRuns(root).some((r) =>
+    runIsActive(r.status, !!r.result),
+  );
+
   const allEvaluations = listEvaluations().map((e) => {
     const packed = loadEvaluationComparison(e.evaluationId);
     const c = packed.comparison;
@@ -41,6 +56,8 @@ export default async function ComparisonListPage({
     // Prefer Comparison tip legs (then healed meta) so Benefit CTA matches PASS/FAIL.
     const tipCandidateRunId =
       resolveTipCandidateRunId(packed) ?? e.candidateRunId;
+    const tipBaselineRunId =
+      resolveTipBaselineRunId(packed) ?? e.baselineRunId;
     // Chip/label mode from Comparison object (same source as detail), not stale meta.
     const displayMode = c?.mode ?? e.mode;
     const baselineFakeProduce =
@@ -51,19 +68,37 @@ export default async function ComparisonListPage({
       packed.baseline?.capture?.env?.produceAttested === true;
     const candidateProduceAttested =
       packed.candidate?.capture?.env?.produceAttested === true;
+    const baselineStatus =
+      syncStatusFromResult(root, tipBaselineRunId)?.status ??
+      packed.baseline?.status;
+    const candidateStatus =
+      syncStatusFromResult(root, tipCandidateRunId)?.status ??
+      packed.candidate?.status;
+    const evidence = {
+      metaSmoke: e.smoke === true,
+      baselineFakeProduce,
+      candidateFakeProduce,
+      baselineProduceAttested,
+      candidateProduceAttested,
+    };
+    const downloadGate = c
+      ? officialComparisonExportGate(c, evidence)
+      : null;
     return {
       ...e,
       pending,
       verdict: c?.verdict ?? null,
       lift: c?.lift ?? null,
       displayMode,
-      baselineStatus: packed.baseline?.status,
-      candidateStatus: packed.candidate?.status,
+      baselineStatus,
+      candidateStatus,
       candidateRunId: tipCandidateRunId,
       baselineFakeProduce,
       candidateFakeProduce,
       baselineProduceAttested,
       candidateProduceAttested,
+      benefitLockedReason:
+        downloadGate && !downloadGate.ok ? downloadGate.error : null,
       noise: isPilotNoiseEvaluation({
         smoke: e.smoke,
         displayMode,
@@ -82,6 +117,8 @@ export default async function ComparisonListPage({
     ? allEvaluations.filter((e) => !e.noise)
     : allEvaluations;
   const hidden = allEvaluations.length - evaluations.length;
+  const hasPendingEval = evaluations.some((e) => e.pending);
+  const hasActive = hasActiveRuns || hasPendingEval;
 
   return (
     <div>
@@ -106,6 +143,8 @@ export default async function ComparisonListPage({
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/comparison" pilotFocus={pilotFocus} />
+          <RunsAutoRefresh hasActive={hasActive} />
+          {pilotFocus ? null : <ClearSmokeNoise />}
           <Link
             className="btn btn-primary"
             href={withPilotFocus("/", pilotFocus)}
@@ -251,7 +290,12 @@ export default async function ComparisonListPage({
                         baselineProduceAttested: e.baselineProduceAttested,
                         candidateProduceAttested: e.candidateProduceAttested,
                       }) ? (
-                        "—"
+                        <span
+                          className="hint"
+                          title={e.benefitLockedReason ?? undefined}
+                        >
+                          —
+                        </span>
                       ) : (
                         <Link
                           className="btn btn-ghost btn-compact"

@@ -49,7 +49,7 @@ export function collectPilotBlockers(opts: {
     const shown = stale.slice(0, 3).join(", ");
     const more = stale.length > 3 ? ` (+${stale.length - 3} more)` : "";
     pilotBlockers.push(
-      `Stale queue: orphan .running.json for ${shown}${more} — Refresh Settings or open Runs to heal`,
+      `Stale queue: orphan .running.json for ${shown}${more} — Refresh Settings, open Runs, or Comparison (heal on load)`,
     );
   }
   return pilotBlockers;

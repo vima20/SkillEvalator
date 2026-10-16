@@ -52,4 +52,37 @@ describe("benefitCtaHint", () => {
       }),
     ).toEqual({ kind: "superseded", tipRunId: "run_tip" });
   });
+
+  it("demotes tip when sibling tip fails pair evidence", () => {
+    expect(
+      benefitCtaHint({
+        runId: "run_tip",
+        role: "candidate",
+        produceAttested: true,
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_tip",
+        pairEvidence: {
+          baselineFakeProduce: true,
+          candidateFakeProduce: false,
+          candidateProduceAttested: true,
+        },
+      }),
+    ).toEqual({
+      kind: "pair_blocked",
+      comparisonHref: "/comparison/eval_1",
+    });
+    expect(
+      benefitCtaHint({
+        runId: "run_tip",
+        role: "candidate",
+        produceAttested: true,
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_tip",
+        pairEvidence: {
+          baselineProduceAttested: true,
+          candidateProduceAttested: true,
+        },
+      }),
+    ).toEqual({ kind: "tip" });
+  });
 });

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
   formatCaptureEnvEvidence,
@@ -81,6 +82,16 @@ type Payload = {
   csvExportBlockReason?: string | null;
   /** Healed Comparison tip (comparison ?? meta) for Benefit CTA demotion. */
   tipCandidateRunId?: string | null;
+  /** Sibling tip evidence for harness callouts + Benefit CTA demotion. */
+  pairHarness?: {
+    metaSmoke: boolean;
+    baselineFakeProduce: boolean;
+    candidateFakeProduce: boolean;
+    baselineProduceAttested: boolean;
+    candidateProduceAttested: boolean;
+    baselineRunId: string;
+    candidateRunId: string;
+  } | null;
 };
 
 const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
@@ -375,6 +386,7 @@ export function RunDetailClient({
       {result && !polling ? (
         <p className="hint">
           {(() => {
+            const pair = data.pairHarness;
             const hint = benefitCtaHint({
               runId,
               role: result.role,
@@ -382,6 +394,17 @@ export function RunDetailClient({
               fakeProduce: result.capture?.env?.fakeProduce === true,
               produceAttested: result.capture?.env?.produceAttested === true,
               tipCandidateRunId: data.tipCandidateRunId,
+              ...(pair
+                ? {
+                    pairEvidence: {
+                      metaSmoke: pair.metaSmoke,
+                      baselineFakeProduce: pair.baselineFakeProduce,
+                      candidateFakeProduce: pair.candidateFakeProduce,
+                      baselineProduceAttested: pair.baselineProduceAttested,
+                      candidateProduceAttested: pair.candidateProduceAttested,
+                    },
+                  }
+                : {}),
             });
             if (hint.kind === "baseline") {
               return hint.comparisonHref ? (
@@ -431,6 +454,18 @@ export function RunDetailClient({
                 </>
               );
             }
+            if (hint.kind === "pair_blocked") {
+              return (
+                <>
+                  Pair evidence blocked (sibling smoke / unattested).{" "}
+                  <Link
+                    href={withPilotFocus(hint.comparisonHref, pilotFocus)}
+                  >
+                    Open Comparison →
+                  </Link>
+                </>
+              );
+            }
             return (
               <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
                 Open Benefit Report →
@@ -438,6 +473,19 @@ export function RunDetailClient({
             );
           })()}
         </p>
+      ) : null}
+
+      {data.pairHarness ? (
+        <ComparisonHarnessCallouts
+          metaSmoke={data.pairHarness.metaSmoke}
+          baselineFakeProduce={data.pairHarness.baselineFakeProduce}
+          candidateFakeProduce={data.pairHarness.candidateFakeProduce}
+          baselineProduceAttested={data.pairHarness.baselineProduceAttested}
+          candidateProduceAttested={data.pairHarness.candidateProduceAttested}
+          baselineRunId={data.pairHarness.baselineRunId}
+          candidateRunId={data.pairHarness.candidateRunId}
+          pilotFocus={pilotFocus}
+        />
       ) : null}
 
       {pollError ? (
