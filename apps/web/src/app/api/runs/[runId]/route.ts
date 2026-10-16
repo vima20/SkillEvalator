@@ -15,6 +15,7 @@ import {
   runCsvExportBlockReason,
 } from "@/lib/runCsvExportAllowed";
 import { retryCostAdmissionForRun } from "@/lib/retryCostAdmission";
+import { runDetailPairHarness } from "@/lib/runDetailPairHarness";
 import { runPreflight } from "@/lib/runPreflight";
 
 export const dynamic = "force-dynamic";
@@ -32,11 +33,13 @@ export async function GET(
     if (!status && !result) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
-    const tipCandidateRunId = result?.evaluationId
-      ? resolveTipCandidateRunId(
-          loadEvaluationComparison(result.evaluationId),
-        )
+    const packed = result?.evaluationId
+      ? loadEvaluationComparison(result.evaluationId)
       : null;
+    const tipCandidateRunId = packed
+      ? resolveTipCandidateRunId(packed)
+      : null;
+    const pairHarness = runDetailPairHarness(packed);
     const preflight = runPreflight();
     const retryCostAdmission = retryCostAdmissionForRun({
       runId,
@@ -51,6 +54,7 @@ export async function GET(
       csvExportAllowed: runCsvExportAllowed(result),
       csvExportBlockReason: runCsvExportBlockReason(result),
       tipCandidateRunId,
+      pairHarness,
       retryCostAdmission,
     });
   } catch (err) {
