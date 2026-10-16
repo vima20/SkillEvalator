@@ -29,7 +29,7 @@ Official Comparison/Benefit hylkää (tai ei nouse PASS:iin), jos luottamusketju
 
 ## Settings `pilotReady`
 
-UI-polku **Settings → Official pilot readiness = Ready** tarkoittaa: preflight OK (API-avain, Docker, worker), smoke-liput pois (`FAKE_PRODUCE`, `ALLOW_HOST_GRADE`), auth kelvollinen, ei orphan `.running.json`. Se **ei** ole vielä PASS/USE — sama blocker-lista estää official-jonotuksen New runissa, `POST /api/runs` ja retryssä (dry-run ok).
+UI-polku **Settings → Official pilot readiness = Ready** tarkoittaa: preflight OK (API-avain, Docker, worker), smoke-liput pois (`FAKE_PRODUCE`, `ALLOW_HOST_GRADE`), auth kelvollinen, ei orphan `.running.json`. Se **ei** ole vielä PASS/USE — sama blocker-lista estää **official**-jonotuksen New runissa, `POST /api/runs` ja retryssä (**dry-run ok** kun preflight on vihreä). Jos preflight epäonnistuu, API palauttaa 503 ja UI estää **kaiken** jonotuksen (myös dry-run).
 
 ## Arkisto (luovutus)
 
@@ -41,9 +41,9 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 - Settingsissä näkyvä **git SHA** (ja dirty-varoitus) arkistolabeliin
 
 **Pilot focus** (`?focus=pilot`):
-- **Runs / Benefit** — piilottaa smoke, not_attested, superseded, FAKE_PRODUCE ja dry-run -rivit (waiting/unpaired attested voivat jäädä näkyviin)
-- **Comparison** — piilottaa dry-run, `evaluation.smoke`, FAKE_PRODUCE joko tip-jalalla ja official INCONCLUSIVE (näyttää PASS/FAIL + waiting; superseded on run-tason käsite)
-- **Dashboard** — vain official tip -kandidaatit (`produceAttested`)
+- **Runs / Benefit** — piilottaa smoke, not_attested, superseded, FAKE_PRODUCE, dry-run ja **pair-blocked** -rivit (sibling tip FAKE / unattested; waiting/unpaired attested voivat jäädä näkyviin)
+- **Comparison** — piilottaa dry-run, `evaluation.smoke`, FAKE_PRODUCE / unattested tip-jalalla ja official INCONCLUSIVE (näyttää PASS/FAIL + waiting; superseded on run-tason käsite)
+- **Dashboard** — vain official tip -kandidaatit (`produceAttested`); piilottaa pair-blocked tipit; skill-version **#1** / avg ei laske pair-blocked rivejä mukaan
 
 **Clear old runs (7d+)** ei poista `mode: official` -ajoja eikä `evaluation.json`-linkitettyjä jalkoja — muuten `eval_*` katoaisi healissa.
 
