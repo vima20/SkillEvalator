@@ -204,6 +204,27 @@ describe("computeRunDetailRetryAdmission", () => {
     );
     expect(out).toEqual({ canRetry: true, blockedReason: null });
   });
+
+  it("blocks official when stale queue remains after inspect", () => {
+    const out = computeRunDetailRetryAdmission(
+      base({
+        runId: "run_c",
+        mode: "official",
+        evaluationId: "eval_1",
+        healedMeta: {
+          baselineRunId: "run_b",
+          candidateRunId: "run_c",
+        },
+        pilotBlockers: [
+          "Stale queue: orphan .running.json for run_other — Refresh Settings",
+        ],
+        webAuthKind: "required",
+        env: { OPENAI_API_KEY: "sk", FAKE_PRODUCE: "" },
+      }),
+    );
+    expect(out.canRetry).toBe(false);
+    expect(out.blockedReason).toMatch(/Stale queue/i);
+  });
 });
 
 describe("retryPairMetaAdmission", () => {

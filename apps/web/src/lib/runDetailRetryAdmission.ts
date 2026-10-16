@@ -13,7 +13,7 @@ import {
   type EvalRole,
 } from "@skillevalator/core";
 import { resolveHealedMetaLegsForCancel } from "@/lib/evaluations";
-import { isPidAlive } from "@/lib/healOrphans";
+import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { collectPilotBlockers } from "@/lib/pilotReady";
 import {
@@ -299,6 +299,11 @@ export function runDetailRetryAdmissionForRun(opts: {
   preflight?: RunPreflightResult;
   hasLiveJob?: boolean;
   staleRunningRunIds?: string[];
+  /**
+   * Mirror POST /retry: heal orphan .running.json before stale inspect.
+   * Default true; tests set false to avoid touching data/jobs.
+   */
+  healQueue?: boolean;
   env?: Record<string, string | undefined>;
   healedMeta?: { baselineRunId: string; candidateRunId: string } | null;
   snapshotFlags?: { hasSkillMd: boolean; hasPinnedVersion: boolean };
@@ -353,6 +358,11 @@ export function runDetailRetryAdmissionForRun(opts: {
     opts.snapshotFlags ??
     readRetrySnapshotFlags(resultsDir(), opts.runId);
 
+  // Same order as POST /api/runs/[runId]/retry — heal before Ready/stale inspect
+  // so run detail Retry is not stuck on orphan .running.json that Settings heal clears.
+  if (opts.healQueue !== false) {
+    healOrphanStatuses();
+  }
   const staleRunningRunIds =
     opts.staleRunningRunIds ??
     staleOrphanRunningRunIds(jobsDir(), resultsDir(), isPidAlive);
