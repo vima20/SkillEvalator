@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
+import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
   benefitListPairLockedLabel,
   benefitPairEvidenceFromPacked,
@@ -17,6 +18,7 @@ import {
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import { runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,9 @@ export default async function BenefitIndexPage({
   const pilotFocus = isPilotFocusParam(sp.focus);
 
   healOrphanStatuses();
-  const allRuns = listRuns(resultsDir())
+  const listed = listRuns(resultsDir());
+  const hasActive = listed.some((r) => runIsActive(r.status, !!r.result));
+  const allRuns = listed
     .filter((r) => r.result)
     // Recommend surface: candidate skill only (baseline is Comparison input).
     .filter((r) => r.result!.role === "candidate")
@@ -119,6 +123,7 @@ export default async function BenefitIndexPage({
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/benefit" pilotFocus={pilotFocus} />
+          <RunsAutoRefresh hasActive={hasActive} />
           <Link
             className="btn btn-primary"
             href={withPilotFocus("/", pilotFocus)}

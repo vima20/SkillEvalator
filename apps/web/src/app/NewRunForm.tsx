@@ -132,6 +132,8 @@ export function NewRunForm({
   const officialBlocked =
     Boolean(preflight?.fakeProduce) ||
     (preflight != null && preflight.pilotReady === false);
+  /** API POST /api/runs rejects every mode with 503 when preflight fails. */
+  const canQueue = preflight?.ok === true && !preflightError;
 
   useEffect(() => {
     if (officialBlocked && mode === "official") {
@@ -163,10 +165,14 @@ export function NewRunForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (preflight && !preflight.ok) {
+    if (!canQueue) {
       setError(true);
       setMsg(
-        "Preflight not green — fix API key, Docker, or worker before queueing (API also rejects).",
+        preflight == null || preflightBusy
+          ? "Preflight still checking — wait for API key, Docker, and worker."
+          : preflightError
+            ? `Preflight error — ${preflightError}`
+            : "Preflight not green — fix API key, Docker, or worker before queueing (API also rejects).",
       );
       return;
     }
@@ -266,9 +272,12 @@ export function NewRunForm({
             <p className="hint">Checking Docker, API key, and worker…</p>
           )}
           {preflight && !preflight.ok ? (
-            <p className="hint">
-              You can still queue a run, but it may stall or fail until these are
-              green.
+            <p className="hint" role="status">
+              Queue is blocked until API key, Docker, and worker are green (API
+              returns 503 otherwise).{" "}
+              <Link href={withPilotFocus("/settings", pilotFocus)}>
+                Open Settings
+              </Link>
             </p>
           ) : null}
         </div>
@@ -607,12 +616,23 @@ export function NewRunForm({
           )}
         </div>
 
-        <button className="btn btn-primary" type="submit" disabled={busy}>
+        <button
+          className="btn btn-primary"
+          type="submit"
+          disabled={busy || !canQueue}
+          title={
+            canQueue
+              ? undefined
+              : "Blocked until preflight is green (API key, Docker, worker)"
+          }
+        >
           {busy
             ? "Queueing…"
-            : withBaseline
-              ? "Start baseline↔candidate"
-              : "Start run"}
+            : !canQueue
+              ? "Preflight required"
+              : withBaseline
+                ? "Start baseline↔candidate"
+                : "Start run"}
         </button>
         {msg ? (
           <p
