@@ -19,6 +19,7 @@ import {
   staleOrphanRunningRunIds,
   tryAcquireRetryEnqueueLock,
 } from "@skillevalator/core";
+import { checkEnqueueCostCap } from "@/lib/enqueueCostGate";
 import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
 import {
   resolveHealedMetaLegsForCancel,
@@ -195,6 +196,30 @@ export async function POST(
         return NextResponse.json(
           { error: officialGate.error, errorCode: officialGate.errorCode },
           { status: officialGate.status },
+        );
+      }
+    }
+    if (
+      evalSkillId &&
+      (mode === "dry-run" || mode === "official") &&
+      typeof repeats === "number" &&
+      Number.isFinite(repeats)
+    ) {
+      const costGate = checkEnqueueCostCap({
+        evalSkillId,
+        mode,
+        repeats,
+        costCapUsd: preflight.costCapUsd,
+      });
+      if (!costGate.ok) {
+        return NextResponse.json(
+          {
+            error: costGate.error,
+            errorCode: costGate.errorCode,
+            estimatedUsd: costGate.estimatedUsd,
+            costCapUsd: costGate.costCapUsd,
+          },
+          { status: costGate.status },
         );
       }
     }

@@ -25,6 +25,20 @@ describe("officialEnqueueAllowed", () => {
     expect(out.errorCode).toBe("official_smoke_forbidden");
   });
 
+  it("rejects official when ALLOW_HOST_GRADE=1", () => {
+    const out = officialEnqueueAllowed({
+      mode: "official",
+      env: {
+        OPENAI_API_KEY: "sk-live",
+        ALLOW_HOST_GRADE: "1",
+      },
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.status).toBe(400);
+    expect(out.errorCode).toBe("official_host_grade_forbidden");
+  });
+
   it("rejects official without API key", () => {
     const out = officialEnqueueAllowed({
       mode: "official",

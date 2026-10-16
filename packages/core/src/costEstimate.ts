@@ -145,3 +145,55 @@ export function estimateRunCostUsd(opts: {
     modelId: opts.modelId,
   };
 }
+
+/**
+ * Per-leg UI / enqueue bar: one run's estimate vs COST_CAP_USD.
+ * Paired baseline↔candidate doubles total spend but each leg caps separately.
+ */
+export function perLegEstimateExceedsCap(opts: {
+  taskCount: number;
+  repeats: number;
+  modelId: string;
+  costCapUsd: number;
+}): boolean {
+  const est = estimateRunCostUsd({
+    taskCount: opts.taskCount,
+    repeats: opts.repeats,
+    modelId: opts.modelId,
+  });
+  return est.estimatedUsd > opts.costCapUsd;
+}
+
+export type EnqueueCostCapOk = { ok: true };
+
+export type EnqueueCostCapDenied = {
+  ok: false;
+  status: 400;
+  errorCode: "enqueue_cost_over_cap";
+  error: string;
+  estimatedUsd: number;
+  costCapUsd: number;
+};
+
+/** Fail-closed enqueue admission matching New run cost-over-cap UI. */
+export function enqueueCostCapGate(opts: {
+  taskCount: number;
+  repeats: number;
+  modelId: string;
+  costCapUsd: number;
+}): EnqueueCostCapOk | EnqueueCostCapDenied {
+  const est = estimateRunCostUsd({
+    taskCount: opts.taskCount,
+    repeats: opts.repeats,
+    modelId: opts.modelId,
+  });
+  if (est.estimatedUsd <= opts.costCapUsd) return { ok: true };
+  return {
+    ok: false,
+    status: 400,
+    errorCode: "enqueue_cost_over_cap",
+    estimatedUsd: est.estimatedUsd,
+    costCapUsd: opts.costCapUsd,
+    error: `per-leg estimate $${est.estimatedUsd.toFixed(4)} exceeds COST_CAP_USD $${opts.costCapUsd} — lower repeats/tasks or raise the cap (worker may budget_stop)`,
+  };
+}

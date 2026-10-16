@@ -5,7 +5,9 @@ import {
   estimateCallCostUsd,
   estimateCallCostUsdForCap,
   estimateMaxCallCostUsd,
+  enqueueCostCapGate,
   estimateRunCostUsd,
+  perLegEstimateExceedsCap,
   estimateTokensFromText,
   maxOutputTokensForRemainingBudget,
   wouldExceedCostCap,
@@ -70,6 +72,41 @@ describe("estimateRunCostUsd", () => {
     expect(estimateCallCostUsd("gpt-4.1-mini")).toBeGreaterThan(
       estimateCallCostUsd("gpt-4o-mini"),
     );
+  });
+});
+
+describe("enqueueCostCapGate / perLegEstimateExceedsCap", () => {
+  it("admits small dry-run estimates under default cap", () => {
+    expect(
+      enqueueCostCapGate({
+        taskCount: 1,
+        repeats: 1,
+        modelId: "gpt-4o-mini",
+        costCapUsd: 5,
+      }).ok,
+    ).toBe(true);
+    expect(
+      perLegEstimateExceedsCap({
+        taskCount: 1,
+        repeats: 1,
+        modelId: "gpt-4o-mini",
+        costCapUsd: 5,
+      }),
+    ).toBe(false);
+  });
+
+  it("denies when per-leg estimate exceeds cap", () => {
+    const out = enqueueCostCapGate({
+      taskCount: 20,
+      repeats: 10,
+      modelId: "gpt-4.1-mini",
+      costCapUsd: 0.01,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("enqueue_cost_over_cap");
+    expect(out.status).toBe(400);
+    expect(out.estimatedUsd).toBeGreaterThan(0.01);
   });
 });
 

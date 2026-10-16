@@ -4,9 +4,11 @@ import path from "node:path";
 import {
   findRepoRoot,
   isWorkerHeartbeatLive,
+  parseCostCapUsd,
   WORKER_HEARTBEAT_BUSY_STALE_MS,
   WORKER_HEARTBEAT_IDLE_STALE_MS,
 } from "@skillevalator/core";
+import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, repoRoot } from "@/lib/paths";
 
 export type PreflightCheck = {
@@ -72,16 +74,6 @@ export function checkDocker(): PreflightCheck {
       ok: false,
       detail: e instanceof Error ? e.message : "docker check failed",
     };
-  }
-}
-
-function isPidAlive(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
   }
 }
 
@@ -188,8 +180,9 @@ export function runPreflight(opts?: {
   const checks = { openaiApiKey, docker, worker };
   const ok = openaiApiKey.ok && docker.ok && worker.ok;
 
-  const capRaw = Number((opts?.env ?? process.env).COST_CAP_USD);
-  const costCapUsd = Number.isFinite(capRaw) && capRaw > 0 ? capRaw : 5;
+  const costCapUsd = parseCostCapUsd(
+    (opts?.env ?? process.env).COST_CAP_USD,
+  );
 
   return {
     ok,

@@ -8,3 +8,12 @@ export const MODEL_OFFICIAL = "gpt-4.1-mini";
 
 /** Default COST_CAP_USD when env / preflight has not supplied a value. */
 export const DEFAULT_COST_CAP_USD = 5;
+
+/** Parse COST_CAP_USD from env (finite + > 0); else DEFAULT_COST_CAP_USD. */
+export function parseCostCapUsd(
+  raw: string | undefined,
+  fallback: number = DEFAULT_COST_CAP_USD,
+): number {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}

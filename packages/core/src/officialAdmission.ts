@@ -14,6 +14,7 @@ export type OfficialAdmissionDenied = {
   error: string;
   errorCode:
     | "official_smoke_forbidden"
+    | "official_host_grade_forbidden"
     | "official_api_key_missing"
     | "official_web_auth_required"
     | "official_pair_required"
@@ -66,6 +67,15 @@ export function officialEnqueueAllowed(opts: {
       errorCode: "official_smoke_forbidden",
       error:
         "official mode requires live OpenAI produce — unset FAKE_PRODUCE (smoke is dry-run only)",
+    };
+  }
+  if (env.ALLOW_HOST_GRADE === "1") {
+    return {
+      ok: false,
+      status: 400,
+      errorCode: "official_host_grade_forbidden",
+      error:
+        "official mode requires Docker grade — unset ALLOW_HOST_GRADE (host grade is smoke/CI only)",
     };
   }
   if (!env.OPENAI_API_KEY?.trim()) {

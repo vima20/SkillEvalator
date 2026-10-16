@@ -5,6 +5,7 @@ import {
   officialEnqueueAllowed,
   staleOrphanRunningRunIds,
 } from "@skillevalator/core";
+import { checkEnqueueCostCap } from "@/lib/enqueueCostGate";
 import { enqueueEvaluationPair, enqueueRun } from "@/lib/enqueueRun";
 import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
@@ -89,6 +90,23 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: officialGate.error, errorCode: officialGate.errorCode },
         { status: officialGate.status },
+      );
+    }
+    const costGate = checkEnqueueCostCap({
+      evalSkillId: body.evalSkillId,
+      mode: body.mode,
+      repeats: body.repeats,
+      costCapUsd: preflight.costCapUsd,
+    });
+    if (!costGate.ok) {
+      return NextResponse.json(
+        {
+          error: costGate.error,
+          errorCode: costGate.errorCode,
+          estimatedUsd: costGate.estimatedUsd,
+          costCapUsd: costGate.costCapUsd,
+        },
+        { status: costGate.status },
       );
     }
     if (body.withBaseline) {

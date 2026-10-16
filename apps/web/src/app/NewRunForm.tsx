@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { estimateRunCostUsd } from "@skillevalator/core/costEstimate";
+import {
+  estimateRunCostUsd,
+  perLegEstimateExceedsCap,
+} from "@skillevalator/core/costEstimate";
 import { OFFICIAL_MIN_REPEATS } from "@skillevalator/core/job";
 import {
   DEFAULT_COST_CAP_USD,
@@ -136,8 +139,12 @@ export function NewRunForm({
     Boolean(preflight.fakeProduce) ||
     preflight.pilotReady === false;
   /** Per-leg estimate vs COST_CAP_USD (paired preview doubles total spend). */
-  const costOverCap =
-    costPreview.estimatedUsd / (withBaseline ? 2 : 1) > costCapUsd;
+  const costOverCap = perLegEstimateExceedsCap({
+    taskCount: taskCountPreview,
+    repeats: safeRepeatsPreview,
+    modelId: modelPreview,
+    costCapUsd,
+  });
   /** API POST /api/runs rejects every mode with 503 when preflight fails. */
   const canQueue =
     preflight?.ok === true && !preflightError && !costOverCap;
@@ -591,9 +598,7 @@ export function NewRunForm({
 
         <div
           className={`cost-estimate${
-            costPreview.estimatedUsd / (withBaseline ? 2 : 1) > costCapUsd
-              ? " cost-estimate-over"
-              : ""
+            costOverCap ? " cost-estimate-over" : ""
           }`}
           aria-live="polite"
         >
@@ -605,7 +610,7 @@ export function NewRunForm({
             {safeRepeatsPreview} repeats · <code>{modelPreview}</code>
             {withBaseline ? " · ×2 baseline+candidate" : ""}).
           </p>
-          {costPreview.estimatedUsd / (withBaseline ? 2 : 1) > costCapUsd ? (
+          {costOverCap ? (
             <p className="form-error" role="status">
               Per-leg estimate exceeds the ${costCapUsd} USD hard-stop
               {withBaseline
