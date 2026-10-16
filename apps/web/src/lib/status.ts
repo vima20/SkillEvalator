@@ -27,18 +27,24 @@ const BENEFIT_SETTLED = new Set(["ok", "failed", "cancelled"]);
  * BenefitPending wait/unavailable gates (pure — vitest without React).
  * Poll while not settled and budget wind-down has not orphan-timed-out,
  * including missing/`unknown` status (status.json may lag result.json).
+ * `orphanStuck`: timed-out budget_stop without result — open run for Cancel/heal.
  */
 export function benefitPendingState(opts: {
   status?: string | null;
   budgetTimedOut: boolean;
-}): { windDown: boolean; stillWaiting: boolean; unavailable: boolean } {
+}): {
+  windDown: boolean;
+  stillWaiting: boolean;
+  unavailable: boolean;
+  orphanStuck: boolean;
+} {
   const st = opts.status ?? undefined;
   const windDown = st === "budget_stop";
   const settled = BENEFIT_SETTLED.has(st ?? "");
-  const budgetExpired = windDown && opts.budgetTimedOut;
-  const stillWaiting = !settled && !budgetExpired;
-  const unavailable = settled || budgetExpired;
-  return { windDown, stillWaiting, unavailable };
+  const orphanStuck = windDown && opts.budgetTimedOut;
+  const stillWaiting = !settled && !orphanStuck;
+  const unavailable = settled || orphanStuck;
+  return { windDown, stillWaiting, unavailable, orphanStuck };
 }
 
 export type ComparisonLegPending = {
@@ -53,6 +59,8 @@ export type ComparisonPendingGates = {
   windDown: boolean;
   stillWaiting: boolean;
   unavailable: boolean;
+  /** At least one tip is orphan budget_stop after timeout — Cancel/Refresh on run. */
+  orphanStuck: boolean;
 };
 
 function comparisonLegWindDown(leg: ComparisonLegPending): boolean {
@@ -93,12 +101,17 @@ export function comparisonPendingState(opts: {
     !stillWaiting &&
     comparisonLegSettled(opts.baseline) &&
     comparisonLegSettled(opts.candidate);
+  const orphanStuck =
+    unavailable &&
+    ((baselineWindDown && opts.baseline.budgetTimedOut) ||
+      (candidateWindDown && opts.candidate.budgetTimedOut));
   return {
     baselineWindDown,
     candidateWindDown,
     windDown: baselineWindDown || candidateWindDown,
     stillWaiting,
     unavailable,
+    orphanStuck,
   };
 }
 

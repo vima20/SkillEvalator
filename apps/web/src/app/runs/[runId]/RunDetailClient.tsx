@@ -19,6 +19,7 @@ import {
   isRetryBudgetStopping,
   RETRY_STILL_FINISHING_ERROR,
   runDetailCanCancel,
+  WIND_DOWN_ORPHAN_MS,
 } from "@/lib/runLifecycle";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -228,7 +229,7 @@ export function RunDetailClient({
         await refresh();
         setPolling(false);
       })();
-    }, 90_000);
+    }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
   }, [data.status?.status, data.result, refresh]);
 

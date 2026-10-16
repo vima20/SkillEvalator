@@ -40,3 +40,4 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 
 - **Ready = Blocked** (Settings): korjaa blocker-lista (API-avain, Docker, worker, FAKE_PRODUCE, ALLOW_HOST_GRADE, auth, stale queue), paina **Refresh** (heals orphan `.running.json`; Settings pollaa myös kun Ready=Blocked / jono aktiivinen). Official enqueue + official retry estetty; **dry-run ok** kun preflight on vihreä.
 - **Preflight punaista** (API key / Docker / worker): New run ja retry estävät **kaiken** jonotuksen (myös dry-run) — sama kuin API 503. Korjaa preflight ennen uutta ajoa.
+- **Cost-cap wind-down** (`budget_stop` ilman `result.json`): Run / Comparison / Benefit odottavat ~90 s, sitten heal-refresh. **Cancel** tai **Refresh** run-sivulla; **Retry estetty** kunnes `result.json` on olemassa (sama API + UI).

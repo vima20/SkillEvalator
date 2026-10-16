@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import { WIND_DOWN_ORPHAN_MS } from "@/lib/runLifecycle";
 import { comparisonPendingState, statusBadgeClass } from "@/lib/status";
-
-/** Orphan wait for budget_stop → result.json per leg. */
-const WIND_DOWN_MS = 90_000;
 
 type ComparisonPendingProps = {
   evaluationId: string;
@@ -58,6 +56,7 @@ function ComparisonPendingInner({
     windDown,
     stillWaiting,
     unavailable,
+    orphanStuck,
   } = comparisonPendingState({
     baseline: {
       status: baselineStatus,
@@ -76,24 +75,25 @@ function ComparisonPendingInner({
       setBaselineBudgetTimedOut(false);
       return;
     }
-    const id = window.setTimeout(
-      () => setBaselineBudgetTimedOut(true),
-      WIND_DOWN_MS,
-    );
+    const id = window.setTimeout(() => {
+      setBaselineBudgetTimedOut(true);
+      // Same as run detail: final refresh heals orphan .running.json.
+      router.refresh();
+    }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
-  }, [baselineWindDown, evaluationId, baselineRunId]);
+  }, [baselineWindDown, evaluationId, baselineRunId, router]);
 
   useEffect(() => {
     if (!candidateWindDown) {
       setCandidateBudgetTimedOut(false);
       return;
     }
-    const id = window.setTimeout(
-      () => setCandidateBudgetTimedOut(true),
-      WIND_DOWN_MS,
-    );
+    const id = window.setTimeout(() => {
+      setCandidateBudgetTimedOut(true);
+      router.refresh();
+    }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
-  }, [candidateWindDown, evaluationId, candidateRunId]);
+  }, [candidateWindDown, evaluationId, candidateRunId, router]);
 
   useEffect(() => {
     if (!stillWaiting) return;
@@ -103,29 +103,33 @@ function ComparisonPendingInner({
     return () => window.clearInterval(id);
   }, [router, evaluationId, stillWaiting]);
 
+  const eyebrow = orphanStuck
+    ? "Orphan cost-cap wind-down"
+    : unavailable
+      ? "Comparison unavailable"
+      : windDown
+        ? "Cost hard-stop wind-down"
+        : "Waiting for both legs";
+  const title = orphanStuck
+    ? "Settle the stuck leg on its run page"
+    : unavailable
+      ? "Cannot build comparison"
+      : windDown
+        ? "Writing final results"
+        : "Comparison not ready";
+  const body = orphanStuck
+    ? "A tip hit COST_CAP_USD and never wrote result.json (worker may be gone). Open that run → Cancel or Refresh (heal). Retry stays blocked until result.json exists — same as run detail."
+    : unavailable
+      ? "Both baseline and candidate finished without a complete paired scorecard (failed, cancelled, or budget_stop without usable results). Open the run pages for details, or start a new paired evaluation."
+      : windDown
+        ? "A leg hit the cost cap and is writing its final result.json. Each wind-down leg gets its own orphan timeout; polling continues while the other leg is still active."
+        : "Baseline and candidate must finish before lift and PASS/FAIL can be computed. This page refreshes automatically.";
+
   return (
     <div className="panel progress-panel">
-      <p className="eyebrow">
-        {unavailable
-          ? "Comparison unavailable"
-          : windDown
-            ? "Cost hard-stop wind-down"
-            : "Waiting for both legs"}
-      </p>
-      <h2>
-        {unavailable
-          ? "Cannot build comparison"
-          : windDown
-            ? "Writing final results"
-            : "Comparison not ready"}
-      </h2>
-      <p>
-        {unavailable
-          ? "Both baseline and candidate finished without a complete paired scorecard (failed, cancelled, or budget_stop without usable results). Open the run pages for details, or start a new paired evaluation."
-          : windDown
-            ? "A leg hit the cost cap and is writing its final result.json. Each wind-down leg gets its own orphan timeout; polling continues while the other leg is still active."
-            : "Baseline and candidate must finish before lift and PASS/FAIL can be computed. This page refreshes automatically."}
-      </p>
+      <p className="eyebrow">{eyebrow}</p>
+      <h2>{title}</h2>
+      <p>{body}</p>
       <dl className="meta-list">
         <div>
           <dt>Baseline</dt>
@@ -170,7 +174,23 @@ function ComparisonPendingInner({
           </dd>
         </div>
       </dl>
-      {unavailable ? (
+      {orphanStuck ? (
+        <p className="hint" style={{ marginTop: 12 }}>
+          Prefer the{" "}
+          {baselineWindDown && baselineBudgetTimedOut && baselineRunId ? (
+            <Link href={withPilotFocus(`/runs/${baselineRunId}`, pilotFocus)}>
+              baseline run
+            </Link>
+          ) : candidateRunId ? (
+            <Link href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}>
+              candidate run
+            </Link>
+          ) : (
+            "run page"
+          )}{" "}
+          → Cancel / Refresh.
+        </p>
+      ) : unavailable ? (
         <p className="hint" style={{ marginTop: 12 }}>
           <Link href={withPilotFocus("/", pilotFocus)}>
             Start a new baseline↔candidate run

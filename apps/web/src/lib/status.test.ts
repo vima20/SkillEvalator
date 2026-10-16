@@ -38,6 +38,7 @@ describe("benefitPendingState", () => {
         windDown: false,
         stillWaiting: true,
         unavailable: false,
+        orphanStuck: false,
       },
     );
     expect(
@@ -46,6 +47,7 @@ describe("benefitPendingState", () => {
       windDown: false,
       stillWaiting: true,
       unavailable: false,
+      orphanStuck: false,
     });
   });
 
@@ -56,6 +58,7 @@ describe("benefitPendingState", () => {
       windDown: true,
       stillWaiting: true,
       unavailable: false,
+      orphanStuck: false,
     });
     expect(
       benefitPendingState({ status: "budget_stop", budgetTimedOut: true }),
@@ -63,10 +66,11 @@ describe("benefitPendingState", () => {
       windDown: true,
       stillWaiting: false,
       unavailable: true,
+      orphanStuck: true,
     });
   });
 
-  it("marks terminal statuses without result as unavailable", () => {
+  it("marks terminal statuses without result as unavailable (not orphan)", () => {
     for (const status of ["ok", "failed", "cancelled"] as const) {
       expect(
         benefitPendingState({ status, budgetTimedOut: false }),
@@ -74,6 +78,7 @@ describe("benefitPendingState", () => {
         windDown: false,
         stillWaiting: false,
         unavailable: true,
+        orphanStuck: false,
       });
     }
   });
@@ -93,6 +98,7 @@ describe("comparisonPendingState", () => {
     });
     expect(g.stillWaiting).toBe(true);
     expect(g.unavailable).toBe(false);
+    expect(g.orphanStuck).toBe(false);
   });
 
   it("settles unknown+hasResult so both finished legs become unavailable", () => {
@@ -102,6 +108,7 @@ describe("comparisonPendingState", () => {
     });
     expect(g.stillWaiting).toBe(false);
     expect(g.unavailable).toBe(true);
+    expect(g.orphanStuck).toBe(false);
   });
 
   it("times out budget_stop wind-down per leg without cutting the other", () => {
@@ -116,6 +123,7 @@ describe("comparisonPendingState", () => {
     expect(mid.baselineWindDown).toBe(true);
     expect(mid.stillWaiting).toBe(true);
     expect(mid.unavailable).toBe(false);
+    expect(mid.orphanStuck).toBe(false);
 
     const both = comparisonPendingState({
       baseline: {
@@ -131,6 +139,7 @@ describe("comparisonPendingState", () => {
     });
     expect(both.stillWaiting).toBe(false);
     expect(both.unavailable).toBe(true);
+    expect(both.orphanStuck).toBe(true);
   });
 
   it("treats budget_stop with result as settled wind-down complete", () => {
@@ -145,5 +154,6 @@ describe("comparisonPendingState", () => {
     expect(g.baselineWindDown).toBe(false);
     expect(g.stillWaiting).toBe(false);
     expect(g.unavailable).toBe(true);
+    expect(g.orphanStuck).toBe(false);
   });
 });

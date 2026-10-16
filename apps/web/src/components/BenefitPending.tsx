@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import { WIND_DOWN_ORPHAN_MS } from "@/lib/runLifecycle";
 import { benefitPendingState } from "@/lib/status";
 
 /** Auto-refresh while waiting for result.json / benefit report. */
@@ -42,19 +43,23 @@ function BenefitPendingInner({
   const [busy, setBusy] = useState(false);
   const [budgetTimedOut, setBudgetTimedOut] = useState(false);
 
-  const { windDown, stillWaiting, unavailable } = benefitPendingState({
-    status,
-    budgetTimedOut,
-  });
+  const { windDown, stillWaiting, unavailable, orphanStuck } =
+    benefitPendingState({
+      status,
+      budgetTimedOut,
+    });
 
   useEffect(() => {
     if (!windDown) {
       setBudgetTimedOut(false);
       return;
     }
-    const id = window.setTimeout(() => setBudgetTimedOut(true), 90_000);
+    const id = window.setTimeout(() => {
+      setBudgetTimedOut(true);
+      router.refresh();
+    }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
-  }, [windDown, runId]);
+  }, [windDown, runId, router]);
 
   useEffect(() => {
     if (!stillWaiting) return;
@@ -69,18 +74,22 @@ function BenefitPendingInner({
       <div className="empty-state">
         <div className="empty-state-mark" aria-hidden="true" />
         <h2>
-          {unavailable
-            ? "No Benefit Report"
-            : windDown
-              ? "Writing final result"
-              : "No result yet"}
+          {orphanStuck
+            ? "Cost-cap wind-down stuck"
+            : unavailable
+              ? "No Benefit Report"
+              : windDown
+                ? "Writing final result"
+                : "No result yet"}
         </h2>
         <p>
-          {unavailable
-            ? `This run ended as ${status ?? "unknown"} without a result.json, so a Benefit Report cannot be built. Open the run for status details or Retry.`
-            : windDown
-              ? "Cost hard-stop is writing the final result.json. This page refreshes automatically (stops after ~90s if the worker is stuck)."
-              : "This run has no result.json yet. Waiting for the worker — this page refreshes automatically."}
+          {orphanStuck
+            ? "This run hit COST_CAP_USD and never wrote result.json. Open the run → Cancel or Refresh (heal). Retry stays blocked until result.json exists — same as run detail."
+            : unavailable
+              ? `This run ended as ${status ?? "unknown"} without a result.json, so a Benefit Report cannot be built. Open the run for status details.`
+              : windDown
+                ? "Cost hard-stop is writing the final result.json. This page refreshes automatically (stops after the shared orphan timeout if the worker is stuck)."
+                : "This run has no result.json yet. Waiting for the worker — this page refreshes automatically."}
         </p>
         <div className="action-row" style={{ marginTop: 14 }}>
           {stillWaiting ? (
@@ -101,7 +110,7 @@ function BenefitPendingInner({
             className="btn btn-primary btn-compact"
             href={withPilotFocus(`/runs/${runId}`, pilotFocus)}
           >
-            Open run
+            {orphanStuck ? "Open run — Cancel / Refresh" : "Open run"}
           </Link>
         </div>
       </div>

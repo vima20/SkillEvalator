@@ -67,6 +67,12 @@ export const RETRY_STILL_FINISHING_ERROR =
   "run still finishing — wait for result.json (or cancel) before retry";
 
 /**
+ * Shared orphan wait for budget_stop → result.json (run detail, Comparison,
+ * Benefit pending). After this, final heal refresh + Cancel CTA — not Retry.
+ */
+export const WIND_DOWN_ORPHAN_MS = 90_000;
+
+/**
  * Orphan wind-down: status budget_stop but result.json not written yet
  * (even when .running.json was healed away). POST /retry and UI must agree.
  */
