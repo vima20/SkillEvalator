@@ -23,12 +23,12 @@ export function PilotFocusToggle(opts: {
   const title = isDetail
     ? "Keep ?focus=pilot on detail ↔ list navigation"
     : opts.pathname === "/comparison"
-      ? "Hide dry-run, smoke (either tip leg), and official INCONCLUSIVE"
+      ? "Hide dry-run, smoke / unattested tip legs, and official INCONCLUSIVE"
       : opts.pathname === "/dashboard"
-        ? "Show only official tip candidates on the leaderboard"
+        ? "Show only official attested tip candidates on the leaderboard"
         : opts.pathname === "/" || opts.pathname === "/settings"
           ? "Keep ?focus=pilot on New run / Settings / list navigation"
-          : "Hide smoke, superseded retries, and dry-run rows";
+          : "Hide smoke, not_attested, superseded retries, and dry-run rows";
 
   const clearLabel =
     isDetail || opts.pathname === "/" || opts.pathname === "/settings"

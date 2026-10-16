@@ -132,6 +132,10 @@ export function buildPilotArchiveZip(opts: {
       modelId: opts.comparison.modelId,
       baselineRunId: opts.baselineRunId,
       candidateRunId: opts.candidateRunId,
+      candidateFakeProduce:
+        opts.comparison.capture?.env?.fakeProduce === true,
+      candidateProduceAttested:
+        opts.comparison.capture?.env?.produceAttested === true,
       build: opts.build,
       notes:
         "Live official tip legs only. Not Cursor/KH adoption proof — produce→grade on locked task set.",

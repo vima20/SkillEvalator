@@ -70,6 +70,10 @@ export default async function ComparisonListPage({
         verdict: c?.verdict ?? null,
         baselineFakeProduce,
         candidateFakeProduce,
+        baselineProduceAttested,
+        candidateProduceAttested,
+        baselineHasResult: Boolean(packed.baseline),
+        candidateHasResult: Boolean(packed.candidate),
       }),
     };
   });
@@ -93,8 +97,8 @@ export default async function ComparisonListPage({
             {pilotFocus ? (
               <>
                 {" "}
-                <strong>Pilot focus</strong> hides dry-run, smoke (either tip
-                leg), and official INCONCLUSIVE
+                <strong>Pilot focus</strong> hides dry-run, smoke / unattested
+                tip legs, and official INCONCLUSIVE
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}

@@ -63,6 +63,8 @@ export async function GET(
           comparisonVerdict: comparison?.verdict,
           comparisonMode: comparison?.mode,
           comparisonLift: comparison?.lift,
+          fakeProduce: result.capture?.env?.fakeProduce === true,
+          produceAttested: result.capture?.env?.produceAttested === true,
         }),
         {
           headers: {

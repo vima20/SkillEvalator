@@ -26,7 +26,9 @@ export default async function NewRunPage({
             Unikie Contribution Evaluator: baseline (neutral prompt) vs
             candidate (skill SKILL.md), then Docker grade. Dry-run uses{" "}
             <code>gpt-4o-mini</code>; official uses <code>gpt-4.1-mini</code>{" "}
-            (≥3 repeats).
+            (≥3 repeats). Live official pins <code>produceAttested</code>;{" "}
+            <code>FAKE_PRODUCE</code> / fixture plants are not adoption
+            evidence.
           </p>
         </div>
         <div className="page-header-actions">

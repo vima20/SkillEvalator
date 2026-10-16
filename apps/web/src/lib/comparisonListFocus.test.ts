@@ -48,4 +48,33 @@ describe("isPilotNoiseEvaluation", () => {
       }),
     ).toBe(true);
   });
+
+  it("hides tip results missing produceAttested; keeps in-flight waiting", () => {
+    expect(
+      isPilotNoiseEvaluation({
+        displayMode: "official",
+        verdict: "PASS",
+        candidateHasResult: true,
+        candidateProduceAttested: false,
+      }),
+    ).toBe(true);
+    expect(
+      isPilotNoiseEvaluation({
+        displayMode: "official",
+        verdict: null,
+        baselineHasResult: false,
+        candidateHasResult: false,
+      }),
+    ).toBe(false);
+    expect(
+      isPilotNoiseEvaluation({
+        displayMode: "official",
+        verdict: "PASS",
+        baselineHasResult: true,
+        candidateHasResult: true,
+        baselineProduceAttested: true,
+        candidateProduceAttested: true,
+      }),
+    ).toBe(false);
+  });
 });

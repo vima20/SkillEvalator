@@ -55,6 +55,20 @@ describe("runResultToCsv", () => {
     expect(csv).toContain("bug-01");
     expect(csv.split("\n").length).toBeGreaterThan(1);
   });
+
+  it("includes fakeProduce and produceAttested columns", () => {
+    const csv = runResultToCsv(
+      sample({
+        runId: "r1",
+        role: "candidate",
+        capture: officialCapture("candidate"),
+      }),
+    );
+    expect(csv).toContain("fakeProduce");
+    expect(csv).toContain("produceAttested");
+    expect(csv).toMatch(/false/);
+    expect(csv).toMatch(/true/);
+  });
 });
 
 const TRUSTED_GRADE_HASH =
@@ -134,6 +148,8 @@ describe("comparisonToCsv", () => {
     expect(csv).toContain("official");
     expect(csv).toContain("cde-v1");
     expect(csv).toContain("parityIssues");
+    expect(csv).toContain("candidateFakeProduce");
+    expect(csv).toContain("candidateProduceAttested");
   });
 
   it("exports candidate Capture commit and license", () => {

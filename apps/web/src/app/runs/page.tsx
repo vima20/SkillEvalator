@@ -94,8 +94,8 @@ export default async function RunsPage({
             {pilotFocus ? (
               <>
                 {" "}
-                <strong>Pilot focus</strong> hides smoke, superseded, and
-                dry-run
+                <strong>Pilot focus</strong> hides smoke, not_attested,
+                superseded, and dry-run
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}
@@ -126,7 +126,7 @@ export default async function RunsPage({
             body={
               allRuns.length === 0
                 ? "Start a dry-run to queue the first evaluation job."
-                : "All visible rows are smoke, superseded, dry-run, or FAKE_PRODUCE. Show all rows to inspect them."
+                : "All visible rows are smoke, not_attested, superseded, dry-run, or FAKE_PRODUCE. Show all rows to inspect them."
             }
             actionHref={
               allRuns.length === 0

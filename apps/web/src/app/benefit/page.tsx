@@ -88,8 +88,8 @@ export default async function BenefitIndexPage({
             {pilotFocus ? (
               <>
                 {" "}
-                <strong>Pilot focus</strong> hides smoke, superseded, and
-                dry-run
+                <strong>Pilot focus</strong> hides smoke, not_attested,
+                superseded, and dry-run
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}
@@ -140,7 +140,7 @@ export default async function BenefitIndexPage({
             body={
               allRuns.length === 0
                 ? "Finish a candidate run (paired evaluation or single-leg) before opening a Benefit Report."
-                : "All candidate rows are smoke, superseded, dry-run, or FAKE_PRODUCE. Show all rows to inspect them."
+                : "All candidate rows are smoke, not_attested, superseded, dry-run, or FAKE_PRODUCE. Show all rows to inspect them."
             }
             actionHref={
               allRuns.length === 0

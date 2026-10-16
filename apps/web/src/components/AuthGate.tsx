@@ -162,6 +162,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               id="webAuthToken"
               type="password"
               autoComplete="current-password"
+              autoFocus
               value={token}
               onChange={(e) => setToken(e.target.value)}
               required={!checkFailed}

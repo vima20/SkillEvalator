@@ -39,6 +39,8 @@ export function runResultToCsv(result: RunResult): string {
     "runTotalTokens",
     "commit",
     "license",
+    "fakeProduce",
+    "produceAttested",
   ]);
 
   const lines = [header];
@@ -80,6 +82,8 @@ export function runResultToCsv(result: RunResult): string {
         result.tokens?.totalTokens ?? "",
         result.capture?.commit ?? "",
         result.capture?.license ?? "",
+        result.capture?.env?.fakeProduce ?? "",
+        result.capture?.env?.produceAttested ?? "",
       ]),
     );
   }
@@ -111,6 +115,8 @@ export function comparisonToCsv(comparison: RunComparison): string {
     "parityIssues",
     "commit",
     "license",
+    "candidateFakeProduce",
+    "candidateProduceAttested",
   ]);
   const lines = [header];
   const common = [
@@ -125,6 +131,8 @@ export function comparisonToCsv(comparison: RunComparison): string {
   const captureCells = [
     comparison.capture?.commit ?? "",
     comparison.capture?.license ?? "",
+    comparison.capture?.env?.fakeProduce ?? "",
+    comparison.capture?.env?.produceAttested ?? "",
   ] as const;
 
   for (const t of comparison.perTask ?? []) {
@@ -177,6 +185,8 @@ export function benefitReportToCsv(
     comparisonVerdict?: string;
     comparisonMode?: string;
     comparisonLift?: number | null;
+    fakeProduce?: boolean;
+    produceAttested?: boolean;
   },
 ): string {
   const header = row([
@@ -207,6 +217,8 @@ export function benefitReportToCsv(
     "status",
     "commit",
     "license",
+    "fakeProduce",
+    "produceAttested",
   ]);
   const lines = [header];
   const tasks =
@@ -250,6 +262,8 @@ export function benefitReportToCsv(
         report.cost.status,
         report.config.commit ?? "",
         report.config.license ?? "",
+        comparison?.fakeProduce ?? "",
+        comparison?.produceAttested ?? "",
       ]),
     );
   }
