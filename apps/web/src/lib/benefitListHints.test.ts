@@ -3,6 +3,7 @@ import {
   benefitListPairBlocksAdoption,
   benefitListPairChip,
   benefitListPairLockedLabel,
+  benefitPairEvidenceFromPacked,
 } from "./benefitListHints.js";
 
 describe("benefitListPairChip", () => {
@@ -87,5 +88,38 @@ describe("benefitListPairLockedLabel", () => {
   it("maps chips to Report CTA labels", () => {
     expect(benefitListPairLockedLabel("mixed")).toBe("locked · mixed");
     expect(benefitListPairLockedLabel(null)).toBe("locked · pair evidence");
+  });
+});
+
+describe("benefitPairEvidenceFromPacked", () => {
+  it("marks mixed sibling FAKE as pair-blocked with chip", () => {
+    const out = benefitPairEvidenceFromPacked({
+      tipBaselineRunId: "run_b",
+      tipCandidateRunId: "run_c",
+      baseline: {
+        capture: { env: { fakeProduce: true, produceAttested: false } },
+      },
+      candidate: {
+        capture: { env: { fakeProduce: false, produceAttested: true } },
+      },
+    });
+    expect(out.paired).toBe(true);
+    expect(out.pairChip).toBe("mixed");
+    expect(out.pairBlocked).toBe(true);
+  });
+
+  it("keeps clean live tips unblocked", () => {
+    const out = benefitPairEvidenceFromPacked({
+      tipBaselineRunId: "run_b",
+      tipCandidateRunId: "run_c",
+      baseline: {
+        capture: { env: { fakeProduce: false, produceAttested: true } },
+      },
+      candidate: {
+        capture: { env: { fakeProduce: false, produceAttested: true } },
+      },
+    });
+    expect(out.pairChip).toBeNull();
+    expect(out.pairBlocked).toBe(false);
   });
 });

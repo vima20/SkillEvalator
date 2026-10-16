@@ -3,9 +3,15 @@ import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
+import {
+  benefitListPairLockedLabel,
+  benefitPairEvidenceFromPacked,
+  type BenefitListPairChip,
+} from "@/lib/benefitListHints";
 import { includeInDashboardLeaderboard } from "@/lib/dashboardLeaderboard";
 import {
   loadEvaluationComparison,
+  resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
@@ -26,6 +32,8 @@ type Row = {
   skillVersion: string;
   evaluationId?: string;
   role: string;
+  pairChip: BenefitListPairChip | null;
+  pairBlocked: boolean;
 };
 
 /** Same fixed task set + model → compare different skill implementations. */
@@ -53,31 +61,56 @@ export default async function DashboardPage({
   healOrphanStatuses();
   const allRuns = listRuns(resultsDir());
   const hasActive = allRuns.some((r) => runIsActive(r.status, !!r.result));
-  // Tip candidate per evaluation — supersede smoke/old retries off the board.
-  const tipByEval = new Map<string, string | null>();
-  const tipCandidateId = (evaluationId: string): string | null => {
-    if (!tipByEval.has(evaluationId)) {
-      const packed = loadEvaluationComparison(evaluationId);
-      tipByEval.set(evaluationId, resolveTipCandidateRunId(packed));
+  // Tip + pair evidence per evaluation — supersede smoke/old retries / siblings.
+  const pairByEval = new Map<
+    string,
+    {
+      tipCandidateRunId: string | null;
+      pairChip: BenefitListPairChip | null;
+      pairBlocked: boolean;
     }
-    return tipByEval.get(evaluationId) ?? null;
+  >();
+  const pairFor = (evaluationId: string) => {
+    if (!pairByEval.has(evaluationId)) {
+      const packed = loadEvaluationComparison(evaluationId);
+      const tipCandidateRunId = resolveTipCandidateRunId(packed);
+      const tipBaselineRunId = resolveTipBaselineRunId(packed);
+      const { pairChip, pairBlocked } = benefitPairEvidenceFromPacked({
+        tipBaselineRunId,
+        tipCandidateRunId,
+        metaSmoke: packed.meta?.smoke === true,
+        baseline: packed.baseline,
+        candidate: packed.candidate,
+      });
+      pairByEval.set(evaluationId, {
+        tipCandidateRunId,
+        pairChip,
+        pairBlocked,
+      });
+    }
+    return pairByEval.get(evaluationId)!;
   };
   // Leaderboard: tip (or unpaired) candidates only — never smoke / superseded.
-  // Pilot focus: official tip only.
+  // Pilot focus: official tip only (no pair-blocked siblings).
   let boardCount = 0;
   const rows: Row[] = allRuns.flatMap((r) => {
     if (!r.result) return [];
-    const tip = r.result.evaluationId
-      ? tipCandidateId(r.result.evaluationId)
-      : null;
+    const pair = r.result.evaluationId
+      ? pairFor(r.result.evaluationId)
+      : {
+          tipCandidateRunId: null as string | null,
+          pairChip: null as BenefitListPairChip | null,
+          pairBlocked: false,
+        };
     const baseOpts = {
       runId: r.runId,
       role: r.result.role,
       fakeProduce: r.result.capture?.env?.fakeProduce === true,
       produceAttested: r.result.capture?.env?.produceAttested === true,
       evaluationId: r.result.evaluationId,
-      tipCandidateRunId: tip,
+      tipCandidateRunId: pair.tipCandidateRunId,
       mode: r.result.mode,
+      pairBlocked: pair.pairBlocked,
     };
     if (!includeInDashboardLeaderboard({ ...baseOpts, pilotFocus: false })) {
       return [];
@@ -101,6 +134,8 @@ export default async function DashboardPage({
         skillVersion: r.result.evalSkillVersion,
         evaluationId: r.result.evaluationId,
         role: r.result.role,
+        pairChip: pair.pairChip,
+        pairBlocked: pair.pairBlocked,
       },
     ];
   });
@@ -132,7 +167,8 @@ export default async function DashboardPage({
           <h1>Dashboard</h1>
           <p>
             Tip candidate runs grouped by task set and model (skill version
-            leaderboard). Smoke harness and superseded retries are omitted.
+            leaderboard). Smoke harness, superseded retries, and pair-blocked
+            siblings demote Benefit CTAs (same bar as Benefit list).
             Baseline↔candidate lift lives under{" "}
             <Link href={withPilotFocus("/comparison", pilotFocus)}>
               Comparison
@@ -143,6 +179,7 @@ export default async function DashboardPage({
               <>
                 {" "}
                 <strong>Pilot focus</strong> shows official tip candidates only
+                (hides pair-blocked)
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}
@@ -190,7 +227,7 @@ export default async function DashboardPage({
             body={
               boardCount === 0
                 ? "Finish a dry-run or official evaluation to populate the dashboard."
-                : "Leaderboard tips are dry-run or unpaired. Show all rows, or run an official baseline↔candidate pair."
+                : "Leaderboard tips are dry-run, unpaired, or pair-blocked. Show all rows, or run an official live-attested pair."
             }
             actionHref={
               boardCount === 0
@@ -367,6 +404,9 @@ export default async function DashboardPage({
                             >
                               {r.runId}
                             </Link>
+                            {r.pairChip ? (
+                              <div className="cell-meta">{r.pairChip}</div>
+                            ) : null}
                           </td>
                           <td>{r.mode}</td>
                           <td>
@@ -379,8 +419,15 @@ export default async function DashboardPage({
                                 `/benefit/${r.runId}`,
                                 pilotFocus,
                               )}
+                              title={
+                                r.pairBlocked
+                                  ? "Pair evidence blocked (sibling smoke / unattested) — not adoption"
+                                  : undefined
+                              }
                             >
-                              Benefit
+                              {r.pairBlocked
+                                ? benefitListPairLockedLabel(r.pairChip)
+                                : "Benefit"}
                             </Link>
                             {r.evaluationId ? (
                               <>

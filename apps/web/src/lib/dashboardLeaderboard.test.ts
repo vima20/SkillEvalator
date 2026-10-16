@@ -126,4 +126,31 @@ describe("includeInDashboardLeaderboard", () => {
       }),
     ).toBe(false);
   });
+
+  it("pilot focus rejects pair-blocked tips; all-rows keeps them", () => {
+    expect(
+      includeInDashboardLeaderboard({
+        runId: "run_tip",
+        role: "candidate",
+        produceAttested: true,
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_tip",
+        mode: "official",
+        pairBlocked: true,
+        pilotFocus: true,
+      }),
+    ).toBe(false);
+    expect(
+      includeInDashboardLeaderboard({
+        runId: "run_tip",
+        role: "candidate",
+        produceAttested: true,
+        evaluationId: "eval_1",
+        tipCandidateRunId: "run_tip",
+        mode: "official",
+        pairBlocked: true,
+        pilotFocus: false,
+      }),
+    ).toBe(true);
+  });
 });

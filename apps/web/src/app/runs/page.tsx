@@ -6,12 +6,17 @@ import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
+  benefitPairEvidenceFromPacked,
+  type BenefitListPairChip,
+} from "@/lib/benefitListHints";
+import {
   candidateLegKind,
   includeInPilotFocusRun,
 } from "@/lib/candidateLeg";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   loadEvaluationComparison,
+  resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
 import { healOrphanStatuses } from "@/lib/healOrphans";
@@ -40,15 +45,33 @@ export default async function RunsPage({
   const pilotFocus = isPilotFocusParam(sp.focus);
 
   healOrphanStatuses();
-  const tipByEval = new Map<string, string | null>();
-  const tipFor = (evaluationId: string): string | null => {
-    if (!tipByEval.has(evaluationId)) {
-      tipByEval.set(
-        evaluationId,
-        resolveTipCandidateRunId(loadEvaluationComparison(evaluationId)),
-      );
+  const pairByEval = new Map<
+    string,
+    {
+      tipCandidateRunId: string | null;
+      pairChip: BenefitListPairChip | null;
+      pairBlocked: boolean;
     }
-    return tipByEval.get(evaluationId) ?? null;
+  >();
+  const pairFor = (evaluationId: string) => {
+    if (!pairByEval.has(evaluationId)) {
+      const packed = loadEvaluationComparison(evaluationId);
+      const tipCandidateRunId = resolveTipCandidateRunId(packed);
+      const tipBaselineRunId = resolveTipBaselineRunId(packed);
+      const { pairChip, pairBlocked } = benefitPairEvidenceFromPacked({
+        tipBaselineRunId,
+        tipCandidateRunId,
+        metaSmoke: packed.meta?.smoke === true,
+        baseline: packed.baseline,
+        candidate: packed.candidate,
+      });
+      pairByEval.set(evaluationId, {
+        tipCandidateRunId,
+        pairChip,
+        pairBlocked,
+      });
+    }
+    return pairByEval.get(evaluationId)!;
   };
 
   const allRuns = listRuns(resultsDir());
@@ -61,14 +84,15 @@ export default async function RunsPage({
           r.result?.capture?.env?.produceAttested === true;
         const role = r.result?.role ?? r.role;
         const evaluationId = r.result?.evaluationId ?? r.evaluationId;
-        const tip = evaluationId ? tipFor(evaluationId) : null;
+        const pair = evaluationId ? pairFor(evaluationId) : null;
+        if (pair?.pairBlocked) return false;
         const kind = candidateLegKind({
           runId: r.runId,
           role: typeof role === "string" ? role : undefined,
           fakeProduce,
           produceAttested,
           evaluationId,
-          tipCandidateRunId: tip,
+          tipCandidateRunId: pair?.tipCandidateRunId ?? null,
         });
         return includeInPilotFocusRun({
           kind,
@@ -90,12 +114,12 @@ export default async function RunsPage({
           <h1>Runs</h1>
           <p>
             Queued and completed evaluation jobs. Candidate tip / smoke /
-            superseded hints match Benefit demotion.
+            superseded and pair evidence chips match Benefit demotion.
             {pilotFocus ? (
               <>
                 {" "}
                 <strong>Pilot focus</strong> hides smoke, not_attested,
-                superseded, and dry-run
+                superseded, dry-run, and pair-blocked siblings
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}
@@ -126,7 +150,7 @@ export default async function RunsPage({
             body={
               allRuns.length === 0
                 ? "Start a dry-run to queue the first evaluation job."
-                : "All visible rows are smoke, not_attested, superseded, dry-run, or FAKE_PRODUCE. Show all rows to inspect them."
+                : "All visible rows are smoke, not_attested, superseded, dry-run, FAKE_PRODUCE, or pair-blocked. Show all rows to inspect them."
             }
             actionHref={
               allRuns.length === 0
@@ -156,7 +180,8 @@ export default async function RunsPage({
                   const role = r.result?.role ?? r.role ?? "—";
                   const evaluationId =
                     r.result?.evaluationId ?? r.evaluationId;
-                  const tip = evaluationId ? tipFor(evaluationId) : null;
+                  const pair = evaluationId ? pairFor(evaluationId) : null;
+                  const tip = pair?.tipCandidateRunId ?? null;
                   const hint = candidateRunsListHint({
                     runId: r.runId,
                     role: typeof role === "string" ? role : undefined,
@@ -168,6 +193,7 @@ export default async function RunsPage({
                     tipCandidateRunId: tip,
                   });
                   const hintLabel = runsListHintLabel(hint);
+                  const pairChip = pair?.pairChip ?? null;
                   return (
                     <tr key={r.runId}>
                       <td>
@@ -187,6 +213,7 @@ export default async function RunsPage({
                               Comparison
                             </Link>
                             {hintLabel ? ` · ${hintLabel}` : null}
+                            {pairChip ? ` · ${pairChip}` : null}
                           </div>
                         ) : hintLabel ? (
                           <div className="cell-meta">{hintLabel}</div>

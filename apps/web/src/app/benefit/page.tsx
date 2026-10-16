@@ -3,10 +3,8 @@ import { listRuns } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
-  benefitListPairBlocksAdoption,
-  benefitListPairChip,
   benefitListPairLockedLabel,
-  type BenefitListPairChip,
+  benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import {
@@ -55,31 +53,13 @@ export default async function BenefitIndexPage({
         evaluationId: r.result!.evaluationId,
         tipCandidateRunId,
       }) as CandidateLegKind;
-      const paired = Boolean(tipBaselineRunId && tipCandidateRunId);
-      const baselineFakeProduce =
-        baseline?.capture?.env?.fakeProduce === true;
-      const candidateFakeProduce =
-        candidate?.capture?.env?.fakeProduce === true;
-      const baselineProduceAttested =
-        baseline?.capture?.env?.produceAttested === true;
-      const candidateProduceAttested =
-        candidate?.capture?.env?.produceAttested === true;
-      const pairEvidence = {
+      const { pairChip, pairBlocked } = benefitPairEvidenceFromPacked({
+        tipBaselineRunId,
+        tipCandidateRunId,
         metaSmoke: meta?.smoke === true,
-        baselineFakeProduce,
-        candidateFakeProduce,
-        baselineProduceAttested,
-        candidateProduceAttested,
-      };
-      const pairChip: BenefitListPairChip | null = benefitListPairChip({
-        paired,
-        ...pairEvidence,
-        baselineHasResult: Boolean(baseline),
-        candidateHasResult: Boolean(candidate),
+        baseline,
+        candidate,
       });
-      // Same wire-up as Run detail: tip ids present → sibling evidence bar.
-      const pairBlocked =
-        paired && benefitListPairBlocksAdoption(pairEvidence);
       return {
         runId: r.runId,
         score: r.result!.score,

@@ -3,6 +3,52 @@ import { comparisonHarnessHint } from "@/lib/comparisonDetailHints";
 /** Same cell-meta labels as Comparison list (paired rows only). */
 export type BenefitListPairChip = "mixed" | "smoke" | "not attested";
 
+type TipCapture = {
+  capture?: { env?: { fakeProduce?: boolean; produceAttested?: boolean } };
+} | null;
+
+/**
+ * Pair evidence from a packed evaluation — shared by Benefit / Runs / Dashboard.
+ */
+export function benefitPairEvidenceFromPacked(opts: {
+  tipBaselineRunId?: string | null;
+  tipCandidateRunId?: string | null;
+  metaSmoke?: boolean;
+  baseline?: TipCapture;
+  candidate?: TipCapture;
+}): {
+  paired: boolean;
+  pairEvidence: {
+    metaSmoke: boolean;
+    baselineFakeProduce: boolean;
+    candidateFakeProduce: boolean;
+    baselineProduceAttested: boolean;
+    candidateProduceAttested: boolean;
+  };
+  pairChip: BenefitListPairChip | null;
+  pairBlocked: boolean;
+} {
+  const paired = Boolean(opts.tipBaselineRunId && opts.tipCandidateRunId);
+  const pairEvidence = {
+    metaSmoke: opts.metaSmoke === true,
+    baselineFakeProduce: opts.baseline?.capture?.env?.fakeProduce === true,
+    candidateFakeProduce: opts.candidate?.capture?.env?.fakeProduce === true,
+    baselineProduceAttested:
+      opts.baseline?.capture?.env?.produceAttested === true,
+    candidateProduceAttested:
+      opts.candidate?.capture?.env?.produceAttested === true,
+  };
+  const pairChip = benefitListPairChip({
+    paired,
+    ...pairEvidence,
+    baselineHasResult: Boolean(opts.baseline),
+    candidateHasResult: Boolean(opts.candidate),
+  });
+  const pairBlocked =
+    paired && benefitListPairBlocksAdoption(pairEvidence);
+  return { paired, pairEvidence, pairChip, pairBlocked };
+}
+
 /**
  * Pair-level evidence chip for Benefit index — mirrors Comparison list
  * mixed / smoke / not attested (not candidate-leg-only).
