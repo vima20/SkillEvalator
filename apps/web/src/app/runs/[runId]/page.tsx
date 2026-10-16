@@ -18,6 +18,8 @@ import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
 } from "@/lib/runCsvExportAllowed";
+import { retryCostAdmissionForRun } from "@/lib/retryCostAdmission";
+import { runPreflight } from "@/lib/runPreflight";
 import { RunDetailClient } from "./RunDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -115,6 +117,14 @@ export default async function RunDetailPage({
         }
       : null;
 
+  const preflight = runPreflight();
+  const retryCostAdmission = retryCostAdmissionForRun({
+    runId,
+    costCapUsd: preflight.costCapUsd,
+    result,
+    status,
+  });
+
   return (
     <RunDetailClient
       runId={runId}
@@ -127,6 +137,7 @@ export default async function RunDetailPage({
         csvExportBlockReason: runCsvExportBlockReason(result),
         tipCandidateRunId,
         pairHarness,
+        retryCostAdmission,
       }}
     />
   );

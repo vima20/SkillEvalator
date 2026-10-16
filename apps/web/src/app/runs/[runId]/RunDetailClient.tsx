@@ -13,6 +13,7 @@ import {
 } from "@/lib/captureEnvEvidence";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
+import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import { statusBadgeClass } from "@/lib/status";
 
@@ -93,6 +94,14 @@ type Payload = {
     candidateProduceAttested: boolean;
     baselineRunId: string;
     candidateRunId: string;
+  } | null;
+  /** Same COST_CAP gate as POST /retry and New run (server-computed). */
+  retryCostAdmission?: {
+    blocked: boolean;
+    reason: string | null;
+    estimatedUsd?: number;
+    costCapUsd?: number;
+    errorCode?: "enqueue_cost_over_cap";
   } | null;
 };
 
@@ -248,15 +257,18 @@ export function RunDetailClient({
   const readyBlocksOfficialRetry =
     officialRetry &&
     (retryPreflight == null || retryPreflight.pilotReady === false);
+  const costBlocksRetry = data.retryCostAdmission?.blocked === true;
   // Match API: budget_stop is retryable even before result.json (job fallback).
   // Official also needs Settings Ready; all modes need preflight green (503).
+  // COST_CAP mirrors New run / POST retry enqueue_cost_over_cap.
   const canRetry =
     retryTerminal &&
     !quotaBlocked &&
     !retrying &&
     !budgetStopping &&
     !preflightBlocksRetry &&
-    !readyBlocksOfficialRetry;
+    !readyBlocksOfficialRetry &&
+    !costBlocksRetry;
 
   const retryBlockedReason = quotaBlocked
     ? "Retry blocked: no OpenAI credits. Add billing credits first."
@@ -268,7 +280,10 @@ export function RunDetailClient({
           ? `Official retry blocked — Settings not Ready: ${(
               retryPreflight.pilotBlockers ?? []
             ).join("; ") || "see Settings"}.`
-          : null;
+          : costBlocksRetry
+            ? (data.retryCostAdmission?.reason ??
+              "Retry blocked — per-leg estimate exceeds COST_CAP_USD.")
+            : null;
 
   useEffect(() => {
     if (!retryTerminal || budgetStopping) {
@@ -317,10 +332,17 @@ export function RunDetailClient({
       );
       const body = (await res.json().catch(() => ({}))) as {
         error?: string;
+        errorCode?: string;
         runId?: string;
+        costCapUsd?: number;
       };
       if (!res.ok || !body.runId) {
-        setRetryError(body.error ?? "Retry failed");
+        setRetryError(
+          body.errorCode === "enqueue_cost_over_cap" &&
+            typeof body.costCapUsd === "number"
+            ? formatRetryCostBlockedReason(body.costCapUsd)
+            : (body.error ?? "Retry failed"),
+        );
         setRetrying(false);
         return;
       }

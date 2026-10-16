@@ -14,6 +14,8 @@ import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
 } from "@/lib/runCsvExportAllowed";
+import { retryCostAdmissionForRun } from "@/lib/retryCostAdmission";
+import { runPreflight } from "@/lib/runPreflight";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,13 @@ export async function GET(
           loadEvaluationComparison(result.evaluationId),
         )
       : null;
+    const preflight = runPreflight();
+    const retryCostAdmission = retryCostAdmissionForRun({
+      runId,
+      costCapUsd: preflight.costCapUsd,
+      result,
+      status,
+    });
     return NextResponse.json({
       runId,
       status,
@@ -42,6 +51,7 @@ export async function GET(
       csvExportAllowed: runCsvExportAllowed(result),
       csvExportBlockReason: runCsvExportBlockReason(result),
       tipCandidateRunId,
+      retryCostAdmission,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
