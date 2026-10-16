@@ -37,7 +37,7 @@ export async function middleware(req: NextRequest) {
         { status: 503 },
       );
     }
-    // Pages: send to unlock with a clear query flag (AuthGate / unlock UI).
+    // Pages: send to unlock; AuthGate reads ?misconfigured=1 and /api/auth.
     const dest = req.nextUrl.clone();
     dest.pathname = "/unlock";
     dest.search = "";

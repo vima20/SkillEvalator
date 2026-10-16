@@ -4,8 +4,10 @@ Unikie Contribution Evaluator MVP: **baseline (neutral) ↔ candidate (SKILL.md)
 
 ## Quick start
 
-1. Copy `.env.example` → `.env` and set `OPENAI_API_KEY` (optional for smoke).
-2. Install + run:
+1. Copy `.env.example` → `.env`.
+2. For **live** New run / worker produce: set `OPENAI_API_KEY` (leave `FAKE_PRODUCE` unset — `start.bat` / `start.ps1` / `npm run dev` use live produce + Docker grade).
+3. For **harness smoke without OpenAI**, skip the key and use `npm run smoke:*` or the worker FAKE block below — not the default start scripts.
+4. Install + run:
 
 ```bat
 start.bat
@@ -17,7 +19,7 @@ or
 .\start.ps1
 ```
 
-Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*` and pages (redirect to `/unlock` before RSC); the UI sets a `se_auth` cookie after unlock.
+Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*` and pages (redirect to `/unlock` before RSC); the UI sets a `se_auth` cookie after unlock. An empty/whitespace `WEB_AUTH_TOKEN` is **misconfigured** (fail-closed) — set a real secret or remove the var.
 
 CI: `npm run ci` runs unit tests, `typecheck`, `smoke:skills`, `smoke:paired`, `smoke:official`, and `smoke:export`. New Run defaults to **baseline↔candidate**, cost estimate, and **Find/Receive** import (GitHub URL or local `.zip`).
 
