@@ -15,6 +15,7 @@ import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
+import { RETRY_STILL_FINISHING_ERROR } from "@/lib/runLifecycle";
 import { statusBadgeClass } from "@/lib/status";
 
 type PerTask = {
@@ -95,15 +96,7 @@ type Payload = {
     baselineRunId: string;
     candidateRunId: string;
   } | null;
-  /** Same COST_CAP gate as POST /retry and New run (server-computed). */
-  retryCostAdmission?: {
-    blocked: boolean;
-    reason: string | null;
-    estimatedUsd?: number;
-    costCapUsd?: number;
-    errorCode?: "enqueue_cost_over_cap";
-  } | null;
-  /** Full POST /retry admission mirror (preflight, Ready, pair, cost). */
+  /** Full POST /retry admission mirror (preflight, Ready, pair, cost, snapshot). */
   retryAdmission?: {
     canRetry: boolean;
     blockedReason: string | null;
@@ -256,7 +249,7 @@ export function RunDetailClient({
     !budgetStopping &&
     retryAdmission?.canRetry === true;
   const retryBlockedReason = budgetStopping
-    ? "run still finishing — wait for result.json (or cancel) before retry"
+    ? RETRY_STILL_FINISHING_ERROR
     : retryAdmission == null && retryTerminal
       ? "Checking retry admission…"
       : (retryAdmission?.blockedReason ?? null);

@@ -16,7 +16,12 @@ import { resolveHealedMetaLegsForCancel } from "@/lib/evaluations";
 import { isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { collectPilotBlockers } from "@/lib/pilotReady";
-import { retryGate, retrySnapshotGate } from "@/lib/runLifecycle";
+import {
+  isRetryBudgetStopping,
+  RETRY_STILL_FINISHING_ERROR,
+  retryGate,
+  retrySnapshotGate,
+} from "@/lib/runLifecycle";
 import { runPreflight, type RunPreflightResult } from "@/lib/runPreflight";
 import {
   resolveRetryCostParams,
@@ -140,8 +145,7 @@ export function computeRunDetailRetryAdmission(opts: {
   if (opts.budgetStopping) {
     return {
       canRetry: false,
-      blockedReason:
-        "run still finishing — wait for result.json (or cancel) before retry",
+      blockedReason: RETRY_STILL_FINISHING_ERROR,
     };
   }
   if (opts.errorCode === "insufficient_quota") {
@@ -303,7 +307,7 @@ export function runDetailRetryAdmissionForRun(opts: {
   const preflight = opts.preflight ?? runPreflight();
   const status = opts.status?.status;
   const hasResult = Boolean(opts.result);
-  const budgetStopping = status === "budget_stop" && !hasResult;
+  const budgetStopping = isRetryBudgetStopping(status, hasResult);
   const hasLiveJob =
     opts.hasLiveJob ?? hasLiveJobFile(jobsDir(), opts.runId);
 

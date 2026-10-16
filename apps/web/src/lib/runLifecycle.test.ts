@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   cancelGate,
+  isRetryBudgetStopping,
   pairedCancelPeerStatuses,
+  RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
 } from "./runLifecycle.js";
@@ -27,6 +29,15 @@ describe("cancelGate", () => {
   });
 });
 
+describe("isRetryBudgetStopping", () => {
+  it("is true only for budget_stop without result.json", () => {
+    expect(isRetryBudgetStopping("budget_stop", false)).toBe(true);
+    expect(isRetryBudgetStopping("budget_stop", true)).toBe(false);
+    expect(isRetryBudgetStopping("failed", false)).toBe(false);
+    expect(RETRY_STILL_FINISHING_ERROR).toMatch(/still finishing/);
+  });
+});
+
 describe("retryGate", () => {
   it("blocks while a live job file is finishing", () => {
     const g = retryGate({
@@ -34,7 +45,7 @@ describe("retryGate", () => {
       hasLiveJob: true,
     });
     expect(g.allow).toBe(false);
-    if (!g.allow) expect(g.error).toMatch(/still finishing/);
+    if (!g.allow) expect(g.error).toBe(RETRY_STILL_FINISHING_ERROR);
   });
 
   it("allows settled budget_stop / failed / cancelled", () => {

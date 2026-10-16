@@ -44,6 +44,21 @@ export type RetryGate =
 
 const RETRYABLE = new Set(["failed", "cancelled", "budget_stop"]);
 
+/** Same copy for UI admission, GET retryAdmission, and POST /retry. */
+export const RETRY_STILL_FINISHING_ERROR =
+  "run still finishing — wait for result.json (or cancel) before retry";
+
+/**
+ * Orphan wind-down: status budget_stop but result.json not written yet
+ * (even when .running.json was healed away). POST /retry and UI must agree.
+ */
+export function isRetryBudgetStopping(
+  status: string | undefined,
+  hasResult: boolean,
+): boolean {
+  return status === "budget_stop" && !hasResult;
+}
+
 /**
  * Whether Retry may enqueue a replacement run.
  * Live job files (queued/tmp/running) block even if status looks terminal
@@ -61,8 +76,7 @@ export function retryGate(opts: {
   if (opts.hasLiveJob) {
     return {
       allow: false,
-      error:
-        "run still finishing — wait for result.json (or cancel) before retry",
+      error: RETRY_STILL_FINISHING_ERROR,
     };
   }
   if (opts.nonRetryableError) {

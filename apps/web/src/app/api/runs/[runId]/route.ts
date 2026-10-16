@@ -14,7 +14,6 @@ import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
 } from "@/lib/runCsvExportAllowed";
-import { retryCostAdmissionForRun } from "@/lib/retryCostAdmission";
 import { runDetailPairHarness } from "@/lib/runDetailPairHarness";
 import { runDetailRetryAdmissionForRun } from "@/lib/runDetailRetryAdmission";
 import { runPreflight } from "@/lib/runPreflight";
@@ -42,12 +41,6 @@ export async function GET(
       : null;
     const pairHarness = runDetailPairHarness(packed);
     const preflight = runPreflight();
-    const retryCostAdmission = retryCostAdmissionForRun({
-      runId,
-      costCapUsd: preflight.costCapUsd,
-      result,
-      status,
-    });
     const retryAdmission = runDetailRetryAdmissionForRun({
       runId,
       result,
@@ -62,7 +55,6 @@ export async function GET(
       csvExportBlockReason: runCsvExportBlockReason(result),
       tipCandidateRunId,
       pairHarness,
-      retryCostAdmission,
       retryAdmission,
     });
   } catch (err) {

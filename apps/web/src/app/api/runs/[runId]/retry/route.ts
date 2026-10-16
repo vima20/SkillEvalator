@@ -32,7 +32,12 @@ import {
   resolveRetryRole,
   roleFromJobRaw,
 } from "@/lib/retryRole";
-import { retryGate, retrySnapshotGate } from "@/lib/runLifecycle";
+import {
+  isRetryBudgetStopping,
+  RETRY_STILL_FINISHING_ERROR,
+  retryGate,
+  retrySnapshotGate,
+} from "@/lib/runLifecycle";
 import { officialPilotReadyGate } from "@/lib/pilotReady";
 import { runPreflight } from "@/lib/runPreflight";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
@@ -79,6 +84,15 @@ export async function POST(
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
     const current = status.status ?? "unknown";
+    const result = loadRunResult(root, runId);
+    // Match UI retryAdmission: orphan budget_stop without result.json
+    // (healed away .running.json) must not enqueue a replacement.
+    if (isRetryBudgetStopping(current, Boolean(result))) {
+      return NextResponse.json(
+        { error: RETRY_STILL_FINISHING_ERROR },
+        { status: 409 },
+      );
+    }
     const liveJob = hasLiveJobFile(jobsDir(), runId);
     const gate = retryGate({
       status: current,
@@ -109,7 +123,6 @@ export async function POST(
 
     const failed = loadFailedJob(runId);
     const job = failed?.job;
-    const result = loadRunResult(root, runId);
 
     const evalSkillId = job?.evalSkillId ?? result?.evalSkillId;
     const mode = job?.mode ?? result?.mode;
