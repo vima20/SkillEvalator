@@ -133,8 +133,12 @@ export function NewRunForm({
     preflight == null ||
     Boolean(preflight.fakeProduce) ||
     preflight.pilotReady === false;
+  /** Per-leg estimate vs COST_CAP_USD (paired preview doubles total spend). */
+  const costOverCap =
+    costPreview.estimatedUsd / (withBaseline ? 2 : 1) > costCapUsd;
   /** API POST /api/runs rejects every mode with 503 when preflight fails. */
-  const canQueue = preflight?.ok === true && !preflightError;
+  const canQueue =
+    preflight?.ok === true && !preflightError && !costOverCap;
 
   useEffect(() => {
     if (officialBlocked && mode === "official") {
@@ -169,11 +173,13 @@ export function NewRunForm({
     if (!canQueue) {
       setError(true);
       setMsg(
-        preflight == null || preflightBusy
-          ? "Preflight still checking — wait for API key, Docker, and worker."
-          : preflightError
-            ? `Preflight error — ${preflightError}`
-            : "Preflight not green — fix API key, Docker, or worker before queueing (API also rejects).",
+        costOverCap
+          ? `Per-leg estimate exceeds the $${costCapUsd} USD hard-stop — lower repeats/tasks or raise COST_CAP_USD (worker may budget_stop).`
+          : preflight == null || preflightBusy
+            ? "Preflight still checking — wait for API key, Docker, and worker."
+            : preflightError
+              ? `Preflight error — ${preflightError}`
+              : "Preflight not green — fix API key, Docker, or worker before queueing (API also rejects).",
       );
       return;
     }
@@ -624,16 +630,20 @@ export function NewRunForm({
           title={
             canQueue
               ? undefined
-              : "Blocked until preflight is green (API key, Docker, worker)"
+              : costOverCap
+                ? `Per-leg estimate exceeds $${costCapUsd} COST_CAP_USD hard-stop`
+                : "Blocked until preflight is green (API key, Docker, worker)"
           }
         >
           {busy
             ? "Queueing…"
-            : !canQueue
-              ? "Preflight required"
-              : withBaseline
-                ? "Start baseline↔candidate"
-                : "Start run"}
+            : costOverCap
+              ? "Over cost cap"
+              : !canQueue
+                ? "Preflight required"
+                : withBaseline
+                  ? "Start baseline↔candidate"
+                  : "Start run"}
         </button>
         {msg ? (
           <p

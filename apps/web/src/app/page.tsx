@@ -44,7 +44,14 @@ export default async function NewRunPage({
           <Link href={withPilotFocus("/settings", pilotFocus)}>Settings</Link>{" "}
           is <strong>Ready</strong> (preflight green, no smoke flags) before
           official enqueue. Ready ≠ Comparison PASS / Benefit USE — see{" "}
-          <code>docs/PILOT-CHECKLIST.md</code>.
+          <a
+            href="https://github.com/vima20/SkillEvalator/blob/main/docs/PILOT-CHECKLIST.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            PILOT-CHECKLIST.md
+          </a>
+          .
         </p>
       </div>
 

@@ -125,14 +125,16 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
     s.queue.queued > 0 ||
     s.queue.running > 0 ||
     (s.queue.staleRunningRunIds?.length ?? 0) > 0;
+  /** Keep healing Ready flip (e.g. FAKE unset on another tab) without idle spin. */
+  const needsSettingsPoll = needsQueuePoll || !s.pilotReady;
 
   useEffect(() => {
-    if (!needsQueuePoll) return;
+    if (!needsSettingsPoll) return;
     const id = window.setInterval(() => {
       void refresh({ silent: true });
     }, 8000);
     return () => window.clearInterval(id);
-  }, [needsQueuePoll, refresh]);
+  }, [needsSettingsPoll, refresh]);
 
   return (
     <div>
@@ -222,16 +224,24 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             <Link href={withPilotFocus("/benefit", true)}>Benefit</Link> /{" "}
             <Link href={withPilotFocus("/dashboard", true)}>Dashboard</Link>{" "}
             pilot focus.
-            See <code>docs/PILOT-CHECKLIST.md</code>.
+            See{" "}
+            <a
+              href="https://github.com/vima20/SkillEvalator/blob/main/docs/PILOT-CHECKLIST.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              PILOT-CHECKLIST.md
+            </a>
+            .
           </p>
         </section>
 
         <section className="panel settings-panel">
           <h2>Build &amp; queue</h2>
-          {needsQueuePoll ? (
+          {needsSettingsPoll ? (
             <p className="hint">
-              Auto-refreshing every 8s while jobs are queued, running, or stale
-              (heals orphans).
+              Auto-refreshing every 8s while jobs are queued/running/stale or
+              Ready is Blocked (heals orphans).
             </p>
           ) : null}
           <dl className="settings-dl">
@@ -345,7 +355,14 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             Official Comparison PASS needs candidate ≥ USE floor and lift ≥{" "}
             {pp(s.adoption.liftPassDelta)}. Soft-pass alone is not USE. These
             are code constants — not editable via <code>.env</code>. See{" "}
-            <code>docs/ACCEPTANCE.md</code>.
+            <a
+              href="https://github.com/vima20/SkillEvalator/blob/main/docs/ACCEPTANCE.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              ACCEPTANCE.md
+            </a>
+            .
           </p>
         </section>
 
@@ -369,9 +386,15 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             Official Comparison requires <code>grade=docker_script</code>,{" "}
             <code>pipeline.grade=docker_script</code> and{" "}
             <code>allowHostGrade=false</code> on capture (same as{" "}
-            <code>docs/ACCEPTANCE.md</code>). Live runs use{" "}
-            <code>{s.grade.livePolicy}</code> in Docker; host grade is
-            smoke/CI only
+            <a
+              href="https://github.com/vima20/SkillEvalator/blob/main/docs/ACCEPTANCE.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              ACCEPTANCE.md
+            </a>
+            ). Live runs use <code>{s.grade.livePolicy}</code> in Docker; host
+            grade is smoke/CI only
             {s.grade.hostGradeOnlyWithFakeProduce
               ? " (host allowed only with FAKE_PRODUCE=known-good)"
               : ""}

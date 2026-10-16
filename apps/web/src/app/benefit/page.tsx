@@ -17,6 +17,7 @@ import {
 } from "@/lib/candidateLeg";
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { runIsActive } from "@/lib/status";
 
@@ -32,7 +33,9 @@ export default async function BenefitIndexPage({
 
   healOrphanStatuses();
   const listed = listRuns(resultsDir());
-  const hasActive = listed.some((r) => runIsActive(r.status, !!r.result));
+  const hasActive =
+    listed.some((r) => runIsActive(r.status, !!r.result)) ||
+    hasPendingEvaluations();
   const allRuns = listed
     .filter((r) => r.result)
     // Recommend surface: candidate skill only (baseline is Comparison input).
