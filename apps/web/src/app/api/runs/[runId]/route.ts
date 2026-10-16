@@ -16,6 +16,7 @@ import {
 } from "@/lib/runCsvExportAllowed";
 import { retryCostAdmissionForRun } from "@/lib/retryCostAdmission";
 import { runDetailPairHarness } from "@/lib/runDetailPairHarness";
+import { runDetailRetryAdmissionForRun } from "@/lib/runDetailRetryAdmission";
 import { runPreflight } from "@/lib/runPreflight";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,12 @@ export async function GET(
       result,
       status,
     });
+    const retryAdmission = runDetailRetryAdmissionForRun({
+      runId,
+      result,
+      status,
+      preflight,
+    });
     return NextResponse.json({
       runId,
       status,
@@ -56,6 +63,7 @@ export async function GET(
       tipCandidateRunId,
       pairHarness,
       retryCostAdmission,
+      retryAdmission,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
