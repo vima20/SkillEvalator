@@ -3,6 +3,7 @@ import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
+import { ExportDownloadButton } from "@/components/ExportDownloadButton";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
   formatCaptureEnvEvidence,
@@ -213,19 +214,21 @@ export default async function ComparisonDetailPage({
           )}
           {showOfficialDownloads ? (
             <>
-              <a
+              <ExportDownloadButton
                 className="btn btn-ghost"
-                href={`/api/comparison/${evaluationId}/csv`}
+                href={`/api/comparison/${encodeURIComponent(evaluationId)}/csv`}
+                filename={`${evaluationId}-comparison.csv`}
               >
                 Download CSV
-              </a>
-              <a
+              </ExportDownloadButton>
+              <ExportDownloadButton
                 className="btn btn-ghost"
-                href={`/api/comparison/${evaluationId}/archive`}
+                href={`/api/comparison/${encodeURIComponent(evaluationId)}/archive`}
+                filename={`${evaluationId}-pilot-archive.zip`}
                 title="Zip tip legs + evaluation + MANIFEST (git SHA)"
               >
                 Download pilot archive
-              </a>
+              </ExportDownloadButton>
             </>
           ) : (
             <p

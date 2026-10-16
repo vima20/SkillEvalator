@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ExportDownloadButton } from "@/components/ExportDownloadButton";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 
 export function BenefitActions({
@@ -68,20 +69,20 @@ export function BenefitActions({
           >
             {copied ? "Copied" : "Copy Markdown"}
           </button>
-          <a
+          <ExportDownloadButton
             className="btn btn-primary btn-compact"
             href={`/api/runs/${encodeURIComponent(runId)}/benefit?format=md`}
-            download={`${runId}-benefit.md`}
+            filename={`${runId}-benefit.md`}
           >
             Download .md
-          </a>
-          <a
+          </ExportDownloadButton>
+          <ExportDownloadButton
             className="btn btn-ghost btn-compact"
             href={`/api/runs/${encodeURIComponent(runId)}/benefit?format=csv`}
-            download={`${runId}-benefit.csv`}
+            filename={`${runId}-benefit.csv`}
           >
             Download CSV
-          </a>
+          </ExportDownloadButton>
         </>
       ) : (
         <p className="hint" style={{ margin: 0 }} title={lockedHint}>

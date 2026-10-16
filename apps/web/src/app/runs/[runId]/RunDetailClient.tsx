@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
+import { ExportDownloadButton } from "@/components/ExportDownloadButton";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
   formatCaptureEnvEvidence,
@@ -705,13 +706,14 @@ export function RunDetailClient({
 
           <div className="action-row" style={{ gap: 8, flexWrap: "wrap" }}>
             {data.csvExportAllowed ? (
-              <a
+              <ExportDownloadButton
                 className="btn btn-ghost"
                 href={`/api/runs/${encodeURIComponent(runId)}/csv`}
+                filename={`${runId}.csv`}
                 title="Official Comparison PASS/FAIL on a current meta leg"
               >
                 Download CSV
-              </a>
+              </ExportDownloadButton>
             ) : (
               <span
                 className="hint"

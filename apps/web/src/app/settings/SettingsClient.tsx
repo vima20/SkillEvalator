@@ -89,12 +89,15 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
     };
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
-    setBusy(true);
-    setError(null);
+    const silent = opts?.silent === true;
+    if (!silent) {
+      setBusy(true);
+      setError(null);
+    }
     try {
       const res = await fetch("/api/settings?heal=1", {
         cache: "no-store",
@@ -110,11 +113,24 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
       setS(next);
     } catch (e) {
       if (ac.signal.aborted) return;
-      setError(e instanceof Error ? e.message : "Settings refresh failed");
+      if (!silent) {
+        setError(e instanceof Error ? e.message : "Settings refresh failed");
+      }
     } finally {
-      if (!ac.signal.aborted) setBusy(false);
+      if (!ac.signal.aborted && !silent) setBusy(false);
     }
   }, []);
+
+  const needsQueuePoll =
+    s.queue.running > 0 || (s.queue.staleRunningRunIds?.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (!needsQueuePoll) return;
+    const id = window.setInterval(() => {
+      void refresh({ silent: true });
+    }, 8000);
+    return () => window.clearInterval(id);
+  }, [needsQueuePoll, refresh]);
 
   return (
     <div>
@@ -210,6 +226,12 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
 
         <section className="panel settings-panel">
           <h2>Build &amp; queue</h2>
+          {needsQueuePoll ? (
+            <p className="hint">
+              Auto-refreshing every 8s while runs are active or stale (heals
+              orphans).
+            </p>
+          ) : null}
           <dl className="settings-dl">
             <Row label="Git SHA">
               {s.build.gitShaShort ? (
