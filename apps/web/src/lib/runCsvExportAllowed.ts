@@ -4,14 +4,25 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { runCsvExportGate } from "@/lib/runCsvExport";
 
-function runCsvExportGateForResult(result: RunResult) {
-  const packed = result.evaluationId
-    ? loadEvaluationComparison(result.evaluationId)
+function runCsvExportGateForRun(opts: {
+  runId: string;
+  result: RunResult;
+  status?: { evaluationId?: string } | null;
+}) {
+  const evaluationId = resolveRunDetailEvaluationId({
+    runId: opts.runId,
+    status: opts.status,
+    result: opts.result,
+  });
+  const packed = evaluationId
+    ? loadEvaluationComparison(evaluationId)
     : null;
   return runCsvExportGate({
-    result,
+    result: opts.result,
+    evaluationId,
     comparisonVerdict: packed?.comparison?.verdict ?? null,
     comparisonMode: packed?.comparison?.mode ?? null,
     baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
@@ -28,18 +39,30 @@ function runCsvExportGateForResult(result: RunResult) {
 }
 
 /** Same bar as GET /api/runs/[runId]/csv — for UI affordance. */
-export function runCsvExportAllowed(
-  result: RunResult | null | undefined,
-): boolean {
-  if (!result) return false;
-  return runCsvExportGateForResult(result).ok;
+export function runCsvExportAllowed(opts: {
+  runId: string;
+  result: RunResult | null | undefined;
+  status?: { evaluationId?: string } | null;
+}): boolean {
+  if (!opts.result) return false;
+  return runCsvExportGateForRun({
+    runId: opts.runId,
+    result: opts.result,
+    status: opts.status,
+  }).ok;
 }
 
 /** Gate error text when CSV is locked (same string as API 409). */
-export function runCsvExportBlockReason(
-  result: RunResult | null | undefined,
-): string | null {
-  if (!result) return "result not ready";
-  const gate = runCsvExportGateForResult(result);
+export function runCsvExportBlockReason(opts: {
+  runId: string;
+  result: RunResult | null | undefined;
+  status?: { evaluationId?: string } | null;
+}): string | null {
+  if (!opts.result) return "result not ready";
+  const gate = runCsvExportGateForRun({
+    runId: opts.runId,
+    result: opts.result,
+    status: opts.status,
+  });
   return gate.ok ? null : gate.error;
 }

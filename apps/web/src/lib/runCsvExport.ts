@@ -13,6 +13,11 @@ export function runCsvExportGate(opts: {
     status?: RunResult["status"];
     capture?: { env?: { fakeProduce?: boolean; produceAttested?: boolean } };
   };
+  /**
+   * Resolved evaluationId (status → job → result). When set, overrides
+   * result.evaluationId for the pair-required check.
+   */
+  evaluationId?: string | null;
   comparisonVerdict?: ComparisonVerdict | null;
   comparisonMode?: RunResult["mode"] | null;
   baselineRunId?: string | null;
@@ -56,7 +61,9 @@ export function runCsvExportGate(opts: {
       error: "run CSV export requires mode=official (dry-run is not adoption evidence)",
     };
   }
-  if (!opts.result.evaluationId?.trim()) {
+  const evaluationId =
+    opts.evaluationId?.trim() || opts.result.evaluationId?.trim() || "";
+  if (!evaluationId) {
     return {
       ok: false,
       status: 409,

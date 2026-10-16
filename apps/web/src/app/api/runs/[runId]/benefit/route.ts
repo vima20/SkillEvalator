@@ -3,6 +3,7 @@ import {
   benefitReportToCsv,
   benefitReportToMarkdown,
   loadRunResult,
+  loadRunStatus,
 } from "@skillevalator/core";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
@@ -16,12 +17,14 @@ export async function GET(
 ) {
   try {
     const { runId } = await ctx.params;
-    const result = loadRunResult(resultsDir(), runId);
+    const root = resultsDir();
+    const result = loadRunResult(root, runId);
     if (!result) {
       return NextResponse.json({ error: "result not found" }, { status: 404 });
     }
+    const status = loadRunStatus(root, runId);
     const { report, comparison, meta, baseline, candidate } =
-      buildBenefitReportBundle(result);
+      buildBenefitReportBundle(result, { runId, status });
     const format = new URL(req.url).searchParams.get("format");
     const gate = benefitExportGate({
       report,

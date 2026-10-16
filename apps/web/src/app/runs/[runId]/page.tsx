@@ -89,11 +89,12 @@ export default async function RunDetailPage({
     );
   }
 
-  const { tipCandidateRunId, pairHarness } = loadRunDetailEvaluationPack({
-    runId,
-    result,
-    status,
-  });
+  const { evaluationId, tipCandidateRunId, pairHarness } =
+    loadRunDetailEvaluationPack({
+      runId,
+      result,
+      status,
+    });
 
   const preflight = runPreflight();
   const retryAdmission = runDetailRetryAdmissionForRun({
@@ -111,10 +112,15 @@ export default async function RunDetailPage({
         runId,
         status,
         result,
-        csvExportAllowed: runCsvExportAllowed(result),
-        csvExportBlockReason: runCsvExportBlockReason(result),
+        csvExportAllowed: runCsvExportAllowed({ runId, result, status }),
+        csvExportBlockReason: runCsvExportBlockReason({
+          runId,
+          result,
+          status,
+        }),
         tipCandidateRunId,
         pairHarness,
+        resolvedEvaluationId: evaluationId,
         retryAdmission,
       }}
     />

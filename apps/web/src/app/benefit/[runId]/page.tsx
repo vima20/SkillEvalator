@@ -37,11 +37,13 @@ export default async function BenefitReportPage({
   let runStatus: string | undefined;
   let invalid = false;
 
+  let statusFile: ReturnType<typeof syncStatusFromResult> = null;
   try {
     const root = resultsDir();
     healRunOrphansFs(jobsDir(), root, runId, isPidAlive);
     result = loadRunResult(root, runId);
-    runStatus = syncStatusFromResult(root, runId)?.status;
+    statusFile = syncStatusFromResult(root, runId);
+    runStatus = statusFile?.status;
   } catch {
     invalid = true;
   }
@@ -95,7 +97,11 @@ export default async function BenefitReportPage({
     tipBaselineRunId,
     baseline,
     candidate,
-  } = buildBenefitReportBundle(result);
+    evaluationId: resolvedEvaluationId,
+  } = buildBenefitReportBundle(result, {
+    runId,
+    status: statusFile,
+  });
   const markdown = benefitReportToMarkdown(report);
   const baselineFakeProduce = baseline?.capture?.env?.fakeProduce === true;
   const candidateFakeProduce = candidate?.capture?.env?.fakeProduce === true;
@@ -122,7 +128,7 @@ export default async function BenefitReportPage({
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
   const showHarness =
-    Boolean(result.evaluationId) &&
+    Boolean(resolvedEvaluationId) &&
     Boolean(harnessBaselineId) &&
     Boolean(harnessCandidateId);
 
@@ -149,7 +155,7 @@ export default async function BenefitReportPage({
           <BenefitActions
             runId={runId}
             markdown={markdown}
-            evaluationId={result.evaluationId}
+            evaluationId={resolvedEvaluationId ?? undefined}
             exportAllowed={exportAllowed}
             exportBlockReason={exportBlockReason}
             pilotFocus={pilotFocus}
@@ -213,9 +219,9 @@ export default async function BenefitReportPage({
           <p>
             This is the neutral-prompt baseline, not a skill recommendation.
             Open{" "}
-            {result.evaluationId ? (
+            {resolvedEvaluationId ? (
               <Link href={withPilotFocus(
-                `/comparison/${result.evaluationId}`,
+                `/comparison/${resolvedEvaluationId}`,
                 pilotFocus,
               )}>
                 Comparison
@@ -241,12 +247,12 @@ export default async function BenefitReportPage({
             Benefit <strong>USE</strong> needs official paired{" "}
             <strong>Comparison PASS</strong>; <strong>DO NOT USE</strong> needs{" "}
             <strong>FAIL</strong>
-            {result.evaluationId ? (
+            {resolvedEvaluationId ? (
               <>
                 {" "}
                 (
                 <Link href={withPilotFocus(
-                `/comparison/${result.evaluationId}`,
+                `/comparison/${resolvedEvaluationId}`,
                 pilotFocus,
               )}>
                   open Comparison

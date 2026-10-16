@@ -10,14 +10,26 @@ import {
   resolveTipCandidateRunId,
   type EvaluationMeta,
 } from "@/lib/evaluations";
+import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 
 /** Benefit with paired Comparison gate (USE / 5★ needs PASS). */
-export function buildBenefitReportForRun(result: RunResult): BenefitReport {
-  return buildBenefitReportBundle(result).report;
+export function buildBenefitReportForRun(
+  result: RunResult,
+  opts?: { evaluationId?: string | null; runId?: string },
+): BenefitReport {
+  return buildBenefitReportBundle(result, opts).report;
 }
 
 /** Report + comparison for export gates that must re-check PASS. */
-export function buildBenefitReportBundle(result: RunResult): {
+export function buildBenefitReportBundle(
+  result: RunResult,
+  opts?: {
+    /** Prefer resolved id (status → job → result). */
+    evaluationId?: string | null;
+    runId?: string;
+    status?: { evaluationId?: string } | null;
+  },
+): {
   report: BenefitReport;
   comparison: RunComparison | null;
   meta: EvaluationMeta | null;
@@ -25,9 +37,21 @@ export function buildBenefitReportBundle(result: RunResult): {
   tipBaselineRunId: string | null;
   baseline: RunResult | null;
   candidate: RunResult | null;
+  /** Same source as pairHarness / retryAdmission. */
+  evaluationId: string | null;
 } {
-  const packed = result.evaluationId
-    ? loadEvaluationComparison(result.evaluationId)
+  const evaluationId =
+    opts?.evaluationId !== undefined
+      ? (opts.evaluationId ?? null)
+      : opts?.runId
+        ? resolveRunDetailEvaluationId({
+            runId: opts.runId,
+            status: opts.status,
+            result,
+          })
+        : (result.evaluationId ?? null);
+  const packed = evaluationId
+    ? loadEvaluationComparison(evaluationId)
     : null;
   const comparison = packed?.comparison ?? null;
   const meta = packed?.meta ?? null;
@@ -39,5 +63,6 @@ export function buildBenefitReportBundle(result: RunResult): {
     tipBaselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
     baseline: packed?.baseline ?? null,
     candidate: packed?.candidate ?? null,
+    evaluationId,
   };
 }

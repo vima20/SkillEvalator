@@ -29,11 +29,12 @@ export async function GET(
     if (!status && !result) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
-    const { tipCandidateRunId, pairHarness } = loadRunDetailEvaluationPack({
-      runId,
-      result,
-      status,
-    });
+    const { evaluationId, tipCandidateRunId, pairHarness } =
+      loadRunDetailEvaluationPack({
+        runId,
+        result,
+        status,
+      });
     const preflight = runPreflight();
     const retryAdmission = runDetailRetryAdmissionForRun({
       runId,
@@ -45,10 +46,15 @@ export async function GET(
       runId,
       status,
       result,
-      csvExportAllowed: runCsvExportAllowed(result),
-      csvExportBlockReason: runCsvExportBlockReason(result),
+      csvExportAllowed: runCsvExportAllowed({ runId, result, status }),
+      csvExportBlockReason: runCsvExportBlockReason({
+        runId,
+        result,
+        status,
+      }),
       tipCandidateRunId,
       pairHarness,
+      resolvedEvaluationId: evaluationId,
       retryAdmission,
     });
   } catch (err) {

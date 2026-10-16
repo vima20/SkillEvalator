@@ -103,6 +103,18 @@ describe("runCsvExportGate", () => {
       expect(waiting.errorCode).toBe("run_csv_comparison_not_decisive");
   });
 
+  it("accepts resolved evaluationId when result omits it", () => {
+    expect(
+      runCsvExportGate({
+        result: { ...base, evaluationId: undefined },
+        evaluationId: "eval_from_status",
+        comparisonVerdict: "PASS",
+        comparisonMode: "official",
+        ...tipLegs,
+      }).ok,
+    ).toBe(true);
+  });
+
   it("blocks when comparisonMode is missing", () => {
     const out = runCsvExportGate({
       result: base,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   assertSafeId,
   loadRunResult,
+  loadRunStatus,
   runResultToCsv,
 } from "@skillevalator/core";
 import {
@@ -9,6 +10,7 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { resultsDir } from "@/lib/paths";
 import { runCsvExportGate } from "@/lib/runCsvExport";
 
@@ -21,15 +23,24 @@ export async function GET(
   try {
     const { runId: raw } = await ctx.params;
     const runId = assertSafeId(raw, "runId");
-    const result = loadRunResult(resultsDir(), runId);
+    const root = resultsDir();
+    const result = loadRunResult(root, runId);
     if (!result) {
       return NextResponse.json({ error: "result not ready" }, { status: 404 });
     }
-    const packed = result.evaluationId
-      ? loadEvaluationComparison(result.evaluationId)
+    const status = loadRunStatus(root, runId);
+    // Same status → job → result id as run detail pairHarness / retryAdmission.
+    const evaluationId = resolveRunDetailEvaluationId({
+      runId,
+      status,
+      result,
+    });
+    const packed = evaluationId
+      ? loadEvaluationComparison(evaluationId)
       : null;
     const gate = runCsvExportGate({
       result,
+      evaluationId,
       comparisonVerdict: packed?.comparison?.verdict ?? null,
       comparisonMode: packed?.comparison?.mode ?? null,
       baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
@@ -61,7 +72,7 @@ export async function GET(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
-    const status = message.startsWith("invalid ") ? 400 : 500;
-    return NextResponse.json({ error: message }, { status });
+    const code = message.startsWith("invalid ") ? 400 : 500;
+    return NextResponse.json({ error: message }, { status: code });
   }
 }

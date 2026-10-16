@@ -79,6 +79,7 @@ type StatusFile = {
   costUsd?: number;
   error?: string;
   errorCode?: string;
+  evaluationId?: string;
 };
 
 type Payload = {
@@ -89,6 +90,8 @@ type Payload = {
   csvExportAllowed?: boolean;
   /** Same string as API 409 when CSV is locked. */
   csvExportBlockReason?: string | null;
+  /** status → job → result (same as pairHarness / retryAdmission). */
+  resolvedEvaluationId?: string | null;
   /** Healed Comparison tip (comparison ?? meta) for Benefit CTA demotion. */
   tipCandidateRunId?: string | null;
   /** Sibling tip evidence for harness callouts + Benefit CTA demotion. */
@@ -235,6 +238,8 @@ export function RunDetailClient({
 
   const status = data.status?.status ?? "unknown";
   const result = data.result;
+  const resolvedEvaluationId =
+    data.resolvedEvaluationId ?? result?.evaluationId ?? null;
   const cancelRequested = status === "cancel_requested";
   /** Orphan/settling cost-cap — same as POST retry admission + cancelGate. */
   const budgetStopWindDown = isRetryBudgetStopping(status, Boolean(result));
@@ -390,13 +395,13 @@ export function RunDetailClient({
           {result ? (
             <p className="run-subtitle">
               <code>{runId}</code> · {result.mode}
-              {result.evaluationId ? (
+              {resolvedEvaluationId ? (
                 <>
                   {" "}
                   ·{" "}
                   <Link
                     href={withPilotFocus(
-                      `/comparison/${result.evaluationId}`,
+                      `/comparison/${resolvedEvaluationId}`,
                       pilotFocus,
                     )}
                   >
@@ -439,7 +444,7 @@ export function RunDetailClient({
             const hint = benefitCtaHint({
               runId,
               role: result.role,
-              evaluationId: result.evaluationId,
+              evaluationId: resolvedEvaluationId ?? undefined,
               fakeProduce: result.capture?.env?.fakeProduce === true,
               produceAttested: result.capture?.env?.produceAttested === true,
               tipCandidateRunId: data.tipCandidateRunId,
@@ -788,11 +793,11 @@ export function RunDetailClient({
             >
               {jsonOpen ? "Hide raw JSON" : "Show raw JSON"}
             </button>
-            {result.evaluationId ? (
+            {resolvedEvaluationId ? (
               <Link
                 className="btn btn-ghost"
                 href={withPilotFocus(
-                  `/comparison/${result.evaluationId}`,
+                  `/comparison/${resolvedEvaluationId}`,
                   pilotFocus,
                 )}
               >
