@@ -15,6 +15,7 @@ import {
   isPilotFocusParam,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
+import { resolveSettingsRefreshError } from "@/lib/preflightSettingsResolve";
 import {
   isSettingsSnapshot,
   type SettingsPreflightCheck,
@@ -107,18 +108,22 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
         signal: ac.signal,
       });
       if (!res.ok) {
-        throw new Error(`Settings refresh failed (${res.status})`);
+        throw new Error(resolveSettingsRefreshError("http", res.status));
       }
       const next: unknown = await res.json();
       if (!isSettingsSnapshot(next)) {
-        throw new Error("Settings refresh returned an unexpected payload");
+        throw new Error(resolveSettingsRefreshError("unexpected_payload"));
       }
       setS(next);
     } catch (e) {
       if (ac.signal.aborted) return;
       if (e instanceof UnauthorizedError) return;
       if (!silent) {
-        setError(e instanceof Error ? e.message : "Settings refresh failed");
+        setError(
+          e instanceof Error
+            ? e.message
+            : resolveSettingsRefreshError("failed"),
+        );
       }
     } finally {
       if (!ac.signal.aborted && !silent) setBusy(false);

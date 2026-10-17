@@ -20,6 +20,7 @@ import {
   OFFICIAL_ADMISSION_PAIR_REQUIRED,
   resolveEnqueuePostError,
 } from "@/lib/runLifecycle";
+import { resolvePreflightFetchError } from "@/lib/preflightSettingsResolve";
 import { resolveSkillImportPostError } from "@/lib/skillImportResolve";
 
 export type SkillOption = {
@@ -117,14 +118,14 @@ export function NewRunForm({
     try {
       const res = await apiFetch("/api/preflight", { cache: "no-store" });
       if (!res.ok) {
-        setPreflightError(`Preflight failed (HTTP ${res.status}).`);
+        setPreflightError(resolvePreflightFetchError("http", res.status));
         return;
       }
       setPreflightError(null);
       setPreflight((await res.json()) as Preflight);
     } catch (e) {
       if (e instanceof UnauthorizedError) return;
-      setPreflightError("Preflight network error — is the web server up?");
+      setPreflightError(resolvePreflightFetchError("network"));
     } finally {
       setPreflightBusy(false);
     }
