@@ -81,7 +81,7 @@ const RETRYABLE = new Set(["failed", "cancelled", "budget_stop"]);
 export const RETRY_STILL_FINISHING_ERROR =
   "run still finishing — wait for result.json (or cancel) before retry";
 
-/** Same copy for insufficient_quota: admission blockedReason, credit-alert, POST. */
+/** Same copy for insufficient_quota: admission, credit-alert, POST, onRetry. */
 export const RETRY_INSUFFICIENT_QUOTA_BLOCKED =
   "No OpenAI credits remaining — add billing credits before retrying (not auto-retried).";
 
@@ -95,6 +95,42 @@ export const RETRY_PREFLIGHT_BLOCKED =
  */
 export function retryOfficialPilotBlockedReason(blockers: string[]): string {
   return `Official retry blocked — Settings not Ready: ${blockers.join("; ")}.`;
+}
+
+export type RetryPostErrorBody = {
+  error?: string;
+  errorCode?: string;
+  costCapUsd?: number;
+  blockers?: string[];
+};
+
+/**
+ * Map POST /retry JSON errorCodes to shared Retry copy (fail-closed when
+ * error field is missing). Used by RunDetailClient onRetry.
+ */
+export function resolveRetryPostError(
+  body: RetryPostErrorBody,
+  formatCostBlocked: (costCapUsd: number) => string,
+): string {
+  if (
+    body.errorCode === "enqueue_cost_over_cap" &&
+    typeof body.costCapUsd === "number"
+  ) {
+    return formatCostBlocked(body.costCapUsd);
+  }
+  if (body.errorCode === "retry_preflight_blocked") {
+    return RETRY_PREFLIGHT_BLOCKED;
+  }
+  if (
+    body.errorCode === "official_pilot_not_ready" &&
+    Array.isArray(body.blockers)
+  ) {
+    return retryOfficialPilotBlockedReason(body.blockers);
+  }
+  if (body.errorCode === "insufficient_quota") {
+    return RETRY_INSUFFICIENT_QUOTA_BLOCKED;
+  }
+  return body.error ?? "Retry failed";
 }
 
 /**

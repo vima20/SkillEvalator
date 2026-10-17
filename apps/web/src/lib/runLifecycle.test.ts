@@ -8,11 +8,14 @@ import {
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
+  resolveRetryPostError,
   retryGate,
   retryOfficialPilotBlockedReason,
   retrySnapshotGate,
   runDetailCanCancel,
 } from "./runLifecycle.js";
+
+const formatCost = (n: number) => `cost-cap:${n}`;
 
 describe("cancelGate", () => {
   it("allows queued/running and already-cancelled", () => {
@@ -65,6 +68,59 @@ describe("retryOfficialPilotBlockedReason", () => {
       "Official retry blocked — Settings not Ready: stale queue.",
     );
     expect(msg).not.toMatch(/official mode blocked/i);
+  });
+});
+
+describe("resolveRetryPostError", () => {
+  it("fail-closes insufficient_quota without body.error", () => {
+    expect(
+      resolveRetryPostError({ errorCode: "insufficient_quota" }, formatCost),
+    ).toBe(RETRY_INSUFFICIENT_QUOTA_BLOCKED);
+  });
+
+  it("maps preflight, official pilot, and cost-cap codes", () => {
+    expect(
+      resolveRetryPostError(
+        { errorCode: "retry_preflight_blocked" },
+        formatCost,
+      ),
+    ).toBe(RETRY_PREFLIGHT_BLOCKED);
+    expect(
+      resolveRetryPostError(
+        {
+          errorCode: "official_pilot_not_ready",
+          blockers: ["stale queue"],
+        },
+        formatCost,
+      ),
+    ).toBe(retryOfficialPilotBlockedReason(["stale queue"]));
+    expect(
+      resolveRetryPostError(
+        { errorCode: "enqueue_cost_over_cap", costCapUsd: 0.5 },
+        formatCost,
+      ),
+    ).toBe("cost-cap:0.5");
+  });
+
+  it("falls back to body.error or Retry failed", () => {
+    expect(
+      resolveRetryPostError({ error: "custom" }, formatCost),
+    ).toBe("custom");
+    expect(resolveRetryPostError({}, formatCost)).toBe("Retry failed");
+  });
+
+  it("is used by RunDetailClient onRetry", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/app/runs/[runId]/RunDetailClient.tsx",
+      ),
+      "utf8",
+    );
+    expect(src).toMatch(/resolveRetryPostError/);
+    expect(src).toMatch(/formatRetryCostBlockedReason/);
   });
 });
 
