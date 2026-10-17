@@ -21,6 +21,7 @@ import {
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
+  retryOfficialPilotBlockedReason,
   retrySnapshotGate,
 } from "@/lib/runLifecycle";
 import { runPreflight, type RunPreflightResult } from "@/lib/runPreflight";
@@ -195,7 +196,7 @@ export function computeRunDetailRetryAdmission(opts: {
   if (mode === "official" && opts.pilotBlockers.length > 0) {
     return {
       canRetry: false,
-      blockedReason: `Official retry blocked — Settings not Ready: ${opts.pilotBlockers.join("; ")}.`,
+      blockedReason: retryOfficialPilotBlockedReason(opts.pilotBlockers),
     };
   }
 

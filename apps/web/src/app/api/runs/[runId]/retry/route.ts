@@ -43,6 +43,7 @@ import {
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
+  retryOfficialPilotBlockedReason,
   retrySnapshotGate,
 } from "@/lib/runLifecycle";
 import { officialPilotReadyGate } from "@/lib/pilotReady";
@@ -168,7 +169,7 @@ export async function POST(
       if (!readyGate.ok) {
         return NextResponse.json(
           {
-            error: readyGate.error,
+            error: retryOfficialPilotBlockedReason(readyGate.blockers),
             errorCode: readyGate.errorCode,
             blockers: readyGate.blockers,
           },

@@ -9,6 +9,7 @@ import {
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
+  retryOfficialPilotBlockedReason,
   retrySnapshotGate,
   runDetailCanCancel,
 } from "./runLifecycle.js";
@@ -54,6 +55,16 @@ describe("RETRY_PREFLIGHT_BLOCKED", () => {
   it("points to Settings and preflight", () => {
     expect(RETRY_PREFLIGHT_BLOCKED).toMatch(/preflight/i);
     expect(RETRY_PREFLIGHT_BLOCKED).toMatch(/Settings/i);
+  });
+});
+
+describe("retryOfficialPilotBlockedReason", () => {
+  it("uses Official retry blocked prefix (not official mode blocked)", () => {
+    const msg = retryOfficialPilotBlockedReason(["stale queue"]);
+    expect(msg).toBe(
+      "Official retry blocked — Settings not Ready: stale queue.",
+    );
+    expect(msg).not.toMatch(/official mode blocked/i);
   });
 });
 

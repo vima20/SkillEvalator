@@ -90,6 +90,14 @@ export const RETRY_PREFLIGHT_BLOCKED =
   "Retry blocked — preflight not green (API key, Docker, or worker). Open Settings, then retry.";
 
 /**
+ * Official Settings-not-Ready copy for Retry admission / POST /retry / onRetry.
+ * Distinct from officialPilotReadyGate ("official mode blocked") used by new enqueue.
+ */
+export function retryOfficialPilotBlockedReason(blockers: string[]): string {
+  return `Official retry blocked — Settings not Ready: ${blockers.join("; ")}.`;
+}
+
+/**
  * Shared orphan wait for budget_stop → result.json (run detail, Comparison,
  * Benefit pending). After this, final heal refresh + Cancel CTA — not Retry.
  */

@@ -21,6 +21,7 @@ import {
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
+  retryOfficialPilotBlockedReason,
   runDetailCanCancel,
   runDetailFinalizeOrphansPath,
   WIND_DOWN_ORPHAN_MS,
@@ -319,6 +320,7 @@ export function RunDetailClient({
         errorCode?: string;
         runId?: string;
         costCapUsd?: number;
+        blockers?: string[];
       };
       if (!res.ok || !body.runId) {
         setRetryError(
@@ -327,7 +329,10 @@ export function RunDetailClient({
             ? formatRetryCostBlockedReason(body.costCapUsd)
             : body.errorCode === "retry_preflight_blocked"
               ? RETRY_PREFLIGHT_BLOCKED
-              : (body.error ?? "Retry failed"),
+              : body.errorCode === "official_pilot_not_ready" &&
+                  Array.isArray(body.blockers)
+                ? retryOfficialPilotBlockedReason(body.blockers)
+                : (body.error ?? "Retry failed"),
         );
         setRetrying(false);
         return;

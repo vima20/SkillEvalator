@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_PREFLIGHT_BLOCKED,
+  retryOfficialPilotBlockedReason,
 } from "./runLifecycle.js";
 import {
   computeRunDetailRetryAdmission,
@@ -75,13 +76,14 @@ describe("computeRunDetailRetryAdmission", () => {
   });
 
   it("blocks official when Settings not Ready", () => {
+    const blockers = [
+      "FAKE_PRODUCE=known-good — unset for official live pilot",
+    ];
     const out = computeRunDetailRetryAdmission(
       base({
         mode: "official",
         evaluationId: "eval_1",
-        pilotBlockers: [
-          "FAKE_PRODUCE=known-good — unset for official live pilot",
-        ],
+        pilotBlockers: blockers,
         webAuthKind: "required",
         env: { OPENAI_API_KEY: "sk", FAKE_PRODUCE: "" },
         healedMeta: {
@@ -92,7 +94,9 @@ describe("computeRunDetailRetryAdmission", () => {
       }),
     );
     expect(out.canRetry).toBe(false);
-    expect(out.blockedReason).toMatch(/Settings not Ready/i);
+    expect(out.blockedReason).toBe(
+      retryOfficialPilotBlockedReason(blockers),
+    );
   });
 
   it("blocks official without evaluationId", () => {
@@ -294,6 +298,7 @@ describe("POST /retry shares admission gate helpers", () => {
     expect(src).toMatch(/RETRY_INSUFFICIENT_QUOTA_BLOCKED/);
     expect(src).toMatch(/RETRY_PREFLIGHT_BLOCKED/);
     expect(src).toMatch(/retry_preflight_blocked/);
+    expect(src).toMatch(/retryOfficialPilotBlockedReason/);
     expect(src).toMatch(/healRunForRead/);
     expect(src).not.toMatch(/healRunOrphansFs/);
     expect(src).not.toMatch(/function loadFailedJob/);
