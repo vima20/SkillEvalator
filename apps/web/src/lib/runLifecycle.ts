@@ -88,6 +88,21 @@ export const RETRY_STILL_FINISHING_ERROR =
 export const RETRY_ENQUEUE_LOCK_BUSY_ERROR =
   "retry already in progress — try again shortly";
 
+/** POST /retry when tip link enqueue fails and meta revert also fails. */
+export const RETRY_EVALUATION_META_REVERT_FAILED =
+  "enqueue failed and Comparison tip revert failed — repair the pair shortly";
+
+/** Pair-meta / official evaluation.json gates (same as retryPairMetaAdmission). */
+export const RETRY_OFFICIAL_EVALUATION_META_MISSING =
+  "official retry requires paired evaluation.json on disk (baseline↔candidate)";
+
+export const RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH =
+  "paired retry parent runId is not a current Comparison meta leg — retry from the tip baseline/candidate";
+
+/** Fail-closed when POST omits error detail (admission may still include roles). */
+export const RETRY_OFFICIAL_EVALUATION_ROLE_SLOT_MISMATCH =
+  "retry role does not match evaluation meta slot — retry from the tip baseline/candidate";
+
 /**
  * Billing/account codes that must not be retried — keep in sync with
  * packages/core NON_RETRYABLE_ERROR_CODES (client-safe local copy; no core import).
@@ -131,6 +146,30 @@ export function retryNonRetryableBlockedReason(
   return RETRY_INSUFFICIENT_QUOTA_BLOCKED;
 }
 
+/**
+ * Pair-meta / tip-revert errorCodes → shared copy (null if not a known code).
+ * Role-slot prefers body.error when provided (includes concrete roles).
+ */
+export function retryPairMetaBlockedReason(
+  errorCode?: string,
+  bodyError?: string,
+): string | null {
+  switch (errorCode) {
+    case "evaluation_meta_revert_failed":
+      return RETRY_EVALUATION_META_REVERT_FAILED;
+    case "official_evaluation_meta_missing":
+      return RETRY_OFFICIAL_EVALUATION_META_MISSING;
+    case "official_evaluation_leg_mismatch":
+      return RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH;
+    case "official_evaluation_role_slot_mismatch":
+      return bodyError?.trim()
+        ? bodyError
+        : RETRY_OFFICIAL_EVALUATION_ROLE_SLOT_MISMATCH;
+    default:
+      return null;
+  }
+}
+
 export type RetryPostErrorBody = {
   error?: string;
   errorCode?: string;
@@ -167,6 +206,8 @@ export function resolveRetryPostError(
   if (body.errorCode === "retry_still_finishing") {
     return RETRY_STILL_FINISHING_ERROR;
   }
+  const pairMeta = retryPairMetaBlockedReason(body.errorCode, body.error);
+  if (pairMeta) return pairMeta;
   const billing = retryNonRetryableBlockedReason(body.errorCode);
   if (billing) return billing;
   return body.error ?? "Retry failed";

@@ -7,8 +7,12 @@ import {
   parseAlsoCancelledRunId,
   isRetryBillingBlocked,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+  RETRY_EVALUATION_META_REVERT_FAILED,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_NON_RETRYABLE_ERROR_CODES,
+  RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH,
+  RETRY_OFFICIAL_EVALUATION_META_MISSING,
+  RETRY_OFFICIAL_EVALUATION_ROLE_SLOT_MISMATCH,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   resolveRetryPostError,
@@ -130,6 +134,42 @@ describe("resolveRetryPostError", () => {
         formatCost,
       ),
     ).toBe(RETRY_STILL_FINISHING_ERROR);
+  });
+
+  it("fail-closes evaluation meta revert and pair-meta codes", () => {
+    expect(
+      resolveRetryPostError(
+        { errorCode: "evaluation_meta_revert_failed" },
+        formatCost,
+      ),
+    ).toBe(RETRY_EVALUATION_META_REVERT_FAILED);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_evaluation_meta_missing" },
+        formatCost,
+      ),
+    ).toBe(RETRY_OFFICIAL_EVALUATION_META_MISSING);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_evaluation_leg_mismatch" },
+        formatCost,
+      ),
+    ).toBe(RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_evaluation_role_slot_mismatch" },
+        formatCost,
+      ),
+    ).toBe(RETRY_OFFICIAL_EVALUATION_ROLE_SLOT_MISMATCH);
+    expect(
+      resolveRetryPostError(
+        {
+          errorCode: "official_evaluation_role_slot_mismatch",
+          error: "retry role candidate does not match evaluation meta slot baseline",
+        },
+        formatCost,
+      ),
+    ).toMatch(/candidate.*baseline/);
   });
 
   it("maps preflight, official pilot, and cost-cap codes", () => {

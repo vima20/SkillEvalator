@@ -17,6 +17,8 @@ import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+  RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH,
+  RETRY_OFFICIAL_EVALUATION_META_MISSING,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
@@ -57,8 +59,7 @@ export function retryPairMetaAdmission(opts: {
     if (opts.mode === "official") {
       return {
         ok: false,
-        error:
-          "official retry requires paired evaluation.json on disk (baseline↔candidate)",
+        error: RETRY_OFFICIAL_EVALUATION_META_MISSING,
         errorCode: "official_evaluation_meta_missing",
       };
     }
@@ -73,8 +74,7 @@ export function retryPairMetaAdmission(opts: {
   if (!metaSlot) {
     return {
       ok: false,
-      error:
-        "paired retry parent runId is not a current Comparison meta leg — retry from the tip baseline/candidate",
+      error: RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH,
       errorCode: "official_evaluation_leg_mismatch",
     };
   }

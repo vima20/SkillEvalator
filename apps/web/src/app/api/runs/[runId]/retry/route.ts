@@ -39,6 +39,7 @@ import {
 import {
   isRetryBudgetStopping,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+  RETRY_EVALUATION_META_REVERT_FAILED,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
@@ -385,8 +386,7 @@ export async function POST(
             return NextResponse.json(
               {
                 ok: false,
-                error:
-                  "enqueue failed and Comparison tip revert failed — repair the pair shortly",
+                error: RETRY_EVALUATION_META_REVERT_FAILED,
                 errorCode: "evaluation_meta_revert_failed",
                 enqueueError: queued.error,
                 runId: newRunId,
