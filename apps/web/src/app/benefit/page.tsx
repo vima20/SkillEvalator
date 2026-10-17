@@ -15,7 +15,7 @@ import {
   includeInPilotFocusRun,
   type CandidateLegKind,
 } from "@/lib/candidateLeg";
-import { healOrphanStatuses } from "@/lib/healOrphans";
+import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
@@ -32,7 +32,7 @@ export default async function BenefitIndexPage({
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
 
-  healOrphanStatuses();
+  healOrphansForBrowse();
   const listed = listRuns(resultsDir());
   const hasActive =
     listed.some((r) => runIsActive(r.status, !!r.result)) ||

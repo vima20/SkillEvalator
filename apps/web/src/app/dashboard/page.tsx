@@ -17,7 +17,7 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
-import { healOrphanStatuses } from "@/lib/healOrphans";
+import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
@@ -63,7 +63,7 @@ export default async function DashboardPage({
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
 
-  healOrphanStatuses();
+  healOrphansForBrowse();
   const allRuns = listRuns(resultsDir());
   const hasActive =
     allRuns.some((r) => runIsActive(r.status, !!r.result)) ||

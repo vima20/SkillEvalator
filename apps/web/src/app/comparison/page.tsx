@@ -13,7 +13,7 @@ import {
   officialComparisonExportGate,
 } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
-import { healOrphanStatuses } from "@/lib/healOrphans";
+import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
@@ -48,7 +48,7 @@ export default async function ComparisonListPage({
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
 
-  healOrphanStatuses();
+  healOrphansForBrowse();
   const root = resultsDir();
   const hasActiveRuns = listRuns(root).some((r) =>
     runIsActive(r.status, !!r.result),

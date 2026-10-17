@@ -19,7 +19,7 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
-import { healOrphanStatuses } from "@/lib/healOrphans";
+import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
@@ -46,7 +46,7 @@ export default async function RunsPage({
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
 
-  healOrphanStatuses();
+  healOrphansForBrowse();
   const pairByEval = new Map<
     string,
     {

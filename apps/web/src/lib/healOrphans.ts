@@ -1,4 +1,5 @@
 import {
+  cleanupOrphanQueuedFs,
   healAllOrphansFs,
   healOrphanQueuedStatusFs,
   healRunOrphansFs,
@@ -16,9 +17,26 @@ export function isPidAlive(pid: number): boolean {
   }
 }
 
-/** Heal orphan queued/running/cancel_requested + reclaim dead .running jobs. */
+/**
+ * Full heal (Settings / POST enqueue / POST retry): reclaim dead .running,
+ * orphan queued, and orphan active (budget_stop/running → failed).
+ * Do not use on browse/list SSR — that would end wind-down Cancel early.
+ */
 export function healOrphanStatuses(): void {
   healAllOrphansFs(jobsDir(), resultsDir(), isPidAlive);
+}
+
+/**
+ * Dashboard / Runs / Benefit / Comparison index + GET /api/runs list:
+ * reclaim dead .running.json + orphan queued / stale .tmp.json.
+ * Skips cleanupOrphanRunningStatusFs so orphan budget_stop stays visible
+ * until per-run finalizeOrphans or Settings/retry full heal.
+ */
+export function healOrphansForBrowse(): void {
+  const jobs = jobsDir();
+  const root = resultsDir();
+  reclaimOrphanRunningJobsFs(jobs, root, isPidAlive);
+  cleanupOrphanQueuedFs(jobs, root);
 }
 
 /**

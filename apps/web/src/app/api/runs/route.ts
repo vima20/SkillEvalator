@@ -7,7 +7,11 @@ import {
 } from "@skillevalator/core";
 import { checkEnqueueCostCap } from "@/lib/enqueueCostGate";
 import { enqueueEvaluationPair, enqueueRun } from "@/lib/enqueueRun";
-import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
+import {
+  healOrphanStatuses,
+  healOrphansForBrowse,
+  isPidAlive,
+} from "@/lib/healOrphans";
 import { toListRunApiRow } from "@/lib/listRunsApi";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { officialPilotReadyGate } from "@/lib/pilotReady";
@@ -28,7 +32,8 @@ const Body = z.object({
 });
 
 export async function GET() {
-  healOrphanStatuses();
+  // Browse heal — do not stamp orphan budget_stop → failed (wind-down Cancel).
+  healOrphansForBrowse();
   // Same status → job → result evaluationId as SSR lists / run detail
   // (not listRuns result-first merge or result?.evaluationId alone).
   const runs = listRuns(resultsDir()).map((entry) => toListRunApiRow(entry));

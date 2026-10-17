@@ -33,6 +33,35 @@ beforeEach(() => {
   fs.mkdirSync(resultsRoot, { recursive: true });
 });
 
+describe("healOrphansForBrowse vs healOrphanStatuses", () => {
+  it("browse keeps orphan budget_stop; full heal stamps failed", async () => {
+    const { healOrphansForBrowse, healOrphanStatuses } = await import(
+      "./healOrphans.js"
+    );
+    const runId = "run_wd_browse1";
+    writeJsonFile(path.join(resultsRoot, runId, "status.json"), {
+      runId,
+      status: "budget_stop",
+      role: "candidate",
+      evaluationId: "eval_wd_browse1",
+    });
+
+    healOrphansForBrowse();
+    let st = JSON.parse(
+      fs.readFileSync(path.join(resultsRoot, runId, "status.json"), "utf8"),
+    ) as { status: string; errorCode?: string };
+    expect(st.status).toBe("budget_stop");
+    expect(st.errorCode).toBeUndefined();
+
+    healOrphanStatuses();
+    st = JSON.parse(
+      fs.readFileSync(path.join(resultsRoot, runId, "status.json"), "utf8"),
+    ) as { status: string; errorCode?: string };
+    expect(st.status).toBe("failed");
+    expect(st.errorCode).toBe("orphan_budget_stop");
+  });
+});
+
 describe("healRunForRead vs healRunForFinalize", () => {
   it("read heal keeps orphan budget_stop; finalize stamps failed", async () => {
     const { healRunForRead, healRunForFinalize } = await import(
