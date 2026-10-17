@@ -114,7 +114,7 @@ export function runDetailCanCancel(opts: {
 
 export type RetryGate =
   | { allow: true }
-  | { allow: false; error: string };
+  | { allow: false; error: string; errorCode?: "retry_still_finishing" };
 
 const RETRYABLE = new Set(["failed", "cancelled", "budget_stop"]);
 
@@ -320,6 +320,7 @@ export function retryGate(opts: {
     return {
       allow: false,
       error: RETRY_STILL_FINISHING_ERROR,
+      errorCode: "retry_still_finishing",
     };
   }
   if (opts.nonRetryableError) {

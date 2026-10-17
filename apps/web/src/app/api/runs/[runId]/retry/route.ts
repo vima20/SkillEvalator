@@ -101,6 +101,7 @@ export async function POST(
       return NextResponse.json(
         {
           error: gate.error,
+          ...(gate.errorCode ? { errorCode: gate.errorCode } : {}),
           ...(liveJob ? { status: current } : {}),
         },
         { status: 409 },

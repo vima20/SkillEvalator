@@ -360,7 +360,10 @@ describe("retryGate", () => {
       hasLiveJob: true,
     });
     expect(g.allow).toBe(false);
-    if (!g.allow) expect(g.error).toBe(RETRY_STILL_FINISHING_ERROR);
+    if (!g.allow) {
+      expect(g.error).toBe(RETRY_STILL_FINISHING_ERROR);
+      expect(g.errorCode).toBe("retry_still_finishing");
+    }
   });
 
   it("allows settled budget_stop / failed / cancelled", () => {

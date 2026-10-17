@@ -80,6 +80,23 @@ describe("healOrphansForBrowse vs healOrphanStatuses", () => {
     expect(settings).not.toMatch(/healOrphanStatuses\s*\(/);
   });
 
+  it("keeps client refresh components free of healOrphans (no node:child_process)", () => {
+    // Importing healOrphans → @skillevalator/core barrel → dockerGrade →
+    // child_process breaks the client webpack graph (GET /api/preflight 500).
+    // Subpath imports (@skillevalator/core/costEstimate) stay allowed.
+    for (const rel of [
+      "src/components/RunsAutoRefresh.tsx",
+      "src/components/BenefitPending.tsx",
+      "src/components/ComparisonPending.tsx",
+      "src/app/runs/[runId]/RunDetailClient.tsx",
+      "src/app/NewRunForm.tsx",
+    ]) {
+      const src = fs.readFileSync(path.join(process.cwd(), rel), "utf8");
+      expect(src).not.toMatch(/healOrphans/);
+      expect(src).not.toMatch(/from ["']@skillevalator\/core["']/);
+    }
+  });
+
   it("documents Settings silent poll omits heal=1; Refresh keeps it", async () => {
     const client = fs.readFileSync(
       path.join(process.cwd(), "src/app/settings/SettingsClient.tsx"),
