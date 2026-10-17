@@ -1,13 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  JobManifestSchema,
   hasLiveJobFile,
   isNonRetryableErrorCode,
   officialEnqueueAllowed,
-  readJsonFile,
   resolveEvalRole,
-  roleFromJobRaw,
   staleOrphanRunningRunIds,
   type EvalRole,
 } from "@skillevalator/core";
@@ -24,6 +21,7 @@ import {
 } from "@/lib/runLifecycle";
 import { runPreflight, type RunPreflightResult } from "@/lib/runPreflight";
 import {
+  loadTerminalJobForRetry,
   resolveRetryCostParams,
   retryCostAdmissionForRun,
   type RetryCostAdmission,
@@ -37,7 +35,7 @@ export type RunDetailRetryAdmission = {
 
 const RETRYABLE = new Set(["failed", "cancelled", "budget_stop"]);
 
-/** Pure pair-meta gate (same messages as POST /retry). */
+/** Pure pair-meta gate (same messages + errorCodes as POST /retry). */
 export function retryPairMetaAdmission(opts: {
   runId: string;
   mode: "dry-run" | "official";
@@ -46,7 +44,7 @@ export function retryPairMetaAdmission(opts: {
   healed: { baselineRunId: string; candidateRunId: string } | null;
 }):
   | { ok: true; role: EvalRole }
-  | { ok: false; error: string } {
+  | { ok: false; error: string; errorCode: string } {
   if (!opts.evaluationId) {
     return { ok: true, role: opts.explicitRole ?? "candidate" };
   }
@@ -56,6 +54,7 @@ export function retryPairMetaAdmission(opts: {
         ok: false,
         error:
           "official retry requires paired evaluation.json on disk (baseline↔candidate)",
+        errorCode: "official_evaluation_meta_missing",
       };
     }
     return { ok: true, role: opts.explicitRole ?? "candidate" };
@@ -71,12 +70,14 @@ export function retryPairMetaAdmission(opts: {
       ok: false,
       error:
         "paired retry parent runId is not a current Comparison meta leg — retry from the tip baseline/candidate",
+      errorCode: "official_evaluation_leg_mismatch",
     };
   }
   if (opts.explicitRole && opts.explicitRole !== metaSlot) {
     return {
       ok: false,
       error: `retry role ${opts.explicitRole} does not match evaluation meta slot ${metaSlot}`,
+      errorCode: "official_evaluation_role_slot_mismatch",
     };
   }
   return { ok: true, role: metaSlot };
@@ -247,23 +248,6 @@ export function computeRunDetailRetryAdmission(opts: {
   return { canRetry: true, blockedReason: null };
 }
 
-function loadFailedJobRaw(runId: string): unknown | null {
-  const candidates = [
-    path.join(jobsDir(), `${runId}.failed.json`),
-    path.join(jobsDir(), `${runId}.done.json`),
-    path.join(jobsDir(), `${runId}.cancelled.json`),
-  ];
-  for (const p of candidates) {
-    if (!fs.existsSync(p)) continue;
-    try {
-      return readJsonFile(p);
-    } catch {
-      /* try next */
-    }
-  }
-  return null;
-}
-
 /** Live admission for GET run detail / SSR (mirrors POST /retry gates). */
 export function runDetailRetryAdmissionForRun(opts: {
   runId: string;
@@ -309,7 +293,7 @@ export function runDetailRetryAdmissionForRun(opts: {
   });
   // Same job → result mode as POST /retry (do not prefer result over job).
   const mode = costParams?.mode ?? null;
-  const jobRaw = loadFailedJobRaw(opts.runId);
+  const terminalJob = loadTerminalJobForRetry(opts.runId);
   // Same terminal evaluationId scan as POST /retry (not live-job display id).
   const evaluationId = resolveRetryEvaluationId({
     runId: opts.runId,
@@ -325,7 +309,7 @@ export function runDetailRetryAdmissionForRun(opts: {
     opts.result?.role === "baseline" || opts.result?.role === "candidate"
       ? opts.result.role
       : undefined;
-  const jobRoleExplicit = roleFromJobRaw(jobRaw);
+  const jobRoleExplicit = terminalJob?.roleExplicit;
   const explicitRole =
     statusRole ?? resultRole ?? jobRoleExplicit ?? undefined;
   const roleFallback = resolveEvalRole({

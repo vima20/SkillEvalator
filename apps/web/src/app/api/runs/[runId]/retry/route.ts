@@ -1,9 +1,6 @@
 import { randomUUID } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import {
-  JobManifestSchema,
   assertSafeId,
   clearRetryMarker,
   findReusableRetryRunId,
@@ -13,7 +10,6 @@ import {
   loadRunResult,
   loadRunStatus,
   officialEnqueueAllowed,
-  readJsonFile,
   releaseRetryEnqueueLock,
   saveRetryMarker,
   staleOrphanRunningRunIds,
@@ -27,9 +23,16 @@ import {
 } from "@/lib/evaluations";
 import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
-import { resolveRetryCostParams } from "@/lib/retryCostAdmission";
-import { resolveRetryRole, roleFromJobRaw } from "@/lib/retryRole";
+import {
+  loadTerminalJobForRetry,
+  resolveRetryCostParams,
+} from "@/lib/retryCostAdmission";
+import { resolveRetryRole } from "@/lib/retryRole";
 import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
+import {
+  readRetrySnapshotFlags,
+  retryPairMetaAdmission,
+} from "@/lib/runDetailRetryAdmission";
 import {
   isRetryBudgetStopping,
   RETRY_STILL_FINISHING_ERROR,
@@ -41,30 +44,6 @@ import { runPreflight } from "@/lib/runPreflight";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 
 export const dynamic = "force-dynamic";
-
-function loadFailedJob(runId: string): {
-  job: ReturnType<typeof JobManifestSchema.parse>;
-  roleExplicit: ReturnType<typeof roleFromJobRaw>;
-} | null {
-  const candidates = [
-    path.join(jobsDir(), `${runId}.failed.json`),
-    path.join(jobsDir(), `${runId}.done.json`),
-    path.join(jobsDir(), `${runId}.cancelled.json`),
-  ];
-  for (const p of candidates) {
-    if (!fs.existsSync(p)) continue;
-    try {
-      const raw = readJsonFile(p);
-      return {
-        job: JobManifestSchema.parse(raw),
-        roleExplicit: roleFromJobRaw(raw),
-      };
-    } catch {
-      /* try next */
-    }
-  }
-  return null;
-}
 
 export async function POST(
   _req: Request,
@@ -119,8 +98,9 @@ export async function POST(
       );
     }
 
-    const failed = loadFailedJob(runId);
-    const job = failed?.job;
+    // Same terminal job loader as retryAdmission / resolveRetryCostParams.
+    const terminal = loadTerminalJobForRetry(runId);
+    const job = terminal?.job;
 
     const evalSkillId = job?.evalSkillId ?? result?.evalSkillId;
     const mode = job?.mode ?? result?.mode;
@@ -131,14 +111,14 @@ export async function POST(
         ? status.role
         : result?.role === "baseline" || result?.role === "candidate"
           ? result.role
-          : failed?.roleExplicit === "baseline" ||
-              failed?.roleExplicit === "candidate"
-            ? failed.roleExplicit
+          : terminal?.roleExplicit === "baseline" ||
+              terminal?.roleExplicit === "candidate"
+            ? terminal.roleExplicit
             : undefined;
     let role = resolveRetryRole({
       statusRole: status.role,
       resultRole: result?.role,
-      jobRoleExplicit: failed?.roleExplicit,
+      jobRoleExplicit: terminal?.roleExplicit,
     });
     // Same terminal scan as retryAdmission (skip empty failed.json → done/cancelled).
     const evaluationId = resolveRetryEvaluationId({
@@ -234,49 +214,23 @@ export async function POST(
         );
       }
     }
-    // Paired retry: bind meta update to the healed tip slot (same as Cancel).
-    // Never default a baseline tip to "candidate" (would orphan the real skill leg).
-    if (evaluationId) {
+    // Paired retry: same helper as retryAdmission (heal tip slot like Cancel).
+    if (evaluationId && (mode === "dry-run" || mode === "official")) {
       const healed = resolveHealedMetaLegsForCancel(evaluationId);
-      if (!healed) {
-        if (mode === "official") {
-          return NextResponse.json(
-            {
-              error:
-                "official retry requires paired evaluation.json on disk (baseline↔candidate)",
-              errorCode: "official_evaluation_meta_missing",
-            },
-            { status: 409 },
-          );
-        }
-      } else {
-        const metaSlot =
-          runId === healed.baselineRunId
-            ? ("baseline" as const)
-            : runId === healed.candidateRunId
-              ? ("candidate" as const)
-              : null;
-        if (!metaSlot) {
-          return NextResponse.json(
-            {
-              error:
-                "paired retry parent runId is not a current Comparison meta leg — retry from the tip baseline/candidate",
-              errorCode: "official_evaluation_leg_mismatch",
-            },
-            { status: 409 },
-          );
-        }
-        if (explicitRole && explicitRole !== metaSlot) {
-          return NextResponse.json(
-            {
-              error: `retry role ${explicitRole} does not match evaluation meta slot ${metaSlot}`,
-              errorCode: "official_evaluation_role_slot_mismatch",
-            },
-            { status: 409 },
-          );
-        }
-        role = metaSlot;
+      const pair = retryPairMetaAdmission({
+        runId,
+        mode,
+        evaluationId,
+        explicitRole,
+        healed,
+      });
+      if (!pair.ok) {
+        return NextResponse.json(
+          { error: pair.error, errorCode: pair.errorCode },
+          { status: 409 },
+        );
       }
+      role = pair.role;
     }
 
     const loadChild = (childId: string) =>
@@ -370,33 +324,11 @@ export async function POST(
         return respondLinked({ newRunId: reusedUnderLock, reused: true });
       }
 
-      const snapshotDir = path.join(root, runId, "skill-snapshot");
-      const snapshotPath = path.join(snapshotDir, "SKILL.md");
-      const snapManifestPath = path.join(snapshotDir, "manifest.json");
-      // Exists alone is not enough — empty/whitespace SKILL.md must not pin.
-      let hasSkillMd = false;
-      if (fs.existsSync(snapshotPath)) {
-        try {
-          hasSkillMd =
-            fs.readFileSync(snapshotPath, "utf8").trim().length > 0;
-        } catch {
-          hasSkillMd = false;
-        }
-      }
-      let hasPinnedVersion = false;
-      if (fs.existsSync(snapManifestPath)) {
-        try {
-          const raw = JSON.parse(
-            fs.readFileSync(snapManifestPath, "utf8"),
-          ) as { _snapshot?: { evalSkillVersion?: string } };
-          hasPinnedVersion = Boolean(
-            raw._snapshot?.evalSkillVersion?.trim(),
-          );
-        } catch {
-          hasPinnedVersion = false;
-        }
-      }
-      // Never silently fall through to a drifted live skill/fixture tree.
+      // Same snapshot flags as retryAdmission (fail-closed on IO errors).
+      const { hasSkillMd, hasPinnedVersion } = readRetrySnapshotFlags(
+        root,
+        runId,
+      );
       const snapGate = retrySnapshotGate({
         role: role === "baseline" ? "baseline" : "candidate",
         hasSkillMd,

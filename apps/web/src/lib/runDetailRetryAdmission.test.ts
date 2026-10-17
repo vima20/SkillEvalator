@@ -250,5 +250,33 @@ describe("retryPairMetaAdmission", () => {
     expect(out.ok).toBe(false);
     if (out.ok) return;
     expect(out.error).toMatch(/does not match/i);
+    expect(out.errorCode).toBe("official_evaluation_role_slot_mismatch");
+  });
+
+  it("returns official_evaluation_meta_missing when healed absent", () => {
+    const out = retryPairMetaAdmission({
+      runId: "run_x",
+      mode: "official",
+      evaluationId: "eval_1",
+      healed: null,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("official_evaluation_meta_missing");
+  });
+});
+
+describe("POST /retry shares admission gate helpers", () => {
+  it("imports retryPairMetaAdmission and readRetrySnapshotFlags", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/runs/[runId]/retry/route.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/retryPairMetaAdmission/);
+    expect(src).toMatch(/readRetrySnapshotFlags/);
+    expect(src).toMatch(/loadTerminalJobForRetry/);
+    expect(src).not.toMatch(/function loadFailedJob/);
   });
 });

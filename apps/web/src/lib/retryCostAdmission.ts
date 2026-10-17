@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   JobManifestSchema,
   readJsonFile,
+  roleFromJobRaw,
   type EnqueueCostCapDenied,
   type EnqueueCostCapOk,
   type JobManifest,
@@ -57,6 +58,17 @@ export function retryCostAdmission(opts: {
 export function loadFirstTerminalJobManifest(
   runId: string,
 ): JobManifest | null {
+  return loadTerminalJobForRetry(runId)?.job ?? null;
+}
+
+/**
+ * Terminal job + explicit role from raw JSON — shared by admission and POST.
+ */
+export function loadTerminalJobForRetry(runId: string): {
+  job: JobManifest;
+  roleExplicit: ReturnType<typeof roleFromJobRaw>;
+  raw: unknown;
+} | null {
   const candidates = [
     path.join(jobsDir(), `${runId}.failed.json`),
     path.join(jobsDir(), `${runId}.done.json`),
@@ -65,7 +77,12 @@ export function loadFirstTerminalJobManifest(
   for (const p of candidates) {
     if (!fs.existsSync(p)) continue;
     try {
-      return JobManifestSchema.parse(readJsonFile(p));
+      const raw = readJsonFile(p);
+      return {
+        job: JobManifestSchema.parse(raw),
+        roleExplicit: roleFromJobRaw(raw),
+        raw,
+      };
     } catch {
       /* try next */
     }
