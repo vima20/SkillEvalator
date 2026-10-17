@@ -6,6 +6,7 @@ import {
   EXPORT_INVALID_REQUEST_ERROR,
   EXPORT_RESULT_NOT_FOUND,
   EXPORT_RESULT_NOT_READY,
+  comparisonExportProductFromHref,
   exportFailClosedErrorCodes,
   exportGateBlockMessage,
   resolveExportGetError,
@@ -68,6 +69,37 @@ describe("resolveExportGetError", () => {
         "Download failed (409)",
       ),
     ).toMatch(/pilot archive download/);
+  });
+
+  it("fail-closes comparison_export_* with archive product when error missing", () => {
+    expect(
+      resolveExportGetError(
+        { errorCode: "comparison_export_smoke_forbidden" },
+        "Download failed (409)",
+        { comparisonProduct: "pilot archive download" },
+      ),
+    ).toBe(
+      "pilot archive download rejects evaluation.smoke=true (fixture plant)",
+    );
+    expect(
+      resolveExportGetError(
+        { errorCode: "comparison_export_not_official" },
+        "Download failed (409)",
+        { comparisonProduct: "pilot archive download" },
+      ),
+    ).toMatch(/^pilot archive download requires mode=official/);
+  });
+
+  it("comparisonExportProductFromHref distinguishes archive vs csv", () => {
+    expect(
+      comparisonExportProductFromHref("/api/comparison/e1/archive"),
+    ).toBe("pilot archive download");
+    expect(
+      comparisonExportProductFromHref("/api/comparison/e1/archive?x=1"),
+    ).toBe("pilot archive download");
+    expect(comparisonExportProductFromHref("/api/comparison/e1/csv")).toBe(
+      "comparison CSV export",
+    );
   });
 
   it("falls back to status message for unknown codes", () => {

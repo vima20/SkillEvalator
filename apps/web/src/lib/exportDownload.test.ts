@@ -43,6 +43,13 @@ describe("exportErrorFromJsonBody", () => {
         "Download failed (404)",
       ),
     ).toBe("result not ready");
+    expect(
+      exportErrorFromJsonBody(
+        { errorCode: "comparison_export_not_attested" },
+        "Download failed (409)",
+        { comparisonProduct: "pilot archive download" },
+      ),
+    ).toMatch(/^pilot archive download requires produceAttested/);
   });
 
   it("downloadExport uses exportErrorFromJsonBody", async () => {
@@ -54,6 +61,7 @@ describe("exportErrorFromJsonBody", () => {
     );
     expect(src).toMatch(/resolveExportGetError/);
     expect(src).toMatch(/exportErrorFromJsonBody\(body,/);
+    expect(src).toMatch(/comparisonExportProductFromHref/);
     expect(src).toMatch(/tryResolveAuthApiError/);
   });
 });

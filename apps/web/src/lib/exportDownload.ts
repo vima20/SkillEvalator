@@ -1,6 +1,11 @@
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { tryResolveAuthApiError } from "@/lib/authResolve";
-import { resolveExportGetError } from "@/lib/exportResolve";
+import {
+  comparisonExportProductFromHref,
+  resolveExportGetError,
+  type ComparisonExportProduct,
+  type ResolveExportGetErrorOpts,
+} from "@/lib/exportResolve";
 
 /** Parse Content-Disposition filename= / filename*= (RFC 5987). */
 export function parseContentDispositionFilename(
@@ -23,6 +28,7 @@ export function parseContentDispositionFilename(
 export function exportErrorFromJsonBody(
   body: unknown,
   statusFallback = "Download failed",
+  opts?: ResolveExportGetErrorOpts,
 ): string | null {
   if (!body || typeof body !== "object") return null;
   const rec = body as { error?: unknown; errorCode?: unknown };
@@ -30,7 +36,7 @@ export function exportErrorFromJsonBody(
   const errorCode =
     typeof rec.errorCode === "string" ? rec.errorCode : undefined;
   if (!error?.trim() && !errorCode) return null;
-  return resolveExportGetError({ error, errorCode }, statusFallback);
+  return resolveExportGetError({ error, errorCode }, statusFallback, opts);
 }
 
 export type DownloadExportResult =
@@ -45,6 +51,10 @@ export async function downloadExport(
   href: string,
   fallbackFilename?: string,
 ): Promise<DownloadExportResult> {
+  const comparisonProduct: ComparisonExportProduct =
+    comparisonExportProductFromHref(href);
+  const exportOpts: ResolveExportGetErrorOpts = { comparisonProduct };
+
   let res: Response;
   try {
     res = await apiFetch(href, {
@@ -69,7 +79,7 @@ export async function downloadExport(
         const body: unknown = await res.json();
         error =
           tryResolveAuthApiError(body) ??
-          exportErrorFromJsonBody(body, statusFallback) ??
+          exportErrorFromJsonBody(body, statusFallback, exportOpts) ??
           statusFallback;
       } catch {
         /* keep status message */
@@ -85,7 +95,8 @@ export async function downloadExport(
       const body: unknown = await res.json();
       return {
         ok: false,
-        error: exportErrorFromJsonBody(body, unexpected) ?? unexpected,
+        error:
+          exportErrorFromJsonBody(body, unexpected, exportOpts) ?? unexpected,
       };
     } catch {
       return { ok: false, error: unexpected };
