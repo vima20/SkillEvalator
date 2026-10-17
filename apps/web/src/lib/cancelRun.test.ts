@@ -201,6 +201,42 @@ describe("cancelRunWithCascade", () => {
     expect(baseSt.evaluationId).toBe(evaluationId);
   });
 
+  it("cascades when evaluationId is only on live queued .json", async () => {
+    const { cancelRunWithCascade } = await import("./cancelRun.js");
+    const evaluationId = "eval_cascade_live";
+    const base = "run_c2_live_b";
+    const cand = "run_c2_live_c";
+
+    writeStatus(base, { status: "queued", role: "baseline" });
+    writeJsonFile(path.join(jobsRoot, `${base}.json`), {
+      runId: base,
+      evalSkillId: "skill_demo",
+      mode: "dry-run",
+      repeats: 1,
+      role: "baseline",
+      evaluationId,
+      createdAt: new Date().toISOString(),
+    });
+    writeStatus(cand, {
+      status: "queued",
+      role: "candidate",
+      evaluationId,
+    });
+    fs.writeFileSync(path.join(jobsRoot, `${cand}.json`), "{}\n");
+
+    const out = cancelRunWithCascade(base);
+    expect(out).toMatchObject({
+      ok: true,
+      runId: base,
+      status: "cancelled",
+      alsoCancelled: cand,
+    });
+    const baseSt = JSON.parse(
+      fs.readFileSync(path.join(resultsRoot, base, "status.json"), "utf8"),
+    ) as { evaluationId?: string };
+    expect(baseSt.evaluationId).toBe(evaluationId);
+  });
+
   it("cancels orphan budget_stop wind-down without healing to failed first", async () => {
     const { cancelRunWithCascade } = await import("./cancelRun.js");
     const runId = "run_wd_primary";

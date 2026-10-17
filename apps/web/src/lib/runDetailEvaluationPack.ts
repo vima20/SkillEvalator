@@ -16,12 +16,21 @@ import {
   type RunDetailPairHarness,
 } from "@/lib/runDetailPairHarness";
 
-/** Same job candidates as retry POST / admission. */
+/**
+ * Job-layer evaluationId for status → job → result.
+ * Prefer terminal artifacts, then live queue/claim (same sources worker claim
+ * can see). Not for retry config — that stays terminal-only.
+ */
 export function loadJobEvaluationId(runId: string): string | undefined {
+  const dir = jobsDir();
   const candidates = [
-    path.join(jobsDir(), `${runId}.failed.json`),
-    path.join(jobsDir(), `${runId}.done.json`),
-    path.join(jobsDir(), `${runId}.cancelled.json`),
+    path.join(dir, `${runId}.failed.json`),
+    path.join(dir, `${runId}.done.json`),
+    path.join(dir, `${runId}.cancelled.json`),
+    // Live: queued / claimed / mid-enqueue (after terminals).
+    path.join(dir, `${runId}.running.json`),
+    path.join(dir, `${runId}.json`),
+    path.join(dir, `${runId}.tmp.json`),
   ];
   for (const p of candidates) {
     if (!fs.existsSync(p)) continue;
@@ -38,7 +47,7 @@ export function loadJobEvaluationId(runId: string): string | undefined {
 }
 
 /**
- * status → job → result — same as POST /retry and retryAdmission.
+ * status → job → result — same order as worker claim / run detail.
  * Pair harness must use this, not result-only evaluationId.
  */
 export function resolveRunDetailEvaluationId(opts: {
