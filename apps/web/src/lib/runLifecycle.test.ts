@@ -5,6 +5,7 @@ import {
   pairedCancelAlsoCopy,
   pairedCancelPeerStatuses,
   parseAlsoCancelledRunId,
+  RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
@@ -38,6 +39,13 @@ describe("isRetryBudgetStopping", () => {
     expect(isRetryBudgetStopping("budget_stop", true)).toBe(false);
     expect(isRetryBudgetStopping("failed", false)).toBe(false);
     expect(RETRY_STILL_FINISHING_ERROR).toMatch(/still finishing/);
+  });
+});
+
+describe("RETRY_INSUFFICIENT_QUOTA_BLOCKED", () => {
+  it("mentions credits and not auto-retried", () => {
+    expect(RETRY_INSUFFICIENT_QUOTA_BLOCKED).toMatch(/credits/i);
+    expect(RETRY_INSUFFICIENT_QUOTA_BLOCKED).toMatch(/not auto-retried/i);
   });
 });
 

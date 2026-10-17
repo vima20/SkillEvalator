@@ -17,6 +17,7 @@ import { collectPilotBlockers } from "@/lib/pilotReady";
 import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
+  RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
@@ -156,8 +157,7 @@ export function computeRunDetailRetryAdmission(opts: {
   if (opts.errorCode === "insufficient_quota") {
     return {
       canRetry: false,
-      blockedReason:
-        "Retry blocked: no OpenAI credits. Add billing credits first.",
+      blockedReason: RETRY_INSUFFICIENT_QUOTA_BLOCKED,
     };
   }
   const gate = retryGate({

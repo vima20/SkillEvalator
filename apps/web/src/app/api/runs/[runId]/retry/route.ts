@@ -39,6 +39,7 @@ import {
 } from "@/lib/runDetailRetryAdmission";
 import {
   isRetryBudgetStopping,
+  RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
@@ -86,7 +87,7 @@ export async function POST(
           {
             error:
               status.errorCode === "insufficient_quota"
-                ? "No OpenAI credits remaining — add billing credits before retrying (not auto-retried)."
+                ? RETRY_INSUFFICIENT_QUOTA_BLOCKED
                 : `Cannot retry error ${status.errorCode}`,
             errorCode: status.errorCode,
           },

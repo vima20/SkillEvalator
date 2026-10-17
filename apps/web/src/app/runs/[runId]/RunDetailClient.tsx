@@ -18,6 +18,7 @@ import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
   isRetryBudgetStopping,
   parseAlsoCancelledRunId,
+  RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   runDetailCanCancel,
   runDetailFinalizeOrphansPath,
@@ -985,8 +986,7 @@ export function RunDetailClient({
           </p>
           {quotaBlocked ? (
             <p className="form-error credit-alert" role="alert">
-              No OpenAI credits remaining. Add billing credits before retrying.
-              Retry is blocked until credits are available.
+              {RETRY_INSUFFICIENT_QUOTA_BLOCKED}
             </p>
           ) : null}
           {data.status?.error ? (

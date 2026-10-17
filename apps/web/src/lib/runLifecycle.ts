@@ -81,6 +81,10 @@ const RETRYABLE = new Set(["failed", "cancelled", "budget_stop"]);
 export const RETRY_STILL_FINISHING_ERROR =
   "run still finishing — wait for result.json (or cancel) before retry";
 
+/** Same copy for insufficient_quota: admission blockedReason, credit-alert, POST. */
+export const RETRY_INSUFFICIENT_QUOTA_BLOCKED =
+  "No OpenAI credits remaining — add billing credits before retrying (not auto-retried).";
+
 /**
  * Shared orphan wait for budget_stop → result.json (run detail, Comparison,
  * Benefit pending). After this, final heal refresh + Cancel CTA — not Retry.
