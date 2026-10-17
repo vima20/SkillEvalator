@@ -10,7 +10,6 @@ import {
   loadRunStatus,
   officialEnqueueAllowed,
   releaseRetryEnqueueLock,
-  RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   saveRetryMarker,
   staleOrphanRunningRunIds,
   tryAcquireRetryEnqueueLock,
@@ -39,6 +38,7 @@ import {
 } from "@/lib/runDetailRetryAdmission";
 import {
   isRetryBudgetStopping,
+  RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
@@ -73,7 +73,10 @@ export async function POST(
     // (healed away .running.json) must not enqueue a replacement.
     if (isRetryBudgetStopping(current, Boolean(result))) {
       return NextResponse.json(
-        { error: RETRY_STILL_FINISHING_ERROR },
+        {
+          error: RETRY_STILL_FINISHING_ERROR,
+          errorCode: "retry_still_finishing",
+        },
         { status: 409 },
       );
     }

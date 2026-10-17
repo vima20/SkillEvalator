@@ -6,6 +6,7 @@ import {
   pairedCancelPeerStatuses,
   parseAlsoCancelledRunId,
   isRetryBillingBlocked,
+  RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_NON_RETRYABLE_ERROR_CODES,
   RETRY_PREFLIGHT_BLOCKED,
@@ -57,6 +58,15 @@ describe("RETRY_INSUFFICIENT_QUOTA_BLOCKED", () => {
   });
 });
 
+describe("RETRY_ENQUEUE_LOCK_BUSY_ERROR", () => {
+  it("matches core retryDedup copy", async () => {
+    const core = await import("@skillevalator/core");
+    expect(RETRY_ENQUEUE_LOCK_BUSY_ERROR).toBe(
+      core.RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+    );
+  });
+});
+
 describe("retryNonRetryableBlockedReason", () => {
   it("matches core NON_RETRYABLE_ERROR_CODES", async () => {
     const { NON_RETRYABLE_ERROR_CODES } = await import(
@@ -105,6 +115,21 @@ describe("resolveRetryPostError", () => {
         formatCost,
       ),
     ).toBe(RETRY_INSUFFICIENT_QUOTA_BLOCKED);
+  });
+
+  it("fail-closes retry_enqueue_lock_busy and retry_still_finishing", () => {
+    expect(
+      resolveRetryPostError(
+        { errorCode: "retry_enqueue_lock_busy" },
+        formatCost,
+      ),
+    ).toBe(RETRY_ENQUEUE_LOCK_BUSY_ERROR);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "retry_still_finishing" },
+        formatCost,
+      ),
+    ).toBe(RETRY_STILL_FINISHING_ERROR);
   });
 
   it("maps preflight, official pilot, and cost-cap codes", () => {

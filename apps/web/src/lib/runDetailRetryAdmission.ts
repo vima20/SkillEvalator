@@ -6,7 +6,6 @@ import {
   isRetryEnqueueLockBusy,
   officialEnqueueAllowed,
   resolveEvalRole,
-  RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   staleOrphanRunningRunIds,
   type EvalRole,
 } from "@skillevalator/core";
@@ -17,6 +16,7 @@ import { collectPilotBlockers } from "@/lib/pilotReady";
 import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
+  RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,

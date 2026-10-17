@@ -82,6 +82,13 @@ export const RETRY_STILL_FINISHING_ERROR =
   "run still finishing — wait for result.json (or cancel) before retry";
 
 /**
+ * Same copy as packages/core RETRY_ENQUEUE_LOCK_BUSY_ERROR (client-safe;
+ * keep string in sync — no core import in this module).
+ */
+export const RETRY_ENQUEUE_LOCK_BUSY_ERROR =
+  "retry already in progress — try again shortly";
+
+/**
  * Billing/account codes that must not be retried — keep in sync with
  * packages/core NON_RETRYABLE_ERROR_CODES (client-safe local copy; no core import).
  */
@@ -153,6 +160,12 @@ export function resolveRetryPostError(
     Array.isArray(body.blockers)
   ) {
     return retryOfficialPilotBlockedReason(body.blockers);
+  }
+  if (body.errorCode === "retry_enqueue_lock_busy") {
+    return RETRY_ENQUEUE_LOCK_BUSY_ERROR;
+  }
+  if (body.errorCode === "retry_still_finishing") {
+    return RETRY_STILL_FINISHING_ERROR;
   }
   const billing = retryNonRetryableBlockedReason(body.errorCode);
   if (billing) return billing;
