@@ -6,6 +6,7 @@ import {
   AUTH_UNLOCK_FAILED,
   resolveAuthClientError,
   resolveAuthPostError,
+  tryResolveAuthApiError,
 } from "@/lib/authResolve";
 import { safeUnlockNext } from "@/lib/safeUnlockNext";
 
@@ -14,6 +15,7 @@ type AuthProbe = {
   ok?: boolean;
   misconfigured?: boolean;
   errorCode?: string;
+  error?: string;
 };
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -44,16 +46,35 @@ export function AuthGate({ children }: { children: ReactNode }) {
     }
   }
 
+  /** GET /api/auth !ok — prefer auth JSON fail-closed over generic probe copy. */
+  async function applyFailedProbe(res: Response): Promise<void> {
+    const data = (await res.json().catch(() => ({}))) as AuthProbe;
+    if (data.misconfigured || data.errorCode === "auth_misconfigured") {
+      applyProbe(data);
+      return;
+    }
+    setNeeded(true);
+    setMisconfigured(false);
+    setCheckFailed(true);
+    const authMsg = tryResolveAuthApiError(data);
+    if (authMsg) {
+      setError(authMsg);
+      return;
+    }
+    if (data.errorCode || data.error?.trim()) {
+      setError(resolveAuthPostError(data));
+      return;
+    }
+    setError(resolveAuthClientError("probe_failed"));
+  }
+
   async function probeAuth(): Promise<void> {
     setCheckFailed(false);
     setError("");
     try {
       const res = await fetch("/api/auth", { cache: "no-store" });
       if (!res.ok) {
-        setNeeded(true);
-        setMisconfigured(false);
-        setCheckFailed(true);
-        setError(resolveAuthClientError("probe_failed"));
+        await applyFailedProbe(res);
         return;
       }
       applyProbe((await res.json()) as AuthProbe);
@@ -81,10 +102,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         const res = await fetch("/api/auth", { cache: "no-store" });
         if (cancelled) return;
         if (!res.ok) {
-          setNeeded(true);
-          setMisconfigured(false);
-          setCheckFailed(true);
-          setError(resolveAuthClientError("probe_failed"));
+          await applyFailedProbe(res);
           return;
         }
         applyProbe((await res.json()) as AuthProbe);

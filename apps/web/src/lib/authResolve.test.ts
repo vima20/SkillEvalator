@@ -124,6 +124,8 @@ describe("auth source locks", () => {
     );
     expect(gate).toMatch(/resolveAuthPostError/);
     expect(gate).toMatch(/resolveAuthClientError/);
+    expect(gate).toMatch(/tryResolveAuthApiError/);
+    expect(gate).toMatch(/applyFailedProbe/);
     expect(gate).toMatch(/AUTH_MISCONFIGURED_ERROR/);
     expect(gate).toMatch(/AUTH_UNLOCK_FAILED/);
     expect(gate).not.toMatch(/unauthorized/);
