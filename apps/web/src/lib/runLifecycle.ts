@@ -6,9 +6,16 @@
 const CANCEL_TERMINAL = new Set(["ok", "failed", "cancelled"]);
 const CANCEL_ACTIVE = new Set(["queued", "running", "cancel_requested"]);
 
+export type CancelErrorCode =
+  | "cancel_run_already_finished"
+  | "cancel_invalid_status"
+  | "cancel_not_found";
+
+export const CANCEL_NOT_FOUND_ERROR = "not found";
+
 export type CancelGate =
   | { allow: true; alreadyCancelled?: boolean }
-  | { allow: false; error: string };
+  | { allow: false; error: string; errorCode: CancelErrorCode };
 
 /**
  * Whether Cancel API may write .cancel for this status.
@@ -24,18 +31,52 @@ export function cancelGate(
     return { allow: true, alreadyCancelled: true };
   }
   if (CANCEL_TERMINAL.has(current)) {
-    return { allow: false, error: `run already finished (${current})` };
+    return {
+      allow: false,
+      error: `run already finished (${current})`,
+      errorCode: "cancel_run_already_finished",
+    };
   }
   if (current === "budget_stop") {
     if (hasResult) {
-      return { allow: false, error: `run already finished (${current})` };
+      return {
+        allow: false,
+        error: `run already finished (${current})`,
+        errorCode: "cancel_run_already_finished",
+      };
     }
     return { allow: true };
   }
   if (!CANCEL_ACTIVE.has(current)) {
-    return { allow: false, error: `cannot cancel status ${current}` };
+    return {
+      allow: false,
+      error: `cannot cancel status ${current}`,
+      errorCode: "cancel_invalid_status",
+    };
   }
   return { allow: true };
+}
+
+export type CancelPostErrorBody = {
+  error?: string;
+  errorCode?: string;
+};
+
+/**
+ * Map POST /cancel JSON errorCodes to shared Cancel copy (fail-closed when
+ * error field is missing). Used by RunDetailClient onCancel.
+ */
+export function resolveCancelPostError(body: CancelPostErrorBody): string {
+  if (body.errorCode === "cancel_not_found") {
+    return body.error ?? CANCEL_NOT_FOUND_ERROR;
+  }
+  if (body.errorCode === "cancel_run_already_finished") {
+    return body.error ?? "run already finished";
+  }
+  if (body.errorCode === "cancel_invalid_status") {
+    return body.error ?? "cannot cancel status";
+  }
+  return body.error ?? "Cancel failed";
 }
 
 /**

@@ -11,7 +11,10 @@ export async function POST(
     const { runId: raw } = await ctx.params;
     const out = cancelRunWithCascade(raw);
     if (!out.ok) {
-      return NextResponse.json({ error: out.error }, { status: out.status });
+      return NextResponse.json(
+        { error: out.error, errorCode: out.errorCode },
+        { status: out.status },
+      );
     }
     return NextResponse.json({
       runId: out.runId,

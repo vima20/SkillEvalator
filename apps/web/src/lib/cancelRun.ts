@@ -14,11 +14,20 @@ import {
 import { healRunForRead } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
-import { cancelGate } from "@/lib/runLifecycle";
+import {
+  CANCEL_NOT_FOUND_ERROR,
+  cancelGate,
+  type CancelErrorCode,
+} from "@/lib/runLifecycle";
 
 export type CancelOutcome =
   | { ok: true; status: "cancelled" | "cancel_requested"; already?: boolean }
-  | { ok: false; status: number; error: string };
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      errorCode: CancelErrorCode;
+    };
 
 export type CancelRunResult =
   | {
@@ -28,7 +37,12 @@ export type CancelRunResult =
       status: "cancelled" | "cancel_requested";
       alsoCancelled?: string;
     }
-  | { ok: false; status: number; error: string };
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      errorCode: CancelErrorCode;
+    };
 
 /** Cancel one run: .cancel marker, queued→cancelled or cancel_requested. */
 export function requestCancelOne(
@@ -38,14 +52,24 @@ export function requestCancelOne(
   const root = resultsDir();
   const status = loadRunStatus(root, runId);
   if (!status) {
-    return { ok: false, status: 404, error: "not found" };
+    return {
+      ok: false,
+      status: 404,
+      error: CANCEL_NOT_FOUND_ERROR,
+      errorCode: "cancel_not_found",
+    };
   }
 
   const current = status.status ?? "unknown";
   const hasResult = fs.existsSync(path.join(root, runId, "result.json"));
   const gate = cancelGate(current, hasResult);
   if (!gate.allow) {
-    return { ok: false, status: 409, error: gate.error };
+    return {
+      ok: false,
+      status: 409,
+      error: gate.error,
+      errorCode: gate.errorCode,
+    };
   }
   if (gate.alreadyCancelled) {
     return { ok: true, status: "cancelled", already: true };
@@ -128,7 +152,12 @@ export function cancelRunWithCascade(rawRunId: string): CancelRunResult {
 
   const primary = requestCancelOne(runId, { evaluationId, role });
   if (!primary.ok) {
-    return { ok: false, status: primary.status, error: primary.error };
+    return {
+      ok: false,
+      status: primary.status,
+      error: primary.error,
+      errorCode: primary.errorCode,
+    };
   }
 
   let alsoCancelled: string | undefined;

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   cancelGate,
+  CANCEL_NOT_FOUND_ERROR,
   isRetryBudgetStopping,
   pairedCancelAlsoCopy,
   pairedCancelPeerStatuses,
   parseAlsoCancelledRunId,
   isRetryBillingBlocked,
+  resolveCancelPostError,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_EVALUATION_META_REVERT_FAILED,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
@@ -42,9 +44,62 @@ describe("cancelGate", () => {
   });
 
   it("rejects settled budget_stop and other terminals", () => {
-    expect(cancelGate("budget_stop", true).allow).toBe(false);
-    expect(cancelGate("ok", true).allow).toBe(false);
+    const settled = cancelGate("budget_stop", true);
+    expect(settled.allow).toBe(false);
+    if (!settled.allow) {
+      expect(settled.errorCode).toBe("cancel_run_already_finished");
+    }
+    const okDone = cancelGate("ok", true);
+    expect(okDone.allow).toBe(false);
+    if (!okDone.allow) {
+      expect(okDone.errorCode).toBe("cancel_run_already_finished");
+    }
     expect(cancelGate("failed", false).allow).toBe(false);
+  });
+
+  it("rejects unknown status with cancel_invalid_status", () => {
+    const out = cancelGate("weird", false);
+    expect(out.allow).toBe(false);
+    if (!out.allow) {
+      expect(out.errorCode).toBe("cancel_invalid_status");
+      expect(out.error).toMatch(/weird/);
+    }
+  });
+});
+
+describe("resolveCancelPostError", () => {
+  it("fail-closes known codes without body.error", () => {
+    expect(
+      resolveCancelPostError({ errorCode: "cancel_not_found" }),
+    ).toBe(CANCEL_NOT_FOUND_ERROR);
+    expect(
+      resolveCancelPostError({ errorCode: "cancel_run_already_finished" }),
+    ).toBe("run already finished");
+    expect(
+      resolveCancelPostError({ errorCode: "cancel_invalid_status" }),
+    ).toBe("cannot cancel status");
+  });
+
+  it("prefers body.error when present", () => {
+    expect(
+      resolveCancelPostError({
+        errorCode: "cancel_run_already_finished",
+        error: "run already finished (ok)",
+      }),
+    ).toBe("run already finished (ok)");
+  });
+
+  it("is used by RunDetailClient onCancel", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/app/runs/[runId]/RunDetailClient.tsx",
+      ),
+      "utf8",
+    );
+    expect(src).toMatch(/resolveCancelPostError/);
   });
 });
 

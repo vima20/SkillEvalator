@@ -129,6 +129,7 @@ describe("requestCancelOne", () => {
     expect(requestCancelOne(runId)).toMatchObject({
       ok: false,
       status: 409,
+      errorCode: "cancel_run_already_finished",
     });
   });
 });

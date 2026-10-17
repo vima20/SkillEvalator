@@ -19,6 +19,7 @@ import {
   isRetryBillingBlocked,
   isRetryBudgetStopping,
   parseAlsoCancelledRunId,
+  resolveCancelPostError,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   resolveRetryPostError,
@@ -352,11 +353,12 @@ export function RunDetailClient({
       );
       const body = (await res.json().catch(() => ({}))) as {
         error?: string;
+        errorCode?: string;
         status?: string;
         alsoCancelled?: unknown;
       };
       if (!res.ok) {
-        setCancelError(body.error ?? "Cancel failed");
+        setCancelError(resolveCancelPostError(body));
         setCancelling(false);
         return;
       }
