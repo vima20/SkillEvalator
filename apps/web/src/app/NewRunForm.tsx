@@ -16,7 +16,10 @@ import {
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
-import { resolveEnqueuePostError } from "@/lib/runLifecycle";
+import {
+  OFFICIAL_ADMISSION_PAIR_REQUIRED,
+  resolveEnqueuePostError,
+} from "@/lib/runLifecycle";
 
 export type SkillOption = {
   id: string;
@@ -205,9 +208,7 @@ export function NewRunForm({
     }
     if (mode === "official" && !withBaseline) {
       setError(true);
-      setMsg(
-        "Official mode requires baseline↔candidate pair (API also rejects).",
-      );
+      setMsg(OFFICIAL_ADMISSION_PAIR_REQUIRED);
       return;
     }
     setBusy(true);

@@ -203,6 +203,62 @@ export const ENQUEUE_PAIR_CANDIDATE_FAILED =
   "candidate enqueue failed after baseline — pair rolled back; try again shortly";
 
 /**
+ * officialEnqueueAllowed errorCodes — client-safe copies (keep in sync with
+ * packages/core officialAdmission.ts; no core import in this module).
+ * Prefer body.error when present (web_auth / repeats include dynamic detail).
+ */
+export const OFFICIAL_ADMISSION_SMOKE_FORBIDDEN =
+  "official mode requires live OpenAI produce — unset FAKE_PRODUCE (smoke is dry-run only)";
+
+export const OFFICIAL_ADMISSION_HOST_GRADE_FORBIDDEN =
+  "official mode requires Docker grade — unset ALLOW_HOST_GRADE (host grade is smoke/CI only)";
+
+export const OFFICIAL_ADMISSION_API_KEY_MISSING =
+  "official mode requires OPENAI_API_KEY in .env";
+
+export const OFFICIAL_ADMISSION_WEB_AUTH_REQUIRED =
+  "official mode requires WEB_AUTH_TOKEN (set a non-empty token; OFFICIAL_REQUIRES_WEB_AUTH is enabled)";
+
+export const OFFICIAL_ADMISSION_PAIR_REQUIRED =
+  "official mode requires baseline↔candidate pair (withBaseline) — single-leg official cannot unlock Benefit USE";
+
+/** Fail-closed without body.error (API may include got N). OFFICIAL_MIN_REPEATS=3. */
+export const OFFICIAL_ADMISSION_REPEATS_TOO_LOW =
+  "official mode requires at least 3 repeats";
+
+export const OFFICIAL_ADMISSION_EVALUATION_REQUIRED =
+  "official mode requires evaluationId (paired baseline↔candidate) — refuse single-leg official jobs";
+
+/**
+ * officialEnqueueAllowed errorCodes → shared copy (null if not a known code).
+ * Prefers body.error when provided (dynamic web_auth / repeats detail).
+ */
+export function officialAdmissionBlockedReason(
+  errorCode?: string,
+  bodyError?: string,
+): string | null {
+  const fromBody = bodyError?.trim();
+  switch (errorCode) {
+    case "official_smoke_forbidden":
+      return fromBody || OFFICIAL_ADMISSION_SMOKE_FORBIDDEN;
+    case "official_host_grade_forbidden":
+      return fromBody || OFFICIAL_ADMISSION_HOST_GRADE_FORBIDDEN;
+    case "official_api_key_missing":
+      return fromBody || OFFICIAL_ADMISSION_API_KEY_MISSING;
+    case "official_web_auth_required":
+      return fromBody || OFFICIAL_ADMISSION_WEB_AUTH_REQUIRED;
+    case "official_pair_required":
+      return fromBody || OFFICIAL_ADMISSION_PAIR_REQUIRED;
+    case "official_repeats_too_low":
+      return fromBody || OFFICIAL_ADMISSION_REPEATS_TOO_LOW;
+    case "official_evaluation_required":
+      return fromBody || OFFICIAL_ADMISSION_EVALUATION_REQUIRED;
+    default:
+      return null;
+  }
+}
+
+/**
  * Official Settings-not-Ready copy for Retry admission / POST /retry / onRetry.
  * Distinct from officialPilotReadyGate ("official mode blocked") used by new enqueue.
  */
@@ -304,6 +360,8 @@ export function resolveRetryPostError(
   if (body.errorCode === "retry_comparison_link_failed") {
     return body.error ?? RETRY_COMPARISON_LINK_FAILED;
   }
+  const admission = officialAdmissionBlockedReason(body.errorCode, body.error);
+  if (admission) return admission;
   const pairMeta = retryPairMetaBlockedReason(body.errorCode, body.error);
   if (pairMeta) return pairMeta;
   const billing = retryNonRetryableBlockedReason(body.errorCode);
@@ -360,6 +418,8 @@ export function resolveEnqueuePostError(
   if (body.errorCode === "enqueue_pair_candidate_failed") {
     return body.error ?? ENQUEUE_PAIR_CANDIDATE_FAILED;
   }
+  const admission = officialAdmissionBlockedReason(body.errorCode, body.error);
+  if (admission) return admission;
   return body.error ?? "Enqueue failed";
 }
 

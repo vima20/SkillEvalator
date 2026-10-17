@@ -11,6 +11,13 @@ import {
   ENQUEUE_EVALUATION_META_FAILED,
   ENQUEUE_PAIR_CANDIDATE_FAILED,
   ENQUEUE_PREFLIGHT_BLOCKED,
+  OFFICIAL_ADMISSION_API_KEY_MISSING,
+  OFFICIAL_ADMISSION_EVALUATION_REQUIRED,
+  OFFICIAL_ADMISSION_HOST_GRADE_FORBIDDEN,
+  OFFICIAL_ADMISSION_PAIR_REQUIRED,
+  OFFICIAL_ADMISSION_REPEATS_TOO_LOW,
+  OFFICIAL_ADMISSION_SMOKE_FORBIDDEN,
+  OFFICIAL_ADMISSION_WEB_AUTH_REQUIRED,
   RETRY_COMPARISON_LINK_FAILED,
   RETRY_ENQUEUE_JOB_LOCK_BUSY,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
@@ -26,6 +33,7 @@ import {
   RETRY_SNAPSHOT_BASELINE_PIN_MISSING,
   RETRY_SNAPSHOT_CANDIDATE_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
+  officialAdmissionBlockedReason,
   resolveEnqueuePostError,
   resolveRetryPostError,
   retryGate,
@@ -322,6 +330,60 @@ describe("resolveRetryPostError", () => {
     ).toBe("cost-cap:0.5");
   });
 
+  it("fail-closes official admission codes without body.error", () => {
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_smoke_forbidden" },
+        formatCost,
+      ),
+    ).toBe(OFFICIAL_ADMISSION_SMOKE_FORBIDDEN);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_host_grade_forbidden" },
+        formatCost,
+      ),
+    ).toBe(OFFICIAL_ADMISSION_HOST_GRADE_FORBIDDEN);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_api_key_missing" },
+        formatCost,
+      ),
+    ).toBe(OFFICIAL_ADMISSION_API_KEY_MISSING);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_web_auth_required" },
+        formatCost,
+      ),
+    ).toBe(OFFICIAL_ADMISSION_WEB_AUTH_REQUIRED);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_pair_required" },
+        formatCost,
+      ),
+    ).toBe(OFFICIAL_ADMISSION_PAIR_REQUIRED);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_repeats_too_low" },
+        formatCost,
+      ),
+    ).toBe(OFFICIAL_ADMISSION_REPEATS_TOO_LOW);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "official_evaluation_required" },
+        formatCost,
+      ),
+    ).toBe(OFFICIAL_ADMISSION_EVALUATION_REQUIRED);
+    expect(
+      resolveRetryPostError(
+        {
+          errorCode: "official_repeats_too_low",
+          error: "official mode requires at least 3 repeats (got 1)",
+        },
+        formatCost,
+      ),
+    ).toMatch(/got 1/);
+  });
+
   it("falls back to body.error or Retry failed", () => {
     expect(
       resolveRetryPostError({ error: "custom" }, formatCost),
@@ -341,6 +403,63 @@ describe("resolveRetryPostError", () => {
     );
     expect(src).toMatch(/resolveRetryPostError/);
     expect(src).toMatch(/formatRetryCostBlockedReason/);
+  });
+});
+
+describe("officialAdmissionBlockedReason", () => {
+  it("matches core officialEnqueueAllowed static copy", async () => {
+    const { officialEnqueueAllowed } = await import("@skillevalator/core");
+    const smoke = officialEnqueueAllowed({
+      mode: "official",
+      env: { FAKE_PRODUCE: "known-good", OPENAI_API_KEY: "sk" },
+    });
+    expect(smoke.ok).toBe(false);
+    if (smoke.ok) return;
+    expect(smoke.error).toBe(OFFICIAL_ADMISSION_SMOKE_FORBIDDEN);
+
+    const host = officialEnqueueAllowed({
+      mode: "official",
+      env: { ALLOW_HOST_GRADE: "1", OPENAI_API_KEY: "sk" },
+    });
+    expect(host.ok).toBe(false);
+    if (host.ok) return;
+    expect(host.error).toBe(OFFICIAL_ADMISSION_HOST_GRADE_FORBIDDEN);
+
+    const key = officialEnqueueAllowed({
+      mode: "official",
+      env: { OPENAI_API_KEY: "" },
+    });
+    expect(key.ok).toBe(false);
+    if (key.ok) return;
+    expect(key.error).toBe(OFFICIAL_ADMISSION_API_KEY_MISSING);
+
+    const pair = officialEnqueueAllowed({
+      mode: "official",
+      env: { OPENAI_API_KEY: "sk" },
+      withBaseline: false,
+    });
+    expect(pair.ok).toBe(false);
+    if (pair.ok) return;
+    expect(pair.error).toBe(OFFICIAL_ADMISSION_PAIR_REQUIRED);
+
+    const evalReq = officialEnqueueAllowed({
+      mode: "official",
+      env: { OPENAI_API_KEY: "sk" },
+      requireEvaluationId: true,
+    });
+    expect(evalReq.ok).toBe(false);
+    if (evalReq.ok) return;
+    expect(evalReq.error).toBe(OFFICIAL_ADMISSION_EVALUATION_REQUIRED);
+
+    const web = officialEnqueueAllowed({
+      mode: "official",
+      env: { OPENAI_API_KEY: "sk" },
+      requireWebAuthConfigured: true,
+      webAuthKind: "open",
+    });
+    expect(web.ok).toBe(false);
+    if (web.ok) return;
+    expect(web.error).toBe(OFFICIAL_ADMISSION_WEB_AUTH_REQUIRED);
   });
 });
 
@@ -397,6 +516,23 @@ describe("resolveEnqueuePostError", () => {
     ).toBe("cost-cap:0.5");
   });
 
+  it("fail-closes official admission codes without body.error", () => {
+    for (const [code, copy] of [
+      ["official_smoke_forbidden", OFFICIAL_ADMISSION_SMOKE_FORBIDDEN],
+      ["official_host_grade_forbidden", OFFICIAL_ADMISSION_HOST_GRADE_FORBIDDEN],
+      ["official_api_key_missing", OFFICIAL_ADMISSION_API_KEY_MISSING],
+      ["official_web_auth_required", OFFICIAL_ADMISSION_WEB_AUTH_REQUIRED],
+      ["official_pair_required", OFFICIAL_ADMISSION_PAIR_REQUIRED],
+      ["official_repeats_too_low", OFFICIAL_ADMISSION_REPEATS_TOO_LOW],
+      ["official_evaluation_required", OFFICIAL_ADMISSION_EVALUATION_REQUIRED],
+    ] as const) {
+      expect(resolveEnqueuePostError({ errorCode: code }, formatCost)).toBe(
+        copy,
+      );
+      expect(officialAdmissionBlockedReason(code)).toBe(copy);
+    }
+  });
+
   it("falls back to body.error or Enqueue failed", () => {
     expect(
       resolveEnqueuePostError({ error: "custom" }, formatCost),
@@ -413,6 +549,7 @@ describe("resolveEnqueuePostError", () => {
     );
     expect(src).toMatch(/resolveEnqueuePostError/);
     expect(src).toMatch(/formatRetryCostBlockedReason/);
+    expect(src).toMatch(/OFFICIAL_ADMISSION_PAIR_REQUIRED/);
   });
 
   it("POST /api/runs uses enqueue_preflight_blocked", async () => {
