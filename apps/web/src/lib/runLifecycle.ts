@@ -240,6 +240,11 @@ export const ENQUEUE_EVALUATION_META_FAILED =
 export const ENQUEUE_PAIR_CANDIDATE_FAILED =
   "candidate enqueue failed after baseline — pair rolled back; try again shortly";
 
+/** POST /api/runs catch / NewRunForm network — same as prior "Enqueue failed". */
+export const ENQUEUE_FAILED_ERROR = "Enqueue failed";
+
+export const ENQUEUE_INVALID_REQUEST_ERROR = "invalid request";
+
 /**
  * officialEnqueueAllowed errorCodes — client-safe copies (keep in sync with
  * packages/core officialAdmission.ts; no core import in this module).
@@ -474,9 +479,15 @@ export function resolveEnqueuePostError(
   if (body.errorCode === "enqueue_pair_candidate_failed") {
     return body.error ?? ENQUEUE_PAIR_CANDIDATE_FAILED;
   }
+  if (body.errorCode === "enqueue_invalid_request") {
+    return body.error ?? ENQUEUE_INVALID_REQUEST_ERROR;
+  }
+  if (body.errorCode === "enqueue_failed") {
+    return body.error ?? ENQUEUE_FAILED_ERROR;
+  }
   const admission = officialAdmissionBlockedReason(body.errorCode, body.error);
   if (admission) return admission;
-  return body.error ?? "Enqueue failed";
+  return body.error ?? ENQUEUE_FAILED_ERROR;
 }
 
 /**

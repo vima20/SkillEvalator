@@ -231,7 +231,7 @@ export function NewRunForm({
           withBaseline,
         }),
       });
-      const data = (await res.json()) as {
+      const data = (await res.json().catch(() => ({}))) as {
         error?: string;
         errorCode?: string;
         costCapUsd?: number;
@@ -256,7 +256,14 @@ export function NewRunForm({
     } catch (err) {
       if (err instanceof UnauthorizedError) return;
       setError(true);
-      setMsg(err instanceof Error ? err.message : "error");
+      setMsg(
+        err instanceof Error
+          ? err.message
+          : resolveEnqueuePostError(
+              { errorCode: "enqueue_failed" },
+              formatRetryCostBlockedReason,
+            ),
+      );
     } finally {
       setBusy(false);
     }

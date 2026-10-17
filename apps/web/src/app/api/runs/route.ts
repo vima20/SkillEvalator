@@ -15,7 +15,11 @@ import {
 import { toListRunApiRow } from "@/lib/listRunsApi";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { officialPilotReadyGate } from "@/lib/pilotReady";
-import { ENQUEUE_PREFLIGHT_BLOCKED } from "@/lib/runLifecycle";
+import {
+  ENQUEUE_FAILED_ERROR,
+  ENQUEUE_INVALID_REQUEST_ERROR,
+  ENQUEUE_PREFLIGHT_BLOCKED,
+} from "@/lib/runLifecycle";
 import { runPreflight } from "@/lib/runPreflight";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 
@@ -149,12 +153,30 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json(
-        { error: "invalid request", details: err.flatten() },
+        {
+          error: ENQUEUE_INVALID_REQUEST_ERROR,
+          errorCode: "enqueue_invalid_request",
+          details: err.flatten(),
+        },
         { status: 400 },
       );
     }
     const message = err instanceof Error ? err.message : "error";
-    const status = message.startsWith("invalid ") ? 400 : 500;
-    return NextResponse.json({ error: message }, { status });
+    if (message.startsWith("invalid ")) {
+      return NextResponse.json(
+        {
+          error: message || ENQUEUE_INVALID_REQUEST_ERROR,
+          errorCode: "enqueue_invalid_request",
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: message.trim() ? message : ENQUEUE_FAILED_ERROR,
+        errorCode: "enqueue_failed",
+      },
+      { status: 500 },
+    );
   }
 }

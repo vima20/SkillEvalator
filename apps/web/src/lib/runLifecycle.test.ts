@@ -11,6 +11,8 @@ import {
   resolveCancelPostError,
   RETRY_FAILED_ERROR,
   ENQUEUE_EVALUATION_META_FAILED,
+  ENQUEUE_FAILED_ERROR,
+  ENQUEUE_INVALID_REQUEST_ERROR,
   ENQUEUE_PAIR_CANDIDATE_FAILED,
   ENQUEUE_PREFLIGHT_BLOCKED,
   OFFICIAL_ADMISSION_API_KEY_MISSING,
@@ -583,11 +585,23 @@ describe("resolveEnqueuePostError", () => {
     }
   });
 
+  it("fail-closes enqueue_failed / enqueue_invalid_request without body.error", () => {
+    expect(
+      resolveEnqueuePostError({ errorCode: "enqueue_failed" }, formatCost),
+    ).toBe(ENQUEUE_FAILED_ERROR);
+    expect(
+      resolveEnqueuePostError(
+        { errorCode: "enqueue_invalid_request" },
+        formatCost,
+      ),
+    ).toBe(ENQUEUE_INVALID_REQUEST_ERROR);
+  });
+
   it("falls back to body.error or Enqueue failed", () => {
     expect(
       resolveEnqueuePostError({ error: "custom" }, formatCost),
     ).toBe("custom");
-    expect(resolveEnqueuePostError({}, formatCost)).toBe("Enqueue failed");
+    expect(resolveEnqueuePostError({}, formatCost)).toBe(ENQUEUE_FAILED_ERROR);
   });
 
   it("is used by NewRunForm submit", async () => {
@@ -600,9 +614,10 @@ describe("resolveEnqueuePostError", () => {
     expect(src).toMatch(/resolveEnqueuePostError/);
     expect(src).toMatch(/formatRetryCostBlockedReason/);
     expect(src).toMatch(/OFFICIAL_ADMISSION_PAIR_REQUIRED/);
+    expect(src).toMatch(/errorCode: "enqueue_failed"/);
   });
 
-  it("POST /api/runs uses enqueue_preflight_blocked", async () => {
+  it("POST /api/runs uses enqueue_preflight_blocked and catch codes", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const src = fs.readFileSync(
@@ -613,6 +628,9 @@ describe("resolveEnqueuePostError", () => {
     expect(src).toMatch(/ENQUEUE_PREFLIGHT_BLOCKED/);
     expect(src).toMatch(/paired\.errorCode/);
     expect(src).toMatch(/queued\.errorCode/);
+    expect(src).toMatch(/enqueue_invalid_request/);
+    expect(src).toMatch(/enqueue_failed/);
+    expect(src).toMatch(/ENQUEUE_FAILED_ERROR/);
   });
 });
 
