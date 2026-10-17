@@ -60,6 +60,25 @@ describe("healOrphansForBrowse vs healOrphanStatuses", () => {
     expect(st.status).toBe("failed");
     expect(st.errorCode).toBe("orphan_budget_stop");
   });
+
+  it("documents preflight/Settings SSR must use browse (not full) heal", async () => {
+    // Regression guard: passive poll must not call healOrphanStatuses.
+    const src = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/app/api/preflight/route.ts",
+      ),
+      "utf8",
+    );
+    expect(src).toMatch(/healOrphansForBrowse/);
+    expect(src).not.toMatch(/healOrphanStatuses\s*\(/);
+    const settings = fs.readFileSync(
+      path.join(process.cwd(), "src/app/settings/page.tsx"),
+      "utf8",
+    );
+    expect(settings).toMatch(/healOrphansForBrowse/);
+    expect(settings).not.toMatch(/healOrphanStatuses\s*\(/);
+  });
 });
 
 describe("healRunForRead vs healRunForFinalize", () => {

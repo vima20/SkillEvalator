@@ -163,8 +163,9 @@ export function loadSettingsSnapshot(opts?: {
   build?: SettingsSnapshot["build"];
   queue?: SettingsSnapshot["queue"];
   /**
-   * When true, reclaim orphan .running.json before inspecting the queue
-   * (Settings Refresh). Default false so first paint can surface blockers.
+   * When true, full healAllOrphansFs before inspecting the queue
+   * (Settings Refresh ?heal=1). Default false — first paint / SSR use
+   * healOrphansForBrowse separately so wind-down Cancel survives.
    */
   healQueue?: boolean;
   /** Injected for tests — skip disk orphan inspect. */
