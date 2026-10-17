@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   cancelGate,
   isRetryBudgetStopping,
+  pairedCancelAlsoCopy,
   pairedCancelPeerStatuses,
+  parseAlsoCancelledRunId,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
@@ -57,6 +59,20 @@ describe("runDetailCanCancel", () => {
         cancelRequested: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
+  it("accepts non-empty sibling ids from cancel JSON", () => {
+    expect(parseAlsoCancelledRunId("run_sib")).toBe("run_sib");
+    expect(parseAlsoCancelledRunId("  run_sib  ")).toBe("run_sib");
+    expect(parseAlsoCancelledRunId("")).toBeNull();
+    expect(parseAlsoCancelledRunId(undefined)).toBeNull();
+  });
+
+  it("formats stable alsoCancelled hint copy", () => {
+    expect(pairedCancelAlsoCopy("run_sib")).toMatch(/run_sib/);
+    expect(pairedCancelAlsoCopy("run_sib")).toMatch(/paired sibling/i);
   });
 });
 

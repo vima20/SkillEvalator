@@ -17,11 +17,30 @@ import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
   isRetryBudgetStopping,
+  parseAlsoCancelledRunId,
   RETRY_STILL_FINISHING_ERROR,
   runDetailCanCancel,
   WIND_DOWN_ORPHAN_MS,
 } from "@/lib/runLifecycle";
 import { statusBadgeClass } from "@/lib/status";
+
+function AlsoCancelledHint({
+  alsoRunId,
+  pilotFocus,
+}: {
+  alsoRunId: string;
+  pilotFocus: boolean;
+}) {
+  return (
+    <p className="hint" role="status" style={{ marginTop: 10 }}>
+      Also cancelled the paired sibling{" "}
+      <Link href={withPilotFocus(`/runs/${alsoRunId}`, pilotFocus)}>
+        {alsoRunId}
+      </Link>
+      .
+    </p>
+  );
+}
 
 type PerTask = {
   taskId: string;
@@ -175,6 +194,8 @@ export function RunDetailClient({
   const [jsonOpen, setJsonOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  /** Paired sibling cancelled by POST /cancel cascade (`alsoCancelled`). */
+  const [cancelAlsoRunId, setCancelAlsoRunId] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [refreshBusy, setRefreshBusy] = useState(false);
@@ -318,6 +339,7 @@ export function RunDetailClient({
   async function onCancel() {
     if (!canCancel) return;
     setCancelError(null);
+    setCancelAlsoRunId(null);
     setCancelling(true);
     try {
       const res = await apiFetch(
@@ -327,12 +349,14 @@ export function RunDetailClient({
       const body = (await res.json().catch(() => ({}))) as {
         error?: string;
         status?: string;
+        alsoCancelled?: unknown;
       };
       if (!res.ok) {
         setCancelError(body.error ?? "Cancel failed");
         setCancelling(false);
         return;
       }
+      setCancelAlsoRunId(parseAlsoCancelledRunId(body.alsoCancelled));
       setPolling(true);
       await refresh();
     } catch (e) {
@@ -677,6 +701,12 @@ export function RunDetailClient({
               {cancelError}
             </p>
           ) : null}
+          {cancelAlsoRunId ? (
+            <AlsoCancelledHint
+              alsoRunId={cancelAlsoRunId}
+              pilotFocus={pilotFocus}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -931,6 +961,12 @@ export function RunDetailClient({
           <p className="empty">
             Run cancelled before a scorecard was produced.
           </p>
+          {cancelAlsoRunId ? (
+            <AlsoCancelledHint
+              alsoRunId={cancelAlsoRunId}
+              pilotFocus={pilotFocus}
+            />
+          ) : null}
           <RetryActions
             canRetry={canRetry}
             retrying={retrying}

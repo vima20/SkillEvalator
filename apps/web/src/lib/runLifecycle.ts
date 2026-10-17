@@ -39,6 +39,21 @@ export function cancelGate(
 }
 
 /**
+ * Parse POST /cancel `alsoCancelled` sibling runId (paired cascade).
+ * Returns null when absent / empty.
+ */
+export function parseAlsoCancelledRunId(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const id = raw.trim();
+  return id.length > 0 ? id : null;
+}
+
+/** Stable English copy for the alsoCancelled run-detail hint. */
+export function pairedCancelAlsoCopy(alsoCancelledRunId: string): string {
+  return `Also cancelled the paired sibling ${alsoCancelledRunId}.`;
+}
+
+/**
  * Run detail Cancel button — same allow as POST /cancel (cancelGate),
  * including orphan budget_stop wind-down after poll timeout.
  */
