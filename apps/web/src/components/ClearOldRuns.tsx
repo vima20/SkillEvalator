@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+import { resolveCleanupPostError } from "@/lib/cleanupResolve";
 
 export function ClearOldRuns() {
   const router = useRouter();
@@ -30,10 +31,11 @@ export function ClearOldRuns() {
       });
       const data = (await res.json()) as {
         error?: string;
+        errorCode?: string;
         removedCount?: number;
         skippedCount?: number;
       };
-      if (!res.ok) throw new Error(data.error ?? "cleanup failed");
+      if (!res.ok) throw new Error(resolveCleanupPostError(data));
       const skipped = data.skippedCount ?? 0;
       setMsg(
         skipped > 0
@@ -45,7 +47,9 @@ export function ClearOldRuns() {
     } catch (e) {
       if (e instanceof UnauthorizedError) return;
       setError(true);
-      setMsg(e instanceof Error ? e.message : "cleanup failed");
+      setMsg(
+        e instanceof Error ? e.message : resolveCleanupPostError({}),
+      );
     } finally {
       setBusy(false);
     }

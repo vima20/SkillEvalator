@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+import { resolveCleanupPostError } from "@/lib/cleanupResolve";
 
 export function ClearSmokeNoise() {
   const router = useRouter();
@@ -30,11 +31,12 @@ export function ClearSmokeNoise() {
       });
       const data = (await res.json()) as {
         error?: string;
+        errorCode?: string;
         removedCount?: number;
         removedEvaluationCount?: number;
         skippedCount?: number;
       };
-      if (!res.ok) throw new Error(data.error ?? "smoke cleanup failed");
+      if (!res.ok) throw new Error(resolveCleanupPostError(data));
       const runs = data.removedCount ?? 0;
       const evals = data.removedEvaluationCount ?? 0;
       const skipped = data.skippedCount ?? 0;
@@ -48,7 +50,9 @@ export function ClearSmokeNoise() {
     } catch (e) {
       if (e instanceof UnauthorizedError) return;
       setError(true);
-      setMsg(e instanceof Error ? e.message : "smoke cleanup failed");
+      setMsg(
+        e instanceof Error ? e.message : resolveCleanupPostError({}),
+      );
     } finally {
       setBusy(false);
     }

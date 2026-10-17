@@ -5,6 +5,10 @@ import {
   purgeTerminalRunsFs,
   recordPurgeAudit,
 } from "@skillevalator/core";
+import {
+  CLEANUP_FAILED_ERROR,
+  CLEANUP_INVALID_REQUEST_ERROR,
+} from "@/lib/cleanupResolve";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -61,11 +65,24 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json(
-        { error: "invalid request", details: err.flatten() },
+        {
+          error: CLEANUP_INVALID_REQUEST_ERROR,
+          errorCode: "cleanup_invalid_request",
+          details: err.flatten(),
+        },
         { status: 400 },
       );
     }
-    const message = err instanceof Error ? err.message : "error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message =
+      err instanceof Error && err.message.trim()
+        ? err.message
+        : CLEANUP_FAILED_ERROR;
+    return NextResponse.json(
+      {
+        error: message,
+        errorCode: "cleanup_failed",
+      },
+      { status: 500 },
+    );
   }
 }
