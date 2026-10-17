@@ -18,6 +18,7 @@ import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+  RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
@@ -187,8 +188,7 @@ export function computeRunDetailRetryAdmission(opts: {
   if (!opts.preflightOk) {
     return {
       canRetry: false,
-      blockedReason:
-        "Retry blocked — preflight not green (API key, Docker, or worker). Open Settings, then retry.",
+      blockedReason: RETRY_PREFLIGHT_BLOCKED,
     };
   }
 

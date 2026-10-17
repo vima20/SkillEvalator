@@ -85,6 +85,10 @@ export const RETRY_STILL_FINISHING_ERROR =
 export const RETRY_INSUFFICIENT_QUOTA_BLOCKED =
   "No OpenAI credits remaining — add billing credits before retrying (not auto-retried).";
 
+/** Same copy when preflight is red: admission blockedReason, POST /retry, onRetry. */
+export const RETRY_PREFLIGHT_BLOCKED =
+  "Retry blocked — preflight not green (API key, Docker, or worker). Open Settings, then retry.";
+
 /**
  * Shared orphan wait for budget_stop → result.json (run detail, Comparison,
  * Benefit pending). After this, final heal refresh + Cancel CTA — not Retry.

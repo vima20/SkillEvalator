@@ -19,6 +19,7 @@ import {
   isRetryBudgetStopping,
   parseAlsoCancelledRunId,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+  RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   runDetailCanCancel,
   runDetailFinalizeOrphansPath,
@@ -324,7 +325,9 @@ export function RunDetailClient({
           body.errorCode === "enqueue_cost_over_cap" &&
             typeof body.costCapUsd === "number"
             ? formatRetryCostBlockedReason(body.costCapUsd)
-            : (body.error ?? "Retry failed"),
+            : body.errorCode === "retry_preflight_blocked"
+              ? RETRY_PREFLIGHT_BLOCKED
+              : (body.error ?? "Retry failed"),
         );
         setRetrying(false);
         return;

@@ -6,6 +6,7 @@ import {
   pairedCancelPeerStatuses,
   parseAlsoCancelledRunId,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+  RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
@@ -46,6 +47,13 @@ describe("RETRY_INSUFFICIENT_QUOTA_BLOCKED", () => {
   it("mentions credits and not auto-retried", () => {
     expect(RETRY_INSUFFICIENT_QUOTA_BLOCKED).toMatch(/credits/i);
     expect(RETRY_INSUFFICIENT_QUOTA_BLOCKED).toMatch(/not auto-retried/i);
+  });
+});
+
+describe("RETRY_PREFLIGHT_BLOCKED", () => {
+  it("points to Settings and preflight", () => {
+    expect(RETRY_PREFLIGHT_BLOCKED).toMatch(/preflight/i);
+    expect(RETRY_PREFLIGHT_BLOCKED).toMatch(/Settings/i);
   });
 });
 

@@ -40,6 +40,7 @@ import {
 import {
   isRetryBudgetStopping,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+  RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
   retrySnapshotGate,
@@ -145,13 +146,10 @@ export async function POST(
     healOrphanStatuses();
     const preflight = runPreflight();
     if (!preflight.ok) {
-      const failedChecks = Object.entries(preflight.checks)
-        .filter(([, c]) => !c.ok)
-        .map(([k, c]) => `${k}: ${c.detail}`)
-        .join("; ");
       return NextResponse.json(
         {
-          error: `preflight failed — ${failedChecks || "fix worker, Docker, or API key"}`,
+          error: RETRY_PREFLIGHT_BLOCKED,
+          errorCode: "retry_preflight_blocked",
           checks: preflight.checks,
         },
         { status: 503 },

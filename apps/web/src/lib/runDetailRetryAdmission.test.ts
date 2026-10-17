@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { RETRY_INSUFFICIENT_QUOTA_BLOCKED } from "./runLifecycle.js";
+import {
+  RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+  RETRY_PREFLIGHT_BLOCKED,
+} from "./runLifecycle.js";
 import {
   computeRunDetailRetryAdmission,
   retryPairMetaAdmission,
@@ -68,7 +71,7 @@ describe("computeRunDetailRetryAdmission", () => {
   it("blocks when preflight not ok", () => {
     const out = computeRunDetailRetryAdmission(base({ preflightOk: false }));
     expect(out.canRetry).toBe(false);
-    expect(out.blockedReason).toMatch(/preflight/i);
+    expect(out.blockedReason).toBe(RETRY_PREFLIGHT_BLOCKED);
   });
 
   it("blocks official when Settings not Ready", () => {
@@ -289,6 +292,8 @@ describe("POST /retry shares admission gate helpers", () => {
     expect(src).toMatch(/RETRY_ENQUEUE_LOCK_BUSY_ERROR/);
     expect(src).toMatch(/retry_enqueue_lock_busy/);
     expect(src).toMatch(/RETRY_INSUFFICIENT_QUOTA_BLOCKED/);
+    expect(src).toMatch(/RETRY_PREFLIGHT_BLOCKED/);
+    expect(src).toMatch(/retry_preflight_blocked/);
     expect(src).toMatch(/healRunForRead/);
     expect(src).not.toMatch(/healRunOrphansFs/);
     expect(src).not.toMatch(/function loadFailedJob/);
