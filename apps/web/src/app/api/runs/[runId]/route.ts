@@ -38,7 +38,7 @@ export async function GET(
         status,
       });
     const preflight = runPreflight();
-    // Heal already applied above — do not full-healAll during poll (wind-down).
+    // Heal already applied above; admission defaults to no full heal (wind-down).
     const retryAdmission = runDetailRetryAdmissionForRun({
       runId,
       result,

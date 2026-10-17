@@ -94,6 +94,81 @@ describe("healOrphansForBrowse vs healOrphanStatuses", () => {
     expect(route).toMatch(/healOrphansForBrowse/);
     expect(route).toMatch(/healQueue:\s*true/);
   });
+
+  it("documents run-detail admission opts out of full heal (healQueue false)", () => {
+    const page = fs.readFileSync(
+      path.join(process.cwd(), "src/app/runs/[runId]/page.tsx"),
+      "utf8",
+    );
+    expect(page).toMatch(/healQueue:\s*false/);
+    const detailApi = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/runs/[runId]/route.ts"),
+      "utf8",
+    );
+    expect(detailApi).toMatch(/healQueue:\s*false/);
+    const admission = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/runDetailRetryAdmission.ts"),
+      "utf8",
+    );
+    expect(admission).toMatch(/healQueue === true/);
+    expect(admission).not.toMatch(/healQueue !== false/);
+  });
+});
+
+describe("runDetailRetryAdmissionForRun healQueue", () => {
+  it("default does not stamp orphan budget_stop; healQueue true does", async () => {
+    const { runDetailRetryAdmissionForRun } = await import(
+      "./runDetailRetryAdmission.js"
+    );
+    const runId = "run_wd_admit1";
+    writeJsonFile(path.join(resultsRoot, runId, "status.json"), {
+      runId,
+      status: "budget_stop",
+      role: "candidate",
+      evaluationId: "eval_wd_admit1",
+    });
+    const preflight = {
+      ok: true,
+      fakeProduce: false,
+      costCapUsd: 5,
+      checks: {
+        openaiApiKey: { ok: true, detail: "ok" },
+        docker: { ok: true, detail: "ok" },
+        worker: { ok: true, detail: "ok" },
+      },
+      checkedAt: new Date().toISOString(),
+    };
+
+    runDetailRetryAdmissionForRun({
+      runId,
+      status: { status: "budget_stop", evaluationId: "eval_wd_admit1" },
+      result: null,
+      preflight: preflight as import("@/lib/runPreflight").RunPreflightResult,
+      staleRunningRunIds: [],
+      healedMeta: null,
+      snapshotFlags: { hasSkillMd: true, hasPinnedVersion: true },
+    });
+    let st = JSON.parse(
+      fs.readFileSync(path.join(resultsRoot, runId, "status.json"), "utf8"),
+    ) as { status: string };
+    expect(st.status).toBe("budget_stop");
+
+    runDetailRetryAdmissionForRun({
+      runId,
+      status: { status: "budget_stop", evaluationId: "eval_wd_admit1" },
+      result: null,
+      preflight: preflight as import("@/lib/runPreflight").RunPreflightResult,
+      healQueue: true,
+      staleRunningRunIds: [],
+      healedMeta: null,
+      snapshotFlags: { hasSkillMd: true, hasPinnedVersion: true },
+    });
+    st = JSON.parse(
+      fs.readFileSync(path.join(resultsRoot, runId, "status.json"), "utf8"),
+    ) as { status: string; errorCode?: string };
+    expect(st.status).toBe("failed");
+    expect(st.errorCode).toBe("orphan_budget_stop");
+  });
 });
 
 describe("healRunForRead vs healRunForFinalize", () => {

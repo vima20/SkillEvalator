@@ -270,8 +270,9 @@ export function runDetailRetryAdmissionForRun(opts: {
   hasLiveJob?: boolean;
   staleRunningRunIds?: string[];
   /**
-   * Mirror POST /retry: heal orphan .running.json before stale inspect.
-   * Default true; tests set false to avoid touching data/jobs.
+   * Opt-in full healAllOrphansFs before stale inspect (same as Settings
+   * healQueue). Default false — passive SSR/GET poll must not stamp orphan
+   * budget_stop → failed (wind-down Cancel). POST /retry heals separately.
    */
   healQueue?: boolean;
   env?: Record<string, string | undefined>;
@@ -329,9 +330,8 @@ export function runDetailRetryAdmissionForRun(opts: {
     opts.snapshotFlags ??
     readRetrySnapshotFlags(resultsDir(), opts.runId);
 
-  // Same order as POST /api/runs/[runId]/retry — heal before Ready/stale inspect
-  // so run detail Retry is not stuck on orphan .running.json that Settings heal clears.
-  if (opts.healQueue !== false) {
+  // Opt-in only — browse/read heal already reclaimed dead .running.json.
+  if (opts.healQueue === true) {
     healOrphanStatuses();
   }
   const staleRunningRunIds =
