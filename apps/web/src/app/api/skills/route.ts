@@ -7,6 +7,12 @@ import {
   listSkills,
 } from "@skillevalator/core";
 import { importedSkillsDir, skillsDir, skillsDirs } from "@/lib/paths";
+import {
+  SKILL_IMPORT_FILE_REQUIRED,
+  SKILL_IMPORT_INVALID_REQUEST,
+  SKILL_IMPORT_ZIP_REQUIRED,
+  classifySkillImportError,
+} from "@/lib/skillImportResolve";
 
 export const dynamic = "force-dynamic";
 
@@ -32,22 +38,30 @@ export async function POST(req: Request) {
       const file = form.get("file");
       if (!(file instanceof File)) {
         return NextResponse.json(
-          { error: "multipart field 'file' (zip) required" },
+          {
+            error: SKILL_IMPORT_FILE_REQUIRED,
+            errorCode: "skill_import_file_required",
+          },
           { status: 400 },
         );
       }
       const name = (file.name || "skill.zip").trim();
       if (!name.toLowerCase().endsWith(".zip")) {
         return NextResponse.json(
-          { error: "only .zip packages are supported" },
+          {
+            error: SKILL_IMPORT_ZIP_REQUIRED,
+            errorCode: "skill_import_zip_required",
+          },
           { status: 400 },
         );
       }
       const buf = Buffer.from(await file.arrayBuffer());
       if (buf.byteLength > SKILL_IMPORT_MAX_ZIP_BYTES) {
+        const mb = Math.round(SKILL_IMPORT_MAX_ZIP_BYTES / 1024 / 1024);
         return NextResponse.json(
           {
-            error: `archive too large (>${Math.round(SKILL_IMPORT_MAX_ZIP_BYTES / 1024 / 1024)}MB)`,
+            error: `archive too large (>${mb}MB)`,
+            errorCode: "skill_import_archive_too_large",
           },
           { status: 400 },
         );
@@ -84,21 +98,22 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json(
-        { error: "invalid request", details: err.flatten() },
+        {
+          error: SKILL_IMPORT_INVALID_REQUEST,
+          errorCode: "skill_import_invalid_request",
+          details: err.flatten(),
+        },
         { status: 400 },
       );
     }
     const message = err instanceof Error ? err.message : "import failed";
-    const status =
-      message.startsWith("invalid ") ||
-      message.includes("github.com") ||
-      message.includes("https") ||
-      message.includes("No SkillEvalator") ||
-      message.includes("empty archive") ||
-      message.includes("too large") ||
-      message.includes(".zip")
-        ? 400
-        : 500;
-    return NextResponse.json({ error: message }, { status });
+    const classified = classifySkillImportError(message);
+    return NextResponse.json(
+      {
+        error: classified.error,
+        errorCode: classified.errorCode,
+      },
+      { status: classified.status },
+    );
   }
 }

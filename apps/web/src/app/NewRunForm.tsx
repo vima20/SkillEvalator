@@ -20,6 +20,7 @@ import {
   OFFICIAL_ADMISSION_PAIR_REQUIRED,
   resolveEnqueuePostError,
 } from "@/lib/runLifecycle";
+import { resolveSkillImportPostError } from "@/lib/skillImportResolve";
 
 export type SkillOption = {
   id: string;
@@ -360,10 +361,13 @@ export function NewRunForm({
                     });
                     const data = (await res.json()) as {
                       error?: string;
+                      errorCode?: string;
                       skills?: SkillOption[];
                       allSkills?: SkillOption[];
                     };
-                    if (!res.ok) throw new Error(data.error ?? "import failed");
+                    if (!res.ok) {
+                      throw new Error(resolveSkillImportPostError(data));
+                    }
                     const next = data.allSkills ?? skills;
                     setSkills(next);
                     const first = data.skills?.[0]?.id;
@@ -416,10 +420,13 @@ export function NewRunForm({
                     });
                     const data = (await res.json()) as {
                       error?: string;
+                      errorCode?: string;
                       skills?: SkillOption[];
                       allSkills?: SkillOption[];
                     };
-                    if (!res.ok) throw new Error(data.error ?? "import failed");
+                    if (!res.ok) {
+                      throw new Error(resolveSkillImportPostError(data));
+                    }
                     const next = data.allSkills ?? skills;
                     setSkills(next);
                     const first = data.skills?.[0]?.id;
