@@ -32,6 +32,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.json(
         {
           error: "WEB_AUTH_TOKEN misconfigured (empty or whitespace only)",
+          errorCode: "auth_misconfigured",
           misconfigured: true,
         },
         { status: 503 },
@@ -62,7 +63,10 @@ export async function middleware(req: NextRequest) {
   if (ok) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "unauthorized", errorCode: "auth_unauthorized" },
+      { status: 401 },
+    );
   }
 
   // Pages: redirect before RSC renders sensitive results/comparison HTML.

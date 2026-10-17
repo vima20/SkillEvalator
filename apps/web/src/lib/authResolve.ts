@@ -7,6 +7,7 @@ export type AuthPostErrorCode =
   | "auth_misconfigured"
   | "auth_invalid_token"
   | "auth_invalid_request"
+  | "auth_unauthorized"
   | "auth_probe_failed"
   | "auth_unreachable";
 
@@ -26,6 +27,8 @@ export const AUTH_MISCONFIGURED_API_ERROR =
 
 export const AUTH_INVALID_TOKEN_ERROR = "invalid token";
 export const AUTH_INVALID_REQUEST_ERROR = "invalid request";
+/** Middleware 401 for protected /api/* when cookie/token missing. */
+export const AUTH_UNAUTHORIZED_ERROR = "unauthorized";
 export const AUTH_PROBE_FAILED_ERROR = "Auth check failed — unlock or retry.";
 export const AUTH_UNREACHABLE_ERROR =
   "Could not reach auth API — check that the web server is running.";
@@ -35,13 +38,15 @@ const FAIL_CLOSED: Record<AuthPostErrorCode, string> = {
   auth_misconfigured: AUTH_MISCONFIGURED_ERROR,
   auth_invalid_token: AUTH_INVALID_TOKEN_ERROR,
   auth_invalid_request: AUTH_INVALID_REQUEST_ERROR,
+  auth_unauthorized: AUTH_UNAUTHORIZED_ERROR,
   auth_probe_failed: AUTH_PROBE_FAILED_ERROR,
   auth_unreachable: AUTH_UNREACHABLE_ERROR,
 };
 
 /**
- * Map POST /api/auth JSON errorCodes to unlock copy (fail-closed when error
- * is missing). Also treats misconfigured:true without a code.
+ * Map POST /api/auth + middleware /api/* JSON errorCodes to unlock copy
+ * (fail-closed when error is missing). Also treats misconfigured:true
+ * without a code.
  */
 export function resolveAuthPostError(body: AuthPostErrorBody): string {
   if (body.misconfigured || body.errorCode === "auth_misconfigured") {

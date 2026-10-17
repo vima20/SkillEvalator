@@ -5,6 +5,7 @@ import {
   AUTH_MISCONFIGURED_API_ERROR,
   AUTH_MISCONFIGURED_ERROR,
   AUTH_PROBE_FAILED_ERROR,
+  AUTH_UNAUTHORIZED_ERROR,
   AUTH_UNLOCK_FAILED,
   AUTH_UNREACHABLE_ERROR,
   knownAuthPostErrorCodes,
@@ -23,6 +24,9 @@ describe("resolveAuthPostError", () => {
     expect(
       resolveAuthPostError({ errorCode: "auth_invalid_request" }),
     ).toBe(AUTH_INVALID_REQUEST_ERROR);
+    expect(
+      resolveAuthPostError({ errorCode: "auth_unauthorized" }),
+    ).toBe(AUTH_UNAUTHORIZED_ERROR);
     expect(resolveAuthPostError({})).toBe(AUTH_UNLOCK_FAILED);
   });
 
@@ -62,6 +66,7 @@ describe("auth source locks", () => {
         "auth_misconfigured",
         "auth_invalid_token",
         "auth_invalid_request",
+        "auth_unauthorized",
         "auth_probe_failed",
         "auth_unreachable",
       ]),
@@ -88,5 +93,16 @@ describe("auth source locks", () => {
     expect(gate).toMatch(/resolveAuthClientError/);
     expect(gate).toMatch(/AUTH_MISCONFIGURED_ERROR/);
     expect(gate).not.toMatch(/unauthorized/);
+  });
+
+  it("middleware API JSON emits auth_misconfigured and auth_unauthorized", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const mw = fs.readFileSync(
+      path.join(process.cwd(), "src/middleware.ts"),
+      "utf8",
+    );
+    expect(mw).toMatch(/errorCode:\s*"auth_misconfigured"/);
+    expect(mw).toMatch(/errorCode:\s*"auth_unauthorized"/);
   });
 });

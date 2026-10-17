@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   EXPORT_COMPARISON_NOT_READY,
   EXPORT_EVALUATION_META_MISSING,
+  EXPORT_FAILED_ERROR,
+  EXPORT_INVALID_REQUEST_ERROR,
   EXPORT_RESULT_NOT_FOUND,
   EXPORT_RESULT_NOT_READY,
   exportFailClosedErrorCodes,
@@ -83,6 +85,23 @@ describe("resolveExportGetError", () => {
     expect(codes).toContain("comparison_export_not_attested");
     expect(codes).toContain("run_csv_not_attested");
     expect(codes).toContain("export_result_not_ready");
+    expect(codes).toContain("export_failed");
+    expect(codes).toContain("export_invalid_request");
+  });
+
+  it("fail-closes export catch codes without body.error", () => {
+    expect(
+      resolveExportGetError(
+        { errorCode: "export_failed" },
+        "Download failed (500)",
+      ),
+    ).toBe(EXPORT_FAILED_ERROR);
+    expect(
+      resolveExportGetError(
+        { errorCode: "export_invalid_request" },
+        "Download failed (400)",
+      ),
+    ).toBe(EXPORT_INVALID_REQUEST_ERROR);
   });
 
   it("exportGateBlockMessage matches download fail-closed path", () => {
@@ -131,7 +150,7 @@ describe("resolveExportGetError", () => {
     ).toMatch(/EXPORT_RUN_CSV_LOCKED_FALLBACK/);
   });
 
-  it("export GET routes attach 404 errorCodes", async () => {
+  it("export GET routes attach 404 and catch errorCodes", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const cwd = process.cwd();
@@ -143,6 +162,9 @@ describe("resolveExportGetError", () => {
     ]) {
       const src = fs.readFileSync(path.join(cwd, rel), "utf8");
       expect(src).toMatch(/errorCode:/);
+      expect(src).toMatch(/export_invalid_request/);
+      expect(src).toMatch(/export_failed/);
+      expect(src).toMatch(/EXPORT_FAILED_ERROR/);
     }
     const runCsv = fs.readFileSync(
       path.join(cwd, "src/app/api/runs/[runId]/csv/route.ts"),

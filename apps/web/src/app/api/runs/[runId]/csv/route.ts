@@ -10,6 +10,10 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import {
+  EXPORT_FAILED_ERROR,
+  EXPORT_INVALID_REQUEST_ERROR,
+} from "@/lib/exportResolve";
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { resultsDir } from "@/lib/paths";
 import { runCsvExportGate } from "@/lib/runCsvExport";
@@ -78,7 +82,21 @@ export async function GET(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
-    const code = message.startsWith("invalid ") ? 400 : 500;
-    return NextResponse.json({ error: message }, { status: code });
+    if (message.startsWith("invalid ")) {
+      return NextResponse.json(
+        {
+          error: message || EXPORT_INVALID_REQUEST_ERROR,
+          errorCode: "export_invalid_request",
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: message.trim() ? message : EXPORT_FAILED_ERROR,
+        errorCode: "export_failed",
+      },
+      { status: 500 },
+    );
   }
 }

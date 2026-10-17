@@ -18,11 +18,17 @@ export const EXPORT_COMPARISON_NOT_READY = "comparison not ready";
 export const EXPORT_EVALUATION_META_MISSING =
   "evaluation.json missing — paired meta required";
 
+/** Export GET catch — same pattern as run_detail_* / enqueue_*. */
+export const EXPORT_INVALID_REQUEST_ERROR = "invalid request";
+export const EXPORT_FAILED_ERROR = "Export download failed";
+
 const EXPORT_FAIL_CLOSED: Record<string, string> = {
   export_result_not_ready: EXPORT_RESULT_NOT_READY,
   export_result_not_found: EXPORT_RESULT_NOT_FOUND,
   export_comparison_not_ready: EXPORT_COMPARISON_NOT_READY,
   export_evaluation_meta_missing: EXPORT_EVALUATION_META_MISSING,
+  export_invalid_request: EXPORT_INVALID_REQUEST_ERROR,
+  export_failed: EXPORT_FAILED_ERROR,
 
   benefit_export_smoke_forbidden:
     "benefit export rejects evaluation.smoke=true (fixture plant)",

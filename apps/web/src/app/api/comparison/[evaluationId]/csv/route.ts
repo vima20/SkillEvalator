@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { assertSafeId, comparisonToCsv } from "@skillevalator/core";
 import { comparisonCsvGate } from "@/lib/comparisonExport";
 import { loadEvaluationComparison } from "@/lib/evaluations";
+import {
+  EXPORT_FAILED_ERROR,
+  EXPORT_INVALID_REQUEST_ERROR,
+} from "@/lib/exportResolve";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +72,21 @@ export async function GET(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
-    const status = message.startsWith("invalid ") ? 400 : 500;
-    return NextResponse.json({ error: message }, { status });
+    if (message.startsWith("invalid ")) {
+      return NextResponse.json(
+        {
+          error: message || EXPORT_INVALID_REQUEST_ERROR,
+          errorCode: "export_invalid_request",
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: message.trim() ? message : EXPORT_FAILED_ERROR,
+        errorCode: "export_failed",
+      },
+      { status: 500 },
+    );
   }
 }
