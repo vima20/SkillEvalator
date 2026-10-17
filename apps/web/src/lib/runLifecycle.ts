@@ -81,7 +81,18 @@ const RETRYABLE = new Set(["failed", "cancelled", "budget_stop"]);
 export const RETRY_STILL_FINISHING_ERROR =
   "run still finishing — wait for result.json (or cancel) before retry";
 
-/** Same copy for insufficient_quota: admission, credit-alert, POST, onRetry. */
+/**
+ * Billing/account codes that must not be retried — keep in sync with
+ * packages/core NON_RETRYABLE_ERROR_CODES (client-safe local copy; no core import).
+ */
+export const RETRY_NON_RETRYABLE_ERROR_CODES = new Set([
+  "insufficient_quota",
+  "billing_not_active",
+  "billing_hard_limit_reached",
+  "account_deactivated",
+]);
+
+/** Same copy for billing/account non-retryable: admission, credit-alert, POST, onRetry. */
 export const RETRY_INSUFFICIENT_QUOTA_BLOCKED =
   "No OpenAI credits remaining — add billing credits before retrying (not auto-retried).";
 
@@ -95,6 +106,22 @@ export const RETRY_PREFLIGHT_BLOCKED =
  */
 export function retryOfficialPilotBlockedReason(blockers: string[]): string {
   return `Official retry blocked — Settings not Ready: ${blockers.join("; ")}.`;
+}
+
+/** True for OpenAI billing/account errorCodes that block Retry. */
+export function isRetryBillingBlocked(errorCode?: string): boolean {
+  return (
+    typeof errorCode === "string" &&
+    RETRY_NON_RETRYABLE_ERROR_CODES.has(errorCode)
+  );
+}
+
+/** Shared blockedReason / POST error for billing non-retryable codes; null otherwise. */
+export function retryNonRetryableBlockedReason(
+  errorCode?: string,
+): string | null {
+  if (!isRetryBillingBlocked(errorCode)) return null;
+  return RETRY_INSUFFICIENT_QUOTA_BLOCKED;
 }
 
 export type RetryPostErrorBody = {
@@ -127,9 +154,8 @@ export function resolveRetryPostError(
   ) {
     return retryOfficialPilotBlockedReason(body.blockers);
   }
-  if (body.errorCode === "insufficient_quota") {
-    return RETRY_INSUFFICIENT_QUOTA_BLOCKED;
-  }
+  const billing = retryNonRetryableBlockedReason(body.errorCode);
+  if (billing) return billing;
   return body.error ?? "Retry failed";
 }
 

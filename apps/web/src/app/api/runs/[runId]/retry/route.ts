@@ -39,10 +39,10 @@ import {
 } from "@/lib/runDetailRetryAdmission";
 import {
   isRetryBudgetStopping,
-  RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
+  retryNonRetryableBlockedReason,
   retryOfficialPilotBlockedReason,
   retrySnapshotGate,
 } from "@/lib/runLifecycle";
@@ -84,13 +84,11 @@ export async function POST(
       nonRetryableError: isNonRetryableErrorCode(status.errorCode),
     });
     if (!gate.allow) {
-      if (isNonRetryableErrorCode(status.errorCode)) {
+      const billingBlocked = retryNonRetryableBlockedReason(status.errorCode);
+      if (billingBlocked) {
         return NextResponse.json(
           {
-            error:
-              status.errorCode === "insufficient_quota"
-                ? RETRY_INSUFFICIENT_QUOTA_BLOCKED
-                : `Cannot retry error ${status.errorCode}`,
+            error: billingBlocked,
             errorCode: status.errorCode,
           },
           { status: 409 },

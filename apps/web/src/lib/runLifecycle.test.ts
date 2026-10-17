@@ -5,11 +5,14 @@ import {
   pairedCancelAlsoCopy,
   pairedCancelPeerStatuses,
   parseAlsoCancelledRunId,
+  isRetryBillingBlocked,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+  RETRY_NON_RETRYABLE_ERROR_CODES,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   resolveRetryPostError,
   retryGate,
+  retryNonRetryableBlockedReason,
   retryOfficialPilotBlockedReason,
   retrySnapshotGate,
   runDetailCanCancel,
@@ -54,6 +57,26 @@ describe("RETRY_INSUFFICIENT_QUOTA_BLOCKED", () => {
   });
 });
 
+describe("retryNonRetryableBlockedReason", () => {
+  it("matches core NON_RETRYABLE_ERROR_CODES", async () => {
+    const { NON_RETRYABLE_ERROR_CODES } = await import(
+      "@skillevalator/core"
+    );
+    expect([...RETRY_NON_RETRYABLE_ERROR_CODES].sort()).toEqual(
+      [...NON_RETRYABLE_ERROR_CODES].sort(),
+    );
+  });
+
+  it("returns shared copy for billing codes; null otherwise", () => {
+    expect(retryNonRetryableBlockedReason("billing_not_active")).toBe(
+      RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+    );
+    expect(isRetryBillingBlocked("account_deactivated")).toBe(true);
+    expect(retryNonRetryableBlockedReason("orphan_queued")).toBeNull();
+    expect(isRetryBillingBlocked("orphan_queued")).toBe(false);
+  });
+});
+
 describe("RETRY_PREFLIGHT_BLOCKED", () => {
   it("points to Settings and preflight", () => {
     expect(RETRY_PREFLIGHT_BLOCKED).toMatch(/preflight/i);
@@ -72,9 +95,15 @@ describe("retryOfficialPilotBlockedReason", () => {
 });
 
 describe("resolveRetryPostError", () => {
-  it("fail-closes insufficient_quota without body.error", () => {
+  it("fail-closes billing non-retryable codes without body.error", () => {
     expect(
       resolveRetryPostError({ errorCode: "insufficient_quota" }, formatCost),
+    ).toBe(RETRY_INSUFFICIENT_QUOTA_BLOCKED);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "billing_hard_limit_reached" },
+        formatCost,
+      ),
     ).toBe(RETRY_INSUFFICIENT_QUOTA_BLOCKED);
   });
 

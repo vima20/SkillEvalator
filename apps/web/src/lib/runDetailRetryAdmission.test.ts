@@ -53,12 +53,17 @@ describe("computeRunDetailRetryAdmission", () => {
     expect(out.blockedReason).toMatch(/still finishing/i);
   });
 
-  it("blocks insufficient_quota", () => {
-    const out = computeRunDetailRetryAdmission(
-      base({ errorCode: "insufficient_quota" }),
-    );
-    expect(out.canRetry).toBe(false);
-    expect(out.blockedReason).toBe(RETRY_INSUFFICIENT_QUOTA_BLOCKED);
+  it("blocks insufficient_quota and other billing non-retryable codes", () => {
+    for (const errorCode of [
+      "insufficient_quota",
+      "billing_not_active",
+      "billing_hard_limit_reached",
+      "account_deactivated",
+    ]) {
+      const out = computeRunDetailRetryAdmission(base({ errorCode }));
+      expect(out.canRetry).toBe(false);
+      expect(out.blockedReason).toBe(RETRY_INSUFFICIENT_QUOTA_BLOCKED);
+    }
   });
 
   it("blocks when retry-enqueue lock is busy", () => {
@@ -295,7 +300,7 @@ describe("POST /retry shares admission gate helpers", () => {
     expect(src).toMatch(/loadTerminalJobForRetry/);
     expect(src).toMatch(/RETRY_ENQUEUE_LOCK_BUSY_ERROR/);
     expect(src).toMatch(/retry_enqueue_lock_busy/);
-    expect(src).toMatch(/RETRY_INSUFFICIENT_QUOTA_BLOCKED/);
+    expect(src).toMatch(/retryNonRetryableBlockedReason/);
     expect(src).toMatch(/RETRY_PREFLIGHT_BLOCKED/);
     expect(src).toMatch(/retry_preflight_blocked/);
     expect(src).toMatch(/retryOfficialPilotBlockedReason/);

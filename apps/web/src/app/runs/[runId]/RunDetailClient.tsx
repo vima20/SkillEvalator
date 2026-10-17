@@ -16,6 +16,7 @@ import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
+  isRetryBillingBlocked,
   isRetryBudgetStopping,
   parseAlsoCancelledRunId,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
@@ -283,7 +284,7 @@ export function RunDetailClient({
     status === "failed" ||
     status === "cancelled" ||
     status === "budget_stop";
-  const quotaBlocked = data.status?.errorCode === "insufficient_quota";
+  const quotaBlocked = isRetryBillingBlocked(data.status?.errorCode);
   // Server mirrors POST /retry; fail-closed until admission present.
   const retryAdmission = data.retryAdmission;
   const canRetry =

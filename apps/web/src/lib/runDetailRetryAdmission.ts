@@ -17,10 +17,10 @@ import { collectPilotBlockers } from "@/lib/pilotReady";
 import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
-  RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
+  retryNonRetryableBlockedReason,
   retryOfficialPilotBlockedReason,
   retrySnapshotGate,
 } from "@/lib/runLifecycle";
@@ -156,10 +156,11 @@ export function computeRunDetailRetryAdmission(opts: {
       blockedReason: RETRY_STILL_FINISHING_ERROR,
     };
   }
-  if (opts.errorCode === "insufficient_quota") {
+  const billingBlocked = retryNonRetryableBlockedReason(opts.errorCode);
+  if (billingBlocked) {
     return {
       canRetry: false,
-      blockedReason: RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+      blockedReason: billingBlocked,
     };
   }
   const gate = retryGate({
@@ -168,12 +169,6 @@ export function computeRunDetailRetryAdmission(opts: {
     nonRetryableError: isNonRetryableErrorCode(opts.errorCode),
   });
   if (!gate.allow) {
-    if (isNonRetryableErrorCode(opts.errorCode)) {
-      return {
-        canRetry: false,
-        blockedReason: `Cannot retry error ${opts.errorCode}`,
-      };
-    }
     return { canRetry: false, blockedReason: gate.error };
   }
 
