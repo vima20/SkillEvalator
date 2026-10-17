@@ -19,6 +19,7 @@ import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,10 @@ export default async function BenefitIndexPage({
     // Recommend surface: candidate skill only (baseline is Comparison input).
     .filter((r) => r.result!.role === "candidate")
     .map((r) => {
+      const evaluationId = resolveListRunEvaluationId({
+        runId: r.runId,
+        result: r.result,
+      });
       const {
         report,
         tipCandidateRunId,
@@ -48,7 +53,12 @@ export default async function BenefitIndexPage({
         meta,
         baseline,
         candidate,
-      } = buildBenefitReportBundle(r.result!);
+        evaluationId: bundleEvalId,
+      } = buildBenefitReportBundle(r.result!, {
+        runId: r.runId,
+        evaluationId,
+      });
+      const resolvedId = bundleEvalId ?? evaluationId;
       const fakeProduce = r.result!.capture?.env?.fakeProduce === true;
       const produceAttested =
         r.result!.capture?.env?.produceAttested === true;
@@ -57,7 +67,7 @@ export default async function BenefitIndexPage({
         role: "candidate",
         fakeProduce,
         produceAttested,
-        evaluationId: r.result!.evaluationId,
+        evaluationId: resolvedId ?? undefined,
         tipCandidateRunId,
       }) as CandidateLegKind;
       const { pairChip, pairBlocked } = benefitPairEvidenceFromPacked({
@@ -71,7 +81,7 @@ export default async function BenefitIndexPage({
         runId: r.runId,
         score: r.result!.score,
         mode: r.result!.mode,
-        evaluationId: r.result!.evaluationId,
+        evaluationId: resolvedId ?? undefined,
         verdict: report.verdict,
         rating: report.rating,
         kind,

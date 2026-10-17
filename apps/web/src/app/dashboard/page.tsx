@@ -21,6 +21,7 @@ import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -101,8 +102,13 @@ export default async function DashboardPage({
   let boardCount = 0;
   const rows: Row[] = allRuns.flatMap((r) => {
     if (!r.result) return [];
-    const pair = r.result.evaluationId
-      ? pairFor(r.result.evaluationId)
+    // Same status → job → result id as run detail (not listRuns result-first merge).
+    const evaluationId = resolveListRunEvaluationId({
+      runId: r.runId,
+      result: r.result,
+    });
+    const pair = evaluationId
+      ? pairFor(evaluationId)
       : {
           tipCandidateRunId: null as string | null,
           pairChip: null as BenefitListPairChip | null,
@@ -113,7 +119,7 @@ export default async function DashboardPage({
       role: r.result.role,
       fakeProduce: r.result.capture?.env?.fakeProduce === true,
       produceAttested: r.result.capture?.env?.produceAttested === true,
-      evaluationId: r.result.evaluationId,
+      evaluationId: evaluationId ?? undefined,
       tipCandidateRunId: pair.tipCandidateRunId,
       mode: r.result.mode,
       pairBlocked: pair.pairBlocked,
@@ -138,7 +144,7 @@ export default async function DashboardPage({
         githubUrl: r.result.evalSkillGithubUrl,
         skillId: r.result.evalSkillId,
         skillVersion: r.result.evalSkillVersion,
-        evaluationId: r.result.evaluationId,
+        evaluationId: evaluationId ?? undefined,
         role: r.result.role,
         pairChip: pair.pairChip,
         pairBlocked: pair.pairBlocked,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   loadRunDetailEvaluationPack,
+  resolveListRunEvaluationId,
   resolveRunDetailEvaluationId,
 } from "./runDetailEvaluationPack.js";
 
@@ -36,6 +37,30 @@ describe("resolveRunDetailEvaluationId", () => {
         jobEvaluationId: null,
       }),
     ).toBe("eval_result");
+  });
+});
+
+describe("resolveListRunEvaluationId", () => {
+  it("prefers status over result (unlike listRuns merge)", () => {
+    expect(
+      resolveListRunEvaluationId({
+        runId: "run_list",
+        statusEvaluationId: "eval_status",
+        result: { evaluationId: "eval_result" },
+        jobEvaluationId: null,
+      }),
+    ).toBe("eval_status");
+  });
+
+  it("uses job when status empty and result stale/missing", () => {
+    expect(
+      resolveListRunEvaluationId({
+        runId: "run_list",
+        statusEvaluationId: null,
+        result: { evaluationId: undefined },
+        jobEvaluationId: "eval_job",
+      }),
+    ).toBe("eval_job");
   });
 });
 

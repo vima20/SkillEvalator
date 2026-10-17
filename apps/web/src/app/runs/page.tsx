@@ -22,6 +22,7 @@ import {
 import { healOrphanStatuses } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
+import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   candidateRunsListHint,
   runsListHintLabel,
@@ -86,7 +87,11 @@ export default async function RunsPage({
         const produceAttested =
           r.result?.capture?.env?.produceAttested === true;
         const role = r.result?.role ?? r.role;
-        const evaluationId = r.result?.evaluationId ?? r.evaluationId;
+        const evaluationId =
+          resolveListRunEvaluationId({
+            runId: r.runId,
+            result: r.result,
+          }) ?? undefined;
         const pair = evaluationId ? pairFor(evaluationId) : null;
         if (pair?.pairBlocked) return false;
         const kind = candidateLegKind({
@@ -182,7 +187,10 @@ export default async function RunsPage({
                   const active = runIsActive(r.status, !!r.result);
                   const role = r.result?.role ?? r.role ?? "—";
                   const evaluationId =
-                    r.result?.evaluationId ?? r.evaluationId;
+                    resolveListRunEvaluationId({
+                      runId: r.runId,
+                      result: r.result,
+                    }) ?? undefined;
                   const pair = evaluationId ? pairFor(evaluationId) : null;
                   const tip = pair?.tipCandidateRunId ?? null;
                   const hint = candidateRunsListHint({

@@ -3,13 +3,14 @@ import path from "node:path";
 import {
   JobManifestSchema,
   evaluationIdFromSources,
+  loadRunStatus,
   readJsonFile,
 } from "@skillevalator/core";
 import {
   loadEvaluationComparison,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
-import { jobsDir } from "@/lib/paths";
+import { jobsDir, resultsDir } from "@/lib/paths";
 import {
   runDetailPairHarness,
   type RunDetailPairHarness,
@@ -58,6 +59,42 @@ export function resolveRunDetailEvaluationId(opts: {
       resultEvaluationId: opts.result?.evaluationId,
     }) ?? null
   );
+}
+
+/**
+ * List rows (Dashboard / Runs / Benefit index): same status → job → result
+ * order as run detail. Do not use `listRuns().evaluationId` alone — that field
+ * is result-first and can disagree with status.json / failed job.
+ */
+export function resolveListRunEvaluationId(opts: {
+  runId: string;
+  result?: { evaluationId?: string } | null;
+  /** Injected status.evaluationId (skip disk). */
+  statusEvaluationId?: string | null;
+  /** Injected job evaluationId (skip disk). */
+  jobEvaluationId?: string | null;
+  /** When statusEvaluationId omitted, load from this results root (default resultsDir()). */
+  resultsRoot?: string;
+}): string | null {
+  let statusEvaluationId = opts.statusEvaluationId;
+  if (statusEvaluationId === undefined) {
+    try {
+      const root = opts.resultsRoot ?? resultsDir();
+      statusEvaluationId =
+        loadRunStatus(root, opts.runId)?.evaluationId ?? null;
+    } catch {
+      statusEvaluationId = null;
+    }
+  }
+  return resolveRunDetailEvaluationId({
+    runId: opts.runId,
+    status:
+      statusEvaluationId != null && statusEvaluationId !== ""
+        ? { evaluationId: statusEvaluationId }
+        : null,
+    result: opts.result,
+    jobEvaluationId: opts.jobEvaluationId,
+  });
 }
 
 export type RunDetailEvaluationPack = {
