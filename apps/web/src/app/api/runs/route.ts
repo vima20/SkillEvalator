@@ -15,6 +15,7 @@ import {
 import { toListRunApiRow } from "@/lib/listRunsApi";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { officialPilotReadyGate } from "@/lib/pilotReady";
+import { ENQUEUE_PREFLIGHT_BLOCKED } from "@/lib/runLifecycle";
 import { runPreflight } from "@/lib/runPreflight";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 
@@ -46,13 +47,10 @@ export async function POST(req: Request) {
     healOrphanStatuses();
     const preflight = runPreflight();
     if (!preflight.ok) {
-      const failed = Object.entries(preflight.checks)
-        .filter(([, c]) => !c.ok)
-        .map(([k, c]) => `${k}: ${c.detail}`)
-        .join("; ");
       return NextResponse.json(
         {
-          error: `preflight failed — ${failed || "fix worker, Docker, or API key"}`,
+          error: ENQUEUE_PREFLIGHT_BLOCKED,
+          errorCode: "enqueue_preflight_blocked",
           checks: preflight.checks,
         },
         { status: 503 },
@@ -117,7 +115,10 @@ export async function POST(req: Request) {
       });
       if (!paired.ok) {
         return NextResponse.json(
-          { error: paired.error },
+          {
+            error: paired.error,
+            errorCode: paired.errorCode,
+          },
           { status: paired.status },
         );
       }
@@ -137,7 +138,10 @@ export async function POST(req: Request) {
     });
     if (!queued.ok) {
       return NextResponse.json(
-        { error: queued.error },
+        {
+          error: queued.error,
+          errorCode: queued.errorCode,
+        },
         { status: queued.status },
       );
     }

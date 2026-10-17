@@ -188,6 +188,7 @@ describe("enqueueEvaluationPair", () => {
     expect(out.ok).toBe(false);
     if (out.ok) return;
     expect(out.status).toBe(429);
+    expect(out.errorCode).toBe("enqueue_queue_full");
 
     // Single enqueue still fits in the last slot.
     const single = enqueueRun({
@@ -213,6 +214,7 @@ describe("enqueueRun", () => {
     expect(out.ok).toBe(false);
     if (out.ok) return;
     expect(out.status).toBe(429);
+    expect(out.errorCode).toBe("enqueue_queue_full");
     expect(fs.existsSync(path.join(jobsRoot, ".enqueue.lock"))).toBe(false);
   });
 
@@ -243,6 +245,7 @@ describe("enqueueRun", () => {
     expect(single.ok).toBe(false);
     if (single.ok) return;
     expect(single.status).toBe(400);
+    expect(single.errorCode).toBe("enqueue_skill_not_ready");
     expect(single.error).toMatch(/SKILL\.md empty/i);
 
     const pair = enqueueEvaluationPair({
@@ -253,6 +256,7 @@ describe("enqueueRun", () => {
     expect(pair.ok).toBe(false);
     if (pair.ok) return;
     expect(pair.status).toBe(400);
+    expect(pair.errorCode).toBe("enqueue_skill_not_ready");
     expect(pair.error).toMatch(/SKILL\.md empty/i);
 
     expect(fs.readdirSync(jobsRoot).filter((n) => n.endsWith(".json"))).toEqual(

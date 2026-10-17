@@ -13,10 +13,24 @@ import {
 } from "@skillevalator/core";
 import { jobsDir, resultsDir, skillsDirs } from "@/lib/paths";
 
+export type EnqueueErrorCode =
+  | "enqueue_queue_full"
+  | "enqueue_lock_busy"
+  | "enqueue_skill_not_ready"
+  | "enqueue_evaluation_meta_failed"
+  | "enqueue_pair_candidate_failed";
+
+export type EnqueueFail = {
+  ok: false;
+  status: number;
+  error: string;
+  errorCode: EnqueueErrorCode;
+};
+
 /** Reject broken / incomplete imports before they hit the worker queue. */
 function skillReady(
   evalSkillId: string,
-): { ok: true } | { ok: false; error: string } {
+): { ok: true } | EnqueueFail {
   try {
     // loadSkill fails closed on empty/whitespace SKILL.md (avoids baseline
     // spend when candidate would later refuse produce).
@@ -26,9 +40,11 @@ function skillReady(
     const message = err instanceof Error ? err.message : String(err);
     return {
       ok: false,
+      status: 400,
       error: message.startsWith("Skill not found")
         ? "unknown skill"
         : `skill not ready: ${message}`.slice(0, 400),
+      errorCode: "enqueue_skill_not_ready",
     };
   }
 }
@@ -52,7 +68,7 @@ export type EnqueueInput = {
 
 export type EnqueueResult =
   | { ok: true; runId: string }
-  | { ok: false; status: number; error: string };
+  | EnqueueFail;
 
 export type EnqueuePairResult =
   | {
@@ -61,11 +77,9 @@ export type EnqueuePairResult =
       baselineRunId: string;
       candidateRunId: string;
     }
-  | { ok: false; status: number; error: string };
+  | EnqueueFail;
 
-function queueSlotsNeeded(
-  n: number,
-): { ok: false; status: number; error: string } | null {
+function queueSlotsNeeded(n: number): EnqueueFail | null {
   const dir = jobsDir();
   fs.mkdirSync(dir, { recursive: true });
   const queuedCount = fs.readdirSync(dir).filter(isQueuedJobFile).length;
@@ -74,17 +88,16 @@ function queueSlotsNeeded(
       ok: false,
       status: 429,
       error: `queue full (max ${MAX_QUEUED_JOBS} pending jobs)`,
+      errorCode: "enqueue_queue_full",
     };
   }
   return null;
 }
 
-type EnqueueLockBusy = { ok: false; status: 503; error: string };
-
 function withEnqueueLock<T>(
   fn: () => T,
   opts?: { retries?: number; retryDelayMs?: number },
-): T | EnqueueLockBusy {
+): T | EnqueueFail {
   const dir = jobsDir();
   fs.mkdirSync(dir, { recursive: true });
   const lockPath = path.join(dir, ".enqueue.lock");
@@ -101,6 +114,7 @@ function withEnqueueLock<T>(
       ok: false,
       status: 503,
       error: "enqueue lock busy; retry shortly",
+      errorCode: "enqueue_lock_busy",
     };
   }
   try {
@@ -167,7 +181,7 @@ export function enqueueRun(input: EnqueueInput): EnqueueResult {
   const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
   const ready = skillReady(evalSkillId);
   if (!ready.ok) {
-    return { ok: false, status: 400, error: ready.error };
+    return ready;
   }
 
   return withEnqueueLock(() => {
@@ -190,7 +204,7 @@ export function enqueueEvaluationPair(input: {
   const evalSkillId = assertSafeId(input.evalSkillId, "evalSkillId");
   const ready = skillReady(evalSkillId);
   if (!ready.ok) {
-    return { ok: false, status: 400, error: ready.error };
+    return ready;
   }
 
   const locked = withEnqueueLock((): EnqueuePairResult => {
@@ -218,6 +232,7 @@ export function enqueueEvaluationPair(input: {
         ok: false,
         status: 500,
         error: `failed to write evaluation.json: ${message}`.slice(0, 400),
+        errorCode: "enqueue_evaluation_meta_failed",
       };
     }
 
@@ -265,6 +280,7 @@ export function enqueueEvaluationPair(input: {
         ok: false,
         status: candidate.status,
         error: `candidate enqueue failed after baseline ${baseline.runId}: ${candidate.error}`,
+        errorCode: "enqueue_pair_candidate_failed",
       };
     }
 

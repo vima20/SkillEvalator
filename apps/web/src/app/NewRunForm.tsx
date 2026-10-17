@@ -15,6 +15,8 @@ import {
 } from "@skillevalator/core/models";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
+import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
+import { resolveEnqueuePostError } from "@/lib/runLifecycle";
 
 export type SkillOption = {
   id: string;
@@ -226,8 +228,19 @@ export function NewRunForm({
           withBaseline,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "failed");
+      const data = (await res.json()) as {
+        error?: string;
+        errorCode?: string;
+        costCapUsd?: number;
+        blockers?: string[];
+        evaluationId?: string;
+        runId?: string;
+      };
+      if (!res.ok) {
+        throw new Error(
+          resolveEnqueuePostError(data, formatRetryCostBlockedReason),
+        );
+      }
       if (withBaseline && data.evaluationId) {
         setMsg(`Queued evaluation ${data.evaluationId}`);
         router.push(

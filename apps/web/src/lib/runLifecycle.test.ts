@@ -8,8 +8,14 @@ import {
   parseAlsoCancelledRunId,
   isRetryBillingBlocked,
   resolveCancelPostError,
+  ENQUEUE_EVALUATION_META_FAILED,
+  ENQUEUE_PAIR_CANDIDATE_FAILED,
+  ENQUEUE_PREFLIGHT_BLOCKED,
   RETRY_COMPARISON_LINK_FAILED,
+  RETRY_ENQUEUE_JOB_LOCK_BUSY,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+  RETRY_ENQUEUE_QUEUE_FULL,
+  RETRY_ENQUEUE_SKILL_NOT_READY,
   RETRY_EVALUATION_META_REVERT_FAILED,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
   RETRY_NON_RETRYABLE_ERROR_CODES,
@@ -20,6 +26,7 @@ import {
   RETRY_SNAPSHOT_BASELINE_PIN_MISSING,
   RETRY_SNAPSHOT_CANDIDATE_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
+  resolveEnqueuePostError,
   resolveRetryPostError,
   retryGate,
   retryNonRetryableBlockedReason,
@@ -194,6 +201,34 @@ describe("resolveRetryPostError", () => {
     ).toBe(RETRY_STILL_FINISHING_ERROR);
   });
 
+  it("fail-closes enqueueRun errorCodes (distinct from retry_enqueue_lock_busy)", () => {
+    expect(
+      resolveRetryPostError({ errorCode: "enqueue_lock_busy" }, formatCost),
+    ).toBe(RETRY_ENQUEUE_JOB_LOCK_BUSY);
+    expect(
+      resolveRetryPostError({ errorCode: "enqueue_queue_full" }, formatCost),
+    ).toBe(RETRY_ENQUEUE_QUEUE_FULL);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "enqueue_skill_not_ready" },
+        formatCost,
+      ),
+    ).toBe(RETRY_ENQUEUE_SKILL_NOT_READY);
+    expect(
+      resolveRetryPostError(
+        {
+          errorCode: "enqueue_queue_full",
+          error: "queue full (max 20 pending jobs)",
+        },
+        formatCost,
+      ),
+    ).toBe("queue full (max 20 pending jobs)");
+    // Must not collapse jobs/.enqueue.lock into the tip-link retry lock copy.
+    expect(
+      resolveRetryPostError({ errorCode: "enqueue_lock_busy" }, formatCost),
+    ).not.toBe(RETRY_ENQUEUE_LOCK_BUSY_ERROR);
+  });
+
   it("fail-closes snapshot gate codes without body.error", () => {
     expect(
       resolveRetryPostError(
@@ -306,6 +341,91 @@ describe("resolveRetryPostError", () => {
     );
     expect(src).toMatch(/resolveRetryPostError/);
     expect(src).toMatch(/formatRetryCostBlockedReason/);
+  });
+});
+
+describe("resolveEnqueuePostError", () => {
+  it("fail-closes enqueue codes and pair-only codes without body.error", () => {
+    expect(
+      resolveEnqueuePostError({ errorCode: "enqueue_lock_busy" }, formatCost),
+    ).toBe(RETRY_ENQUEUE_JOB_LOCK_BUSY);
+    expect(
+      resolveEnqueuePostError({ errorCode: "enqueue_queue_full" }, formatCost),
+    ).toBe(RETRY_ENQUEUE_QUEUE_FULL);
+    expect(
+      resolveEnqueuePostError(
+        { errorCode: "enqueue_skill_not_ready" },
+        formatCost,
+      ),
+    ).toBe(RETRY_ENQUEUE_SKILL_NOT_READY);
+    expect(
+      resolveEnqueuePostError(
+        { errorCode: "enqueue_evaluation_meta_failed" },
+        formatCost,
+      ),
+    ).toBe(ENQUEUE_EVALUATION_META_FAILED);
+    expect(
+      resolveEnqueuePostError(
+        { errorCode: "enqueue_pair_candidate_failed" },
+        formatCost,
+      ),
+    ).toBe(ENQUEUE_PAIR_CANDIDATE_FAILED);
+  });
+
+  it("maps preflight, official pilot, and cost-cap for new enqueue", () => {
+    expect(
+      resolveEnqueuePostError(
+        { errorCode: "enqueue_preflight_blocked" },
+        formatCost,
+      ),
+    ).toBe(ENQUEUE_PREFLIGHT_BLOCKED);
+    expect(ENQUEUE_PREFLIGHT_BLOCKED).not.toBe(RETRY_PREFLIGHT_BLOCKED);
+    expect(
+      resolveEnqueuePostError(
+        {
+          errorCode: "official_pilot_not_ready",
+          blockers: ["stale queue"],
+        },
+        formatCost,
+      ),
+    ).toMatch(/official mode blocked/);
+    expect(
+      resolveEnqueuePostError(
+        { errorCode: "enqueue_cost_over_cap", costCapUsd: 0.5 },
+        formatCost,
+      ),
+    ).toBe("cost-cap:0.5");
+  });
+
+  it("falls back to body.error or Enqueue failed", () => {
+    expect(
+      resolveEnqueuePostError({ error: "custom" }, formatCost),
+    ).toBe("custom");
+    expect(resolveEnqueuePostError({}, formatCost)).toBe("Enqueue failed");
+  });
+
+  it("is used by NewRunForm submit", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(process.cwd(), "src/app/NewRunForm.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/resolveEnqueuePostError/);
+    expect(src).toMatch(/formatRetryCostBlockedReason/);
+  });
+
+  it("POST /api/runs uses enqueue_preflight_blocked", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/runs/route.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/enqueue_preflight_blocked/);
+    expect(src).toMatch(/ENQUEUE_PREFLIGHT_BLOCKED/);
+    expect(src).toMatch(/paired\.errorCode/);
+    expect(src).toMatch(/queued\.errorCode/);
   });
 });
 

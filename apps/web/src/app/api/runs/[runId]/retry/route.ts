@@ -405,7 +405,11 @@ export async function POST(
           }
         }
         return NextResponse.json(
-          { error: queued.error },
+          {
+            ok: false,
+            error: queued.error,
+            errorCode: queued.errorCode,
+          },
           { status: queued.status },
         );
       }

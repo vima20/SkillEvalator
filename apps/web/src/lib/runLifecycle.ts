@@ -178,6 +178,31 @@ export const RETRY_PREFLIGHT_BLOCKED =
   "Retry blocked — preflight not green (API key, Docker, or worker). Open Settings, then retry.";
 
 /**
+ * enqueueRun fail paths on POST /retry (distinct from retry_enqueue_lock_busy,
+ * which is the tip-link / retry-path lock — not jobs/.enqueue.lock).
+ */
+export const RETRY_ENQUEUE_QUEUE_FULL =
+  "queue full — wait for pending jobs before retry";
+
+export const RETRY_ENQUEUE_JOB_LOCK_BUSY =
+  "enqueue lock busy — try again shortly";
+
+export const RETRY_ENQUEUE_SKILL_NOT_READY =
+  "skill not ready — fix import or pick another skill before retry";
+
+/** POST /api/runs when preflight is red (distinct from retry_preflight_blocked). */
+export const ENQUEUE_PREFLIGHT_BLOCKED =
+  "Enqueue blocked — preflight not green (API key, Docker, or worker). Open Settings, then try again.";
+
+/** Pair enqueue: evaluation.json write failed before job files. */
+export const ENQUEUE_EVALUATION_META_FAILED =
+  "failed to write evaluation.json — try again shortly";
+
+/** Pair enqueue: candidate failed after baseline; pair rolled back. */
+export const ENQUEUE_PAIR_CANDIDATE_FAILED =
+  "candidate enqueue failed after baseline — pair rolled back; try again shortly";
+
+/**
  * Official Settings-not-Ready copy for Retry admission / POST /retry / onRetry.
  * Distinct from officialPilotReadyGate ("official mode blocked") used by new enqueue.
  */
@@ -258,6 +283,15 @@ export function resolveRetryPostError(
   if (body.errorCode === "retry_enqueue_lock_busy") {
     return RETRY_ENQUEUE_LOCK_BUSY_ERROR;
   }
+  if (body.errorCode === "enqueue_lock_busy") {
+    return body.error ?? RETRY_ENQUEUE_JOB_LOCK_BUSY;
+  }
+  if (body.errorCode === "enqueue_queue_full") {
+    return body.error ?? RETRY_ENQUEUE_QUEUE_FULL;
+  }
+  if (body.errorCode === "enqueue_skill_not_ready") {
+    return body.error ?? RETRY_ENQUEUE_SKILL_NOT_READY;
+  }
   if (body.errorCode === "retry_still_finishing") {
     return RETRY_STILL_FINISHING_ERROR;
   }
@@ -275,6 +309,58 @@ export function resolveRetryPostError(
   const billing = retryNonRetryableBlockedReason(body.errorCode);
   if (billing) return billing;
   return body.error ?? "Retry failed";
+}
+
+export type EnqueuePostErrorBody = {
+  error?: string;
+  errorCode?: string;
+  costCapUsd?: number;
+  blockers?: string[];
+};
+
+/**
+ * Map POST /api/runs JSON errorCodes to shared New-run copy (fail-closed when
+ * error field is missing). Used by NewRunForm — not Retry (pair-only codes
+ * live here; retry uses resolveRetryPostError).
+ */
+export function resolveEnqueuePostError(
+  body: EnqueuePostErrorBody,
+  formatCostBlocked: (costCapUsd: number) => string,
+): string {
+  if (
+    body.errorCode === "enqueue_cost_over_cap" &&
+    typeof body.costCapUsd === "number"
+  ) {
+    return formatCostBlocked(body.costCapUsd);
+  }
+  if (body.errorCode === "enqueue_preflight_blocked") {
+    return ENQUEUE_PREFLIGHT_BLOCKED;
+  }
+  if (
+    body.errorCode === "official_pilot_not_ready" &&
+    Array.isArray(body.blockers)
+  ) {
+    return (
+      body.error ??
+      `official mode blocked — Settings not Ready: ${body.blockers.join("; ")}`
+    );
+  }
+  if (body.errorCode === "enqueue_lock_busy") {
+    return body.error ?? RETRY_ENQUEUE_JOB_LOCK_BUSY;
+  }
+  if (body.errorCode === "enqueue_queue_full") {
+    return body.error ?? RETRY_ENQUEUE_QUEUE_FULL;
+  }
+  if (body.errorCode === "enqueue_skill_not_ready") {
+    return body.error ?? RETRY_ENQUEUE_SKILL_NOT_READY;
+  }
+  if (body.errorCode === "enqueue_evaluation_meta_failed") {
+    return body.error ?? ENQUEUE_EVALUATION_META_FAILED;
+  }
+  if (body.errorCode === "enqueue_pair_candidate_failed") {
+    return body.error ?? ENQUEUE_PAIR_CANDIDATE_FAILED;
+  }
+  return body.error ?? "Enqueue failed";
 }
 
 /**
