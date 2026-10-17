@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { cancelRunWithCascade } from "@/lib/cancelRun";
+import {
+  CANCEL_FAILED_ERROR,
+  CANCEL_INVALID_REQUEST_ERROR,
+} from "@/lib/runLifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +29,21 @@ export async function POST(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
-    const code = message.startsWith("invalid ") ? 400 : 500;
-    return NextResponse.json({ error: message }, { status: code });
+    if (message.startsWith("invalid ")) {
+      return NextResponse.json(
+        {
+          error: message || CANCEL_INVALID_REQUEST_ERROR,
+          errorCode: "cancel_invalid_request",
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: message.trim() ? message : CANCEL_FAILED_ERROR,
+        errorCode: "cancel_failed",
+      },
+      { status: 500 },
+    );
   }
 }

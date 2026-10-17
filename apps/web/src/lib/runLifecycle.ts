@@ -9,9 +9,16 @@ const CANCEL_ACTIVE = new Set(["queued", "running", "cancel_requested"]);
 export type CancelErrorCode =
   | "cancel_run_already_finished"
   | "cancel_invalid_status"
-  | "cancel_not_found";
+  | "cancel_not_found"
+  | "cancel_invalid_request"
+  | "cancel_failed";
 
 export const CANCEL_NOT_FOUND_ERROR = "not found";
+
+/** POST /cancel catch / network — same literal as prior client fallback. */
+export const CANCEL_FAILED_ERROR = "Cancel failed";
+
+export const CANCEL_INVALID_REQUEST_ERROR = "invalid request";
 
 export type CancelGate =
   | { allow: true; alreadyCancelled?: boolean }
@@ -76,7 +83,13 @@ export function resolveCancelPostError(body: CancelPostErrorBody): string {
   if (body.errorCode === "cancel_invalid_status") {
     return body.error ?? "cannot cancel status";
   }
-  return body.error ?? "Cancel failed";
+  if (body.errorCode === "cancel_invalid_request") {
+    return body.error ?? CANCEL_INVALID_REQUEST_ERROR;
+  }
+  if (body.errorCode === "cancel_failed") {
+    return body.error ?? CANCEL_FAILED_ERROR;
+  }
+  return body.error ?? CANCEL_FAILED_ERROR;
 }
 
 /**
@@ -141,6 +154,11 @@ export const RETRY_CONFIG_MISSING_ERROR =
 
 /** Gate deny when billing/account non-retryable (POST prefers status.errorCode). */
 export const RETRY_NON_RETRYABLE_ERROR = "Cannot retry non-retryable error";
+
+/** POST /retry catch / network — same literal as prior client fallback. */
+export const RETRY_FAILED_ERROR = "Retry failed";
+
+export const RETRY_INVALID_REQUEST_ERROR = "invalid request";
 
 /**
  * Same copy as packages/core RETRY_ENQUEUE_LOCK_BUSY_ERROR (client-safe;
@@ -383,6 +401,12 @@ export function resolveRetryPostError(
   if (body.errorCode === "retry_non_retryable") {
     return body.error ?? RETRY_NON_RETRYABLE_ERROR;
   }
+  if (body.errorCode === "retry_invalid_request") {
+    return body.error ?? RETRY_INVALID_REQUEST_ERROR;
+  }
+  if (body.errorCode === "retry_failed") {
+    return body.error ?? RETRY_FAILED_ERROR;
+  }
   if (body.errorCode === "retry_snapshot_candidate_blocked") {
     return RETRY_SNAPSHOT_CANDIDATE_BLOCKED;
   }
@@ -398,7 +422,7 @@ export function resolveRetryPostError(
   if (pairMeta) return pairMeta;
   const billing = retryNonRetryableBlockedReason(body.errorCode);
   if (billing) return billing;
-  return body.error ?? "Retry failed";
+  return body.error ?? RETRY_FAILED_ERROR;
 }
 
 export type EnqueuePostErrorBody = {

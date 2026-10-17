@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cancelGate,
+  CANCEL_FAILED_ERROR,
   CANCEL_NOT_FOUND_ERROR,
   isRetryBudgetStopping,
   pairedCancelAlsoCopy,
@@ -8,6 +9,7 @@ import {
   parseAlsoCancelledRunId,
   isRetryBillingBlocked,
   resolveCancelPostError,
+  RETRY_FAILED_ERROR,
   ENQUEUE_EVALUATION_META_FAILED,
   ENQUEUE_PAIR_CANDIDATE_FAILED,
   ENQUEUE_PREFLIGHT_BLOCKED,
@@ -98,6 +100,12 @@ describe("resolveCancelPostError", () => {
     expect(
       resolveCancelPostError({ errorCode: "cancel_invalid_status" }),
     ).toBe("cannot cancel status");
+    expect(resolveCancelPostError({ errorCode: "cancel_failed" })).toBe(
+      CANCEL_FAILED_ERROR,
+    );
+    expect(
+      resolveCancelPostError({ errorCode: "cancel_invalid_request" }),
+    ).toBe("invalid request");
   });
 
   it("prefers body.error when present", () => {
@@ -211,6 +219,15 @@ describe("resolveRetryPostError", () => {
         formatCost,
       ),
     ).toBe(RETRY_STILL_FINISHING_ERROR);
+  });
+
+  it("fail-closes retry_failed / retry_invalid_request without body.error", () => {
+    expect(
+      resolveRetryPostError({ errorCode: "retry_failed" }, formatCost),
+    ).toBe(RETRY_FAILED_ERROR);
+    expect(
+      resolveRetryPostError({ errorCode: "retry_invalid_request" }, formatCost),
+    ).toBe("invalid request");
   });
 
   it("fail-closes early Retry gates without body.error", () => {
@@ -419,7 +436,7 @@ describe("resolveRetryPostError", () => {
     expect(resolveRetryPostError({}, formatCost)).toBe("Retry failed");
   });
 
-  it("is used by RunDetailClient onRetry", async () => {
+  it("is used by RunDetailClient onRetry and onCancel catch", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const src = fs.readFileSync(
@@ -431,6 +448,11 @@ describe("resolveRetryPostError", () => {
     );
     expect(src).toMatch(/resolveRetryPostError/);
     expect(src).toMatch(/formatRetryCostBlockedReason/);
+    expect(src).toMatch(/resolveCancelPostError/);
+    expect(src).toMatch(/errorCode: "retry_failed"/);
+    expect(src).toMatch(/errorCode: "cancel_failed"/);
+    expect(src).not.toMatch(/setRetryError\("Retry failed"\)/);
+    expect(src).not.toMatch(/setCancelError\("Cancel failed"\)/);
   });
 });
 

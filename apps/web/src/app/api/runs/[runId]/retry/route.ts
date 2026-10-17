@@ -41,6 +41,8 @@ import {
   RETRY_CONFIG_MISSING_ERROR,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_EVALUATION_META_REVERT_FAILED,
+  RETRY_FAILED_ERROR,
+  RETRY_INVALID_REQUEST_ERROR,
   RETRY_NOT_FOUND_ERROR,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
@@ -437,7 +439,21 @@ export async function POST(
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
-    const code = message.startsWith("invalid ") ? 400 : 500;
-    return NextResponse.json({ error: message }, { status: code });
+    if (message.startsWith("invalid ")) {
+      return NextResponse.json(
+        {
+          error: message || RETRY_INVALID_REQUEST_ERROR,
+          errorCode: "retry_invalid_request",
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: message.trim() ? message : RETRY_FAILED_ERROR,
+        errorCode: "retry_failed",
+      },
+      { status: 500 },
+    );
   }
 }

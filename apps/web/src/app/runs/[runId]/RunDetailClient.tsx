@@ -337,7 +337,12 @@ export function RunDetailClient({
         setRetrying(false);
         return;
       }
-      setRetryError("Retry failed");
+      setRetryError(
+        resolveRetryPostError(
+          { errorCode: "retry_failed" },
+          formatRetryCostBlockedReason,
+        ),
+      );
       setRetrying(false);
     }
   }
@@ -371,7 +376,7 @@ export function RunDetailClient({
         setCancelling(false);
         return;
       }
-      setCancelError("Cancel failed");
+      setCancelError(resolveCancelPostError({ errorCode: "cancel_failed" }));
       setCancelling(false);
     }
   }
