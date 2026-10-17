@@ -27,12 +27,23 @@ export const AUTH_MISCONFIGURED_API_ERROR =
 
 export const AUTH_INVALID_TOKEN_ERROR = "invalid token";
 export const AUTH_INVALID_REQUEST_ERROR = "invalid request";
+/** Short middleware 401 error field; resolver prefers AUTH_UNAUTHORIZED_ERROR. */
+export const AUTH_UNAUTHORIZED_API_ERROR = "unauthorized";
 /** Middleware 401 for protected /api/* when cookie/token missing. */
-export const AUTH_UNAUTHORIZED_ERROR = "unauthorized";
+export const AUTH_UNAUTHORIZED_ERROR =
+  "Session expired — redirecting to unlock";
 export const AUTH_PROBE_FAILED_ERROR = "Auth check failed — unlock or retry.";
 export const AUTH_UNREACHABLE_ERROR =
   "Could not reach auth API — check that the web server is running.";
 export const AUTH_UNLOCK_FAILED = "Unlock failed";
+
+/** API / middleware codes (not client-only probe/unreachable). */
+const AUTH_API_CODES = new Set<string>([
+  "auth_misconfigured",
+  "auth_invalid_token",
+  "auth_invalid_request",
+  "auth_unauthorized",
+]);
 
 const FAIL_CLOSED: Record<AuthPostErrorCode, string> = {
   auth_misconfigured: AUTH_MISCONFIGURED_ERROR,
@@ -57,12 +68,35 @@ export function resolveAuthPostError(body: AuthPostErrorBody): string {
     }
     return AUTH_MISCONFIGURED_ERROR;
   }
+  if (body.errorCode === "auth_unauthorized") {
+    const fromBody = body.error?.trim();
+    if (fromBody && fromBody !== AUTH_UNAUTHORIZED_API_ERROR) {
+      return fromBody;
+    }
+    return AUTH_UNAUTHORIZED_ERROR;
+  }
   const fromBody = body.error?.trim();
   const code = body.errorCode as AuthPostErrorCode | undefined;
   if (code && FAIL_CLOSED[code]) {
     return fromBody || FAIL_CLOSED[code];
   }
   return fromBody || AUTH_UNLOCK_FAILED;
+}
+
+/**
+ * When a protected /api/* response is middleware auth JSON, return unlock
+ * copy; otherwise null so domain resolvers stay first-class.
+ */
+export function tryResolveAuthApiError(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const rec = body as AuthPostErrorBody;
+  if (rec.misconfigured === true) {
+    return resolveAuthPostError(rec);
+  }
+  if (typeof rec.errorCode === "string" && AUTH_API_CODES.has(rec.errorCode)) {
+    return resolveAuthPostError(rec);
+  }
+  return null;
 }
 
 /** Client-only probe failures (GET /api/auth network / non-OK). */

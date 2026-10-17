@@ -1,7 +1,8 @@
+import { tryResolveAuthApiError } from "@/lib/authResolve";
 import { unlockNextFromRequest } from "@/lib/safeUnlockNext";
 
 export class UnauthorizedError extends Error {
-  constructor(message = "unauthorized — redirecting to unlock") {
+  constructor(message = "Session expired — redirecting to unlock") {
     super(message);
     this.name = "UnauthorizedError";
   }
@@ -59,6 +60,13 @@ export async function apiFetch(
   if (res.status !== 401) return res;
   const url = requestUrl(input);
   if (url.includes("/api/auth")) return res;
+  let message: string | undefined;
+  try {
+    const body: unknown = await res.clone().json();
+    message = tryResolveAuthApiError(body) ?? undefined;
+  } catch {
+    /* keep default UnauthorizedError copy */
+  }
   redirectToUnlock();
-  throw new UnauthorizedError();
+  throw new UnauthorizedError(message);
 }

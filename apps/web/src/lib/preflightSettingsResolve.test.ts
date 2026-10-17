@@ -42,12 +42,14 @@ describe("preflight/settings source locks", () => {
       "utf8",
     );
     expect(form).toMatch(/resolvePreflightFetchError/);
+    expect(form).toMatch(/tryResolveAuthApiError/);
     expect(form).not.toMatch(/Preflight network error — is the web server up\?/);
     const settings = fs.readFileSync(
       path.join(cwd, "src/app/settings/SettingsClient.tsx"),
       "utf8",
     );
     expect(settings).toMatch(/resolveSettingsRefreshError/);
+    expect(settings).toMatch(/tryResolveAuthApiError/);
     expect(settings).not.toMatch(/Settings refresh failed \(\$\{/);
   });
 });

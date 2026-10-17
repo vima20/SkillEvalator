@@ -12,6 +12,7 @@ import {
   formatCaptureGradePolicy,
 } from "@/lib/captureEnvEvidence";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+import { tryResolveAuthApiError } from "@/lib/authResolve";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
@@ -220,20 +221,22 @@ export function RunDetailClient({
         const body = (await res.json().catch(() => ({}))) as {
           error?: string;
           errorCode?: string;
+          misconfigured?: boolean;
         };
         setPolling(false);
         setPollError(
-          resolveRunDetailGetError(
-            body.errorCode || body.error
-              ? body
-              : {
-                  errorCode:
-                    res.status === 404
-                      ? "run_detail_not_found"
-                      : "run_detail_failed",
-                },
-            resolveRunDetailHttpError(res.status),
-          ),
+          tryResolveAuthApiError(body) ??
+            resolveRunDetailGetError(
+              body.errorCode || body.error
+                ? body
+                : {
+                    errorCode:
+                      res.status === 404
+                        ? "run_detail_not_found"
+                        : "run_detail_failed",
+                  },
+              resolveRunDetailHttpError(res.status),
+            ),
         );
         return;
       }

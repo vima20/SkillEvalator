@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+import { tryResolveAuthApiError } from "@/lib/authResolve";
 import {
   isPilotFocusParam,
   withPilotFocus,
@@ -108,7 +109,11 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
         signal: ac.signal,
       });
       if (!res.ok) {
-        throw new Error(resolveSettingsRefreshError("http", res.status));
+        const body: unknown = await res.json().catch(() => ({}));
+        throw new Error(
+          tryResolveAuthApiError(body) ??
+            resolveSettingsRefreshError("http", res.status),
+        );
       }
       const next: unknown = await res.json();
       if (!isSettingsSnapshot(next)) {

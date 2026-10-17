@@ -20,6 +20,7 @@ import {
   OFFICIAL_ADMISSION_PAIR_REQUIRED,
   resolveEnqueuePostError,
 } from "@/lib/runLifecycle";
+import { tryResolveAuthApiError } from "@/lib/authResolve";
 import { resolvePreflightFetchError } from "@/lib/preflightSettingsResolve";
 import { resolveSkillImportPostError } from "@/lib/skillImportResolve";
 
@@ -118,7 +119,11 @@ export function NewRunForm({
     try {
       const res = await apiFetch("/api/preflight", { cache: "no-store" });
       if (!res.ok) {
-        setPreflightError(resolvePreflightFetchError("http", res.status));
+        const body: unknown = await res.json().catch(() => ({}));
+        setPreflightError(
+          tryResolveAuthApiError(body) ??
+            resolvePreflightFetchError("http", res.status),
+        );
         return;
       }
       setPreflightError(null);

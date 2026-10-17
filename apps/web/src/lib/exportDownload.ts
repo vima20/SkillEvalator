@@ -1,4 +1,5 @@
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+import { tryResolveAuthApiError } from "@/lib/authResolve";
 import { resolveExportGetError } from "@/lib/exportResolve";
 
 /** Parse Content-Disposition filename= / filename*= (RFC 5987). */
@@ -52,7 +53,7 @@ export async function downloadExport(
     });
   } catch (e) {
     if (e instanceof UnauthorizedError) {
-      return { ok: false, error: "Session expired — redirecting to unlock" };
+      return { ok: false, error: e.message };
     }
     return { ok: false, error: "Download failed — network error" };
   }
@@ -66,7 +67,10 @@ export async function downloadExport(
     if (isJson) {
       try {
         const body: unknown = await res.json();
-        error = exportErrorFromJsonBody(body, statusFallback) ?? statusFallback;
+        error =
+          tryResolveAuthApiError(body) ??
+          exportErrorFromJsonBody(body, statusFallback) ??
+          statusFallback;
       } catch {
         /* keep status message */
       }

@@ -54,5 +54,6 @@ describe("exportErrorFromJsonBody", () => {
     );
     expect(src).toMatch(/resolveExportGetError/);
     expect(src).toMatch(/exportErrorFromJsonBody\(body,/);
+    expect(src).toMatch(/tryResolveAuthApiError/);
   });
 });

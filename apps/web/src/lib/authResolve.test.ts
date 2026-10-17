@@ -5,12 +5,14 @@ import {
   AUTH_MISCONFIGURED_API_ERROR,
   AUTH_MISCONFIGURED_ERROR,
   AUTH_PROBE_FAILED_ERROR,
+  AUTH_UNAUTHORIZED_API_ERROR,
   AUTH_UNAUTHORIZED_ERROR,
   AUTH_UNLOCK_FAILED,
   AUTH_UNREACHABLE_ERROR,
   knownAuthPostErrorCodes,
   resolveAuthClientError,
   resolveAuthPostError,
+  tryResolveAuthApiError,
 } from "./authResolve.js";
 
 describe("resolveAuthPostError", () => {
@@ -49,6 +51,37 @@ describe("resolveAuthPostError", () => {
         error: "invalid token",
       }),
     ).toBe("invalid token");
+  });
+
+  it("maps short middleware unauthorized literal to session copy", () => {
+    expect(
+      resolveAuthPostError({
+        errorCode: "auth_unauthorized",
+        error: AUTH_UNAUTHORIZED_API_ERROR,
+      }),
+    ).toBe(AUTH_UNAUTHORIZED_ERROR);
+  });
+});
+
+describe("tryResolveAuthApiError", () => {
+  it("resolves middleware auth JSON and ignores domain bodies", () => {
+    expect(
+      tryResolveAuthApiError({
+        errorCode: "auth_misconfigured",
+        misconfigured: true,
+        error: AUTH_MISCONFIGURED_API_ERROR,
+      }),
+    ).toBe(AUTH_MISCONFIGURED_ERROR);
+    expect(
+      tryResolveAuthApiError({
+        errorCode: "auth_unauthorized",
+        error: AUTH_UNAUTHORIZED_API_ERROR,
+      }),
+    ).toBe(AUTH_UNAUTHORIZED_ERROR);
+    expect(
+      tryResolveAuthApiError({ errorCode: "export_failed" }),
+    ).toBeNull();
+    expect(tryResolveAuthApiError({})).toBeNull();
   });
 });
 
@@ -105,5 +138,25 @@ describe("auth source locks", () => {
     );
     expect(mw).toMatch(/errorCode:\s*"auth_misconfigured"/);
     expect(mw).toMatch(/errorCode:\s*"auth_unauthorized"/);
+  });
+
+  it("apiFetch and protected clients use tryResolveAuthApiError", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const cwd = process.cwd();
+    const apiFetchSrc = fs.readFileSync(
+      path.join(cwd, "src/lib/apiFetch.ts"),
+      "utf8",
+    );
+    expect(apiFetchSrc).toMatch(/tryResolveAuthApiError/);
+    for (const rel of [
+      "src/app/NewRunForm.tsx",
+      "src/app/settings/SettingsClient.tsx",
+      "src/app/runs/[runId]/RunDetailClient.tsx",
+      "src/lib/exportDownload.ts",
+    ]) {
+      const src = fs.readFileSync(path.join(cwd, rel), "utf8");
+      expect(src).toMatch(/tryResolveAuthApiError/);
+    }
   });
 });
