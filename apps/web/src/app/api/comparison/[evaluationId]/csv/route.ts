@@ -16,11 +16,16 @@ export async function GET(
       loadEvaluationComparison(evaluationId);
     if (!meta || !comparison) {
       return NextResponse.json(
-        {
-          error: !meta
-            ? "evaluation.json missing — comparison CSV requires paired meta"
-            : "comparison not ready",
-        },
+        !meta
+          ? {
+              error:
+                "evaluation.json missing — comparison CSV requires paired meta",
+              errorCode: "export_evaluation_meta_missing",
+            }
+          : {
+              error: "comparison not ready",
+              errorCode: "export_comparison_not_ready",
+            },
         { status: 404 },
       );
     }

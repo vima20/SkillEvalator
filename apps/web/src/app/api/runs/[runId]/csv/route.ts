@@ -26,7 +26,13 @@ export async function GET(
     const root = resultsDir();
     const result = loadRunResult(root, runId);
     if (!result) {
-      return NextResponse.json({ error: "result not ready" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "result not ready",
+          errorCode: "export_result_not_ready",
+        },
+        { status: 404 },
+      );
     }
     const status = loadRunStatus(root, runId);
     // Same status → job → result id as run detail pairHarness / retryAdmission.

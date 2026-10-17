@@ -29,4 +29,30 @@ describe("exportErrorFromJsonBody", () => {
     ).toBe("benefit export rejects FAKE_PRODUCE tip legs");
     expect(exportErrorFromJsonBody({ ok: true })).toBeNull();
   });
+
+  it("fail-closes errorCode-only bodies via resolveExportGetError", () => {
+    expect(
+      exportErrorFromJsonBody(
+        { errorCode: "benefit_export_fake_produce_forbidden" },
+        "Download failed (409)",
+      ),
+    ).toBe("benefit export rejects FAKE_PRODUCE tip legs (not live evidence)");
+    expect(
+      exportErrorFromJsonBody(
+        { errorCode: "export_result_not_ready" },
+        "Download failed (404)",
+      ),
+    ).toBe("result not ready");
+  });
+
+  it("downloadExport uses exportErrorFromJsonBody", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/exportDownload.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/resolveExportGetError/);
+    expect(src).toMatch(/exportErrorFromJsonBody\(body,/);
+  });
 });

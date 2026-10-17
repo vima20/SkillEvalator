@@ -1,4 +1,5 @@
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+import { resolveExportGetError } from "@/lib/exportResolve";
 
 /** Parse Content-Disposition filename= / filename*= (RFC 5987). */
 export function parseContentDispositionFilename(
@@ -17,18 +18,18 @@ export function parseContentDispositionFilename(
   return plain?.[2]?.trim() || null;
 }
 
-/** Prefer API `error` string from JSON 401/409 bodies. */
-export function exportErrorFromJsonBody(body: unknown): string | null {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error: unknown }).error === "string"
-  ) {
-    const msg = (body as { error: string }).error.trim();
-    return msg || null;
-  }
-  return null;
+/** Prefer API `error` / fail-closed `errorCode` from JSON export bodies. */
+export function exportErrorFromJsonBody(
+  body: unknown,
+  statusFallback = "Download failed",
+): string | null {
+  if (!body || typeof body !== "object") return null;
+  const rec = body as { error?: unknown; errorCode?: unknown };
+  const error = typeof rec.error === "string" ? rec.error : undefined;
+  const errorCode =
+    typeof rec.errorCode === "string" ? rec.errorCode : undefined;
+  if (!error?.trim() && !errorCode) return null;
+  return resolveExportGetError({ error, errorCode }, statusFallback);
 }
 
 export type DownloadExportResult =
@@ -60,11 +61,12 @@ export async function downloadExport(
   const isJson = ct.includes("application/json");
 
   if (!res.ok) {
-    let error = `Download failed (${res.status})`;
+    const statusFallback = `Download failed (${res.status})`;
+    let error = statusFallback;
     if (isJson) {
       try {
         const body: unknown = await res.json();
-        error = exportErrorFromJsonBody(body) ?? error;
+        error = exportErrorFromJsonBody(body, statusFallback) ?? statusFallback;
       } catch {
         /* keep status message */
       }
@@ -73,19 +75,16 @@ export async function downloadExport(
   }
 
   if (isJson) {
+    const unexpected =
+      "Unexpected JSON response (export locked or unauthorized)";
     try {
       const body: unknown = await res.json();
       return {
         ok: false,
-        error:
-          exportErrorFromJsonBody(body) ??
-          "Unexpected JSON response (export locked or unauthorized)",
+        error: exportErrorFromJsonBody(body, unexpected) ?? unexpected,
       };
     } catch {
-      return {
-        ok: false,
-        error: "Unexpected JSON response (export locked or unauthorized)",
-      };
+      return { ok: false, error: unexpected };
     }
   }
 

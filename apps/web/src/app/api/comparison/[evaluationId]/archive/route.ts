@@ -25,11 +25,16 @@ export async function GET(
     const { meta, comparison, baseline, candidate } = packed;
     if (!meta || !comparison || !baseline || !candidate) {
       return NextResponse.json(
-        {
-          error: !meta
-            ? "evaluation.json missing — pilot archive requires paired meta"
-            : "comparison not ready",
-        },
+        !meta
+          ? {
+              error:
+                "evaluation.json missing — pilot archive requires paired meta",
+              errorCode: "export_evaluation_meta_missing",
+            }
+          : {
+              error: "comparison not ready",
+              errorCode: "export_comparison_not_ready",
+            },
         { status: 404 },
       );
     }

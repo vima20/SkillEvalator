@@ -20,7 +20,13 @@ export async function GET(
     const root = resultsDir();
     const result = loadRunResult(root, runId);
     if (!result) {
-      return NextResponse.json({ error: "result not found" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "result not found",
+          errorCode: "export_result_not_found",
+        },
+        { status: 404 },
+      );
     }
     const status = loadRunStatus(root, runId);
     const { report, comparison, meta, baseline, candidate } =

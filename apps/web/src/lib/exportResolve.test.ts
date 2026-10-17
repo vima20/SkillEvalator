@@ -1,0 +1,117 @@
+import { describe, expect, it } from "vitest";
+import {
+  EXPORT_COMPARISON_NOT_READY,
+  EXPORT_EVALUATION_META_MISSING,
+  EXPORT_RESULT_NOT_FOUND,
+  EXPORT_RESULT_NOT_READY,
+  exportFailClosedErrorCodes,
+  resolveExportGetError,
+} from "./exportResolve.js";
+
+describe("resolveExportGetError", () => {
+  it("fail-closes known codes without body.error", () => {
+    expect(
+      resolveExportGetError(
+        { errorCode: "benefit_export_fake_produce_forbidden" },
+        "Download failed (409)",
+      ),
+    ).toBe("benefit export rejects FAKE_PRODUCE tip legs (not live evidence)");
+    expect(
+      resolveExportGetError(
+        { errorCode: "run_csv_pair_required" },
+        "Download failed (409)",
+      ),
+    ).toMatch(/paired evaluationId/);
+    expect(
+      resolveExportGetError(
+        { errorCode: "comparison_export_not_official" },
+        "Download failed (409)",
+      ),
+    ).toMatch(/comparison CSV export requires mode=official/);
+    expect(
+      resolveExportGetError(
+        { errorCode: "export_result_not_ready" },
+        "Download failed (404)",
+      ),
+    ).toBe(EXPORT_RESULT_NOT_READY);
+    expect(
+      resolveExportGetError(
+        { errorCode: "export_result_not_found" },
+        "Download failed (404)",
+      ),
+    ).toBe(EXPORT_RESULT_NOT_FOUND);
+    expect(
+      resolveExportGetError(
+        { errorCode: "export_comparison_not_ready" },
+        "Download failed (404)",
+      ),
+    ).toBe(EXPORT_COMPARISON_NOT_READY);
+    expect(
+      resolveExportGetError(
+        { errorCode: "export_evaluation_meta_missing" },
+        "Download failed (404)",
+      ),
+    ).toBe(EXPORT_EVALUATION_META_MISSING);
+  });
+
+  it("prefers body.error for product-specific comparison copy", () => {
+    expect(
+      resolveExportGetError(
+        {
+          errorCode: "comparison_export_smoke_forbidden",
+          error:
+            "pilot archive download rejects evaluation.smoke=true (fixture plant)",
+        },
+        "Download failed (409)",
+      ),
+    ).toMatch(/pilot archive download/);
+  });
+
+  it("falls back to status message for unknown codes", () => {
+    expect(
+      resolveExportGetError({ errorCode: "unknown_export" }, "Download failed (409)"),
+    ).toBe("Download failed (409)");
+    expect(resolveExportGetError({}, "Download failed (500)")).toBe(
+      "Download failed (500)",
+    );
+  });
+
+  it("covers all gate errorCodes used by adoption exports", () => {
+    const codes = exportFailClosedErrorCodes();
+    expect(codes).toContain("benefit_export_not_attested");
+    expect(codes).toContain("comparison_export_not_attested");
+    expect(codes).toContain("run_csv_not_attested");
+    expect(codes).toContain("export_result_not_ready");
+  });
+
+  it("export GET routes attach 404 errorCodes", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const cwd = process.cwd();
+    for (const rel of [
+      "src/app/api/runs/[runId]/csv/route.ts",
+      "src/app/api/runs/[runId]/benefit/route.ts",
+      "src/app/api/comparison/[evaluationId]/csv/route.ts",
+      "src/app/api/comparison/[evaluationId]/archive/route.ts",
+    ]) {
+      const src = fs.readFileSync(path.join(cwd, rel), "utf8");
+      expect(src).toMatch(/errorCode:/);
+    }
+    const runCsv = fs.readFileSync(
+      path.join(cwd, "src/app/api/runs/[runId]/csv/route.ts"),
+      "utf8",
+    );
+    expect(runCsv).toMatch(/export_result_not_ready/);
+    const benefit = fs.readFileSync(
+      path.join(cwd, "src/app/api/runs/[runId]/benefit/route.ts"),
+      "utf8",
+    );
+    expect(benefit).toMatch(/export_result_not_found/);
+    const cmp = fs.readFileSync(
+      path.join(cwd, "src/app/api/comparison/[evaluationId]/csv/route.ts"),
+      "utf8",
+    );
+    expect(cmp).toMatch(/export_evaluation_meta_missing/);
+    expect(cmp).toMatch(/export_comparison_not_ready/);
+  });
+});
