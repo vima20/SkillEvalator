@@ -18,9 +18,10 @@ export function isPidAlive(pid: number): boolean {
 }
 
 /**
- * Full heal (Settings Refresh ?heal=1 / POST enqueue / POST retry): reclaim
- * dead .running, orphan queued, and orphan active (budget_stop → failed).
- * Do not use on browse/list SSR, preflight poll, or Settings first paint.
+ * Full heal (Settings Refresh ?heal=1 / POST enqueue / Ready stale scan):
+ * reclaim dead .running, orphan queued, and orphan active (budget_stop → failed).
+ * Do not use on browse/list SSR, preflight poll, Settings first paint, or the
+ * early POST /retry gate (use healRunForRead so wind-down stays fail-closed).
  */
 export function healOrphanStatuses(): void {
   healAllOrphansFs(jobsDir(), resultsDir(), isPidAlive);
@@ -54,8 +55,10 @@ export function healRunForRead(runId: string): void {
 }
 
 /**
- * After wind-down timeout / Settings / retry: full per-run heal including
+ * After wind-down timeout / Settings finalize: full per-run heal including
  * orphan budget_stop → failed so Retry is not stuck behind hasLiveJob.
+ * POST /retry uses healRunForRead at the gate (not this) so wind-down cannot
+ * be skipped by stamping failed before isRetryBudgetStopping.
  */
 export function healRunForFinalize(runId: string): void {
   healRunOrphansFs(jobsDir(), resultsDir(), runId, isPidAlive);

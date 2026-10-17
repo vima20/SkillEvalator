@@ -281,6 +281,7 @@ export function RunDetailClient({
     status === "failed" ||
     status === "cancelled" ||
     status === "budget_stop";
+  const quotaBlocked = data.status?.errorCode === "insufficient_quota";
   // Server mirrors POST /retry; fail-closed until admission present.
   const retryAdmission = data.retryAdmission;
   const canRetry =

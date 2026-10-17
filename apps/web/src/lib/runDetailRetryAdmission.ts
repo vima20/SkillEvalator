@@ -3,8 +3,10 @@ import path from "node:path";
 import {
   hasLiveJobFile,
   isNonRetryableErrorCode,
+  isRetryEnqueueLockBusy,
   officialEnqueueAllowed,
   resolveEvalRole,
+  RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   staleOrphanRunningRunIds,
   type EvalRole,
 } from "@skillevalator/core";
@@ -135,6 +137,8 @@ export function computeRunDetailRetryAdmission(opts: {
   /** Same list as Settings Ready (official only). */
   pilotBlockers: string[];
   costAdmission: RetryCostAdmission;
+  /** Fresh retry-enqueue.lock — same gate as POST tryAcquireRetryEnqueueLock. */
+  enqueueLockBusy?: boolean;
   env?: Record<string, string | undefined>;
   webAuthKind: "open" | "required" | "misconfigured";
   requireWebAuthConfigured: boolean;
@@ -245,6 +249,13 @@ export function computeRunDetailRetryAdmission(opts: {
     return { canRetry: false, blockedReason: snapGate.error };
   }
 
+  if (opts.enqueueLockBusy) {
+    return {
+      canRetry: false,
+      blockedReason: RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+    };
+  }
+
   return { canRetry: true, blockedReason: null };
 }
 
@@ -272,12 +283,15 @@ export function runDetailRetryAdmissionForRun(opts: {
   /**
    * Opt-in full healAllOrphansFs before stale inspect (same as Settings
    * healQueue). Default false — passive SSR/GET poll must not stamp orphan
-   * budget_stop → failed (wind-down Cancel). POST /retry heals separately.
+   * budget_stop → failed (wind-down Cancel). POST /retry uses healRunForRead
+   * at the gate (not full finalize heal).
    */
   healQueue?: boolean;
   env?: Record<string, string | undefined>;
   healedMeta?: { baselineRunId: string; candidateRunId: string } | null;
   snapshotFlags?: { hasSkillMd: boolean; hasPinnedVersion: boolean };
+  /** Injected for tests. */
+  enqueueLockBusy?: boolean;
 }): RunDetailRetryAdmission {
   const env = opts.env ?? process.env;
   const preflight = opts.preflight ?? runPreflight();
@@ -351,6 +365,10 @@ export function runDetailRetryAdmissionForRun(opts: {
     status: opts.status,
   });
 
+  const enqueueLockBusy =
+    opts.enqueueLockBusy ??
+    isRetryEnqueueLockBusy(resultsDir(), opts.runId);
+
   return computeRunDetailRetryAdmission({
     runId: opts.runId,
     status,
@@ -366,6 +384,7 @@ export function runDetailRetryAdmissionForRun(opts: {
     preflightOk: preflight.ok,
     pilotBlockers,
     costAdmission,
+    enqueueLockBusy,
     env,
     webAuthKind: webAuth.kind,
     requireWebAuthConfigured: env.OFFICIAL_REQUIRES_WEB_AUTH === "true",

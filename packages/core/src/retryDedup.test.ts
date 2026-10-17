@@ -8,6 +8,7 @@ import {
   clearRetryMarker,
   findReusableRetryRunId,
   isRetryChildLive,
+  isRetryEnqueueLockBusy,
   loadRetryMarker,
   releaseRetryEnqueueLock,
   resolveLegRunIdViaRetryChain,
@@ -64,6 +65,39 @@ describe("tryAcquireRetryEnqueueLock", () => {
     fs.utimesSync(lock, past, past);
     expect(tryAcquireRetryEnqueueLock(root, from)).toBe(true);
     releaseRetryEnqueueLock(root, from);
+  });
+});
+
+describe("isRetryEnqueueLockBusy", () => {
+  it("is false when no lock file", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-busy-"));
+    temps.push(root);
+    const from = "run_100_nobusy";
+    fs.mkdirSync(path.join(root, from), { recursive: true });
+    expect(isRetryEnqueueLockBusy(root, from)).toBe(false);
+  });
+
+  it("is true while holder has a fresh lock", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-busy-"));
+    temps.push(root);
+    const from = "run_100_yesbusy";
+    fs.mkdirSync(path.join(root, from), { recursive: true });
+    expect(tryAcquireRetryEnqueueLock(root, from)).toBe(true);
+    expect(isRetryEnqueueLockBusy(root, from)).toBe(true);
+    releaseRetryEnqueueLock(root, from);
+    expect(isRetryEnqueueLockBusy(root, from)).toBe(false);
+  });
+
+  it("ignores stale locks (same window as acquire steal)", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-busy-"));
+    temps.push(root);
+    const from = "run_100_stalebusy";
+    const lock = path.join(root, from, "retry-enqueue.lock");
+    fs.mkdirSync(path.join(root, from), { recursive: true });
+    fs.writeFileSync(lock, "1", "utf8");
+    const past = new Date(Date.now() - RETRY_DEDUP_WINDOW_MS - 1_000);
+    fs.utimesSync(lock, past, past);
+    expect(isRetryEnqueueLockBusy(root, from)).toBe(false);
   });
 });
 

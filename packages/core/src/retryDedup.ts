@@ -144,6 +144,29 @@ function retryLockPath(resultsDir: string, fromRunId: string): string {
   );
 }
 
+/** Same copy as POST /retry when tryAcquireRetryEnqueueLock fails. */
+export const RETRY_ENQUEUE_LOCK_BUSY_ERROR =
+  "retry already in progress — try again shortly";
+
+/**
+ * Read-only peep: fresh retry-enqueue.lock exists (same stale window as acquire).
+ * Used by GET retry admission so UI does not show canRetry while POST would 409.
+ */
+export function isRetryEnqueueLockBusy(
+  resultsDir: string,
+  fromRunId: string,
+  nowMs = Date.now(),
+): boolean {
+  try {
+    const lock = retryLockPath(resultsDir, fromRunId);
+    if (!fs.existsSync(lock)) return false;
+    const age = nowMs - fs.statSync(lock).mtimeMs;
+    return Number.isFinite(age) && age <= RETRY_DEDUP_WINDOW_MS;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Exclusive lock so concurrent Retry POSTs cannot each enqueue a paid run.
  * Stale locks older than RETRY_DEDUP_WINDOW_MS are stolen via unlink+wx.

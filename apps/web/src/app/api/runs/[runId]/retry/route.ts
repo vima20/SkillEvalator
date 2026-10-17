@@ -5,12 +5,12 @@ import {
   clearRetryMarker,
   findReusableRetryRunId,
   hasLiveJobFile,
-  healRunOrphansFs,
   isNonRetryableErrorCode,
   loadRunResult,
   loadRunStatus,
   officialEnqueueAllowed,
   releaseRetryEnqueueLock,
+  RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   saveRetryMarker,
   staleOrphanRunningRunIds,
   tryAcquireRetryEnqueueLock,
@@ -21,7 +21,11 @@ import {
   resolveHealedMetaLegsForCancel,
   updateEvaluationMetaLeg,
 } from "@/lib/evaluations";
-import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
+import {
+  healOrphanStatuses,
+  healRunForRead,
+  isPidAlive,
+} from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import {
   loadTerminalJobForRetry,
@@ -53,9 +57,9 @@ export async function POST(
     const { runId: raw } = await ctx.params;
     const runId = assertSafeId(raw, "runId");
     const root = resultsDir();
-    // Heal orphan .running.json before live-job gate — budget_stop poll stop
-    // may leave a dead claim that would 409 Retry forever.
-    healRunOrphansFs(jobsDir(), root, runId, isPidAlive);
+    // Same as Cancel/GET: reclaim dead .running + orphan queued, but do NOT
+    // stamp orphan budget_stop → failed (would bypass wind-down / Retry CTA).
+    healRunForRead(runId);
     const status = loadRunStatus(root, runId);
     if (!status) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -307,7 +311,10 @@ export async function POST(
         return respondLinked({ newRunId: raced, reused: true });
       }
       return NextResponse.json(
-        { error: "retry already in progress — try again shortly" },
+        {
+          error: RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+          errorCode: "retry_enqueue_lock_busy",
+        },
         { status: 409 },
       );
     }

@@ -56,6 +56,14 @@ describe("computeRunDetailRetryAdmission", () => {
     expect(out.blockedReason).toMatch(/credits/i);
   });
 
+  it("blocks when retry-enqueue lock is busy", () => {
+    const out = computeRunDetailRetryAdmission(
+      base({ enqueueLockBusy: true }),
+    );
+    expect(out.canRetry).toBe(false);
+    expect(out.blockedReason).toMatch(/already in progress/i);
+  });
+
   it("blocks when preflight not ok", () => {
     const out = computeRunDetailRetryAdmission(base({ preflightOk: false }));
     expect(out.canRetry).toBe(false);
@@ -277,6 +285,10 @@ describe("POST /retry shares admission gate helpers", () => {
     expect(src).toMatch(/retryPairMetaAdmission/);
     expect(src).toMatch(/readRetrySnapshotFlags/);
     expect(src).toMatch(/loadTerminalJobForRetry/);
+    expect(src).toMatch(/RETRY_ENQUEUE_LOCK_BUSY_ERROR/);
+    expect(src).toMatch(/retry_enqueue_lock_busy/);
+    expect(src).toMatch(/healRunForRead/);
+    expect(src).not.toMatch(/healRunOrphansFs/);
     expect(src).not.toMatch(/function loadFailedJob/);
   });
 });
