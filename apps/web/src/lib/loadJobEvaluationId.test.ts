@@ -95,3 +95,63 @@ describe("resolveRunDetailEvaluationId from live job disk", () => {
     ).toBe("eval_from_live");
   });
 });
+
+describe("resolveRetryEvaluationId terminal scan", () => {
+  it("skips failed.json without evaluationId and uses done.json", async () => {
+    const {
+      loadTerminalJobEvaluationId,
+      resolveRetryEvaluationId,
+      resolveRunDetailEvaluationId,
+    } = await import("./runDetailEvaluationPack.js");
+    const runId = "run_retry_scan";
+    writeJsonFile(path.join(jobsRoot, `${runId}.failed.json`), {
+      runId,
+      evalSkillId: "skill_demo",
+      mode: "official",
+      repeats: 1,
+      role: "candidate",
+      // intentionally no evaluationId
+      createdAt: new Date().toISOString(),
+    });
+    writeLiveJob(`${runId}.done.json`, runId, "eval_from_done");
+    writeLiveJob(`${runId}.json`, runId, "eval_live_should_not_win");
+
+    expect(loadTerminalJobEvaluationId(runId)).toBe("eval_from_done");
+    expect(
+      resolveRetryEvaluationId({
+        runId,
+        status: {},
+        result: null,
+      }),
+    ).toBe("eval_from_done");
+    // Terminals win for display too when done has the id.
+    expect(
+      resolveRunDetailEvaluationId({
+        runId,
+        status: {},
+        result: null,
+      }),
+    ).toBe("eval_from_done");
+  });
+
+  it("does not use live .json for retry when terminals lack evaluationId", async () => {
+    const { resolveRetryEvaluationId, resolveRunDetailEvaluationId } =
+      await import("./runDetailEvaluationPack.js");
+    const runId = "run_retry_nolive";
+    writeLiveJob(`${runId}.json`, runId, "eval_live_only");
+    expect(
+      resolveRunDetailEvaluationId({
+        runId,
+        status: {},
+        result: null,
+      }),
+    ).toBe("eval_live_only");
+    expect(
+      resolveRetryEvaluationId({
+        runId,
+        status: {},
+        result: null,
+      }),
+    ).toBeNull();
+  });
+});

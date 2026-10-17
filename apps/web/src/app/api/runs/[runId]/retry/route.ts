@@ -27,11 +27,8 @@ import {
 } from "@/lib/evaluations";
 import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
-import {
-  evaluationIdFromSources,
-  resolveRetryRole,
-  roleFromJobRaw,
-} from "@/lib/retryRole";
+import { resolveRetryRole, roleFromJobRaw } from "@/lib/retryRole";
+import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
   RETRY_STILL_FINISHING_ERROR,
@@ -142,10 +139,11 @@ export async function POST(
       resultRole: result?.role,
       jobRoleExplicit: failed?.roleExplicit,
     });
-    const evaluationId = evaluationIdFromSources({
-      statusEvaluationId: status.evaluationId,
-      jobEvaluationId: job?.evaluationId,
-      resultEvaluationId: result?.evaluationId,
+    // Same terminal scan as retryAdmission (skip empty failed.json → done/cancelled).
+    const evaluationId = resolveRetryEvaluationId({
+      runId,
+      status,
+      result,
     });
 
     if (!evalSkillId || !mode) {

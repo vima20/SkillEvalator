@@ -16,22 +16,9 @@ import {
   type RunDetailPairHarness,
 } from "@/lib/runDetailPairHarness";
 
-/**
- * Job-layer evaluationId for status → job → result.
- * Prefer terminal artifacts, then live queue/claim (same sources worker claim
- * can see). Not for retry config — that stays terminal-only.
- */
-export function loadJobEvaluationId(runId: string): string | undefined {
-  const dir = jobsDir();
-  const candidates = [
-    path.join(dir, `${runId}.failed.json`),
-    path.join(dir, `${runId}.done.json`),
-    path.join(dir, `${runId}.cancelled.json`),
-    // Live: queued / claimed / mid-enqueue (after terminals).
-    path.join(dir, `${runId}.running.json`),
-    path.join(dir, `${runId}.json`),
-    path.join(dir, `${runId}.tmp.json`),
-  ];
+function readJobEvaluationIdFromPaths(
+  candidates: string[],
+): string | undefined {
   for (const p of candidates) {
     if (!fs.existsSync(p)) continue;
     try {
@@ -44,6 +31,38 @@ export function loadJobEvaluationId(runId: string): string | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * Terminal-only job evaluationId (failed → done → cancelled).
+ * Skips artifacts that parse but lack evaluationId — unlike loadFailedJob
+ * which stops at the first existing file. Used by Retry UI + POST parity.
+ */
+export function loadTerminalJobEvaluationId(runId: string): string | undefined {
+  const dir = jobsDir();
+  return readJobEvaluationIdFromPaths([
+    path.join(dir, `${runId}.failed.json`),
+    path.join(dir, `${runId}.done.json`),
+    path.join(dir, `${runId}.cancelled.json`),
+  ]);
+}
+
+/**
+ * Job-layer evaluationId for status → job → result (display / cancel / list).
+ * Prefer terminal artifacts, then live queue/claim (same sources worker claim
+ * can see). Retry admission must use loadTerminalJobEvaluationId instead.
+ */
+export function loadJobEvaluationId(runId: string): string | undefined {
+  const dir = jobsDir();
+  return readJobEvaluationIdFromPaths([
+    path.join(dir, `${runId}.failed.json`),
+    path.join(dir, `${runId}.done.json`),
+    path.join(dir, `${runId}.cancelled.json`),
+    // Live: queued / claimed / mid-enqueue (after terminals).
+    path.join(dir, `${runId}.running.json`),
+    path.join(dir, `${runId}.json`),
+    path.join(dir, `${runId}.tmp.json`),
+  ]);
 }
 
 /**
@@ -61,6 +80,30 @@ export function resolveRunDetailEvaluationId(opts: {
     opts.jobEvaluationId !== undefined
       ? (opts.jobEvaluationId ?? undefined)
       : loadJobEvaluationId(opts.runId);
+  return (
+    evaluationIdFromSources({
+      statusEvaluationId: opts.status?.evaluationId,
+      jobEvaluationId,
+      resultEvaluationId: opts.result?.evaluationId,
+    }) ?? null
+  );
+}
+
+/**
+ * status → terminal job → result for Retry admission + POST /retry.
+ * Does not read live .json / .running.json (retry config stays terminal-only).
+ */
+export function resolveRetryEvaluationId(opts: {
+  runId: string;
+  status?: { evaluationId?: string } | null;
+  result?: { evaluationId?: string } | null;
+  /** Injected for tests (skip disk). */
+  jobEvaluationId?: string | null;
+}): string | null {
+  const jobEvaluationId =
+    opts.jobEvaluationId !== undefined
+      ? (opts.jobEvaluationId ?? undefined)
+      : loadTerminalJobEvaluationId(opts.runId);
   return (
     evaluationIdFromSources({
       statusEvaluationId: opts.status?.evaluationId,

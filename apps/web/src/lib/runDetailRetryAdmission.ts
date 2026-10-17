@@ -15,7 +15,7 @@ import { resolveHealedMetaLegsForCancel } from "@/lib/evaluations";
 import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { collectPilotBlockers } from "@/lib/pilotReady";
-import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
+import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
   RETRY_STILL_FINISHING_ERROR,
@@ -309,7 +309,8 @@ export function runDetailRetryAdmissionForRun(opts: {
   });
   const mode = costParams?.mode ?? opts.result?.mode ?? null;
   const jobRaw = loadFailedJobRaw(opts.runId);
-  const evaluationId = resolveRunDetailEvaluationId({
+  // Same terminal evaluationId scan as POST /retry (not live-job display id).
+  const evaluationId = resolveRetryEvaluationId({
     runId: opts.runId,
     status: opts.status,
     result: opts.result,
