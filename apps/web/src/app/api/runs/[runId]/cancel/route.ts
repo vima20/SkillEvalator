@@ -4,14 +4,19 @@ import { NextResponse } from "next/server";
 import {
   assertSafeId,
   healRunOrphansFs,
+  loadRunResult,
   loadRunStatus,
-  resolvePairedCancelSibling,
+  syncStatusFromResult,
   writeJsonFile,
 } from "@skillevalator/core";
-import { resolveHealedMetaLegsForCancel } from "@/lib/evaluations";
+import {
+  cancelPairingMeta,
+  findPairedCancelSiblingRunId,
+} from "@/lib/cancelPairedSibling";
 import { isPidAlive } from "@/lib/healOrphans";
-import { cancelGate, pairedCancelPeerStatuses } from "@/lib/runLifecycle";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
+import { cancelGate } from "@/lib/runLifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +24,10 @@ type CancelOutcome =
   | { ok: true; status: "cancelled" | "cancel_requested"; already?: boolean }
   | { ok: false; status: number; error: string };
 
-function requestCancelOne(runId: string): CancelOutcome {
+function requestCancelOne(
+  runId: string,
+  pairing?: { role?: string; evaluationId?: string | null },
+): CancelOutcome {
   const root = resultsDir();
   const status = loadRunStatus(root, runId);
   if (!status) {
@@ -46,10 +54,10 @@ function requestCancelOne(runId: string): CancelOutcome {
     return { ok: true, status: "cancel_requested", already: true };
   }
 
-  const pairingMeta = {
-    ...(status.role ? { role: status.role } : {}),
-    ...(status.evaluationId ? { evaluationId: status.evaluationId } : {}),
-  };
+  const pairingMeta = cancelPairingMeta({
+    role: pairing?.role ?? status.role,
+    evaluationId: pairing?.evaluationId ?? status.evaluationId,
+  });
 
   const cancelledPath = path.join(dir, `${runId}.cancelled.json`);
   let immediate = false;
@@ -87,46 +95,6 @@ function requestCancelOne(runId: string): CancelOutcome {
   };
 }
 
-/** Sibling baseline/candidate run for the same Comparison, if any. */
-function pairedSiblingRunId(
-  runId: string,
-  evaluationId: string,
-  role?: string,
-): string | null {
-  const root = resultsDir();
-  // Tip-heal before cascade — raw disk meta can still name a superseded leg.
-  const meta = resolveHealedMetaLegsForCancel(evaluationId);
-  const peers: Array<{ runId: string; role?: string; status?: string }> = [];
-  try {
-    for (const name of fs.readdirSync(root)) {
-      if (name === runId || name.startsWith("eval_")) continue;
-      try {
-        assertSafeId(name, "runId");
-      } catch {
-        continue;
-      }
-      const st = loadRunStatus(root, name);
-      if (st?.evaluationId !== evaluationId) continue;
-      peers.push({
-        runId: name,
-        role: st.role,
-        status: st.status,
-      });
-    }
-  } catch {
-    /* ignore */
-  }
-  return resolvePairedCancelSibling({
-    runId,
-    role,
-    meta,
-    peers,
-    // Include budget_stop so a wind-down peer can be cascade-cancelled;
-    // requestCancelOne still rejects settled budget_stop (has result.json).
-    cancellableStatuses: pairedCancelPeerStatuses(),
-  });
-}
-
 export async function POST(
   _req: Request,
   ctx: { params: Promise<{ runId: string }> },
@@ -138,12 +106,22 @@ export async function POST(
     const jobs = jobsDir();
     // Reclaim dead .running.json so cancel/cascade see real statuses.
     healRunOrphansFs(jobs, root, runId, isPidAlive);
-    const prior = loadRunStatus(root, runId);
-    const evaluationId =
-      typeof prior?.evaluationId === "string" ? prior.evaluationId : null;
-    const role = typeof prior?.role === "string" ? prior.role : undefined;
+    const result = loadRunResult(root, runId);
+    const prior = syncStatusFromResult(root, runId) ?? loadRunStatus(root, runId);
+    // Same status → job → result order as run detail / retry / CSV.
+    const evaluationId = resolveRunDetailEvaluationId({
+      runId,
+      status: prior,
+      result,
+    });
+    const role =
+      typeof prior?.role === "string"
+        ? prior.role
+        : result?.role === "baseline" || result?.role === "candidate"
+          ? result.role
+          : undefined;
 
-    const primary = requestCancelOne(runId);
+    const primary = requestCancelOne(runId, { evaluationId, role });
     if (!primary.ok) {
       return NextResponse.json(
         { error: primary.error },
@@ -153,11 +131,15 @@ export async function POST(
 
     let siblingCancelled: string | null = null;
     if (evaluationId) {
-      const sibling = pairedSiblingRunId(runId, evaluationId, role);
+      const sibling = findPairedCancelSiblingRunId({
+        runId,
+        evaluationId,
+        role,
+      });
       if (sibling && sibling !== runId) {
         const safeSibling = assertSafeId(sibling, "runId");
         healRunOrphansFs(jobs, root, safeSibling, isPidAlive);
-        const sib = requestCancelOne(safeSibling);
+        const sib = requestCancelOne(safeSibling, { evaluationId });
         if (sib.ok && !sib.already) siblingCancelled = safeSibling;
       }
     }
