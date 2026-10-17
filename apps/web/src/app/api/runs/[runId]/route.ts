@@ -8,6 +8,11 @@ import {
 } from "@/lib/runCsvExportAllowed";
 import { loadRunDetailEvaluationPack } from "@/lib/runDetailEvaluationPack";
 import { runDetailRetryAdmissionForRun } from "@/lib/runDetailRetryAdmission";
+import {
+  RUN_DETAIL_FAILED_ERROR,
+  RUN_DETAIL_INVALID_REQUEST_ERROR,
+  RUN_DETAIL_NOT_FOUND_API_ERROR,
+} from "@/lib/runDetailResolve";
 import { runPreflight } from "@/lib/runPreflight";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +34,13 @@ export async function GET(
     const result = loadRunResult(root, runId);
     const status = syncStatusFromResult(root, runId);
     if (!status && !result) {
-      return NextResponse.json({ error: "not found" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: RUN_DETAIL_NOT_FOUND_API_ERROR,
+          errorCode: "run_detail_not_found",
+        },
+        { status: 404 },
+      );
     }
     const { evaluationId, tipCandidateRunId, pairHarness } =
       loadRunDetailEvaluationPack({
@@ -63,7 +74,21 @@ export async function GET(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "error";
-    const code = message.startsWith("invalid ") ? 400 : 500;
-    return NextResponse.json({ error: message }, { status: code });
+    if (message.startsWith("invalid ")) {
+      return NextResponse.json(
+        {
+          error: message || RUN_DETAIL_INVALID_REQUEST_ERROR,
+          errorCode: "run_detail_invalid_request",
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: message.trim() ? message : RUN_DETAIL_FAILED_ERROR,
+        errorCode: "run_detail_failed",
+      },
+      { status: 500 },
+    );
   }
 }

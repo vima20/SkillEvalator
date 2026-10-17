@@ -17,6 +17,10 @@ import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
+  resolveRunDetailGetError,
+  resolveRunDetailHttpError,
+} from "@/lib/runDetailResolve";
+import {
   isRetryBillingBlocked,
   isRetryBudgetStopping,
   parseAlsoCancelledRunId,
@@ -212,14 +216,25 @@ export function RunDetailClient({
         ? runDetailFinalizeOrphansPath(runId)
         : `/api/runs/${encodeURIComponent(runId)}`;
       const res = await apiFetch(path, { cache: "no-store" });
-      if (res.status === 404) {
-        setPolling(false);
-        setPollError("Run not found.");
-        return;
-      }
       if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          errorCode?: string;
+        };
         setPolling(false);
-        setPollError(`Could not refresh run status (HTTP ${res.status}).`);
+        setPollError(
+          resolveRunDetailGetError(
+            body.errorCode || body.error
+              ? body
+              : {
+                  errorCode:
+                    res.status === 404
+                      ? "run_detail_not_found"
+                      : "run_detail_failed",
+                },
+            resolveRunDetailHttpError(res.status),
+          ),
+        );
         return;
       }
       setPollError(null);
@@ -237,7 +252,9 @@ export function RunDetailClient({
         return;
       }
       setPolling(false);
-      setPollError("Network error while refreshing run status.");
+      setPollError(
+        resolveRunDetailGetError({ errorCode: "run_detail_failed" }),
+      );
     }
   }, [runId]);
 
