@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { healRunOrphansFs, syncStatusFromResult } from "@skillevalator/core";
+import { syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { EmptyState } from "@/components/EmptyState";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
@@ -23,8 +23,8 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
-import { isPidAlive } from "@/lib/healOrphans";
-import { jobsDir, resultsDir } from "@/lib/paths";
+import { healRunForRead } from "@/lib/healOrphans";
+import { resultsDir } from "@/lib/paths";
 import {
   isPilotFocusParam,
   withPilotFocus,
@@ -58,17 +58,16 @@ export default async function ComparisonDetailPage({
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
   const root = resultsDir();
-  const jobs = jobsDir();
 
   let invalid = false;
   let packed: ReturnType<typeof loadEvaluationComparison> | null = null;
   try {
     packed = loadEvaluationComparison(evaluationId);
     if (packed.meta?.baselineRunId) {
-      healRunOrphansFs(jobs, root, packed.meta.baselineRunId, isPidAlive);
+      healRunForRead(packed.meta.baselineRunId);
     }
     if (packed.meta?.candidateRunId) {
-      healRunOrphansFs(jobs, root, packed.meta.candidateRunId, isPidAlive);
+      healRunForRead(packed.meta.candidateRunId);
     }
     // Reload after heal
     packed = loadEvaluationComparison(evaluationId);

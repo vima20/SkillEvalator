@@ -3,9 +3,20 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/apiFetch";
+import { runDetailFinalizeOrphansPath } from "@/lib/healOrphans";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { WIND_DOWN_ORPHAN_MS } from "@/lib/runLifecycle";
 import { comparisonPendingState, statusBadgeClass } from "@/lib/status";
+
+async function finalizeOrphanLeg(runId: string | undefined): Promise<void> {
+  if (!runId) return;
+  try {
+    await apiFetch(runDetailFinalizeOrphansPath(runId), { cache: "no-store" });
+  } catch {
+    /* refresh still shows disk state */
+  }
+}
 
 type ComparisonPendingProps = {
   evaluationId: string;
@@ -77,8 +88,10 @@ function ComparisonPendingInner({
     }
     const id = window.setTimeout(() => {
       setBaselineBudgetTimedOut(true);
-      // Same as run detail: final refresh heals orphan .running.json.
-      router.refresh();
+      void (async () => {
+        await finalizeOrphanLeg(baselineRunId);
+        router.refresh();
+      })();
     }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
   }, [baselineWindDown, evaluationId, baselineRunId, router]);
@@ -90,7 +103,10 @@ function ComparisonPendingInner({
     }
     const id = window.setTimeout(() => {
       setCandidateBudgetTimedOut(true);
-      router.refresh();
+      void (async () => {
+        await finalizeOrphanLeg(candidateRunId);
+        router.refresh();
+      })();
     }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
   }, [candidateWindDown, evaluationId, candidateRunId, router]);

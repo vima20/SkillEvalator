@@ -1,4 +1,9 @@
-import { healAllOrphansFs } from "@skillevalator/core";
+import {
+  healAllOrphansFs,
+  healOrphanQueuedStatusFs,
+  healRunOrphansFs,
+  reclaimOrphanRunningJobsFs,
+} from "@skillevalator/core";
 import { jobsDir, resultsDir } from "@/lib/paths";
 
 export function isPidAlive(pid: number): boolean {
@@ -14,4 +19,29 @@ export function isPidAlive(pid: number): boolean {
 /** Heal orphan queued/running/cancel_requested + reclaim dead .running jobs. */
 export function healOrphanStatuses(): void {
   healAllOrphansFs(jobsDir(), resultsDir(), isPidAlive);
+}
+
+/**
+ * Interactive read / cancel: reclaim dead .running.json + orphan queued.
+ * Skips healOrphanActiveStatusFs so orphan budget_stop stays cancellable
+ * during the wind-down window (POST /cancel + Cancel CTA).
+ */
+export function healRunForRead(runId: string): void {
+  const jobs = jobsDir();
+  const root = resultsDir();
+  reclaimOrphanRunningJobsFs(jobs, root, isPidAlive);
+  healOrphanQueuedStatusFs(jobs, root, runId);
+}
+
+/**
+ * After wind-down timeout / Settings / retry: full per-run heal including
+ * orphan budget_stop → failed so Retry is not stuck behind hasLiveJob.
+ */
+export function healRunForFinalize(runId: string): void {
+  healRunOrphansFs(jobsDir(), resultsDir(), runId, isPidAlive);
+}
+
+/** GET path that stamps orphan active status after WIND_DOWN_ORPHAN_MS. */
+export function runDetailFinalizeOrphansPath(runId: string): string {
+  return `/api/runs/${encodeURIComponent(runId)}?finalizeOrphans=1`;
 }

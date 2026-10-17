@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/apiFetch";
+import { runDetailFinalizeOrphansPath } from "@/lib/healOrphans";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { WIND_DOWN_ORPHAN_MS } from "@/lib/runLifecycle";
 import { benefitPendingState } from "@/lib/status";
@@ -56,7 +58,16 @@ function BenefitPendingInner({
     }
     const id = window.setTimeout(() => {
       setBudgetTimedOut(true);
-      router.refresh();
+      void (async () => {
+        try {
+          await apiFetch(runDetailFinalizeOrphansPath(runId), {
+            cache: "no-store",
+          });
+        } catch {
+          /* refresh still shows disk state */
+        }
+        router.refresh();
+      })();
     }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
   }, [windDown, runId, router]);

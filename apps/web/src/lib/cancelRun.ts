@@ -4,7 +4,6 @@ import {
   assertSafeId,
   loadRunResult,
   loadRunStatus,
-  reclaimOrphanRunningJobsFs,
   syncStatusFromResult,
   writeJsonFile,
 } from "@skillevalator/core";
@@ -12,7 +11,7 @@ import {
   cancelPairingMeta,
   findPairedCancelSiblingRunId,
 } from "@/lib/cancelPairedSibling";
-import { isPidAlive } from "@/lib/healOrphans";
+import { healRunForRead } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { cancelGate } from "@/lib/runLifecycle";
@@ -110,11 +109,8 @@ export function requestCancelOne(
 export function cancelRunWithCascade(rawRunId: string): CancelRunResult {
   const runId = assertSafeId(rawRunId, "runId");
   const root = resultsDir();
-  const jobs = jobsDir();
-  // Reclaim dead .running.json so statuses match disk. Do not run
-  // healOrphanActiveStatusFs here — that stamps orphan budget_stop/running as
-  // failed and would 409 Cancel during the wind-down window the UI still allows.
-  reclaimOrphanRunningJobsFs(jobs, root, isPidAlive);
+  // Same read-path heal as GET/SSR — reclaim only, keep wind-down Cancel.
+  healRunForRead(runId);
   const result = loadRunResult(root, runId);
   const prior = syncStatusFromResult(root, runId) ?? loadRunStatus(root, runId);
   // Same status → job → result order as run detail / retry / CSV.
@@ -144,7 +140,7 @@ export function cancelRunWithCascade(rawRunId: string): CancelRunResult {
     });
     if (sibling && sibling !== runId) {
       const safeSibling = assertSafeId(sibling, "runId");
-      reclaimOrphanRunningJobsFs(jobs, root, isPidAlive);
+      healRunForRead(safeSibling);
       const sib = requestCancelOne(safeSibling, { evaluationId });
       if (sib.ok && !sib.already) alsoCancelled = safeSibling;
     }

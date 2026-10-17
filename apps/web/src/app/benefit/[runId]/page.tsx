@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   benefitReportToMarkdown,
-  healRunOrphansFs,
   loadRunResult,
   syncStatusFromResult,
 } from "@skillevalator/core";
@@ -12,8 +11,8 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
-import { isPidAlive } from "@/lib/healOrphans";
-import { jobsDir, resultsDir } from "@/lib/paths";
+import { healRunForRead } from "@/lib/healOrphans";
+import { resultsDir } from "@/lib/paths";
 import {
   isPilotFocusParam,
   withPilotFocus,
@@ -40,7 +39,7 @@ export default async function BenefitReportPage({
   let statusFile: ReturnType<typeof syncStatusFromResult> = null;
   try {
     const root = resultsDir();
-    healRunOrphansFs(jobsDir(), root, runId, isPidAlive);
+    healRunForRead(runId);
     result = loadRunResult(root, runId);
     statusFile = syncStatusFromResult(root, runId);
     runStatus = statusFile?.status;

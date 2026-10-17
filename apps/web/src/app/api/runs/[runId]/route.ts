@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  healRunOrphansFs,
-  loadRunResult,
-  syncStatusFromResult,
-} from "@skillevalator/core";
-import { isPidAlive } from "@/lib/healOrphans";
-import { jobsDir, resultsDir } from "@/lib/paths";
+import { loadRunResult, syncStatusFromResult } from "@skillevalator/core";
+import { healRunForFinalize, healRunForRead } from "@/lib/healOrphans";
+import { resultsDir } from "@/lib/paths";
 import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
@@ -17,13 +13,19 @@ import { runPreflight } from "@/lib/runPreflight";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ runId: string }> },
 ) {
   try {
     const { runId } = await ctx.params;
     const root = resultsDir();
-    healRunOrphansFs(jobsDir(), root, runId, isPidAlive);
+    const finalize =
+      new URL(req.url).searchParams.get("finalizeOrphans") === "1";
+    if (finalize) {
+      healRunForFinalize(runId);
+    } else {
+      healRunForRead(runId);
+    }
     const result = loadRunResult(root, runId);
     const status = syncStatusFromResult(root, runId);
     if (!status && !result) {
@@ -36,11 +38,13 @@ export async function GET(
         status,
       });
     const preflight = runPreflight();
+    // Heal already applied above — do not full-healAll during poll (wind-down).
     const retryAdmission = runDetailRetryAdmissionForRun({
       runId,
       result,
       status,
       preflight,
+      healQueue: false,
     });
     return NextResponse.json({
       runId,

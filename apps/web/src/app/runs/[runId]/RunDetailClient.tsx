@@ -12,6 +12,7 @@ import {
   formatCaptureGradePolicy,
 } from "@/lib/captureEnvEvidence";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+import { runDetailFinalizeOrphansPath } from "@/lib/healOrphans";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
@@ -200,11 +201,12 @@ export function RunDetailClient({
   const [retryError, setRetryError] = useState<string | null>(null);
   const [refreshBusy, setRefreshBusy] = useState(false);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { finalizeOrphans?: boolean }) => {
     try {
-      const res = await apiFetch(`/api/runs/${encodeURIComponent(runId)}`, {
-        cache: "no-store",
-      });
+      const path = opts?.finalizeOrphans
+        ? runDetailFinalizeOrphansPath(runId)
+        : `/api/runs/${encodeURIComponent(runId)}`;
+      const res = await apiFetch(path, { cache: "no-store" });
       if (res.status === 404) {
         setPolling(false);
         setPollError("Run not found.");
@@ -243,14 +245,14 @@ export function RunDetailClient({
   }, [polling, refresh]);
 
   // budget_stop without result should not poll forever (orphan / crashed worker).
-  // Final refresh runs GET /api/runs heal so dead .running.json becomes failed
-  // and Retry is not stuck behind hasLiveJobFile 409.
+  // Final refresh uses finalizeOrphans so orphan budget_stop → failed and Retry
+  // is not stuck; live poll uses read-heal and keeps Cancel available.
   useEffect(() => {
     const st = data.status?.status;
     if (st !== "budget_stop" || data.result) return;
     const id = window.setTimeout(() => {
       void (async () => {
-        await refresh();
+        await refresh({ finalizeOrphans: true });
         setPolling(false);
       })();
     }, WIND_DOWN_ORPHAN_MS);
