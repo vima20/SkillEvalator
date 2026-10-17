@@ -344,7 +344,10 @@ export async function POST(
         hasPinnedVersion,
       });
       if (!snapGate.allow) {
-        return NextResponse.json({ error: snapGate.error }, { status: 409 });
+        return NextResponse.json(
+          { error: snapGate.error, errorCode: snapGate.errorCode },
+          { status: 409 },
+        );
       }
       const skillSnapshotFromRunId = runId;
 

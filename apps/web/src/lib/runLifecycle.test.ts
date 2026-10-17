@@ -14,6 +14,8 @@ import {
   RETRY_OFFICIAL_EVALUATION_META_MISSING,
   RETRY_OFFICIAL_EVALUATION_ROLE_SLOT_MISMATCH,
   RETRY_PREFLIGHT_BLOCKED,
+  RETRY_SNAPSHOT_BASELINE_PIN_MISSING,
+  RETRY_SNAPSHOT_CANDIDATE_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   resolveRetryPostError,
   retryGate,
@@ -134,6 +136,21 @@ describe("resolveRetryPostError", () => {
         formatCost,
       ),
     ).toBe(RETRY_STILL_FINISHING_ERROR);
+  });
+
+  it("fail-closes snapshot gate codes without body.error", () => {
+    expect(
+      resolveRetryPostError(
+        { errorCode: "retry_snapshot_candidate_blocked" },
+        formatCost,
+      ),
+    ).toBe(RETRY_SNAPSHOT_CANDIDATE_BLOCKED);
+    expect(
+      resolveRetryPostError(
+        { errorCode: "retry_snapshot_baseline_pin_missing" },
+        formatCost,
+      ),
+    ).toBe(RETRY_SNAPSHOT_BASELINE_PIN_MISSING);
   });
 
   it("fail-closes evaluation meta revert and pair-meta codes", () => {
@@ -334,7 +351,10 @@ describe("retrySnapshotGate", () => {
       hasPinnedVersion: true,
     });
     expect(emptyMd.allow).toBe(false);
-    if (!emptyMd.allow) expect(emptyMd.error).toMatch(/empty|missing/i);
+    if (!emptyMd.allow) {
+      expect(emptyMd.error).toBe(RETRY_SNAPSHOT_CANDIDATE_BLOCKED);
+      expect(emptyMd.errorCode).toBe("retry_snapshot_candidate_blocked");
+    }
   });
 
   it("requires pinned version for baseline (SKILL.md optional)", () => {
@@ -351,6 +371,9 @@ describe("retrySnapshotGate", () => {
       hasPinnedVersion: false,
     });
     expect(missing.allow).toBe(false);
-    if (!missing.allow) expect(missing.error).toMatch(/baseline/);
+    if (!missing.allow) {
+      expect(missing.error).toBe(RETRY_SNAPSHOT_BASELINE_PIN_MISSING);
+      expect(missing.errorCode).toBe("retry_snapshot_baseline_pin_missing");
+    }
   });
 });

@@ -103,6 +103,13 @@ export const RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH =
 export const RETRY_OFFICIAL_EVALUATION_ROLE_SLOT_MISMATCH =
   "retry role does not match evaluation meta slot — retry from the tip baseline/candidate";
 
+/** Snapshot pin gates (same as retrySnapshotGate). */
+export const RETRY_SNAPSHOT_CANDIDATE_BLOCKED =
+  "cannot retry candidate — skill-snapshot/SKILL.md missing or empty, or pinned evalSkillVersion missing; re-run from a finished candidate or start a new paired evaluation";
+
+export const RETRY_SNAPSHOT_BASELINE_PIN_MISSING =
+  "cannot retry baseline — pinned evalSkillVersion missing; re-run from a finished baseline or start a new paired evaluation";
+
 /**
  * Billing/account codes that must not be retried — keep in sync with
  * packages/core NON_RETRYABLE_ERROR_CODES (client-safe local copy; no core import).
@@ -206,6 +213,12 @@ export function resolveRetryPostError(
   if (body.errorCode === "retry_still_finishing") {
     return RETRY_STILL_FINISHING_ERROR;
   }
+  if (body.errorCode === "retry_snapshot_candidate_blocked") {
+    return RETRY_SNAPSHOT_CANDIDATE_BLOCKED;
+  }
+  if (body.errorCode === "retry_snapshot_baseline_pin_missing") {
+    return RETRY_SNAPSHOT_BASELINE_PIN_MISSING;
+  }
   const pairMeta = retryPairMetaBlockedReason(body.errorCode, body.error);
   if (pairMeta) return pairMeta;
   const billing = retryNonRetryableBlockedReason(body.errorCode);
@@ -274,7 +287,13 @@ export function pairedCancelPeerStatuses(): Set<string> {
 
 export type RetrySnapshotGate =
   | { allow: true; useSkillSnapshot: true }
-  | { allow: false; error: string };
+  | {
+      allow: false;
+      error: string;
+      errorCode:
+        | "retry_snapshot_candidate_blocked"
+        | "retry_snapshot_baseline_pin_missing";
+    };
 
 /**
  * Whether Retry may pin skillSnapshotFromRunId from the prior run.
@@ -291,8 +310,8 @@ export function retrySnapshotGate(opts: {
     if (!opts.hasSkillMd || !opts.hasPinnedVersion) {
       return {
         allow: false,
-        error:
-          "cannot retry candidate — skill-snapshot/SKILL.md missing or empty, or pinned evalSkillVersion missing; re-run from a finished candidate or start a new paired evaluation",
+        error: RETRY_SNAPSHOT_CANDIDATE_BLOCKED,
+        errorCode: "retry_snapshot_candidate_blocked",
       };
     }
     return { allow: true, useSkillSnapshot: true };
@@ -300,8 +319,8 @@ export function retrySnapshotGate(opts: {
   if (!opts.hasPinnedVersion) {
     return {
       allow: false,
-      error:
-        "cannot retry baseline — pinned evalSkillVersion missing; re-run from a finished baseline or start a new paired evaluation",
+      error: RETRY_SNAPSHOT_BASELINE_PIN_MISSING,
+      errorCode: "retry_snapshot_baseline_pin_missing",
     };
   }
   return { allow: true, useSkillSnapshot: true };
