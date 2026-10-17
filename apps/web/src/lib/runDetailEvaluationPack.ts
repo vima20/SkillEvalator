@@ -62,9 +62,10 @@ export function resolveRunDetailEvaluationId(opts: {
 }
 
 /**
- * List rows (Dashboard / Runs / Benefit index): same status → job → result
- * order as run detail. Do not use `listRuns().evaluationId` alone — that field
- * is result-first and can disagree with status.json / failed job.
+ * List rows (Dashboard / Runs / Benefit index) and GET /api/runs:
+ * same status → job → result order as run detail. Do not use
+ * `listRuns().evaluationId` or `result?.evaluationId` alone — those are
+ * result-first and can disagree with status.json / failed job.
  */
 export function resolveListRunEvaluationId(opts: {
   runId: string;
