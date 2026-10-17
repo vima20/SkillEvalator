@@ -30,7 +30,8 @@ export function healOrphanStatuses(): void {
  * Dashboard / Runs / Benefit / Comparison index + GET /api/runs list:
  * reclaim dead .running.json + orphan queued / stale .tmp.json.
  * Skips cleanupOrphanRunningStatusFs so orphan budget_stop stays visible
- * until per-run finalizeOrphans or Settings/retry full heal.
+ * until per-run finalizeOrphans (list RunsAutoRefresh / detail / pending
+ * after WIND_DOWN_ORPHAN_MS) or Settings/retry full heal.
  */
 export function healOrphansForBrowse(): void {
   const jobs = jobsDir();

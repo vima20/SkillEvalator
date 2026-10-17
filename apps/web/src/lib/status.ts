@@ -21,6 +21,29 @@ export function runIsActive(
   return false;
 }
 
+/** Orphan cost-cap wind-down: budget_stop without result.json yet. */
+export function isBudgetStopWindDown(
+  status: string | undefined,
+  hasResult = false,
+): boolean {
+  return status === "budget_stop" && !hasResult;
+}
+
+/**
+ * Run ids still in budget_stop wind-down (list SSR → RunsAutoRefresh finalize).
+ */
+export function listWindDownRunIds(
+  runs: Array<{
+    runId: string;
+    status?: string;
+    result?: unknown | null;
+  }>,
+): string[] {
+  return runs
+    .filter((r) => isBudgetStopWindDown(r.status, Boolean(r.result)))
+    .map((r) => r.runId);
+}
+
 const BENEFIT_SETTLED = new Set(["ok", "failed", "cancelled"]);
 
 /**

@@ -22,7 +22,7 @@ import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
-import { runIsActive } from "@/lib/status";
+import { listWindDownRunIds, runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +68,7 @@ export default async function DashboardPage({
   const hasActive =
     allRuns.some((r) => runIsActive(r.status, !!r.result)) ||
     hasPendingEvaluations();
+  const windDownRunIds = listWindDownRunIds(allRuns);
   // Tip + pair evidence per evaluation — supersede smoke/old retries / siblings.
   const pairByEval = new Map<
     string,
@@ -199,7 +200,10 @@ export default async function DashboardPage({
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/dashboard" pilotFocus={pilotFocus} />
-          <RunsAutoRefresh hasActive={hasActive} />
+          <RunsAutoRefresh
+            hasActive={hasActive}
+            windDownRunIds={windDownRunIds}
+          />
           <Link
             className="btn btn-primary"
             href={withPilotFocus("/", pilotFocus)}

@@ -20,7 +20,7 @@ import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
-import { runIsActive } from "@/lib/status";
+import { listWindDownRunIds, runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,7 @@ export default async function BenefitIndexPage({
   const hasActive =
     listed.some((r) => runIsActive(r.status, !!r.result)) ||
     hasPendingEvaluations();
+  const windDownRunIds = listWindDownRunIds(listed);
   const allRuns = listed
     .filter((r) => r.result)
     // Recommend surface: candidate skill only (baseline is Comparison input).
@@ -136,7 +137,10 @@ export default async function BenefitIndexPage({
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/benefit" pilotFocus={pilotFocus} />
-          <RunsAutoRefresh hasActive={hasActive} />
+          <RunsAutoRefresh
+            hasActive={hasActive}
+            windDownRunIds={windDownRunIds}
+          />
           <Link
             className="btn btn-primary"
             href={withPilotFocus("/", pilotFocus)}

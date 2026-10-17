@@ -23,7 +23,11 @@ import {
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
-import { runIsActive, statusBadgeClass } from "@/lib/status";
+import {
+  listWindDownRunIds,
+  runIsActive,
+  statusBadgeClass,
+} from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -50,9 +54,11 @@ export default async function ComparisonListPage({
 
   healOrphansForBrowse();
   const root = resultsDir();
-  const hasActiveRuns = listRuns(root).some((r) =>
+  const allRuns = listRuns(root);
+  const hasActiveRuns = allRuns.some((r) =>
     runIsActive(r.status, !!r.result),
   );
+  const windDownRunIds = listWindDownRunIds(allRuns);
 
   const allEvaluations = listEvaluations().map((e) => {
     const packed = loadEvaluationComparison(e.evaluationId);
@@ -152,7 +158,10 @@ export default async function ComparisonListPage({
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/comparison" pilotFocus={pilotFocus} />
-          <RunsAutoRefresh hasActive={hasActive} />
+          <RunsAutoRefresh
+            hasActive={hasActive}
+            windDownRunIds={windDownRunIds}
+          />
           {pilotFocus ? null : <ClearSmokeNoise />}
           <Link
             className="btn btn-primary"

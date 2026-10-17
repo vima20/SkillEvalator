@@ -27,7 +27,11 @@ import {
   candidateRunsListHint,
   runsListHintLabel,
 } from "@/lib/runsListHints";
-import { runIsActive, statusBadgeClass } from "@/lib/status";
+import {
+  listWindDownRunIds,
+  runIsActive,
+  statusBadgeClass,
+} from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +84,7 @@ export default async function RunsPage({
   const hasActive =
     allRuns.some((r) => runIsActive(r.status, !!r.result)) ||
     hasPendingEvaluations();
+  const windDownRunIds = listWindDownRunIds(allRuns);
 
   const runs = pilotFocus
     ? allRuns.filter((r) => {
@@ -135,7 +140,10 @@ export default async function RunsPage({
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle pathname="/runs" pilotFocus={pilotFocus} />
-          <RunsAutoRefresh hasActive={hasActive} />
+          <RunsAutoRefresh
+            hasActive={hasActive}
+            windDownRunIds={windDownRunIds}
+          />
           {pilotFocus ? null : <ClearSmokeNoise />}
           <ClearOldRuns />
           <Link

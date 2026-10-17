@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   benefitPendingState,
   comparisonPendingState,
+  isBudgetStopWindDown,
+  listWindDownRunIds,
   runIsActive,
 } from "./status.js";
 
@@ -28,6 +30,20 @@ describe("runIsActive", () => {
     expect(runIsActive("failed")).toBe(false);
     expect(runIsActive("cancelled")).toBe(false);
     expect(runIsActive("ok")).toBe(false);
+  });
+});
+
+describe("listWindDownRunIds", () => {
+  it("collects budget_stop without result only", () => {
+    expect(isBudgetStopWindDown("budget_stop", false)).toBe(true);
+    expect(isBudgetStopWindDown("budget_stop", true)).toBe(false);
+    expect(
+      listWindDownRunIds([
+        { runId: "run_a", status: "budget_stop", result: null },
+        { runId: "run_b", status: "budget_stop", result: { score: 1 } },
+        { runId: "run_c", status: "running", result: null },
+      ]),
+    ).toEqual(["run_a"]);
   });
 });
 
