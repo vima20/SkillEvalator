@@ -5,6 +5,7 @@ import {
   readJsonFile,
   type EnqueueCostCapDenied,
   type EnqueueCostCapOk,
+  type JobManifest,
 } from "@skillevalator/core";
 import { checkEnqueueCostCap } from "@/lib/enqueueCostGate";
 import { jobsDir } from "@/lib/paths";
@@ -52,7 +53,10 @@ export function retryCostAdmission(opts: {
   return retryCostAdmissionFromGate(checkEnqueueCostCap(opts));
 }
 
-function loadJobRetryParams(runId: string): RetryCostParams | null {
+/** First parseable terminal job — same order as POST /retry loadFailedJob. */
+export function loadFirstTerminalJobManifest(
+  runId: string,
+): JobManifest | null {
   const candidates = [
     path.join(jobsDir(), `${runId}.failed.json`),
     path.join(jobsDir(), `${runId}.done.json`),
@@ -61,19 +65,7 @@ function loadJobRetryParams(runId: string): RetryCostParams | null {
   for (const p of candidates) {
     if (!fs.existsSync(p)) continue;
     try {
-      const job = JobManifestSchema.parse(readJsonFile(p));
-      if (
-        (job.mode === "dry-run" || job.mode === "official") &&
-        typeof job.repeats === "number" &&
-        Number.isFinite(job.repeats) &&
-        job.evalSkillId
-      ) {
-        return {
-          evalSkillId: job.evalSkillId,
-          mode: job.mode,
-          repeats: job.repeats,
-        };
-      }
+      return JobManifestSchema.parse(readJsonFile(p));
     } catch {
       /* try next */
     }
@@ -81,7 +73,10 @@ function loadJobRetryParams(runId: string): RetryCostParams | null {
   return null;
 }
 
-/** Resolve skill/mode/repeats for retry cost gate (result → status → job). */
+/**
+ * Resolve skill/mode/repeats for retry cost + official gates.
+ * Same job → result (+ status.repeats) merge as POST /retry enqueue fields.
+ */
 export function resolveRetryCostParams(opts: {
   runId: string;
   result?: {
@@ -90,28 +85,27 @@ export function resolveRetryCostParams(opts: {
     repeats?: number;
   } | null;
   status?: { repeats?: number } | null;
+  /** Injected terminal job (skip disk). */
+  job?: JobManifest | null;
 }): RetryCostParams | null {
-  const fromResult =
-    opts.result?.evalSkillId &&
-    (opts.result.mode === "dry-run" || opts.result.mode === "official")
-      ? {
-          evalSkillId: opts.result.evalSkillId,
-          mode: opts.result.mode as "dry-run" | "official",
-          repeats: opts.result.repeats ?? opts.status?.repeats,
-        }
-      : null;
+  const job =
+    opts.job !== undefined
+      ? opts.job
+      : loadFirstTerminalJobManifest(opts.runId);
+  const evalSkillId = job?.evalSkillId ?? opts.result?.evalSkillId;
+  const modeRaw = job?.mode ?? opts.result?.mode;
+  const mode =
+    modeRaw === "dry-run" || modeRaw === "official" ? modeRaw : undefined;
+  const repeats = job?.repeats ?? opts.result?.repeats ?? opts.status?.repeats;
   if (
-    fromResult &&
-    typeof fromResult.repeats === "number" &&
-    Number.isFinite(fromResult.repeats)
+    !evalSkillId ||
+    !mode ||
+    typeof repeats !== "number" ||
+    !Number.isFinite(repeats)
   ) {
-    return {
-      evalSkillId: fromResult.evalSkillId,
-      mode: fromResult.mode,
-      repeats: fromResult.repeats,
-    };
+    return null;
   }
-  return loadJobRetryParams(opts.runId);
+  return { evalSkillId, mode, repeats };
 }
 
 /** Admission for GET run detail / SSR — unknown params → not blocked. */

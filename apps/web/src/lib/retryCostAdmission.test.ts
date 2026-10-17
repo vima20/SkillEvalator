@@ -1,12 +1,41 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { writeJsonFile } from "@skillevalator/core";
 import { formatRetryCostBlockedReason } from "./retryCostAdmissionCopy.js";
-import {
-  retryCostAdmissionFromGate,
-  resolveRetryCostParams,
-} from "./retryCostAdmission.js";
+
+const temps: string[] = [];
+let jobsRoot = "";
+
+vi.mock("@/lib/paths", () => ({
+  jobsDir: () => jobsRoot,
+  resultsDir: () => path.join(jobsRoot, "..", "results"),
+  skillsDirs: () => [],
+  skillsDir: () => "",
+  importedSkillsDir: () => "",
+  repoRoot: () => path.join(jobsRoot, ".."),
+}));
+
+afterEach(() => {
+  for (const d of temps.splice(0)) {
+    fs.rmSync(d, { recursive: true, force: true });
+  }
+  vi.resetModules();
+});
+
+beforeEach(() => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-cost-"));
+  temps.push(root);
+  jobsRoot = path.join(root, "jobs");
+  fs.mkdirSync(jobsRoot, { recursive: true });
+});
 
 describe("formatRetryCostBlockedReason / retryCostAdmissionFromGate", () => {
-  it("maps deny gate to New run cost-cap copy", () => {
+  it("maps deny gate to New run cost-cap copy", async () => {
+    const { retryCostAdmissionFromGate } = await import(
+      "./retryCostAdmission.js"
+    );
     const out = retryCostAdmissionFromGate({
       ok: false,
       status: 400,
@@ -23,7 +52,10 @@ describe("formatRetryCostBlockedReason / retryCostAdmissionFromGate", () => {
     expect(out.reason).toMatch(/COST_CAP_USD/);
   });
 
-  it("maps ok gate to not blocked", () => {
+  it("maps ok gate to not blocked", async () => {
+    const { retryCostAdmissionFromGate } = await import(
+      "./retryCostAdmission.js"
+    );
     expect(retryCostAdmissionFromGate({ ok: true })).toEqual({
       blocked: false,
       reason: null,
@@ -32,7 +64,8 @@ describe("formatRetryCostBlockedReason / retryCostAdmissionFromGate", () => {
 });
 
 describe("resolveRetryCostParams", () => {
-  it("prefers result skill/mode/repeats", () => {
+  it("uses result when no terminal job", async () => {
+    const { resolveRetryCostParams } = await import("./retryCostAdmission.js");
     expect(
       resolveRetryCostParams({
         runId: "no-such-run-for-cost-params",
@@ -49,7 +82,8 @@ describe("resolveRetryCostParams", () => {
     });
   });
 
-  it("falls back to status.repeats when result omits repeats", () => {
+  it("falls back to status.repeats when result omits repeats and no job", async () => {
+    const { resolveRetryCostParams } = await import("./retryCostAdmission.js");
     expect(
       resolveRetryCostParams({
         runId: "no-such-run-for-cost-params",
@@ -66,7 +100,8 @@ describe("resolveRetryCostParams", () => {
     });
   });
 
-  it("returns null when mode is not enqueueable and no job file", () => {
+  it("returns null when mode is not enqueueable and no job file", async () => {
+    const { resolveRetryCostParams } = await import("./retryCostAdmission.js");
     expect(
       resolveRetryCostParams({
         runId: "no-such-run-for-cost-params",
@@ -77,5 +112,56 @@ describe("resolveRetryCostParams", () => {
         },
       }),
     ).toBeNull();
+  });
+
+  it("prefers terminal job over result (same as POST /retry)", async () => {
+    const { resolveRetryCostParams } = await import("./retryCostAdmission.js");
+    const runId = "run_cost_jobfirst";
+    writeJsonFile(path.join(jobsRoot, `${runId}.failed.json`), {
+      runId,
+      evalSkillId: "skill_from_job",
+      mode: "official",
+      repeats: 5,
+      role: "candidate",
+      createdAt: new Date().toISOString(),
+    });
+    expect(
+      resolveRetryCostParams({
+        runId,
+        result: {
+          evalSkillId: "skill_from_result",
+          mode: "dry-run",
+          repeats: 1,
+        },
+      }),
+    ).toEqual({
+      evalSkillId: "skill_from_job",
+      mode: "official",
+      repeats: 5,
+    });
+  });
+
+  it("merges job mode/repeats with result skill when job skill missing (inject)", async () => {
+    const { resolveRetryCostParams } = await import("./retryCostAdmission.js");
+    expect(
+      resolveRetryCostParams({
+        runId: "injected",
+        job: {
+          runId: "injected",
+          mode: "official",
+          repeats: 2,
+          createdAt: new Date().toISOString(),
+        } as import("@skillevalator/core").JobManifest,
+        result: {
+          evalSkillId: "skill_from_result",
+          mode: "dry-run",
+          repeats: 9,
+        },
+      }),
+    ).toEqual({
+      evalSkillId: "skill_from_result",
+      mode: "official",
+      repeats: 2,
+    });
   });
 });

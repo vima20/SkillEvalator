@@ -307,7 +307,8 @@ export function runDetailRetryAdmissionForRun(opts: {
     result: opts.result,
     status: opts.status,
   });
-  const mode = costParams?.mode ?? opts.result?.mode ?? null;
+  // Same job → result mode as POST /retry (do not prefer result over job).
+  const mode = costParams?.mode ?? null;
   const jobRaw = loadFailedJobRaw(opts.runId);
   // Same terminal evaluationId scan as POST /retry (not live-job display id).
   const evaluationId = resolveRetryEvaluationId({

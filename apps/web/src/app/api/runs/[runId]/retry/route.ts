@@ -27,6 +27,7 @@ import {
 } from "@/lib/evaluations";
 import { healOrphanStatuses, isPidAlive } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
+import { resolveRetryCostParams } from "@/lib/retryCostAdmission";
 import { resolveRetryRole, roleFromJobRaw } from "@/lib/retryRole";
 import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
@@ -210,16 +211,15 @@ export async function POST(
         );
       }
     }
-    if (
-      evalSkillId &&
-      (mode === "dry-run" || mode === "official") &&
-      typeof repeats === "number" &&
-      Number.isFinite(repeats)
-    ) {
+    const costParams = resolveRetryCostParams({
+      runId,
+      result,
+      status,
+      job: job ?? null,
+    });
+    if (costParams) {
       const costGate = checkEnqueueCostCap({
-        evalSkillId,
-        mode,
-        repeats,
+        ...costParams,
         costCapUsd: preflight.costCapUsd,
       });
       if (!costGate.ok) {
