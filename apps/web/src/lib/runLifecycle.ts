@@ -88,6 +88,14 @@ export const RETRY_STILL_FINISHING_ERROR =
 export const WIND_DOWN_ORPHAN_MS = 90_000;
 
 /**
+ * Client-safe GET path for healRunForFinalize (orphan budget_stop → failed).
+ * Keep here — do not import from healOrphans in client components (core/Node).
+ */
+export function runDetailFinalizeOrphansPath(runId: string): string {
+  return `/api/runs/${encodeURIComponent(runId)}?finalizeOrphans=1`;
+}
+
+/**
  * Orphan wind-down: status budget_stop but result.json not written yet
  * (even when .running.json was healed away). POST /retry and UI must agree.
  */

@@ -59,8 +59,3 @@ export function healRunForRead(runId: string): void {
 export function healRunForFinalize(runId: string): void {
   healRunOrphansFs(jobsDir(), resultsDir(), runId, isPidAlive);
 }
-
-/** GET path that stamps orphan active status after WIND_DOWN_ORPHAN_MS. */
-export function runDetailFinalizeOrphansPath(runId: string): string {
-  return `/api/runs/${encodeURIComponent(runId)}?finalizeOrphans=1`;
-}

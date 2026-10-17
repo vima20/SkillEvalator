@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
-import { runDetailFinalizeOrphansPath } from "@/lib/healOrphans";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
-import { WIND_DOWN_ORPHAN_MS } from "@/lib/runLifecycle";
+import {
+  runDetailFinalizeOrphansPath,
+  WIND_DOWN_ORPHAN_MS,
+} from "@/lib/runLifecycle";
 import { benefitPendingState } from "@/lib/status";
 
 /** Auto-refresh while waiting for result.json / benefit report. */

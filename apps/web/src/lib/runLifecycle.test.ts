@@ -76,6 +76,15 @@ describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
   });
 });
 
+describe("runDetailFinalizeOrphansPath", () => {
+  it("builds client-safe finalize query path", async () => {
+    const { runDetailFinalizeOrphansPath } = await import("./runLifecycle.js");
+    expect(runDetailFinalizeOrphansPath("run_a/b")).toBe(
+      "/api/runs/run_a%2Fb?finalizeOrphans=1",
+    );
+  });
+});
+
 describe("retryGate", () => {
   it("blocks while a live job file is finishing", () => {
     const g = retryGate({

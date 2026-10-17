@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
-import { runDetailFinalizeOrphansPath } from "@/lib/healOrphans";
-import { WIND_DOWN_ORPHAN_MS } from "@/lib/runLifecycle";
+import {
+  runDetailFinalizeOrphansPath,
+  WIND_DOWN_ORPHAN_MS,
+} from "@/lib/runLifecycle";
 
 export function RunsAutoRefresh({
   hasActive,

@@ -12,7 +12,6 @@ import {
   formatCaptureGradePolicy,
 } from "@/lib/captureEnvEvidence";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
-import { runDetailFinalizeOrphansPath } from "@/lib/healOrphans";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
@@ -21,6 +20,7 @@ import {
   parseAlsoCancelledRunId,
   RETRY_STILL_FINISHING_ERROR,
   runDetailCanCancel,
+  runDetailFinalizeOrphansPath,
   WIND_DOWN_ORPHAN_MS,
 } from "@/lib/runLifecycle";
 import { statusBadgeClass } from "@/lib/status";
