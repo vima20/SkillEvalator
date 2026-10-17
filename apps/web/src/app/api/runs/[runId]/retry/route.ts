@@ -38,8 +38,10 @@ import {
 } from "@/lib/runDetailRetryAdmission";
 import {
   isRetryBudgetStopping,
+  RETRY_CONFIG_MISSING_ERROR,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_EVALUATION_META_REVERT_FAILED,
+  RETRY_NOT_FOUND_ERROR,
   RETRY_PREFLIGHT_BLOCKED,
   RETRY_STILL_FINISHING_ERROR,
   retryGate,
@@ -66,7 +68,13 @@ export async function POST(
     healRunForRead(runId);
     const status = loadRunStatus(root, runId);
     if (!status) {
-      return NextResponse.json({ error: "not found" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: RETRY_NOT_FOUND_ERROR,
+          errorCode: "retry_not_found",
+        },
+        { status: 404 },
+      );
     }
     const current = status.status ?? "unknown";
     const result = loadRunResult(root, runId);
@@ -101,7 +109,7 @@ export async function POST(
       return NextResponse.json(
         {
           error: gate.error,
-          ...(gate.errorCode ? { errorCode: gate.errorCode } : {}),
+          errorCode: gate.errorCode,
           ...(liveJob ? { status: current } : {}),
         },
         { status: 409 },
@@ -140,8 +148,8 @@ export async function POST(
     if (!evalSkillId || !mode) {
       return NextResponse.json(
         {
-          error:
-            "cannot retry — original job config missing (no failed job file or result)",
+          error: RETRY_CONFIG_MISSING_ERROR,
+          errorCode: "retry_config_missing",
         },
         { status: 409 },
       );

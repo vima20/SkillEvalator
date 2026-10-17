@@ -112,15 +112,35 @@ export function runDetailCanCancel(opts: {
   return gate.allow && !gate.alreadyCancelled;
 }
 
+export type RetryGateErrorCode =
+  | "retry_still_finishing"
+  | "retry_invalid_status"
+  | "retry_non_retryable";
+
 export type RetryGate =
   | { allow: true }
-  | { allow: false; error: string; errorCode?: "retry_still_finishing" };
+  | { allow: false; error: string; errorCode: RetryGateErrorCode };
 
 const RETRYABLE = new Set(["failed", "cancelled", "budget_stop"]);
 
 /** Same copy for UI admission, GET retryAdmission, and POST /retry. */
 export const RETRY_STILL_FINISHING_ERROR =
   "run still finishing — wait for result.json (or cancel) before retry";
+
+/** POST /retry 404 — same literal as Cancel not-found. */
+export const RETRY_NOT_FOUND_ERROR = "not found";
+
+/**
+ * Fail-closed when POST omits status detail (`cannot retry status ${current}`).
+ */
+export const RETRY_INVALID_STATUS_ERROR = "cannot retry status";
+
+/** POST /retry + admission when evalSkillId/mode cannot be recovered. */
+export const RETRY_CONFIG_MISSING_ERROR =
+  "cannot retry — original job config missing (no failed job file or result)";
+
+/** Gate deny when billing/account non-retryable (POST prefers status.errorCode). */
+export const RETRY_NON_RETRYABLE_ERROR = "Cannot retry non-retryable error";
 
 /**
  * Same copy as packages/core RETRY_ENQUEUE_LOCK_BUSY_ERROR (client-safe;
@@ -351,6 +371,18 @@ export function resolveRetryPostError(
   if (body.errorCode === "retry_still_finishing") {
     return RETRY_STILL_FINISHING_ERROR;
   }
+  if (body.errorCode === "retry_not_found") {
+    return body.error ?? RETRY_NOT_FOUND_ERROR;
+  }
+  if (body.errorCode === "retry_invalid_status") {
+    return body.error ?? RETRY_INVALID_STATUS_ERROR;
+  }
+  if (body.errorCode === "retry_config_missing") {
+    return body.error ?? RETRY_CONFIG_MISSING_ERROR;
+  }
+  if (body.errorCode === "retry_non_retryable") {
+    return body.error ?? RETRY_NON_RETRYABLE_ERROR;
+  }
   if (body.errorCode === "retry_snapshot_candidate_blocked") {
     return RETRY_SNAPSHOT_CANDIDATE_BLOCKED;
   }
@@ -460,7 +492,11 @@ export function retryGate(opts: {
 }): RetryGate {
   const current = opts.status ?? "unknown";
   if (!RETRYABLE.has(current)) {
-    return { allow: false, error: `cannot retry status ${current}` };
+    return {
+      allow: false,
+      error: `cannot retry status ${current}`,
+      errorCode: "retry_invalid_status",
+    };
   }
   if (opts.hasLiveJob) {
     return {
@@ -472,7 +508,8 @@ export function retryGate(opts: {
   if (opts.nonRetryableError) {
     return {
       allow: false,
-      error: "Cannot retry non-retryable error",
+      error: RETRY_NON_RETRYABLE_ERROR,
+      errorCode: "retry_non_retryable",
     };
   }
   return { allow: true };

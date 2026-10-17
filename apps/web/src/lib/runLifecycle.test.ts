@@ -19,13 +19,17 @@ import {
   OFFICIAL_ADMISSION_SMOKE_FORBIDDEN,
   OFFICIAL_ADMISSION_WEB_AUTH_REQUIRED,
   RETRY_COMPARISON_LINK_FAILED,
+  RETRY_CONFIG_MISSING_ERROR,
   RETRY_ENQUEUE_JOB_LOCK_BUSY,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_ENQUEUE_QUEUE_FULL,
   RETRY_ENQUEUE_SKILL_NOT_READY,
   RETRY_EVALUATION_META_REVERT_FAILED,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
+  RETRY_INVALID_STATUS_ERROR,
+  RETRY_NON_RETRYABLE_ERROR,
   RETRY_NON_RETRYABLE_ERROR_CODES,
+  RETRY_NOT_FOUND_ERROR,
   RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH,
   RETRY_OFFICIAL_EVALUATION_META_MISSING,
   RETRY_OFFICIAL_EVALUATION_ROLE_SLOT_MISMATCH,
@@ -207,6 +211,30 @@ describe("resolveRetryPostError", () => {
         formatCost,
       ),
     ).toBe(RETRY_STILL_FINISHING_ERROR);
+  });
+
+  it("fail-closes early Retry gates without body.error", () => {
+    expect(
+      resolveRetryPostError({ errorCode: "retry_not_found" }, formatCost),
+    ).toBe(RETRY_NOT_FOUND_ERROR);
+    expect(
+      resolveRetryPostError({ errorCode: "retry_invalid_status" }, formatCost),
+    ).toBe(RETRY_INVALID_STATUS_ERROR);
+    expect(
+      resolveRetryPostError(
+        {
+          errorCode: "retry_invalid_status",
+          error: "cannot retry status running",
+        },
+        formatCost,
+      ),
+    ).toBe("cannot retry status running");
+    expect(
+      resolveRetryPostError({ errorCode: "retry_config_missing" }, formatCost),
+    ).toBe(RETRY_CONFIG_MISSING_ERROR);
+    expect(
+      resolveRetryPostError({ errorCode: "retry_non_retryable" }, formatCost),
+    ).toBe(RETRY_NON_RETRYABLE_ERROR);
   });
 
   it("fail-closes enqueueRun errorCodes (distinct from retry_enqueue_lock_busy)", () => {
@@ -636,16 +664,22 @@ describe("retryGate", () => {
   });
 
   it("rejects running and non-retryable errors", () => {
-    expect(retryGate({ status: "running", hasLiveJob: false }).allow).toBe(
-      false,
-    );
-    expect(
-      retryGate({
-        status: "failed",
-        hasLiveJob: false,
-        nonRetryableError: true,
-      }).allow,
-    ).toBe(false);
+    const running = retryGate({ status: "running", hasLiveJob: false });
+    expect(running.allow).toBe(false);
+    if (!running.allow) {
+      expect(running.errorCode).toBe("retry_invalid_status");
+      expect(running.error).toBe("cannot retry status running");
+    }
+    const nonRetry = retryGate({
+      status: "failed",
+      hasLiveJob: false,
+      nonRetryableError: true,
+    });
+    expect(nonRetry.allow).toBe(false);
+    if (!nonRetry.allow) {
+      expect(nonRetry.errorCode).toBe("retry_non_retryable");
+      expect(nonRetry.error).toBe(RETRY_NON_RETRYABLE_ERROR);
+    }
   });
 });
 

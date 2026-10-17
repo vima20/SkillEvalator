@@ -312,6 +312,11 @@ describe("POST /retry shares admission gate helpers", () => {
     expect(src).toMatch(/retryOfficialPilotBlockedReason/);
     expect(src).toMatch(/healRunForRead/);
     expect(src).toMatch(/queued\.errorCode/);
+    expect(src).toMatch(/retry_not_found/);
+    expect(src).toMatch(/RETRY_NOT_FOUND_ERROR/);
+    expect(src).toMatch(/retry_config_missing/);
+    expect(src).toMatch(/RETRY_CONFIG_MISSING_ERROR/);
+    expect(src).toMatch(/errorCode: gate\.errorCode/);
     expect(src).not.toMatch(/healRunOrphansFs/);
     expect(src).not.toMatch(/function loadFailedJob/);
   });

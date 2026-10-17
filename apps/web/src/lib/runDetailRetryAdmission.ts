@@ -16,6 +16,7 @@ import { collectPilotBlockers } from "@/lib/pilotReady";
 import { resolveRetryEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isRetryBudgetStopping,
+  RETRY_CONFIG_MISSING_ERROR,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_OFFICIAL_EVALUATION_LEG_MISMATCH,
   RETRY_OFFICIAL_EVALUATION_META_MISSING,
@@ -176,8 +177,7 @@ export function computeRunDetailRetryAdmission(opts: {
   if (mode !== "dry-run" && mode !== "official") {
     return {
       canRetry: false,
-      blockedReason:
-        "cannot retry — original job config missing (no failed job file or result)",
+      blockedReason: RETRY_CONFIG_MISSING_ERROR,
     };
   }
 
