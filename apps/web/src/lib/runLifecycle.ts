@@ -133,6 +133,13 @@ export const RETRY_ENQUEUE_LOCK_BUSY_ERROR =
 export const RETRY_EVALUATION_META_REVERT_FAILED =
   "enqueue failed and Comparison tip revert failed — repair the pair shortly";
 
+/**
+ * Fail-closed default when Comparison tip link fails (POST may still send a
+ * more specific error: before enqueue vs after enqueue abort).
+ */
+export const RETRY_COMPARISON_LINK_FAILED =
+  "Comparison link update failed — try again shortly";
+
 /** Pair-meta / official evaluation.json gates (same as retryPairMetaAdmission). */
 export const RETRY_OFFICIAL_EVALUATION_META_MISSING =
   "official retry requires paired evaluation.json on disk (baseline↔candidate)";
@@ -259,6 +266,9 @@ export function resolveRetryPostError(
   }
   if (body.errorCode === "retry_snapshot_baseline_pin_missing") {
     return RETRY_SNAPSHOT_BASELINE_PIN_MISSING;
+  }
+  if (body.errorCode === "retry_comparison_link_failed") {
+    return body.error ?? RETRY_COMPARISON_LINK_FAILED;
   }
   const pairMeta = retryPairMetaBlockedReason(body.errorCode, body.error);
   if (pairMeta) return pairMeta;

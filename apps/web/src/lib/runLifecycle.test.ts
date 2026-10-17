@@ -8,6 +8,7 @@ import {
   parseAlsoCancelledRunId,
   isRetryBillingBlocked,
   resolveCancelPostError,
+  RETRY_COMPARISON_LINK_FAILED,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_EVALUATION_META_REVERT_FAILED,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
@@ -206,6 +207,24 @@ describe("resolveRetryPostError", () => {
         formatCost,
       ),
     ).toBe(RETRY_SNAPSHOT_BASELINE_PIN_MISSING);
+  });
+
+  it("fail-closes retry_comparison_link_failed without body.error", () => {
+    expect(
+      resolveRetryPostError(
+        { errorCode: "retry_comparison_link_failed" },
+        formatCost,
+      ),
+    ).toBe(RETRY_COMPARISON_LINK_FAILED);
+    expect(
+      resolveRetryPostError(
+        {
+          errorCode: "retry_comparison_link_failed",
+          error: "Comparison link update failed before enqueue — try again shortly",
+        },
+        formatCost,
+      ),
+    ).toMatch(/before enqueue/);
   });
 
   it("fail-closes evaluation meta revert and pair-meta codes", () => {

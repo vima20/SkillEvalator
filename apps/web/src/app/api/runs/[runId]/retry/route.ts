@@ -280,6 +280,7 @@ export async function POST(
             ok: false,
             error:
               "Comparison link update failed — retry child was cancelled; try again shortly",
+            errorCode: "retry_comparison_link_failed",
             runId: opts.newRunId,
             fromRunId: runId,
             reused: opts.reused,
@@ -362,6 +363,7 @@ export async function POST(
               ok: false,
               error:
                 "Comparison link update failed before enqueue — try again shortly",
+              errorCode: "retry_comparison_link_failed",
               fromRunId: runId,
               evaluationId,
               evaluationMetaUpdated: false,
