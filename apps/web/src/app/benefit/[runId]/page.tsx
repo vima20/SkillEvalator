@@ -11,6 +11,7 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
+import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import {
@@ -119,7 +120,9 @@ export default async function BenefitReportPage({
     candidateProduceAttested,
   });
   const exportAllowed = exportGate.ok;
-  const exportBlockReason = exportGate.ok ? null : exportGate.error;
+  const exportBlockReason = exportGate.ok
+    ? null
+    : exportGateBlockMessage(exportGate);
   const supersededTip =
     tipCandidateRunId && tipCandidateRunId !== runId
       ? tipCandidateRunId

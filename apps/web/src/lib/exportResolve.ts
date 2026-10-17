@@ -86,6 +86,28 @@ export function resolveExportGetError(
   return fromBody || statusFallback;
 }
 
+/**
+ * SSR / UI lock hint from a denied export gate — same map as downloadExport
+ * (prefer gate.error, fail-closed on errorCode alone).
+ */
+export function exportGateBlockMessage(gate: {
+  error?: string;
+  errorCode?: string;
+}): string {
+  return resolveExportGetError(
+    { error: gate.error, errorCode: gate.errorCode },
+    "Adoption export locked",
+  );
+}
+
+/** Run-detail CSV span when block reason is missing (should be rare). */
+export const EXPORT_RUN_CSV_LOCKED_FALLBACK =
+  "CSV export locked (official + Comparison PASS/FAIL)";
+
+/** BenefitActions when exportBlockReason is empty. */
+export const EXPORT_BENEFIT_LOCKED_FALLBACK =
+  "Adoption export locked until official Comparison is decisive (USE needs PASS; DO NOT USE needs FAIL). API returns 409 otherwise.";
+
 /** Known adoption export errorCodes (for tests / source locks). */
 export function exportFailClosedErrorCodes(): string[] {
   return Object.keys(EXPORT_FAIL_CLOSED).sort();

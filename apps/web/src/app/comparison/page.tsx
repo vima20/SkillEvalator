@@ -13,6 +13,7 @@ import {
   officialComparisonExportGate,
 } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
+import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
@@ -114,7 +115,9 @@ export default async function ComparisonListPage({
       pairBlocked,
       downloadsOk,
       benefitLockedReason:
-        downloadGate && !downloadGate.ok ? downloadGate.error : null,
+        downloadGate && !downloadGate.ok
+          ? exportGateBlockMessage(downloadGate)
+          : null,
       noise: isPilotNoiseEvaluation({
         smoke: e.smoke,
         displayMode,

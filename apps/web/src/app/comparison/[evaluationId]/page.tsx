@@ -23,6 +23,7 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import {
@@ -155,6 +156,9 @@ export default async function ComparisonDetailPage({
     pairEvidence,
   );
   const showOfficialDownloads = downloadGate.ok;
+  const downloadBlockReason = downloadGate.ok
+    ? null
+    : exportGateBlockMessage(downloadGate);
   return (
     <div>
       <header className="page-header page-header-row">
@@ -203,7 +207,7 @@ export default async function ComparisonDetailPage({
               className="btn btn-ghost"
               href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
               title={
-                downloadGate.error ||
+                downloadBlockReason ||
                 (pairBlocked
                   ? "Pair evidence blocked (sibling smoke / unattested) — not adoption"
                   : "Benefit handoff locked until official Comparison PASS/FAIL")
@@ -236,9 +240,9 @@ export default async function ComparisonDetailPage({
             <p
               className="hint"
               style={{ margin: 0, maxWidth: "22rem" }}
-              title={downloadGate.error}
+              title={downloadBlockReason ?? undefined}
             >
-              {downloadGate.error}
+              {downloadBlockReason}
             </p>
           )}
         </div>

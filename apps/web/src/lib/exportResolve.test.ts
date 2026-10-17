@@ -5,6 +5,7 @@ import {
   EXPORT_RESULT_NOT_FOUND,
   EXPORT_RESULT_NOT_READY,
   exportFailClosedErrorCodes,
+  exportGateBlockMessage,
   resolveExportGetError,
 } from "./exportResolve.js";
 
@@ -82,6 +83,52 @@ describe("resolveExportGetError", () => {
     expect(codes).toContain("comparison_export_not_attested");
     expect(codes).toContain("run_csv_not_attested");
     expect(codes).toContain("export_result_not_ready");
+  });
+
+  it("exportGateBlockMessage matches download fail-closed path", () => {
+    expect(
+      exportGateBlockMessage({
+        errorCode: "benefit_export_comparison_pass_required",
+      }),
+    ).toBe(
+      resolveExportGetError(
+        { errorCode: "benefit_export_comparison_pass_required" },
+        "Adoption export locked",
+      ),
+    );
+    expect(
+      exportGateBlockMessage({
+        errorCode: "run_csv_pair_required",
+        error: "run CSV export requires paired evaluationId (baseline↔candidate)",
+      }),
+    ).toMatch(/paired evaluationId/);
+  });
+
+  it("SSR surfaces use exportGateBlockMessage", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const cwd = process.cwd();
+    for (const rel of [
+      "src/lib/runCsvExportAllowed.ts",
+      "src/app/benefit/[runId]/page.tsx",
+      "src/app/comparison/[evaluationId]/page.tsx",
+      "src/app/comparison/page.tsx",
+    ]) {
+      const src = fs.readFileSync(path.join(cwd, rel), "utf8");
+      expect(src).toMatch(/exportGateBlockMessage/);
+    }
+    expect(
+      fs.readFileSync(
+        path.join(cwd, "src/app/benefit/[runId]/BenefitActions.tsx"),
+        "utf8",
+      ),
+    ).toMatch(/EXPORT_BENEFIT_LOCKED_FALLBACK/);
+    expect(
+      fs.readFileSync(
+        path.join(cwd, "src/app/runs/[runId]/RunDetailClient.tsx"),
+        "utf8",
+      ),
+    ).toMatch(/EXPORT_RUN_CSV_LOCKED_FALLBACK/);
   });
 
   it("export GET routes attach 404 errorCodes", async () => {

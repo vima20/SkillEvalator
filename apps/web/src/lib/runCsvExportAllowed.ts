@@ -4,6 +4,10 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import {
+  EXPORT_RESULT_NOT_READY,
+  exportGateBlockMessage,
+} from "@/lib/exportResolve";
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { runCsvExportGate } from "@/lib/runCsvExport";
 
@@ -52,17 +56,22 @@ export function runCsvExportAllowed(opts: {
   }).ok;
 }
 
-/** Gate error text when CSV is locked (same string as API 409). */
+/** Gate error text when CSV is locked (same string as API 409 / downloadExport). */
 export function runCsvExportBlockReason(opts: {
   runId: string;
   result: RunResult | null | undefined;
   status?: { evaluationId?: string } | null;
 }): string | null {
-  if (!opts.result) return "result not ready";
+  if (!opts.result) {
+    return exportGateBlockMessage({
+      errorCode: "export_result_not_ready",
+      error: EXPORT_RESULT_NOT_READY,
+    });
+  }
   const gate = runCsvExportGateForRun({
     runId: opts.runId,
     result: opts.result,
     status: opts.status,
   });
-  return gate.ok ? null : gate.error;
+  return gate.ok ? null : exportGateBlockMessage(gate);
 }

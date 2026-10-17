@@ -13,6 +13,7 @@ import {
 } from "@/lib/captureEnvEvidence";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
+import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
@@ -814,12 +815,10 @@ export function RunDetailClient({
                 className="hint"
                 style={{ margin: 0, alignSelf: "center", maxWidth: "28rem" }}
                 title={
-                  data.csvExportBlockReason ??
-                  "CSV locked until official paired Comparison PASS/FAIL on this meta leg"
+                  data.csvExportBlockReason ?? EXPORT_RUN_CSV_LOCKED_FALLBACK
                 }
               >
-                {data.csvExportBlockReason ??
-                  "CSV export locked (official + Comparison PASS/FAIL)"}
+                {data.csvExportBlockReason ?? EXPORT_RUN_CSV_LOCKED_FALLBACK}
               </span>
             )}
             <button

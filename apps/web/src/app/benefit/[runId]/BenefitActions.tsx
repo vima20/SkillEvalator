@@ -6,6 +6,7 @@ import {
   ExportDownloadButton,
   ExportDownloadRow,
 } from "@/components/ExportDownloadButton";
+import { EXPORT_BENEFIT_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 
 export function BenefitActions({
@@ -28,8 +29,7 @@ export function BenefitActions({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lockedHint =
-    exportBlockReason?.trim() ||
-    "Adoption export locked until official Comparison is decisive (USE needs PASS; DO NOT USE needs FAIL). API returns 409 otherwise.";
+    exportBlockReason?.trim() || EXPORT_BENEFIT_LOCKED_FALLBACK;
 
   async function copyMd() {
     setError(null);
