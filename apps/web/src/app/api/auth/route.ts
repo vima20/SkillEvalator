@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
+  AUTH_INVALID_REQUEST_ERROR,
+  AUTH_INVALID_TOKEN_ERROR,
+  AUTH_MISCONFIGURED_API_ERROR,
+} from "@/lib/authResolve";
+import {
   parseSeAuthCookie,
   resolveWebAuthConfig,
   timingSafeEqualUtf8,
@@ -20,6 +25,7 @@ export async function GET(req: Request) {
       required: true,
       ok: false,
       misconfigured: true,
+      errorCode: "auth_misconfigured",
     });
   }
   const ok = await webAuthMatches({
@@ -38,7 +44,8 @@ export async function POST(req: Request) {
   if (auth.kind === "misconfigured") {
     return NextResponse.json(
       {
-        error: "WEB_AUTH_TOKEN misconfigured (empty or whitespace only)",
+        error: AUTH_MISCONFIGURED_API_ERROR,
+        errorCode: "auth_misconfigured",
         misconfigured: true,
       },
       { status: 503 },
@@ -47,7 +54,13 @@ export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
     if (!(await timingSafeEqualUtf8(body.token.trim(), auth.token))) {
-      return NextResponse.json({ error: "invalid token" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: AUTH_INVALID_TOKEN_ERROR,
+          errorCode: "auth_invalid_token",
+        },
+        { status: 401 },
+      );
     }
     const res = NextResponse.json({ ok: true, required: true });
     res.cookies.set(COOKIE, auth.token, {
@@ -58,7 +71,13 @@ export async function POST(req: Request) {
     });
     return res;
   } catch {
-    return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: AUTH_INVALID_REQUEST_ERROR,
+        errorCode: "auth_invalid_request",
+      },
+      { status: 400 },
+    );
   }
 }
 

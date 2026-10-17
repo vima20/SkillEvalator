@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  AUTH_MISCONFIGURED_ERROR,
+  resolveAuthClientError,
+  resolveAuthPostError,
+} from "@/lib/authResolve";
 import { safeUnlockNext } from "@/lib/safeUnlockNext";
 
 type AuthProbe = {
   required?: boolean;
   ok?: boolean;
   misconfigured?: boolean;
+  errorCode?: string;
 };
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -19,13 +25,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
 
   function applyProbe(data: AuthProbe) {
-    if (data.misconfigured) {
+    if (data.misconfigured || data.errorCode === "auth_misconfigured") {
       setNeeded(true);
       setMisconfigured(true);
       setCheckFailed(false);
-      setError(
-        "WEB_AUTH_TOKEN is misconfigured (empty or whitespace only). Set a real token in .env and restart web + worker.",
-      );
+      setError(AUTH_MISCONFIGURED_ERROR);
       return;
     }
     setMisconfigured(false);
@@ -48,7 +52,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         setNeeded(true);
         setMisconfigured(false);
         setCheckFailed(true);
-        setError("Auth check failed — unlock or retry.");
+        setError(resolveAuthClientError("probe_failed"));
         return;
       }
       applyProbe((await res.json()) as AuthProbe);
@@ -56,9 +60,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       setNeeded(true);
       setMisconfigured(false);
       setCheckFailed(true);
-      setError(
-        "Could not reach auth API — check that the web server is running.",
-      );
+      setError(resolveAuthClientError("unreachable"));
     }
   }
 
@@ -70,9 +72,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       if (q.get("misconfigured") === "1") {
         setMisconfigured(true);
         setNeeded(true);
-        setError(
-          "WEB_AUTH_TOKEN is misconfigured (empty or whitespace only). Set a real token in .env and restart web + worker.",
-        );
+        setError(AUTH_MISCONFIGURED_ERROR);
       }
     }
     (async () => {
@@ -83,7 +83,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           setNeeded(true);
           setMisconfigured(false);
           setCheckFailed(true);
-          setError("Auth check failed — unlock or retry.");
+          setError(resolveAuthClientError("probe_failed"));
           return;
         }
         applyProbe((await res.json()) as AuthProbe);
@@ -92,9 +92,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           setNeeded(true);
           setMisconfigured(false);
           setCheckFailed(true);
-          setError(
-            "Could not reach auth API — check that the web server is running.",
-          );
+          setError(resolveAuthClientError("unreachable"));
         }
       } finally {
         if (!cancelled) setReady(true);
@@ -123,18 +121,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
+          errorCode?: string;
           misconfigured?: boolean;
         };
-        if (data.misconfigured) {
+        if (data.misconfigured || data.errorCode === "auth_misconfigured") {
           setMisconfigured(true);
           setNeeded(true);
           setCheckFailed(false);
-          throw new Error(
-            data.error ??
-              "WEB_AUTH_TOKEN misconfigured (empty or whitespace only)",
-          );
         }
-        throw new Error(data.error ?? "unauthorized");
+        throw new Error(resolveAuthPostError(data));
       }
       setCheckFailed(false);
       setMisconfigured(false);
