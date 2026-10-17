@@ -28,7 +28,8 @@ export function healOrphanStatuses(): void {
 
 /**
  * Dashboard / Runs / Benefit / Comparison / GET /api/runs / GET /api/preflight /
- * Settings SSR: reclaim dead .running.json + orphan queued / stale .tmp.json.
+ * Settings SSR + Settings silent poll (no ?heal=1): reclaim dead .running.json
+ * + orphan queued / stale .tmp.json.
  * Skips cleanupOrphanRunningStatusFs so orphan budget_stop stays visible
  * until per-run finalizeOrphans (list RunsAutoRefresh / detail / pending
  * after WIND_DOWN_ORPHAN_MS) or Settings Refresh / retry full heal.

@@ -79,6 +79,21 @@ describe("healOrphansForBrowse vs healOrphanStatuses", () => {
     expect(settings).toMatch(/healOrphansForBrowse/);
     expect(settings).not.toMatch(/healOrphanStatuses\s*\(/);
   });
+
+  it("documents Settings silent poll omits heal=1; Refresh keeps it", async () => {
+    const client = fs.readFileSync(
+      path.join(process.cwd(), "src/app/settings/SettingsClient.tsx"),
+      "utf8",
+    );
+    expect(client).toMatch(/silent \? "\/api\/settings"/);
+    expect(client).toMatch(/\/api\/settings\?heal=1/);
+    const route = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/settings/route.ts"),
+      "utf8",
+    );
+    expect(route).toMatch(/healOrphansForBrowse/);
+    expect(route).toMatch(/healQueue:\s*true/);
+  });
 });
 
 describe("healRunForRead vs healRunForFinalize", () => {

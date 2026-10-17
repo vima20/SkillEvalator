@@ -100,7 +100,9 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
       setError(null);
     }
     try {
-      const res = await apiFetch("/api/settings?heal=1", {
+      // Silent poll: browse heal only. Manual Refresh: ?heal=1 full heal.
+      const path = silent ? "/api/settings" : "/api/settings?heal=1";
+      const res = await apiFetch(path, {
         cache: "no-store",
         signal: ac.signal,
       });
@@ -127,7 +129,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
     s.queue.queued > 0 ||
     s.queue.running > 0 ||
     (s.queue.staleRunningRunIds?.length ?? 0) > 0;
-  /** Keep healing Ready flip (e.g. FAKE unset on another tab) without idle spin. */
+  /** Keep Ready/queue flip (e.g. FAKE unset on another tab) without idle spin. */
   const needsSettingsPoll = needsQueuePoll || !s.pilotReady;
 
   useEffect(() => {
@@ -243,7 +245,9 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           {needsSettingsPoll ? (
             <p className="hint">
               Auto-refreshing every 8s while jobs are queued/running/stale or
-              Ready is Blocked (heals orphans).
+              Ready is Blocked (reclaims dead{" "}
+              <code>.running.json</code>; full orphan heal is the Refresh
+              button).
             </p>
           ) : null}
           <dl className="settings-dl">
@@ -299,9 +303,10 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           </dl>
           <p className="hint">
             Record the git SHA with pilot archives. Queue counts are files under{" "}
-            <code>{s.paths.jobsDir}</code>. Refresh heals orphan{" "}
-            <code>.running.json</code> (dead worker claims) before re-checking
-            Ready.
+            <code>{s.paths.jobsDir}</code>. Refresh runs a full orphan heal
+            (including stuck <code>budget_stop</code> → failed) before
+            re-checking Ready; auto-poll only reclaims dead{" "}
+            <code>.running.json</code>.
           </p>
         </section>
 
