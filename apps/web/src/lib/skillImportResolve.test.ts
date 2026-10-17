@@ -114,5 +114,7 @@ describe("resolveSkillImportPostError", () => {
       "utf8",
     );
     expect(form).toMatch(/resolveSkillImportPostError/);
+    expect(form).toMatch(/resolveSkillImportPostError\(\{\}\)/);
+    expect(form).not.toMatch(/import error/);
   });
 });

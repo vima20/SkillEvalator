@@ -386,7 +386,11 @@ export function NewRunForm({
                   } catch (err) {
                     if (err instanceof UnauthorizedError) return;
                     setError(true);
-                    setMsg(err instanceof Error ? err.message : "import error");
+                    setMsg(
+                      err instanceof Error
+                        ? err.message
+                        : resolveSkillImportPostError({}),
+                    );
                   } finally {
                     setImportBusy(false);
                   }
@@ -446,7 +450,11 @@ export function NewRunForm({
                   } catch (err) {
                     if (err instanceof UnauthorizedError) return;
                     setError(true);
-                    setMsg(err instanceof Error ? err.message : "import error");
+                    setMsg(
+                      err instanceof Error
+                        ? err.message
+                        : resolveSkillImportPostError({}),
+                    );
                   } finally {
                     setImportBusy(false);
                   }

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   AUTH_MISCONFIGURED_ERROR,
+  AUTH_UNLOCK_FAILED,
   resolveAuthClientError,
   resolveAuthPostError,
 } from "@/lib/authResolve";
@@ -145,7 +146,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
         return;
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "error");
+      setError(
+        err instanceof Error ? err.message : AUTH_UNLOCK_FAILED,
+      );
     } finally {
       setBusy(false);
     }
