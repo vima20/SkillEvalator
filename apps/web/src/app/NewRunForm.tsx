@@ -246,7 +246,8 @@ export function NewRunForm({
       };
       if (!res.ok) {
         throw new Error(
-          resolveEnqueuePostError(data, formatRetryCostBlockedReason),
+          tryResolveAuthApiError(data) ??
+            resolveEnqueuePostError(data, formatRetryCostBlockedReason),
         );
       }
       if (withBaseline && data.evaluationId) {
@@ -379,7 +380,10 @@ export function NewRunForm({
                       allSkills?: SkillOption[];
                     };
                     if (!res.ok) {
-                      throw new Error(resolveSkillImportPostError(data));
+                      throw new Error(
+                        tryResolveAuthApiError(data) ??
+                          resolveSkillImportPostError(data),
+                      );
                     }
                     const next = data.allSkills ?? skills;
                     setSkills(next);
@@ -442,7 +446,10 @@ export function NewRunForm({
                       allSkills?: SkillOption[];
                     };
                     if (!res.ok) {
-                      throw new Error(resolveSkillImportPostError(data));
+                      throw new Error(
+                        tryResolveAuthApiError(data) ??
+                          resolveSkillImportPostError(data),
+                      );
                     }
                     const next = data.allSkills ?? skills;
                     setSkills(next);

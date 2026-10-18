@@ -346,7 +346,8 @@ export function RunDetailClient({
       };
       if (!res.ok || !body.runId) {
         setRetryError(
-          resolveRetryPostError(body, formatRetryCostBlockedReason),
+          tryResolveAuthApiError(body) ??
+            resolveRetryPostError(body, formatRetryCostBlockedReason),
         );
         setRetrying(false);
         return;
@@ -384,7 +385,9 @@ export function RunDetailClient({
         alsoCancelled?: unknown;
       };
       if (!res.ok) {
-        setCancelError(resolveCancelPostError(body));
+        setCancelError(
+          tryResolveAuthApiError(body) ?? resolveCancelPostError(body),
+        );
         setCancelling(false);
         return;
       }

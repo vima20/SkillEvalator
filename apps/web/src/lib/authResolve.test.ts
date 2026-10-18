@@ -156,9 +156,31 @@ describe("auth source locks", () => {
       "src/app/settings/SettingsClient.tsx",
       "src/app/runs/[runId]/RunDetailClient.tsx",
       "src/lib/exportDownload.ts",
+      "src/components/ClearOldRuns.tsx",
+      "src/components/ClearSmokeNoise.tsx",
     ]) {
       const src = fs.readFileSync(path.join(cwd, rel), "utf8");
       expect(src).toMatch(/tryResolveAuthApiError/);
     }
+    const runDetail = fs.readFileSync(
+      path.join(cwd, "src/app/runs/[runId]/RunDetailClient.tsx"),
+      "utf8",
+    );
+    expect(runDetail).toMatch(
+      /tryResolveAuthApiError\(body\) \?\?\s*resolveRetryPostError/,
+    );
+    expect(runDetail).toMatch(
+      /tryResolveAuthApiError\(body\) \?\?\s*resolveCancelPostError/,
+    );
+    const form = fs.readFileSync(
+      path.join(cwd, "src/app/NewRunForm.tsx"),
+      "utf8",
+    );
+    expect(form).toMatch(
+      /tryResolveAuthApiError\(data\) \?\?\s*resolveEnqueuePostError/,
+    );
+    expect(form).toMatch(
+      /tryResolveAuthApiError\(data\) \?\?\s*resolveSkillImportPostError/,
+    );
   });
 });

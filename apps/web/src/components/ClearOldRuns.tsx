@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
+import { tryResolveAuthApiError } from "@/lib/authResolve";
 import { resolveCleanupPostError } from "@/lib/cleanupResolve";
 
 export function ClearOldRuns() {
@@ -35,7 +36,11 @@ export function ClearOldRuns() {
         removedCount?: number;
         skippedCount?: number;
       };
-      if (!res.ok) throw new Error(resolveCleanupPostError(data));
+      if (!res.ok) {
+        throw new Error(
+          tryResolveAuthApiError(data) ?? resolveCleanupPostError(data),
+        );
+      }
       const skipped = data.skippedCount ?? 0;
       setMsg(
         skipped > 0
