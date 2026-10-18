@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RETRY_ENQUEUE_LOCK_BUSY_ERROR as CORE_RETRY_ENQUEUE_LOCK_BUSY_ERROR } from "@skillevalator/core";
 import {
   cancelGate,
   CANCEL_FAILED_ERROR,
@@ -150,10 +151,9 @@ describe("RETRY_INSUFFICIENT_QUOTA_BLOCKED", () => {
 });
 
 describe("RETRY_ENQUEUE_LOCK_BUSY_ERROR", () => {
-  it("matches core retryDedup copy", async () => {
-    const core = await import("@skillevalator/core");
+  it("matches core retryDedup copy", () => {
     expect(RETRY_ENQUEUE_LOCK_BUSY_ERROR).toBe(
-      core.RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+      CORE_RETRY_ENQUEUE_LOCK_BUSY_ERROR,
     );
   });
 });

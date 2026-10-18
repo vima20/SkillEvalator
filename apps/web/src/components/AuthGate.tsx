@@ -2,6 +2,12 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  AUTH_GATE_MISCONFIGURED_BODY,
+  AUTH_GATE_MISCONFIGURED_TITLE,
+  AUTH_GATE_PROBE_FAILED_BODY,
+  AUTH_GATE_PROBE_FAILED_TITLE,
+  AUTH_GATE_UNLOCK_BODY,
+  AUTH_GATE_UNLOCK_TITLE,
   AUTH_MISCONFIGURED_ERROR,
   resolveAuthClientError,
   resolveAuthPostError,
@@ -185,15 +191,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (needed) {
     const title = misconfigured
-      ? "WEB_AUTH_TOKEN misconfigured"
+      ? AUTH_GATE_MISCONFIGURED_TITLE
       : checkFailed
-        ? "Access check failed"
-        : "Unlock SkillEvalator";
+        ? AUTH_GATE_PROBE_FAILED_TITLE
+        : AUTH_GATE_UNLOCK_TITLE;
     const body = misconfigured
-      ? "The access token env var is empty or whitespace-only. Edit root .env, set WEB_AUTH_TOKEN to a real secret (or remove it for open local use), then restart web + worker."
+      ? AUTH_GATE_MISCONFIGURED_BODY
       : checkFailed
-        ? "The browser could not confirm API access. Retry the check, or enter the access token from your admin."
-        : "Enter the access token provided by your admin to unlock this local evaluator.";
+        ? AUTH_GATE_PROBE_FAILED_BODY
+        : AUTH_GATE_UNLOCK_BODY;
 
     return (
       <main id="main-content" className="main" tabIndex={-1}>

@@ -37,6 +37,17 @@ export const AUTH_UNREACHABLE_ERROR =
   "Could not reach auth API — check that the web server is running.";
 export const AUTH_UNLOCK_FAILED = "Unlock failed";
 
+/** AuthGate card titles / supporting copy (error alert uses AUTH_*_ERROR). */
+export const AUTH_GATE_MISCONFIGURED_TITLE = "WEB_AUTH_TOKEN misconfigured";
+export const AUTH_GATE_PROBE_FAILED_TITLE = "Access check failed";
+export const AUTH_GATE_UNLOCK_TITLE = "Unlock SkillEvalator";
+export const AUTH_GATE_MISCONFIGURED_BODY =
+  "The access token env var is empty or whitespace-only. Edit root .env, set WEB_AUTH_TOKEN to a real secret (or remove it for open local use), then restart web + worker.";
+export const AUTH_GATE_PROBE_FAILED_BODY =
+  "The browser could not confirm API access. Retry the check, or enter the access token from your admin.";
+export const AUTH_GATE_UNLOCK_BODY =
+  "Enter the access token provided by your admin to unlock this local evaluator.";
+
 /** API / middleware codes (not client-only probe/unreachable). */
 const AUTH_API_CODES = new Set<string>([
   "auth_misconfigured",
