@@ -18,7 +18,7 @@ import {
   isPilotFocusParam,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
-import { statusBadgeClass } from "@/lib/status";
+import { runIsActive, statusBadgeClass } from "@/lib/status";
 import { BenefitActions } from "./BenefitActions";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +72,7 @@ export default async function BenefitReportPage({
   }
 
   if (!result) {
+    const waiting = runIsActive(runStatus, false);
     return (
       <div>
         <header className="page-header">
@@ -82,7 +83,7 @@ export default async function BenefitReportPage({
             <span aria-hidden="true"> / </span>
             {runId}
           </p>
-          <h1>Report not ready</h1>
+          <h1>{waiting ? "Report not ready" : "Benefit unavailable"}</h1>
         </header>
         <BenefitPending runId={runId} status={runStatus} />
       </div>

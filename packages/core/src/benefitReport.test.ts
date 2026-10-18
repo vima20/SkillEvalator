@@ -341,6 +341,38 @@ describe("benefitReport", () => {
     expect(inc.rating.stars).toBe(4);
   });
 
+  it("applyPairedComparisonGate distinguishes waiting vs unavailable without Comparison", () => {
+    const result = sample({
+      mode: "official",
+      score: 1,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      evaluationId: "eval_test",
+    });
+    const verdict = decideSkillUse(result);
+    const rating = rateSkill(result);
+
+    const waiting = applyPairedComparisonGate({
+      result,
+      verdict,
+      rating,
+      comparison: null,
+      pairPending: "waiting",
+    });
+    expect(waiting.verdict.headline).toMatch(/waiting for Comparison/i);
+
+    const unavailable = applyPairedComparisonGate({
+      result,
+      verdict,
+      rating,
+      comparison: null,
+      pairPending: "unavailable",
+    });
+    expect(unavailable.verdict.headline).toMatch(/Comparison unavailable/i);
+    expect(unavailable.verdict.rationale).toMatch(/finished without/i);
+    expect(unavailable.rating.summary).toMatch(/unavailable/i);
+  });
+
   it("does not inherit tip Comparison PASS on a superseded candidate runId", () => {
     const superseded = sample({
       runId: "run_old_cand",

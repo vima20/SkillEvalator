@@ -90,7 +90,7 @@ function BenefitPendingInner({
           {orphanStuck
             ? "Cost-cap wind-down stuck"
             : unavailable
-              ? "No Benefit Report"
+              ? "Benefit unavailable"
               : windDown
                 ? "Writing final result"
                 : "No result yet"}

@@ -421,11 +421,20 @@ function withUpdatedRecommendation(
  * Fail-closed: official tip-candidate USE / DO NOT USE / 5★ follow Comparison.
  * Score-only decisive verdicts without a paired tip Comparison are false signals.
  */
+/** When Comparison is missing: still waiting on a tip, or tips settled without scorecard. */
+export type BenefitPairPending = "waiting" | "unavailable";
+
 export function applyPairedComparisonGate(opts: {
   result: RunResult;
   verdict: BenefitVerdict;
   rating: BenefitRating;
   comparison?: RunComparison | null;
+  /**
+   * Only used when `comparison` is null. Defaults to "waiting" (backward
+   * compatible). Pass "unavailable" when tip legs are settled without a
+   * paired scorecard (same gate as Comparison list).
+   */
+  pairPending?: BenefitPairPending;
 }): { verdict: BenefitVerdict; rating: BenefitRating } {
   const { result, comparison } = opts;
   let { verdict, rating } = opts;
@@ -509,6 +518,22 @@ export function applyPairedComparisonGate(opts: {
   }
 
   if (!comparison) {
+    const pairPending = opts.pairPending ?? "waiting";
+    if (pairPending === "unavailable") {
+      verdict = {
+        recommendation: "inconclusive",
+        headline: "INCONCLUSIVE — Comparison unavailable",
+        decision: "INCONCLUSIVE — paired scorecard unavailable",
+        rationale: `Paired evaluationId ${result.evaluationId} exists, but both tip legs finished without a usable Comparison scorecard (failed, cancelled, or incomplete). Official score alone is not USE / DO NOT USE — open Comparison or start a new paired evaluation.`,
+      };
+      rating = withUpdatedRecommendation(
+        rating,
+        4,
+        "Paired Comparison unavailable — adoption locked.",
+        `Open Comparison for ${result.evaluationId}. Benefit USE / DO NOT USE unlock only when that verdict is PASS or FAIL.`,
+      );
+      return { verdict, rating };
+    }
     verdict = {
       recommendation: "inconclusive",
       headline: "INCONCLUSIVE — waiting for Comparison",
@@ -699,7 +724,10 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
 
 export function buildBenefitReport(
   result: RunResult,
-  opts?: { comparison?: RunComparison | null },
+  opts?: {
+    comparison?: RunComparison | null;
+    pairPending?: BenefitPairPending;
+  },
 ): BenefitReport {
   const spread = result.scoreSpread ?? 0;
   const meanDiffRatio = result.subscores?.meanDiffRatio;
@@ -723,6 +751,7 @@ export function buildBenefitReport(
     verdict: decideSkillUse(result),
     rating: rateSkill(result),
     comparison: opts?.comparison,
+    ...(opts?.pairPending ? { pairPending: opts.pairPending } : {}),
   });
 
   return {
