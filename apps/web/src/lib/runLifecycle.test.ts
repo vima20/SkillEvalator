@@ -615,6 +615,7 @@ describe("resolveEnqueuePostError", () => {
     expect(src).toMatch(/formatRetryCostBlockedReason/);
     expect(src).toMatch(/OFFICIAL_ADMISSION_PAIR_REQUIRED/);
     expect(src).toMatch(/errorCode: "enqueue_failed"/);
+    expect(src).not.toMatch(/Failed to fetch/);
   });
 
   it("POST /api/runs uses enqueue_preflight_blocked and catch codes", async () => {

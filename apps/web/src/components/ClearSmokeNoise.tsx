@@ -38,9 +38,11 @@ export function ClearSmokeNoise() {
         skippedCount?: number;
       };
       if (!res.ok) {
-        throw new Error(
+        setError(true);
+        setMsg(
           tryResolveAuthApiError(data) ?? resolveCleanupPostError(data),
         );
+        return;
       }
       const runs = data.removedCount ?? 0;
       const evals = data.removedEvaluationCount ?? 0;
@@ -55,9 +57,7 @@ export function ClearSmokeNoise() {
     } catch (e) {
       if (e instanceof UnauthorizedError) return;
       setError(true);
-      setMsg(
-        e instanceof Error ? e.message : resolveCleanupPostError({}),
-      );
+      setMsg(resolveCleanupPostError({ errorCode: "cleanup_failed" }));
     } finally {
       setBusy(false);
     }

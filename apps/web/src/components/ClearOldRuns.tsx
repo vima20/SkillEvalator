@@ -37,9 +37,11 @@ export function ClearOldRuns() {
         skippedCount?: number;
       };
       if (!res.ok) {
-        throw new Error(
+        setError(true);
+        setMsg(
           tryResolveAuthApiError(data) ?? resolveCleanupPostError(data),
         );
+        return;
       }
       const skipped = data.skippedCount ?? 0;
       setMsg(
@@ -52,9 +54,7 @@ export function ClearOldRuns() {
     } catch (e) {
       if (e instanceof UnauthorizedError) return;
       setError(true);
-      setMsg(
-        e instanceof Error ? e.message : resolveCleanupPostError({}),
-      );
+      setMsg(resolveCleanupPostError({ errorCode: "cleanup_failed" }));
     } finally {
       setBusy(false);
     }

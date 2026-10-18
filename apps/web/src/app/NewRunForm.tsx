@@ -245,10 +245,12 @@ export function NewRunForm({
         runId?: string;
       };
       if (!res.ok) {
-        throw new Error(
+        setError(true);
+        setMsg(
           tryResolveAuthApiError(data) ??
             resolveEnqueuePostError(data, formatRetryCostBlockedReason),
         );
+        return;
       }
       if (withBaseline && data.evaluationId) {
         setMsg(`Queued evaluation ${data.evaluationId}`);
@@ -263,12 +265,10 @@ export function NewRunForm({
       if (err instanceof UnauthorizedError) return;
       setError(true);
       setMsg(
-        err instanceof Error
-          ? err.message
-          : resolveEnqueuePostError(
-              { errorCode: "enqueue_failed" },
-              formatRetryCostBlockedReason,
-            ),
+        resolveEnqueuePostError(
+          { errorCode: "enqueue_failed" },
+          formatRetryCostBlockedReason,
+        ),
       );
     } finally {
       setBusy(false);
@@ -380,10 +380,12 @@ export function NewRunForm({
                       allSkills?: SkillOption[];
                     };
                     if (!res.ok) {
-                      throw new Error(
+                      setError(true);
+                      setMsg(
                         tryResolveAuthApiError(data) ??
                           resolveSkillImportPostError(data),
                       );
+                      return;
                     }
                     const next = data.allSkills ?? skills;
                     setSkills(next);
@@ -396,9 +398,9 @@ export function NewRunForm({
                     if (err instanceof UnauthorizedError) return;
                     setError(true);
                     setMsg(
-                      err instanceof Error
-                        ? err.message
-                        : resolveSkillImportPostError({}),
+                      resolveSkillImportPostError({
+                        errorCode: "skill_import_failed",
+                      }),
                     );
                   } finally {
                     setImportBusy(false);
@@ -446,10 +448,12 @@ export function NewRunForm({
                       allSkills?: SkillOption[];
                     };
                     if (!res.ok) {
-                      throw new Error(
+                      setError(true);
+                      setMsg(
                         tryResolveAuthApiError(data) ??
                           resolveSkillImportPostError(data),
                       );
+                      return;
                     }
                     const next = data.allSkills ?? skills;
                     setSkills(next);
@@ -463,9 +467,9 @@ export function NewRunForm({
                     if (err instanceof UnauthorizedError) return;
                     setError(true);
                     setMsg(
-                      err instanceof Error
-                        ? err.message
-                        : resolveSkillImportPostError({}),
+                      resolveSkillImportPostError({
+                        errorCode: "skill_import_failed",
+                      }),
                     );
                   } finally {
                     setImportBusy(false);

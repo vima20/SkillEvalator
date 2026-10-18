@@ -50,6 +50,10 @@ describe("resolveCleanupPostError", () => {
     ]) {
       const src = fs.readFileSync(path.join(cwd, rel), "utf8");
       expect(src).toMatch(/resolveCleanupPostError/);
+      expect(src).toMatch(
+        /resolveCleanupPostError\(\{\s*errorCode:\s*"cleanup_failed"/,
+      );
+      expect(src).not.toMatch(/Failed to fetch/);
     }
   });
 });
