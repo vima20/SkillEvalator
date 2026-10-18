@@ -19,7 +19,7 @@ import {
   isPilotFocusParam,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
-import { statusBadgeClass } from "@/lib/status";
+import { listWindDownRunIds, statusBadgeClass } from "@/lib/status";
 import { BenefitActions } from "./BenefitActions";
 
 export const dynamic = "force-dynamic";
@@ -138,6 +138,25 @@ export default async function BenefitReportPage({
     Boolean(resolvedEvaluationId) &&
     Boolean(harnessBaselineId) &&
     Boolean(harnessCandidateId);
+  // Sibling tip legs stuck in budget_stop without result.json (same as lists).
+  const pairWindDownRunIds = (() => {
+    if (!pairWaiting) return [] as string[];
+    const root = resultsDir();
+    return listWindDownRunIds(
+      [tipBaselineRunId, tipCandidateRunId]
+        .filter((id): id is string => Boolean(id))
+        .map((id) => ({
+          runId: id,
+          status: syncStatusFromResult(root, id)?.status,
+          result:
+            id === tipBaselineRunId
+              ? baseline
+              : id === tipCandidateRunId
+                ? candidate
+                : null,
+        })),
+    );
+  })();
 
   return (
     <div>
@@ -335,7 +354,12 @@ export default async function BenefitReportPage({
               </>
             )}
           </p>
-          {pairWaiting ? <BenefitPairWaitingRefresh /> : null}
+          {pairWaiting ? (
+            <BenefitPairWaitingRefresh
+              windDownRunIds={pairWindDownRunIds}
+              pilotFocus={pilotFocus}
+            />
+          ) : null}
         </div>
       )}
 

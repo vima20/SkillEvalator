@@ -96,7 +96,9 @@ describe("statusBadgeKind", () => {
     );
     expect(benefitDetail).toMatch(/pairPending/);
     expect(benefitDetail).toMatch(/BenefitPairWaitingRefresh/);
-    expect(benefitDetail).toMatch(/pairWaiting \? <BenefitPairWaitingRefresh/);
+    expect(benefitDetail).toMatch(
+      /pairWaiting \? \(\s*<BenefitPairWaitingRefresh/,
+    );
     expect(benefitDetail).toMatch(/pairUnavailable/);
     expect(benefitDetail).toMatch(
       /!supersededTip && pairPending === "unavailable"/,
@@ -108,6 +110,11 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/Waiting for Comparison/);
     expect(benefitWait).toMatch(/setInterval/);
     expect(benefitWait).toMatch(/router\.refresh/);
+    expect(benefitWait).toMatch(/WIND_DOWN_ORPHAN_MS/);
+    expect(benefitWait).toMatch(/runDetailFinalizeOrphansPath/);
+    expect(benefitWait).toMatch(/windDownRunIds/);
+    expect(benefitDetail).toMatch(/pairWindDownRunIds/);
+    expect(benefitDetail).toMatch(/listWindDownRunIds/);
   });
 });
 
