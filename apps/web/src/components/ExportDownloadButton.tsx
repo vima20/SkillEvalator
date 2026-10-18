@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { downloadExport } from "@/lib/exportDownload";
+import { resolveExportDownloadFetchError } from "@/lib/exportResolve";
 
 type ExportErrorApi = {
   reportError: (message: string | null) => void;
@@ -70,6 +71,10 @@ export function ExportDownloadButton(opts: {
         if (shared) shared.reportError(result.error);
         else setLocalError(result.error);
       }
+    } catch {
+      const msg = resolveExportDownloadFetchError("failed");
+      if (shared) shared.reportError(msg);
+      else setLocalError(msg);
     } finally {
       setBusy(false);
     }

@@ -108,27 +108,34 @@ export async function downloadExport(
     }
   }
 
-  const blob = await res.blob();
-  const filename =
-    parseContentDispositionFilename(res.headers.get("content-disposition")) ??
-    fallbackFilename ??
-    "download";
-
-  if (typeof document === "undefined") {
-    return { ok: true, filename };
-  }
-
-  const url = URL.createObjectURL(blob);
   try {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } finally {
-    URL.revokeObjectURL(url);
+    const blob = await res.blob();
+    const filename =
+      parseContentDispositionFilename(res.headers.get("content-disposition")) ??
+      fallbackFilename ??
+      "download";
+
+    if (typeof document === "undefined") {
+      return { ok: true, filename };
+    }
+
+    const url = URL.createObjectURL(blob);
+    try {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+    return { ok: true, filename };
+  } catch {
+    return {
+      ok: false,
+      error: resolveExportDownloadFetchError("failed"),
+    };
   }
-  return { ok: true, filename };
 }

@@ -144,6 +144,19 @@ describe("auth source locks", () => {
     expect(mw).toMatch(/errorCode:\s*"auth_unauthorized"/);
   });
 
+  it("AuthLock only reloads after successful DELETE", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(process.cwd(), "src/components/AuthLock.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/resolveAuthClientError\("unreachable"\)/);
+    expect(src).toMatch(/if\s*\(\s*!res\.ok\s*\)/);
+    expect(src).toMatch(/window\.location\.reload\(\)/);
+    expect(src).not.toMatch(/\.finally\s*\(\s*\(\)\s*=>\s*\{?\s*window\.location\.reload/);
+  });
+
   it("apiFetch and protected clients use tryResolveAuthApiError", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");

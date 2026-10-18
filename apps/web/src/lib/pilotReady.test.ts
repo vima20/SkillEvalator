@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AUTH_MISCONFIGURED_API_ERROR } from "./authResolve.js";
 import {
   collectPilotBlockers,
   officialPilotReadyGate,
@@ -61,7 +62,7 @@ describe("collectPilotBlockers / officialPilotReadyGate", () => {
     });
     expect(auth.ok).toBe(false);
     if (!auth.ok) {
-      expect(auth.blockers.some((b) => /misconfigured/i.test(b))).toBe(true);
+      expect(auth.blockers).toContain(AUTH_MISCONFIGURED_API_ERROR);
     }
   });
 

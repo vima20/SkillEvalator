@@ -64,6 +64,8 @@ describe("exportErrorFromJsonBody", () => {
     expect(src).toMatch(/comparisonExportProductFromHref/);
     expect(src).toMatch(/tryResolveAuthApiError/);
     expect(src).toMatch(/resolveExportDownloadFetchError/);
+    expect(src).toMatch(/res\.blob\(\)/);
+    expect(src).toMatch(/resolveExportDownloadFetchError\("failed"\)/);
     expect(src).not.toMatch(/Download failed — network error/);
     expect(src).not.toMatch(
       /Unexpected JSON response \(export locked or unauthorized\)/,

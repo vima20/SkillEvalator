@@ -1,3 +1,4 @@
+import { AUTH_MISCONFIGURED_API_ERROR } from "@/lib/authResolve";
 import { resolveWebAuthConfig } from "@/lib/webAuth";
 import type { RunPreflightResult } from "@/lib/runPreflight";
 
@@ -37,7 +38,7 @@ export function collectPilotBlockers(opts: {
     );
   }
   if (webAuth.kind === "misconfigured") {
-    pilotBlockers.push("WEB_AUTH_TOKEN misconfigured (empty/whitespace)");
+    pilotBlockers.push(AUTH_MISCONFIGURED_API_ERROR);
   }
   if (officialRequiresWebAuth && webAuth.kind !== "required") {
     pilotBlockers.push(
