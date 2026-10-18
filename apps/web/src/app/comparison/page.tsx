@@ -309,13 +309,17 @@ export default async function ComparisonListPage({
                     </td>
                     <td>{formatCreated(e.createdAt)}</td>
                     <td>
-                      {e.tipActive || !e.candidateRunId ? (
+                      {e.tipActive ||
+                      e.scorecardUnavailable ||
+                      !e.candidateRunId ? (
                         <span
                           className="hint"
                           title={
                             e.tipActive
                               ? "Benefit after paired scorecard"
-                              : (e.benefitLockedReason ?? undefined)
+                              : e.scorecardUnavailable
+                                ? "No paired scorecard — Benefit handoff unavailable"
+                                : (e.benefitLockedReason ?? undefined)
                           }
                         >
                           —
