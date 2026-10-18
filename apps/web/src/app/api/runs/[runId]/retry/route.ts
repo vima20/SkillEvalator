@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   assertSafeId,
+  clearRetryMarker,
   findReusableRetryRunId,
   hasLiveJobFile,
   isNonRetryableErrorCode,
@@ -388,22 +389,35 @@ export async function POST(
             { status: 503 },
           );
         }
+        // Parent→pending child so healGhostMetaLeg can restore tip if enqueue fails.
+        try {
+          saveRetryMarker(root, runId, newRunId);
+        } catch {
+          /* ignore */
+        }
       }
 
       /**
        * Tip already points at newRunId — revert to parent or pair is stuck on
        * our ghost. Concurrent tip moves (other child / parent) are not repair.
+       * Keep retry-of.json only while the ghost tip still needs heal.
        */
       const revertTipAfterFailedEnqueue = (enqueueError: string) => {
         if (!evaluationId) return null;
-        if (linkComparison(runId)) return null;
+        if (linkComparison(runId)) {
+          clearRetryMarker(root, runId);
+          return null;
+        }
         const tipRole = role === "baseline" ? "baseline" : "candidate";
         const meta = loadEvaluationMeta(evaluationId);
         const tipId =
           tipRole === "baseline"
             ? meta?.baselineRunId
             : meta?.candidateRunId;
-        if (tipId === runId || tipId !== newRunId) return null;
+        if (tipId !== newRunId) {
+          clearRetryMarker(root, runId);
+          return null;
+        }
         return NextResponse.json(
           {
             ok: false,

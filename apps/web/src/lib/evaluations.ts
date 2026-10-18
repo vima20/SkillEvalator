@@ -2,7 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   assertSafeId,
+  clearRetryMarker,
   compareBaselineCandidate,
+  findRetryParentRunId,
+  hasLiveJobFile,
   loadRunResult,
   loadRunStatus,
   readJsonFile,
@@ -21,7 +24,7 @@ import {
   writeJsonFile,
   type RunComparison,
 } from "@skillevalator/core";
-import { resultsDir } from "@/lib/paths";
+import { jobsDir, resultsDir } from "@/lib/paths";
 
 export type EvaluationMeta = {
   evaluationId: string;
@@ -137,6 +140,46 @@ export function unlinkStaleBenefitReport(runId: string): void {
 }
 
 /**
+ * Tip linked before enqueue with no status/result/job is a ghost — roll back to
+ * the parent recorded in retry-of.json so Retry/Comparison are not deadlocked.
+ */
+function healGhostMetaLeg(opts: {
+  evaluationId: string;
+  role: "baseline" | "candidate";
+  tipRunId: string;
+  mode?: "dry-run" | "official";
+  evalSkillId?: string;
+}): string {
+  const dir = resultsDir();
+  const tip = opts.tipRunId;
+  if (loadRetryChainLegInfo(dir, tip)) return tip;
+  if (hasLiveJobFile(jobsDir(), tip)) return tip;
+  const parent = findRetryParentRunId(dir, tip);
+  if (!parent) return tip;
+  const parentLeg = loadRetryChainLegInfo(dir, parent);
+  if (
+    !parentLeg ||
+    parentLeg.evaluationId !== opts.evaluationId ||
+    parentLeg.role !== opts.role
+  ) {
+    return tip;
+  }
+  if (
+    updateEvaluationMetaLeg({
+      evaluationId: opts.evaluationId,
+      role: opts.role,
+      runId: parent,
+      ...(opts.mode ? { mode: opts.mode } : {}),
+      evalSkillId: opts.evalSkillId,
+    })
+  ) {
+    clearRetryMarker(dir, parent);
+  }
+  // Lock miss: still expose parent in memory so Retry admission is not stuck.
+  return parent;
+}
+
+/**
  * Tip-healed baseline/candidate runIds for cancel cascade.
  * Follows retry-of in memory (and best-effort disk heal) so cancelling a
  * superseded disk tip cannot kill the live sibling.
@@ -208,6 +251,21 @@ export function resolveHealedMetaLegsForCancel(evaluationId: string): {
       candidateRunId = candTip.runId;
     }
   }
+
+  baselineRunId = healGhostMetaLeg({
+    evaluationId: id,
+    role: "baseline",
+    tipRunId: baselineRunId,
+    ...modePin,
+    evalSkillId: meta.evalSkillId,
+  });
+  candidateRunId = healGhostMetaLeg({
+    evaluationId: id,
+    role: "candidate",
+    tipRunId: candidateRunId,
+    ...modePin,
+    evalSkillId: meta.evalSkillId,
+  });
 
   try {
     return {
@@ -316,6 +374,26 @@ export function loadEvaluationComparison(
         candidateRunId = candTip.runId;
       }
     }
+
+    const modeOpt =
+      meta.mode === "dry-run" || meta.mode === "official"
+        ? { mode: meta.mode as "dry-run" | "official" }
+        : {};
+    baselineRunId = healGhostMetaLeg({
+      evaluationId,
+      role: "baseline",
+      tipRunId: baselineRunId,
+      ...modeOpt,
+      evalSkillId: meta.evalSkillId,
+    });
+    candidateRunId = healGhostMetaLeg({
+      evaluationId,
+      role: "candidate",
+      tipRunId: candidateRunId,
+      ...modeOpt,
+      evalSkillId: meta.evalSkillId,
+    });
+    meta = loadEvaluationMeta(evaluationId) ?? meta;
   }
 
   const { baseline, candidate } = resolveComparisonLegs({

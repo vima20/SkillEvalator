@@ -137,6 +137,34 @@ export function clearRetryMarker(
   }
 }
 
+/**
+ * Find the parent run whose retry-of.json points at childRunId.
+ * Used to heal a ghost Comparison tip (tip linked before enqueue, then rolled back).
+ */
+export function findRetryParentRunId(
+  resultsDir: string,
+  childRunId: string,
+): string | null {
+  let child: string;
+  try {
+    child = assertSafeId(childRunId, "runId");
+  } catch {
+    return null;
+  }
+  if (!fs.existsSync(resultsDir)) return null;
+  for (const name of fs.readdirSync(resultsDir)) {
+    if (!name.startsWith("run_")) continue;
+    try {
+      assertSafeId(name, "runId");
+    } catch {
+      continue;
+    }
+    const marker = loadRetryMarker(resultsDir, name);
+    if (marker?.runId === child) return name;
+  }
+  return null;
+}
+
 function retryLockPath(resultsDir: string, fromRunId: string): string {
   return path.join(
     resolveUnder(resultsDir, assertSafeId(fromRunId, "runId")),

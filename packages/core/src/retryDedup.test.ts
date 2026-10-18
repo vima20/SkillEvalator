@@ -6,6 +6,7 @@ import {
   RETRY_CHAIN_MAX_HOPS,
   RETRY_DEDUP_WINDOW_MS,
   clearRetryMarker,
+  findRetryParentRunId,
   findReusableRetryRunId,
   isRetryChildLive,
   isRetryEnqueueLockBusy,
@@ -221,6 +222,22 @@ describe("isRetryChildLive", () => {
         isPidAlive: () => true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("findRetryParentRunId", () => {
+  it("returns parent when retry-of points at the child", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-retry-parent-"));
+    temps.push(root);
+    const from = "run_100_parentxx";
+    const child = "run_100_ghostxxx";
+    writeJsonFile(path.join(root, from, "status.json"), {
+      runId: from,
+      status: "failed",
+    });
+    saveRetryMarker(root, from, child);
+    expect(findRetryParentRunId(root, child)).toBe(from);
+    expect(findRetryParentRunId(root, from)).toBeNull();
   });
 });
 
