@@ -150,6 +150,11 @@ function ComparisonPendingInner({
         ? "A leg hit the cost cap and is writing its final result.json. Each wind-down leg gets its own orphan timeout; polling continues while the other leg is still active."
         : "Baseline and candidate must finish before lift and PASS/FAIL can be computed. This page refreshes automatically.";
 
+  const stuckBaselineId =
+    baselineWindDown && baselineBudgetTimedOut ? baselineRunId : undefined;
+  const stuckCandidateId =
+    candidateWindDown && candidateBudgetTimedOut ? candidateRunId : undefined;
+
   return (
     <>
       <h1 style={{ marginBottom: 16 }}>{pageHeading}</h1>
@@ -208,17 +213,45 @@ function ComparisonPendingInner({
       {orphanStuck ? (
         <p className="hint" style={{ marginTop: 12 }}>
           Prefer the{" "}
-          {baselineWindDown && baselineBudgetTimedOut && baselineRunId ? (
-            <Link href={withPilotFocus(`/runs/${baselineRunId}`, pilotFocus)}>
+          {stuckBaselineId ? (
+            <Link
+              href={withPilotFocus(`/runs/${stuckBaselineId}`, pilotFocus)}
+            >
               baseline run
             </Link>
-          ) : candidateRunId ? (
-            <Link href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}>
+          ) : null}
+          {stuckBaselineId && stuckCandidateId ? " and " : null}
+          {stuckCandidateId ? (
+            <Link
+              href={withPilotFocus(`/runs/${stuckCandidateId}`, pilotFocus)}
+            >
               candidate run
             </Link>
-          ) : (
-            "run page"
-          )}{" "}
+          ) : null}
+          {!stuckBaselineId && !stuckCandidateId
+            ? candidateRunId
+              ? (
+                  <Link
+                    href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}
+                  >
+                    candidate run
+                  </Link>
+                )
+              : baselineRunId
+                ? (
+                    <Link
+                      href={withPilotFocus(
+                        `/runs/${baselineRunId}`,
+                        pilotFocus,
+                      )}
+                    >
+                      baseline run
+                    </Link>
+                  )
+                : (
+                    "run page"
+                  )
+            : null}{" "}
           → Cancel / Refresh.
         </p>
       ) : unavailable ? (

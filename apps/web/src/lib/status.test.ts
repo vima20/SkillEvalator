@@ -45,6 +45,10 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/tipActive/);
     expect(list).toMatch(/scorecardUnavailable/);
     expect(list).toMatch(/evaluationTipPairIsActive/);
+    // Unavailable rows still link to tip Benefit (pairPending unavailable copy).
+    expect(list).toMatch(
+      /e\.scorecardUnavailable \? \([\s\S]*?\/benefit\/\$\{e\.candidateRunId\}/,
+    );
     expect(detail).toMatch(
       /statusBadgeClass\(comparison\.baselineStatus,\s*true\)/,
     );

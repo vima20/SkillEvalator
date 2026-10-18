@@ -307,21 +307,28 @@ export default async function ComparisonListPage({
                     </td>
                     <td>{formatCreated(e.createdAt)}</td>
                     <td>
-                      {e.tipActive ||
-                      e.scorecardUnavailable ||
-                      !e.candidateRunId ? (
+                      {e.tipActive || !e.candidateRunId ? (
                         <span
                           className="hint"
                           title={
                             e.tipActive
                               ? "Benefit after paired scorecard"
-                              : e.scorecardUnavailable
-                                ? "No paired scorecard — Benefit handoff unavailable"
-                                : (e.benefitLockedReason ?? undefined)
+                              : (e.benefitLockedReason ?? undefined)
                           }
                         >
                           —
                         </span>
+                      ) : e.scorecardUnavailable ? (
+                        <Link
+                          className="btn btn-ghost btn-compact"
+                          href={withPilotFocus(
+                            `/benefit/${e.candidateRunId}`,
+                            pilotFocus,
+                          )}
+                          title="No paired scorecard — open Benefit for Comparison unavailable detail"
+                        >
+                          Candidate
+                        </Link>
                       ) : e.downloadsOk ? (
                         <Link
                           className="btn btn-ghost btn-compact"
