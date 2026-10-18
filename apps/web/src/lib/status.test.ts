@@ -41,6 +41,9 @@ describe("statusBadgeKind", () => {
     // Pending rows use real tip badges — not a fake running/waiting chip.
     expect(list).not.toMatch(/statusBadgeClass\("running"\)/);
     expect(list).toMatch(/scorecard pending/);
+    expect(list).toMatch(/scorecard unavailable/);
+    expect(list).toMatch(/tipActive/);
+    expect(list).toMatch(/scorecardUnavailable/);
     expect(detail).toMatch(
       /statusBadgeClass\(comparison\.baselineStatus,\s*true\)/,
     );

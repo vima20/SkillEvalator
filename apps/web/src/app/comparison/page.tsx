@@ -86,6 +86,14 @@ export default async function ComparisonListPage({
     const candidateStatus =
       syncStatusFromResult(root, tipCandidateRunId)?.status ??
       packed.candidate?.status;
+    const baselineHasResult = Boolean(packed.baseline);
+    const candidateHasResult = Boolean(packed.candidate);
+    // Same gate language as ComparisonPending / hasPendingEvaluations.
+    const tipActive =
+      pending &&
+      (runIsActive(baselineStatus, baselineHasResult) ||
+        runIsActive(candidateStatus, candidateHasResult));
+    const scorecardUnavailable = pending && !tipActive;
     const downloadGate = c
       ? officialComparisonExportGate(c, pairEvidence)
       : null;
@@ -101,13 +109,15 @@ export default async function ComparisonListPage({
     return {
       ...e,
       pending,
+      tipActive,
+      scorecardUnavailable,
       verdict: c?.verdict ?? null,
       lift: c?.lift ?? null,
       displayMode,
       baselineStatus,
       candidateStatus,
-      baselineHasResult: Boolean(packed.baseline),
-      candidateHasResult: Boolean(packed.candidate),
+      baselineHasResult,
+      candidateHasResult,
       candidateRunId: tipCandidateRunId,
       baselineFakeProduce: pairEvidence.baselineFakeProduce,
       candidateFakeProduce: pairEvidence.candidateFakeProduce,
@@ -262,8 +272,10 @@ export default async function ComparisonListPage({
                           {e.candidateStatus ?? "—"}
                         </span>
                       </span>
-                      {e.pending ? (
+                      {e.tipActive ? (
                         <div className="cell-meta">scorecard pending</div>
+                      ) : e.scorecardUnavailable ? (
+                        <div className="cell-meta">scorecard unavailable</div>
                       ) : null}
                     </td>
                     <td>
@@ -297,10 +309,14 @@ export default async function ComparisonListPage({
                     </td>
                     <td>{formatCreated(e.createdAt)}</td>
                     <td>
-                      {e.pending || !e.candidateRunId ? (
+                      {e.tipActive || !e.candidateRunId ? (
                         <span
                           className="hint"
-                          title={e.benefitLockedReason ?? undefined}
+                          title={
+                            e.tipActive
+                              ? "Benefit after paired scorecard"
+                              : (e.benefitLockedReason ?? undefined)
+                          }
                         >
                           —
                         </span>
