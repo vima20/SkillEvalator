@@ -19,24 +19,41 @@ describe("hasPendingEvaluations", () => {
     vi.resetModules();
   });
 
-  it("is true when any evaluation lacks Comparison", async () => {
+  it("is true when a tip leg is still active without Comparison", async () => {
     listEvaluations.mockReturnValue([
       { evaluationId: "eval_pending" },
       { evaluationId: "eval_done" },
     ]);
     loadEvaluationComparison.mockImplementation((id: string) =>
       id === "eval_done"
-        ? { comparison: { verdict: "PASS" } }
-        : { comparison: null },
+        ? { comparison: { verdict: "PASS" }, baseline: {}, candidate: {} }
+        : {
+            comparison: null,
+            baseline: { status: "ok" },
+            candidate: null,
+          },
     );
     const { hasPendingEvaluations } = await import("./pendingEvaluations.js");
     expect(hasPendingEvaluations()).toBe(true);
+  });
+
+  it("is false when both tips have results but Comparison is missing", async () => {
+    listEvaluations.mockReturnValue([{ evaluationId: "eval_stuck" }]);
+    loadEvaluationComparison.mockReturnValue({
+      comparison: null,
+      baseline: { status: "failed" },
+      candidate: { status: "cancelled" },
+    });
+    const { hasPendingEvaluations } = await import("./pendingEvaluations.js");
+    expect(hasPendingEvaluations()).toBe(false);
   });
 
   it("is false when every evaluation has Comparison", async () => {
     listEvaluations.mockReturnValue([{ evaluationId: "eval_done" }]);
     loadEvaluationComparison.mockReturnValue({
       comparison: { verdict: "FAIL" },
+      baseline: { status: "ok" },
+      candidate: { status: "ok" },
     });
     const { hasPendingEvaluations } = await import("./pendingEvaluations.js");
     expect(hasPendingEvaluations()).toBe(false);

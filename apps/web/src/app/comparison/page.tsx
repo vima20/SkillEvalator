@@ -243,31 +243,28 @@ export default async function ComparisonListPage({
                       <div className="cell-meta">{e.displayMode}</div>
                     </td>
                     <td>
+                      <span className="cell-meta">
+                        <span
+                          className={statusBadgeClass(
+                            e.baselineStatus,
+                            e.baselineHasResult,
+                          )}
+                        >
+                          {e.baselineStatus ?? "—"}
+                        </span>
+                        {" / "}
+                        <span
+                          className={statusBadgeClass(
+                            e.candidateStatus,
+                            e.candidateHasResult,
+                          )}
+                        >
+                          {e.candidateStatus ?? "—"}
+                        </span>
+                      </span>
                       {e.pending ? (
-                        <span className={statusBadgeClass("running")}>
-                          waiting
-                        </span>
-                      ) : (
-                        <span className="cell-meta">
-                          <span
-                            className={statusBadgeClass(
-                              e.baselineStatus,
-                              e.baselineHasResult,
-                            )}
-                          >
-                            {e.baselineStatus ?? "—"}
-                          </span>
-                          {" / "}
-                          <span
-                            className={statusBadgeClass(
-                              e.candidateStatus,
-                              e.candidateHasResult,
-                            )}
-                          >
-                            {e.candidateStatus ?? "—"}
-                          </span>
-                        </span>
-                      )}
+                        <div className="cell-meta">scorecard pending</div>
+                      ) : null}
                     </td>
                     <td>
                       {e.verdict ? (
