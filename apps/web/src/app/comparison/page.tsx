@@ -23,6 +23,7 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import { evaluationTipPairIsActive } from "@/lib/evaluationTipPair";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import {
   listWindDownRunIds,
@@ -88,11 +89,8 @@ export default async function ComparisonListPage({
       packed.candidate?.status;
     const baselineHasResult = Boolean(packed.baseline);
     const candidateHasResult = Boolean(packed.candidate);
-    // Same gate language as ComparisonPending / hasPendingEvaluations.
-    const tipActive =
-      pending &&
-      (runIsActive(baselineStatus, baselineHasResult) ||
-        runIsActive(candidateStatus, candidateHasResult));
+    // Same gate as ComparisonPending / hasPendingEvaluations / Benefit.
+    const tipActive = pending && evaluationTipPairIsActive(packed);
     const scorecardUnavailable = pending && !tipActive;
     const downloadGate = c
       ? officialComparisonExportGate(c, pairEvidence)

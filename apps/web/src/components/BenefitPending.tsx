@@ -82,8 +82,18 @@ function BenefitPendingInner({
     return () => window.clearInterval(id);
   }, [router, stillWaiting]);
 
+  const pageHeading = orphanStuck
+    ? "Cost-cap wind-down stuck"
+    : unavailable
+      ? "Benefit unavailable"
+      : windDown
+        ? "Writing final result"
+        : "Report not ready";
+
   return (
-    <div className="panel">
+    <>
+      <h1 style={{ marginBottom: 16 }}>{pageHeading}</h1>
+      <div className="panel">
       <div className="empty-state">
         <div className="empty-state-mark" aria-hidden="true" />
         <h2>
@@ -127,6 +137,7 @@ function BenefitPendingInner({
           </Link>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

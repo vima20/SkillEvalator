@@ -30,7 +30,7 @@ import {
   isPilotFocusParam,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
-import { runIsActive, statusBadgeClass } from "@/lib/status";
+import { statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -113,9 +113,6 @@ export default async function ComparisonDetailPage({
     candidate?.status;
 
   if (!comparison || !baseline || !candidate) {
-    const tipActive =
-      runIsActive(baselineStatus, Boolean(baseline)) ||
-      runIsActive(candidateStatus, Boolean(candidate));
     return (
       <div>
         <header className="page-header">
@@ -126,10 +123,8 @@ export default async function ComparisonDetailPage({
             <span aria-hidden="true"> / </span>
             {evaluationId}
           </p>
-          <h1>
-            {tipActive ? "Waiting for results" : "Comparison unavailable"}
-          </h1>
         </header>
+        {/* H1 lives in ComparisonPending so orphan-timeout updates the title. */}
         <ComparisonPending
           evaluationId={evaluationId}
           baselineRunId={baselineRunId}

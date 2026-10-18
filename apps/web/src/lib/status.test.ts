@@ -44,12 +44,22 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/scorecard unavailable/);
     expect(list).toMatch(/tipActive/);
     expect(list).toMatch(/scorecardUnavailable/);
+    expect(list).toMatch(/evaluationTipPairIsActive/);
     expect(detail).toMatch(
       /statusBadgeClass\(comparison\.baselineStatus,\s*true\)/,
     );
     expect(detail).toMatch(
       /statusBadgeClass\(comparison\.candidateStatus,\s*true\)/,
     );
+    // Detail H1 follows client pending gate (orphan-timeout), not SSR tipActive.
+    expect(detail).toMatch(/H1 lives in ComparisonPending/);
+    const pendingUi = fs.readFileSync(
+      path.join(cwd, "src/components/ComparisonPending.tsx"),
+      "utf8",
+    );
+    expect(pendingUi).toMatch(/pageHeading/);
+    expect(pendingUi).toMatch(/Settle the stuck leg/);
+    expect(pendingUi).toMatch(/Waiting for results/);
   });
 });
 

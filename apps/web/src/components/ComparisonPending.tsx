@@ -121,6 +121,13 @@ function ComparisonPendingInner({
     return () => window.clearInterval(id);
   }, [router, evaluationId, stillWaiting]);
 
+  const pageHeading = orphanStuck
+    ? "Settle the stuck leg"
+    : unavailable
+      ? "Comparison unavailable"
+      : windDown
+        ? "Writing final results"
+        : "Waiting for results";
   const eyebrow = orphanStuck
     ? "Orphan cost-cap wind-down"
     : unavailable
@@ -144,7 +151,9 @@ function ComparisonPendingInner({
         : "Baseline and candidate must finish before lift and PASS/FAIL can be computed. This page refreshes automatically.";
 
   return (
-    <div className="panel progress-panel">
+    <>
+      <h1 style={{ marginBottom: 16 }}>{pageHeading}</h1>
+      <div className="panel progress-panel">
       <p className="eyebrow">{eyebrow}</p>
       <h2>{title}</h2>
       <p>{body}</p>
@@ -219,6 +228,7 @@ function ComparisonPendingInner({
           </Link>
         </p>
       ) : null}
-    </div>
+      </div>
+    </>
   );
 }
