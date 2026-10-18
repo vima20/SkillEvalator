@@ -305,8 +305,6 @@ export function RunDetailClient({
     hasResult: Boolean(result),
     cancelling,
     cancelRequested,
-    // Wind-down Cancel must stay available even if live poll failed.
-    pollError: budgetStopWindDown ? false : Boolean(pollError),
   });
   const retryTerminal =
     status === "failed" ||
@@ -653,10 +651,10 @@ export function RunDetailClient({
         ) : null}
       </div>
 
-      {((status === "running" ||
-        status === "queued" ||
-        cancelRequested) &&
-        !pollError) ||
+      {/* Keep Cancel panel visible even when live poll failed. */}
+      {status === "running" ||
+      status === "queued" ||
+      cancelRequested ||
       budgetStopWindDown ? (
         <div className="panel progress-panel">
           <div className="progress-head">

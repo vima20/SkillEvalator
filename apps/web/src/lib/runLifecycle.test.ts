@@ -654,6 +654,16 @@ describe("runDetailCanCancel", () => {
       }),
     ).toBe(false);
   });
+
+  it("ignores pollError so Cancel stays available without live poll", () => {
+    expect(
+      runDetailCanCancel({
+        status: "running",
+        hasResult: false,
+        pollError: true,
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {

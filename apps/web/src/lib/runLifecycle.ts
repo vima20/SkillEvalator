@@ -116,9 +116,10 @@ export function runDetailCanCancel(opts: {
   hasResult: boolean;
   cancelling?: boolean;
   cancelRequested?: boolean;
+  /** @deprecated Ignored — Cancel POST does not need a healthy live poll. */
   pollError?: boolean;
 }): boolean {
-  if (opts.cancelling || opts.cancelRequested || opts.pollError) {
+  if (opts.cancelling || opts.cancelRequested) {
     return false;
   }
   const gate = cancelGate(opts.status, opts.hasResult);

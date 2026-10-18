@@ -152,7 +152,9 @@ function ComparisonPendingInner({
         <div>
           <dt>Baseline</dt>
           <dd>
-            <span className={statusBadgeClass(baselineStatus)}>
+            <span
+              className={statusBadgeClass(baselineStatus, baselineHasResult)}
+            >
               {baselineStatus ?? "missing"}
             </span>
             {baselineRunId ? (
@@ -170,7 +172,9 @@ function ComparisonPendingInner({
         <div>
           <dt>Candidate</dt>
           <dd>
-            <span className={statusBadgeClass(candidateStatus)}>
+            <span
+              className={statusBadgeClass(candidateStatus, candidateHasResult)}
+            >
               {candidateStatus ?? "missing"}
             </span>
             {candidateRunId ? (

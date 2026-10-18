@@ -13,6 +13,38 @@ describe("statusBadgeKind", () => {
     expect(statusBadgeKind("budget_stop", false)).toBe("run");
     expect(statusBadgeKind("budget_stop", true)).toBe("fail");
   });
+
+  it("Comparison views pass hasResult into statusBadgeClass", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const cwd = process.cwd();
+    const pending = fs.readFileSync(
+      path.join(cwd, "src/components/ComparisonPending.tsx"),
+      "utf8",
+    );
+    const list = fs.readFileSync(
+      path.join(cwd, "src/app/comparison/page.tsx"),
+      "utf8",
+    );
+    const detail = fs.readFileSync(
+      path.join(cwd, "src/app/comparison/[evaluationId]/page.tsx"),
+      "utf8",
+    );
+    expect(pending).toMatch(
+      /statusBadgeClass\(baselineStatus,\s*baselineHasResult\)/,
+    );
+    expect(pending).toMatch(
+      /statusBadgeClass\(candidateStatus,\s*candidateHasResult\)/,
+    );
+    expect(list).toMatch(/e\.baselineHasResult/);
+    expect(list).toMatch(/e\.candidateHasResult/);
+    expect(detail).toMatch(
+      /statusBadgeClass\(comparison\.baselineStatus,\s*true\)/,
+    );
+    expect(detail).toMatch(
+      /statusBadgeClass\(comparison\.candidateStatus,\s*true\)/,
+    );
+  });
 });
 
 describe("runIsActive", () => {

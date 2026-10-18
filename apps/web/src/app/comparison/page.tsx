@@ -106,6 +106,8 @@ export default async function ComparisonListPage({
       displayMode,
       baselineStatus,
       candidateStatus,
+      baselineHasResult: Boolean(packed.baseline),
+      candidateHasResult: Boolean(packed.candidate),
       candidateRunId: tipCandidateRunId,
       baselineFakeProduce: pairEvidence.baselineFakeProduce,
       candidateFakeProduce: pairEvidence.candidateFakeProduce,
@@ -247,11 +249,21 @@ export default async function ComparisonListPage({
                         </span>
                       ) : (
                         <span className="cell-meta">
-                          <span className={statusBadgeClass(e.baselineStatus)}>
+                          <span
+                            className={statusBadgeClass(
+                              e.baselineStatus,
+                              e.baselineHasResult,
+                            )}
+                          >
                             {e.baselineStatus ?? "—"}
                           </span>
                           {" / "}
-                          <span className={statusBadgeClass(e.candidateStatus)}>
+                          <span
+                            className={statusBadgeClass(
+                              e.candidateStatus,
+                              e.candidateHasResult,
+                            )}
+                          >
                             {e.candidateStatus ?? "—"}
                           </span>
                         </span>

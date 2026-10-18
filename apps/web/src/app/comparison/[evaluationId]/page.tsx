@@ -366,7 +366,9 @@ export default async function ComparisonDetailPage({
             <div>
               <dt>Baseline status</dt>
               <dd>
-                <span className={statusBadgeClass(comparison.baselineStatus)}>
+                <span
+                  className={statusBadgeClass(comparison.baselineStatus, true)}
+                >
                   {comparison.baselineStatus}
                 </span>
               </dd>
@@ -374,7 +376,9 @@ export default async function ComparisonDetailPage({
             <div>
               <dt>Candidate status</dt>
               <dd>
-                <span className={statusBadgeClass(comparison.candidateStatus)}>
+                <span
+                  className={statusBadgeClass(comparison.candidateStatus, true)}
+                >
                   {comparison.candidateStatus}
                 </span>
               </dd>
