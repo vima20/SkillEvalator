@@ -47,17 +47,24 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/evaluationTipPairIsActive/);
     // tipActive + result.json → Benefit (waiting); without result → run detail.
     expect(list).toMatch(
-      /e\.tipActive \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}/,
+      /e\.tipActive \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}[\s\S]*?Benefit · waiting/,
     );
     expect(list).toMatch(
-      /e\.tipActive \?[\s\S]*?\/runs\/\$\{e\.candidateRunId\}/,
+      /e\.tipActive \?[\s\S]*?\/runs\/\$\{e\.candidateRunId\}[\s\S]*?Candidate run/,
     );
     // Unavailable + result.json → Benefit; no result → run detail (not BenefitPending dead-end).
     expect(list).toMatch(
-      /e\.scorecardUnavailable \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}/,
+      /e\.scorecardUnavailable \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}[\s\S]*?Benefit · unavailable/,
     );
     expect(list).toMatch(
-      /e\.scorecardUnavailable \?[\s\S]*?\/runs\/\$\{e\.candidateRunId\}/,
+      /e\.scorecardUnavailable \?[\s\S]*?\/runs\/\$\{e\.candidateRunId\}[\s\S]*?Candidate run/,
+    );
+    // Ready handoff label must say Benefit (not Candidate).
+    expect(list).toMatch(
+      /e\.downloadsOk \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}[\s\S]*?>\s*Benefit\s*</,
+    );
+    expect(list).not.toMatch(
+      /\/benefit\/\$\{e\.candidateRunId\}[\s\S]*?>\s*Candidate\s*</,
     );
     expect(detail).toMatch(
       /statusBadgeClass\(comparison\.baselineStatus,\s*true\)/,

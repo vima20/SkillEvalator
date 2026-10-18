@@ -324,7 +324,7 @@ export default async function ComparisonListPage({
                             )}
                             title="Candidate result ready — Benefit waiting for paired Comparison"
                           >
-                            Candidate
+                            Benefit · waiting
                           </Link>
                         ) : (
                           <Link
@@ -348,7 +348,7 @@ export default async function ComparisonListPage({
                             )}
                             title="No paired scorecard — open Benefit for Comparison unavailable detail"
                           >
-                            Candidate
+                            Benefit · unavailable
                           </Link>
                         ) : (
                           <Link
@@ -370,7 +370,7 @@ export default async function ComparisonListPage({
                             pilotFocus,
                           )}
                         >
-                          Candidate
+                          Benefit
                         </Link>
                       ) : (
                         <Link
