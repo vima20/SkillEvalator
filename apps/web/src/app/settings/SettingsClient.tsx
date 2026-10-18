@@ -110,25 +110,27 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
       });
       if (!res.ok) {
         const body: unknown = await res.json().catch(() => ({}));
-        throw new Error(
-          tryResolveAuthApiError(body) ??
-            resolveSettingsRefreshError("http", res.status),
-        );
+        if (!silent) {
+          setError(
+            tryResolveAuthApiError(body) ??
+              resolveSettingsRefreshError("http", res.status),
+          );
+        }
+        return;
       }
       const next: unknown = await res.json();
       if (!isSettingsSnapshot(next)) {
-        throw new Error(resolveSettingsRefreshError("unexpected_payload"));
+        if (!silent) {
+          setError(resolveSettingsRefreshError("unexpected_payload"));
+        }
+        return;
       }
       setS(next);
     } catch (e) {
       if (ac.signal.aborted) return;
       if (e instanceof UnauthorizedError) return;
       if (!silent) {
-        setError(
-          e instanceof Error
-            ? e.message
-            : resolveSettingsRefreshError("failed"),
-        );
+        setError(resolveSettingsRefreshError("network"));
       }
     } finally {
       if (!ac.signal.aborted && !silent) setBusy(false);

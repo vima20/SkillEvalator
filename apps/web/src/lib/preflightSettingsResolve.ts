@@ -7,6 +7,7 @@ export type PreflightFetchFailKind = "http" | "network" | "failed";
 
 export type SettingsRefreshFailKind =
   | "http"
+  | "network"
   | "unexpected_payload"
   | "failed";
 
@@ -14,6 +15,9 @@ export const PREFLIGHT_NETWORK_ERROR =
   "Preflight network error — is the web server up?";
 
 export const PREFLIGHT_FAILED_FALLBACK = "Preflight failed";
+
+export const SETTINGS_REFRESH_NETWORK_ERROR =
+  "Settings refresh network error — is the web server up?";
 
 export const SETTINGS_REFRESH_UNEXPECTED_PAYLOAD =
   "Settings refresh returned an unexpected payload";
@@ -32,11 +36,12 @@ export function resolvePreflightFetchError(
   return PREFLIGHT_FAILED_FALLBACK;
 }
 
-/** HTTP / payload → Settings Refresh error line. */
+/** HTTP / network / payload → Settings Refresh error line. */
 export function resolveSettingsRefreshError(
   kind: SettingsRefreshFailKind,
   status?: number,
 ): string {
+  if (kind === "network") return SETTINGS_REFRESH_NETWORK_ERROR;
   if (kind === "unexpected_payload") {
     return SETTINGS_REFRESH_UNEXPECTED_PAYLOAD;
   }

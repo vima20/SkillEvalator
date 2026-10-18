@@ -3,6 +3,7 @@ import {
   PREFLIGHT_FAILED_FALLBACK,
   PREFLIGHT_NETWORK_ERROR,
   SETTINGS_REFRESH_FAILED_FALLBACK,
+  SETTINGS_REFRESH_NETWORK_ERROR,
   SETTINGS_REFRESH_UNEXPECTED_PAYLOAD,
   resolvePreflightFetchError,
   resolveSettingsRefreshError,
@@ -19,9 +20,12 @@ describe("resolvePreflightFetchError", () => {
 });
 
 describe("resolveSettingsRefreshError", () => {
-  it("maps http, unexpected payload, and fallback", () => {
+  it("maps http, network, unexpected payload, and fallback", () => {
     expect(resolveSettingsRefreshError("http", 503)).toBe(
       "Settings refresh failed (503)",
+    );
+    expect(resolveSettingsRefreshError("network")).toBe(
+      SETTINGS_REFRESH_NETWORK_ERROR,
     );
     expect(resolveSettingsRefreshError("unexpected_payload")).toBe(
       SETTINGS_REFRESH_UNEXPECTED_PAYLOAD,
@@ -50,6 +54,8 @@ describe("preflight/settings source locks", () => {
     );
     expect(settings).toMatch(/resolveSettingsRefreshError/);
     expect(settings).toMatch(/tryResolveAuthApiError/);
+    expect(settings).toMatch(/resolveSettingsRefreshError\("network"\)/);
     expect(settings).not.toMatch(/Settings refresh failed \(\$\{/);
+    expect(settings).not.toMatch(/Failed to fetch/);
   });
 });
