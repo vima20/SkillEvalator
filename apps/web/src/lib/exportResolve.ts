@@ -156,6 +156,32 @@ export const EXPORT_RUN_CSV_LOCKED_FALLBACK =
 export const EXPORT_BENEFIT_LOCKED_FALLBACK =
   "Adoption export locked until official Comparison is decisive (USE needs PASS; DO NOT USE needs FAIL). API returns 409 otherwise.";
 
+/** Client-only downloadExport fetch failures (no JSON errorCode). */
+export type ExportDownloadFetchFailKind =
+  | "http"
+  | "network"
+  | "unexpected_json"
+  | "failed";
+
+export const EXPORT_DOWNLOAD_NETWORK_ERROR =
+  "Download failed — network error";
+export const EXPORT_DOWNLOAD_UNEXPECTED_JSON =
+  "Unexpected JSON response (export locked or unauthorized)";
+export const EXPORT_DOWNLOAD_FAILED_FALLBACK = "Download failed";
+
+/** HTTP / network / unexpected JSON → downloadExport alert copy. */
+export function resolveExportDownloadFetchError(
+  kind: ExportDownloadFetchFailKind,
+  status?: number,
+): string {
+  if (kind === "network") return EXPORT_DOWNLOAD_NETWORK_ERROR;
+  if (kind === "unexpected_json") return EXPORT_DOWNLOAD_UNEXPECTED_JSON;
+  if (kind === "http" && typeof status === "number") {
+    return `Download failed (${status})`;
+  }
+  return EXPORT_DOWNLOAD_FAILED_FALLBACK;
+}
+
 /** Known adoption export errorCodes (for tests / source locks). */
 export function exportFailClosedErrorCodes(): string[] {
   return [

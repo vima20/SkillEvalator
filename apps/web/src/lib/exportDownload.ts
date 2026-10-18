@@ -2,6 +2,7 @@ import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { tryResolveAuthApiError } from "@/lib/authResolve";
 import {
   comparisonExportProductFromHref,
+  resolveExportDownloadFetchError,
   resolveExportGetError,
   type ComparisonExportProduct,
   type ResolveExportGetErrorOpts,
@@ -27,7 +28,7 @@ export function parseContentDispositionFilename(
 /** Prefer API `error` / fail-closed `errorCode` from JSON export bodies. */
 export function exportErrorFromJsonBody(
   body: unknown,
-  statusFallback = "Download failed",
+  statusFallback = resolveExportDownloadFetchError("failed"),
   opts?: ResolveExportGetErrorOpts,
 ): string | null {
   if (!body || typeof body !== "object") return null;
@@ -65,14 +66,17 @@ export async function downloadExport(
     if (e instanceof UnauthorizedError) {
       return { ok: false, error: e.message };
     }
-    return { ok: false, error: "Download failed — network error" };
+    return {
+      ok: false,
+      error: resolveExportDownloadFetchError("network"),
+    };
   }
 
   const ct = res.headers.get("content-type") ?? "";
   const isJson = ct.includes("application/json");
 
   if (!res.ok) {
-    const statusFallback = `Download failed (${res.status})`;
+    const statusFallback = resolveExportDownloadFetchError("http", res.status);
     let error = statusFallback;
     if (isJson) {
       try {
@@ -89,14 +93,15 @@ export async function downloadExport(
   }
 
   if (isJson) {
-    const unexpected =
-      "Unexpected JSON response (export locked or unauthorized)";
+    const unexpected = resolveExportDownloadFetchError("unexpected_json");
     try {
       const body: unknown = await res.json();
       return {
         ok: false,
         error:
-          exportErrorFromJsonBody(body, unexpected, exportOpts) ?? unexpected,
+          tryResolveAuthApiError(body) ??
+          exportErrorFromJsonBody(body, unexpected, exportOpts) ??
+          unexpected,
       };
     } catch {
       return { ok: false, error: unexpected };

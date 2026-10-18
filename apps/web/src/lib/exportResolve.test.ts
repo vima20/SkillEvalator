@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   EXPORT_COMPARISON_NOT_READY,
+  EXPORT_DOWNLOAD_FAILED_FALLBACK,
+  EXPORT_DOWNLOAD_NETWORK_ERROR,
+  EXPORT_DOWNLOAD_UNEXPECTED_JSON,
   EXPORT_EVALUATION_META_MISSING,
   EXPORT_FAILED_ERROR,
   EXPORT_INVALID_REQUEST_ERROR,
@@ -9,6 +12,7 @@ import {
   comparisonExportProductFromHref,
   exportFailClosedErrorCodes,
   exportGateBlockMessage,
+  resolveExportDownloadFetchError,
   resolveExportGetError,
 } from "./exportResolve.js";
 
@@ -180,6 +184,21 @@ describe("resolveExportGetError", () => {
         "utf8",
       ),
     ).toMatch(/EXPORT_RUN_CSV_LOCKED_FALLBACK/);
+  });
+
+  it("resolveExportDownloadFetchError maps client-only download failures", () => {
+    expect(resolveExportDownloadFetchError("network")).toBe(
+      EXPORT_DOWNLOAD_NETWORK_ERROR,
+    );
+    expect(resolveExportDownloadFetchError("unexpected_json")).toBe(
+      EXPORT_DOWNLOAD_UNEXPECTED_JSON,
+    );
+    expect(resolveExportDownloadFetchError("http", 409)).toBe(
+      "Download failed (409)",
+    );
+    expect(resolveExportDownloadFetchError("failed")).toBe(
+      EXPORT_DOWNLOAD_FAILED_FALLBACK,
+    );
   });
 
   it("export GET routes attach 404 and catch errorCodes", async () => {
