@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   assertSafeId,
+  clearRetryMarker,
+  findRetryParentRunId,
   loadRunResult,
   loadRunStatus,
   syncStatusFromResult,
@@ -11,6 +13,11 @@ import {
   cancelPairingMeta,
   findPairedCancelSiblingRunId,
 } from "@/lib/cancelPairedSibling";
+import { abortQueuedRun } from "@/lib/enqueueRun";
+import {
+  loadEvaluationMeta,
+  updateEvaluationMetaLeg,
+} from "@/lib/evaluations";
 import { healRunForRead } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
@@ -127,6 +134,46 @@ export function requestCancelOne(
 }
 
 /**
+ * Abort a Comparison tip that was linked before enqueue (no status/result yet):
+ * revert tip to retry-of parent, clear marker, and soft-abort the ghost id.
+ */
+export function abortGhostPairedTip(opts: {
+  evaluationId: string;
+  ghostRunId: string;
+}): boolean {
+  const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
+  const ghostRunId = assertSafeId(opts.ghostRunId, "runId");
+  const disk = loadEvaluationMeta(evaluationId);
+  if (!disk) return false;
+  const role: "baseline" | "candidate" | null =
+    disk.baselineRunId === ghostRunId
+      ? "baseline"
+      : disk.candidateRunId === ghostRunId
+        ? "candidate"
+        : null;
+  if (!role) return false;
+
+  const parent = findRetryParentRunId(resultsDir(), ghostRunId);
+  if (parent) {
+    updateEvaluationMetaLeg({
+      evaluationId,
+      role,
+      runId: parent,
+      ...(disk.mode === "dry-run" || disk.mode === "official"
+        ? { mode: disk.mode }
+        : {}),
+      evalSkillId: disk.evalSkillId,
+    });
+    clearRetryMarker(resultsDir(), parent);
+  }
+  abortQueuedRun(ghostRunId, "paired cancel aborted ghost tip", {
+    role,
+    evaluationId,
+  });
+  return true;
+}
+
+/**
  * POST /cancel orchestration: heal → resolve evaluationId → primary →
  * paired sibling cascade (`alsoCancelled`).
  */
@@ -170,8 +217,18 @@ export function cancelRunWithCascade(rawRunId: string): CancelRunResult {
     if (sibling && sibling !== runId) {
       const safeSibling = assertSafeId(sibling, "runId");
       healRunForRead(safeSibling);
-      const sib = requestCancelOne(safeSibling, { evaluationId });
-      if (sib.ok && !sib.already) alsoCancelled = safeSibling;
+      // Ghost tip (retry linked before enqueue): no status → requestCancelOne 404.
+      if (
+        !loadRunStatus(root, safeSibling) &&
+        !loadRunResult(root, safeSibling)
+      ) {
+        if (abortGhostPairedTip({ evaluationId, ghostRunId: safeSibling })) {
+          alsoCancelled = safeSibling;
+        }
+      } else {
+        const sib = requestCancelOne(safeSibling, { evaluationId });
+        if (sib.ok && !sib.already) alsoCancelled = safeSibling;
+      }
     }
   }
 

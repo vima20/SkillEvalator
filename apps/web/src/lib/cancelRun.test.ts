@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { writeJsonFile } from "@skillevalator/core";
+import { saveRetryMarker, writeJsonFile } from "@skillevalator/core";
 
 const temps: string[] = [];
 let jobsRoot = "";
@@ -339,5 +339,62 @@ describe("cancelRunWithCascade", () => {
       expect(out.alsoCancelled).toBeUndefined();
       expect(out.status).toBe("cancelled");
     }
+  });
+
+  it("aborts ghost candidate tip when healed meta exposes parent under enqueue lock", async () => {
+    const { cancelRunWithCascade } = await import("./cancelRun.js");
+    const evaluationId = "eval_cascade_ghost";
+    const base = "run_c6_base";
+    const parentCand = "run_c6_parent";
+    const ghostCand = "run_c6_ghost";
+
+    writeJsonFile(path.join(resultsRoot, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "skill_demo",
+      mode: "official",
+      baselineRunId: base,
+      candidateRunId: ghostCand,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    writeStatus(base, {
+      status: "queued",
+      role: "baseline",
+      evaluationId,
+    });
+    fs.writeFileSync(path.join(jobsRoot, `${base}.json`), "{}\n");
+    writeStatus(parentCand, {
+      status: "failed",
+      role: "candidate",
+      evaluationId,
+    });
+    // Ghost tip: no status/result; parent has retry-of + fresh enqueue lock
+    // so healGhostMetaLeg exposes parent in memory (would wrongly cascade).
+    saveRetryMarker(resultsRoot, parentCand, ghostCand);
+    fs.writeFileSync(
+      path.join(resultsRoot, parentCand, "retry-enqueue.lock"),
+      String(Date.now()),
+      "utf8",
+    );
+
+    const out = cancelRunWithCascade(base);
+    expect(out).toMatchObject({
+      ok: true,
+      runId: base,
+      status: "cancelled",
+      alsoCancelled: ghostCand,
+    });
+    const meta = JSON.parse(
+      fs.readFileSync(
+        path.join(resultsRoot, evaluationId, "evaluation.json"),
+        "utf8",
+      ),
+    ) as { candidateRunId: string };
+    expect(meta.candidateRunId).toBe(parentCand);
+    expect(
+      fs.existsSync(path.join(resultsRoot, parentCand, "retry-of.json")),
+    ).toBe(false);
+    expect(fs.existsSync(path.join(jobsRoot, `${ghostCand}.cancel`))).toBe(
+      true,
+    );
   });
 });

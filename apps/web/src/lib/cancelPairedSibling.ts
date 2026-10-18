@@ -1,12 +1,16 @@
 import fs from "node:fs";
 import {
   assertSafeId,
+  hasLiveJobFile,
   loadRunResult,
   loadRunStatus,
   resolvePairedCancelSibling,
 } from "@skillevalator/core";
-import { resolveHealedMetaLegsForCancel } from "@/lib/evaluations";
-import { resultsDir } from "@/lib/paths";
+import {
+  loadEvaluationMeta,
+  resolveHealedMetaLegsForCancel,
+} from "@/lib/evaluations";
+import { jobsDir, resultsDir } from "@/lib/paths";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { pairedCancelPeerStatuses } from "@/lib/runLifecycle";
 
@@ -41,6 +45,43 @@ export function findPairedCancelSiblingRunId(opts: {
   const meta = (opts.loadMeta ?? resolveHealedMetaLegsForCancel)(
     opts.evaluationId,
   );
+
+  // During in-flight retry tip-link, healed meta may expose the parent while
+  // disk tip is still the ghost/live child — cascade must target disk tip.
+  const disk = loadEvaluationMeta(opts.evaluationId);
+  if (
+    disk &&
+    (opts.role === "baseline" || opts.role === "candidate")
+  ) {
+    const opposite = opts.role === "baseline" ? "candidate" : "baseline";
+    const diskTip =
+      opposite === "baseline" ? disk.baselineRunId : disk.candidateRunId;
+    const healedTip = meta
+      ? opposite === "baseline"
+        ? meta.baselineRunId
+        : meta.candidateRunId
+      : null;
+    if (diskTip && diskTip !== opts.runId && diskTip !== healedTip) {
+      try {
+        assertSafeId(diskTip, "runId");
+        const st = loadRunStatus(root, diskTip);
+        const cancellable = pairedCancelPeerStatuses();
+        if (
+          hasLiveJobFile(jobsDir(), diskTip) ||
+          (st && cancellable.has(st.status ?? ""))
+        ) {
+          return diskTip;
+        }
+        // Ghost tip (linked before enqueue): no status/result/job yet.
+        if (!st && !loadRunResult(root, diskTip)) {
+          return diskTip;
+        }
+      } catch {
+        /* ignore invalid tip */
+      }
+    }
+  }
+
   const resolvePeer =
     opts.resolvePeerEvaluationId ??
     ((name: string) =>

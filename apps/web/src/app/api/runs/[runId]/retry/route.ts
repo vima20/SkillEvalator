@@ -469,8 +469,10 @@ export async function POST(
         return NextResponse.json(
           {
             ok: false,
-            error: enqueueError.trim() ? enqueueError : RETRY_FAILED_ERROR,
+            // Stable copy for UI — raw Node/fs detail stays in enqueueError.
+            error: RETRY_FAILED_ERROR,
             errorCode: "retry_failed",
+            enqueueError,
             fromRunId: runId,
             ...(evaluationId ? { evaluationId } : {}),
           },
