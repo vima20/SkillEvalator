@@ -127,8 +127,10 @@ describe("auth source locks", () => {
     expect(gate).toMatch(/tryResolveAuthApiError/);
     expect(gate).toMatch(/applyFailedProbe/);
     expect(gate).toMatch(/AUTH_MISCONFIGURED_ERROR/);
-    expect(gate).toMatch(/AUTH_UNLOCK_FAILED/);
+    expect(gate).toMatch(/resolveAuthClientError\("unreachable"\)/);
     expect(gate).not.toMatch(/unauthorized/);
+    expect(gate).not.toMatch(/Failed to fetch/);
+    expect(gate).not.toMatch(/err\.message/);
   });
 
   it("middleware API JSON emits auth_misconfigured and auth_unauthorized", async () => {
