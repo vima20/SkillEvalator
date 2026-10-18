@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   assertSafeId,
-  clearRetryMarker,
   findReusableRetryRunId,
   hasLiveJobFile,
   isNonRetryableErrorCode,
@@ -15,8 +14,9 @@ import {
   tryAcquireRetryEnqueueLock,
 } from "@skillevalator/core";
 import { checkEnqueueCostCap } from "@/lib/enqueueCostGate";
-import { abortQueuedRun, enqueueRun } from "@/lib/enqueueRun";
+import { enqueueRun } from "@/lib/enqueueRun";
 import {
+  loadEvaluationMeta,
   resolveHealedMetaLegsForCancel,
   updateEvaluationMetaLeg,
 } from "@/lib/evaluations";
@@ -38,6 +38,7 @@ import {
 } from "@/lib/runDetailRetryAdmission";
 import {
   isRetryBudgetStopping,
+  RETRY_COMPARISON_LINK_FAILED,
   RETRY_CONFIG_MISSING_ERROR,
   RETRY_ENQUEUE_LOCK_BUSY_ERROR,
   RETRY_EVALUATION_META_REVERT_FAILED,
@@ -266,9 +267,10 @@ export async function POST(
     };
 
     /**
-     * Paired retries must update evaluation.json or Comparison stays on the old leg.
-     * Fresh enqueues that fail the meta link are aborted so we do not leave a
-     * paid orphan that Comparison will ignore.
+     * Reused tip children only — must refresh evaluation.json or Comparison
+     * stays on the old leg. Never abort/clear the reused child on meta lock
+     * miss (TOCTOU: a concurrent retry may already tip the same runId).
+     * Fresh enqueues link before the job file and do not use this helper.
      */
     const respondLinked = (opts: {
       newRunId: string;
@@ -276,26 +278,30 @@ export async function POST(
     }) => {
       const metaUpdated = linkComparison(opts.newRunId);
       if (evaluationId && !metaUpdated) {
-        // Fresh or reused: do not leave a live child off the Comparison tip.
-        abortQueuedRun(
-          opts.newRunId,
-          "Comparison link update failed after retry enqueue",
-          {
-            role: role === "baseline" ? "baseline" : "candidate",
+        const tipRole = role === "baseline" ? "baseline" : "candidate";
+        const meta = loadEvaluationMeta(evaluationId);
+        const tipId =
+          tipRole === "baseline" ? meta?.baselineRunId : meta?.candidateRunId;
+        if (tipId === opts.newRunId) {
+          return NextResponse.json({
+            ok: true,
+            runId: opts.newRunId,
+            fromRunId: runId,
+            reused: opts.reused,
+            role,
             evaluationId,
-          },
-        );
-        clearRetryMarker(root, runId);
+            evaluationMetaUpdated: true,
+          });
+        }
         return NextResponse.json(
           {
             ok: false,
-            error:
-              "Comparison link update failed — retry child was cancelled; try again shortly",
+            error: RETRY_COMPARISON_LINK_FAILED,
             errorCode: "retry_comparison_link_failed",
             runId: opts.newRunId,
             fromRunId: runId,
             reused: opts.reused,
-            aborted: true,
+            aborted: false,
             role,
             evaluationId,
             evaluationMetaUpdated: false,
@@ -384,36 +390,60 @@ export async function POST(
         }
       }
 
-      const queued = enqueueRun({
-        evalSkillId,
-        mode,
-        repeats,
-        modelId,
-        role,
-        evaluationId,
-        skillSnapshotFromRunId,
-        runId: newRunId,
-      });
+      /**
+       * Tip already points at newRunId — revert to parent or pair is stuck on
+       * our ghost. Concurrent tip moves (other child / parent) are not repair.
+       */
+      const revertTipAfterFailedEnqueue = (enqueueError: string) => {
+        if (!evaluationId) return null;
+        if (linkComparison(runId)) return null;
+        const tipRole = role === "baseline" ? "baseline" : "candidate";
+        const meta = loadEvaluationMeta(evaluationId);
+        const tipId =
+          tipRole === "baseline"
+            ? meta?.baselineRunId
+            : meta?.candidateRunId;
+        if (tipId === runId || tipId !== newRunId) return null;
+        return NextResponse.json(
+          {
+            ok: false,
+            error: RETRY_EVALUATION_META_REVERT_FAILED,
+            errorCode: "evaluation_meta_revert_failed",
+            enqueueError,
+            runId: newRunId,
+            fromRunId: runId,
+            evaluationId,
+            evaluationMetaUpdated: false,
+          },
+          { status: 503 },
+        );
+      };
+
+      let queued: ReturnType<typeof enqueueRun>;
+      try {
+        queued = enqueueRun({
+          evalSkillId,
+          mode,
+          repeats,
+          modelId,
+          role,
+          evaluationId,
+          skillSnapshotFromRunId,
+          runId: newRunId,
+        });
+      } catch (enqueueErr) {
+        // writeQueuedRun can throw after tip link — do not leave ghost tip.
+        const enqueueError =
+          enqueueErr instanceof Error
+            ? enqueueErr.message
+            : "enqueue failed";
+        const revertFail = revertTipAfterFailedEnqueue(enqueueError);
+        if (revertFail) return revertFail;
+        throw enqueueErr;
+      }
       if (!queued.ok) {
-        if (evaluationId) {
-          // Tip already points at newRunId — revert must succeed or pair is stuck.
-          const reverted = linkComparison(runId);
-          if (!reverted) {
-            return NextResponse.json(
-              {
-                ok: false,
-                error: RETRY_EVALUATION_META_REVERT_FAILED,
-                errorCode: "evaluation_meta_revert_failed",
-                enqueueError: queued.error,
-                runId: newRunId,
-                fromRunId: runId,
-                evaluationId,
-                evaluationMetaUpdated: false,
-              },
-              { status: 503 },
-            );
-          }
-        }
+        const revertFail = revertTipAfterFailedEnqueue(queued.error);
+        if (revertFail) return revertFail;
         return NextResponse.json(
           {
             ok: false,
@@ -424,7 +454,12 @@ export async function POST(
         );
       }
 
-      saveRetryMarker(root, runId, queued.runId);
+      // Best-effort dedup marker — tip+job already live if we got here.
+      try {
+        saveRetryMarker(root, runId, queued.runId);
+      } catch {
+        /* ignore */
+      }
       return NextResponse.json({
         ok: true,
         runId: queued.runId,

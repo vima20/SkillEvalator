@@ -307,7 +307,14 @@ describe("POST /retry shares admission gate helpers", () => {
     expect(src).toMatch(/gate\.errorCode/);
     expect(src).toMatch(/RETRY_EVALUATION_META_REVERT_FAILED/);
     expect(src).toMatch(/evaluation_meta_revert_failed/);
+    expect(src).toMatch(/revertTipAfterFailedEnqueue/);
+    expect(src).toMatch(/try\s*\{\s*saveRetryMarker/);
     expect(src).toMatch(/retry_comparison_link_failed/);
+    expect(src).toMatch(/RETRY_COMPARISON_LINK_FAILED/);
+    expect(src).toMatch(/loadEvaluationMeta/);
+    expect(src).toMatch(/aborted: false/);
+    expect(src).not.toMatch(/abortQueuedRun/);
+    expect(src).not.toMatch(/clearRetryMarker/);
     expect(src).toMatch(/snapGate\.errorCode/);
     expect(src).toMatch(/retryOfficialPilotBlockedReason/);
     expect(src).toMatch(/healRunForRead/);

@@ -173,7 +173,7 @@ export const RETRY_EVALUATION_META_REVERT_FAILED =
 
 /**
  * Fail-closed default when Comparison tip link fails (POST may still send a
- * more specific error: before enqueue vs after enqueue abort).
+ * more specific before-enqueue message on fresh retry).
  */
 export const RETRY_COMPARISON_LINK_FAILED =
   "Comparison link update failed — try again shortly";
