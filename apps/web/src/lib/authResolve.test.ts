@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTH_GATE_MISCONFIGURED_BODY,
   AUTH_INVALID_REQUEST_ERROR,
   AUTH_INVALID_TOKEN_ERROR,
   AUTH_MISCONFIGURED_API_ERROR,
@@ -42,6 +43,7 @@ describe("resolveAuthPostError", () => {
         error: AUTH_MISCONFIGURED_API_ERROR,
       }),
     ).toBe(AUTH_MISCONFIGURED_ERROR);
+    expect(AUTH_GATE_MISCONFIGURED_BODY).toBe(AUTH_MISCONFIGURED_ERROR);
   });
 
   it("prefers body.error for invalid token", () => {

@@ -17,11 +17,14 @@ export type AuthPostErrorBody = {
   misconfigured?: boolean;
 };
 
-/** Same detail as API 503 + AuthGate misconfigured banner. */
+/**
+ * Fail-closed unlock guidance for auth_misconfigured (API/client resolvers).
+ * AuthGate card body aliases this — do not show both as alert + body.
+ */
 export const AUTH_MISCONFIGURED_ERROR =
   "WEB_AUTH_TOKEN is misconfigured (empty or whitespace only). Set a real token in .env and restart web + worker.";
 
-/** Shorter API 503 error field (legacy); resolver prefers AUTH_MISCONFIGURED_ERROR. */
+/** Shorter API/middleware 503 error field; resolver prefers AUTH_MISCONFIGURED_ERROR. */
 export const AUTH_MISCONFIGURED_API_ERROR =
   "WEB_AUTH_TOKEN misconfigured (empty or whitespace only)";
 
@@ -37,12 +40,12 @@ export const AUTH_UNREACHABLE_ERROR =
   "Could not reach auth API — check that the web server is running.";
 export const AUTH_UNLOCK_FAILED = "Unlock failed";
 
-/** AuthGate card titles / supporting copy (error alert uses AUTH_*_ERROR). */
+/** AuthGate card titles / supporting copy. */
 export const AUTH_GATE_MISCONFIGURED_TITLE = "WEB_AUTH_TOKEN misconfigured";
 export const AUTH_GATE_PROBE_FAILED_TITLE = "Access check failed";
 export const AUTH_GATE_UNLOCK_TITLE = "Unlock SkillEvalator";
-export const AUTH_GATE_MISCONFIGURED_BODY =
-  "The access token env var is empty or whitespace-only. Edit root .env, set WEB_AUTH_TOKEN to a real secret (or remove it for open local use), then restart web + worker.";
+/** Same guidance as AUTH_MISCONFIGURED_ERROR (single source). */
+export const AUTH_GATE_MISCONFIGURED_BODY = AUTH_MISCONFIGURED_ERROR;
 export const AUTH_GATE_PROBE_FAILED_BODY =
   "The browser could not confirm API access. Retry the check, or enter the access token from your admin.";
 export const AUTH_GATE_UNLOCK_BODY =
