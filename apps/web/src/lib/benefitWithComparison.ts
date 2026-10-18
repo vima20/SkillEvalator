@@ -1,5 +1,6 @@
 import {
   buildBenefitReport,
+  type BenefitPairPending,
   type BenefitReport,
   type RunComparison,
   type RunResult,
@@ -40,6 +41,12 @@ export function buildBenefitReportBundle(
   candidate: RunResult | null;
   /** Same source as pairHarness / retryAdmission. */
   evaluationId: string | null;
+  /**
+   * When Comparison is missing: tip still active (`waiting`) or settled
+   * without a scorecard (`unavailable`). Undefined when Comparison exists
+   * or there is no packed evaluation.
+   */
+  pairPending?: BenefitPairPending;
 } {
   const evaluationId =
     opts?.evaluationId !== undefined
@@ -74,5 +81,6 @@ export function buildBenefitReportBundle(
     baseline: packed?.baseline ?? null,
     candidate: packed?.candidate ?? null,
     evaluationId,
+    ...(pairPending ? { pairPending } : {}),
   };
 }

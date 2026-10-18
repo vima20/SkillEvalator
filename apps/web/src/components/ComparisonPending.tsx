@@ -60,6 +60,7 @@ function ComparisonPendingInner({
   pilotFocus,
 }: ComparisonPendingProps & { pilotFocus: boolean }) {
   const router = useRouter();
+  const [busy, setBusy] = useState(false);
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
   const [candidateBudgetTimedOut, setCandidateBudgetTimedOut] = useState(false);
 
@@ -255,11 +256,63 @@ function ComparisonPendingInner({
           → Cancel / Refresh.
         </p>
       ) : unavailable ? (
-        <p className="hint" style={{ marginTop: 12 }}>
-          <Link href={withPilotFocus("/", pilotFocus)}>
+        <div className="action-row" style={{ marginTop: 12 }}>
+          {candidateRunId && candidateHasResult ? (
+            <Link
+              className="btn btn-ghost btn-compact"
+              href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
+              title="No paired scorecard — open Benefit for Comparison unavailable detail"
+            >
+              Open Benefit — Comparison unavailable
+            </Link>
+          ) : candidateRunId ? (
+            <Link
+              className="btn btn-ghost btn-compact"
+              href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}
+              title="Tip candidate has no result.json — open run (Benefit needs a result)"
+            >
+              Open candidate run
+            </Link>
+          ) : null}
+          <Link
+            className="btn btn-primary btn-compact"
+            href={withPilotFocus("/", pilotFocus)}
+          >
             Start a new baseline↔candidate run
           </Link>
-        </p>
+        </div>
+      ) : stillWaiting ? (
+        <div className="action-row" style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-compact"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              router.refresh();
+              window.setTimeout(() => setBusy(false), 400);
+            }}
+          >
+            {busy ? "Refreshing…" : "Refresh now"}
+          </button>
+          {candidateRunId && candidateHasResult ? (
+            <Link
+              className="btn btn-ghost btn-compact"
+              href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
+              title="Candidate result ready — Benefit waiting for paired Comparison"
+            >
+              Open Benefit — waiting for Comparison
+            </Link>
+          ) : candidateRunId ? (
+            <Link
+              className="btn btn-ghost btn-compact"
+              href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}
+              title="Tip candidate still running — open run (Benefit needs a result)"
+            >
+              Open candidate run
+            </Link>
+          ) : null}
+        </div>
       ) : null}
       </div>
     </>

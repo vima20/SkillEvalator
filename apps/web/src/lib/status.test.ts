@@ -45,9 +45,19 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/tipActive/);
     expect(list).toMatch(/scorecardUnavailable/);
     expect(list).toMatch(/evaluationTipPairIsActive/);
-    // Unavailable rows still link to tip Benefit (pairPending unavailable copy).
+    // tipActive + result.json → Benefit (waiting); without result → run detail.
     expect(list).toMatch(
-      /e\.scorecardUnavailable \? \([\s\S]*?\/benefit\/\$\{e\.candidateRunId\}/,
+      /e\.tipActive \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}/,
+    );
+    expect(list).toMatch(
+      /e\.tipActive \?[\s\S]*?\/runs\/\$\{e\.candidateRunId\}/,
+    );
+    // Unavailable + result.json → Benefit; no result → run detail (not BenefitPending dead-end).
+    expect(list).toMatch(
+      /e\.scorecardUnavailable \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}/,
+    );
+    expect(list).toMatch(
+      /e\.scorecardUnavailable \?[\s\S]*?\/runs\/\$\{e\.candidateRunId\}/,
     );
     expect(detail).toMatch(
       /statusBadgeClass\(comparison\.baselineStatus,\s*true\)/,
@@ -64,6 +74,31 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/pageHeading/);
     expect(pendingUi).toMatch(/Settle the stuck leg/);
     expect(pendingUi).toMatch(/Waiting for results/);
+    expect(pendingUi).toMatch(
+      /candidateRunId && candidateHasResult/,
+    );
+    expect(pendingUi).toMatch(
+      /Open Benefit — Comparison unavailable/,
+    );
+    expect(pendingUi).toMatch(
+      /Open Benefit — waiting for Comparison/,
+    );
+    expect(pendingUi).toMatch(/Open candidate run/);
+    expect(pendingUi).toMatch(/Refresh now/);
+    // Benefit detail with result + pairPending waiting must poll (stale INCONCLUSIVE).
+    const benefitDetail = fs.readFileSync(
+      path.join(cwd, "src/app/benefit/[runId]/page.tsx"),
+      "utf8",
+    );
+    const benefitWait = fs.readFileSync(
+      path.join(cwd, "src/components/BenefitPairWaitingRefresh.tsx"),
+      "utf8",
+    );
+    expect(benefitDetail).toMatch(/pairPending/);
+    expect(benefitDetail).toMatch(/BenefitPairWaitingRefresh/);
+    expect(benefitDetail).toMatch(/pairWaiting \? <BenefitPairWaitingRefresh/);
+    expect(benefitWait).toMatch(/setInterval/);
+    expect(benefitWait).toMatch(/router\.refresh/);
   });
 });
 

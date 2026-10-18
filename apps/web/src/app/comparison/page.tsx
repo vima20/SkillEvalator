@@ -307,28 +307,61 @@ export default async function ComparisonListPage({
                     </td>
                     <td>{formatCreated(e.createdAt)}</td>
                     <td>
-                      {e.tipActive || !e.candidateRunId ? (
+                      {!e.candidateRunId ? (
                         <span
                           className="hint"
-                          title={
-                            e.tipActive
-                              ? "Benefit after paired scorecard"
-                              : (e.benefitLockedReason ?? undefined)
-                          }
+                          title={e.benefitLockedReason ?? undefined}
                         >
                           —
                         </span>
+                      ) : e.tipActive ? (
+                        e.candidateHasResult ? (
+                          <Link
+                            className="btn btn-ghost btn-compact"
+                            href={withPilotFocus(
+                              `/benefit/${e.candidateRunId}`,
+                              pilotFocus,
+                            )}
+                            title="Candidate result ready — Benefit waiting for paired Comparison"
+                          >
+                            Candidate
+                          </Link>
+                        ) : (
+                          <Link
+                            className="btn btn-ghost btn-compact"
+                            href={withPilotFocus(
+                              `/runs/${e.candidateRunId}`,
+                              pilotFocus,
+                            )}
+                            title="Tip candidate still running — open run (Benefit needs a result)"
+                          >
+                            Candidate run
+                          </Link>
+                        )
                       ) : e.scorecardUnavailable ? (
-                        <Link
-                          className="btn btn-ghost btn-compact"
-                          href={withPilotFocus(
-                            `/benefit/${e.candidateRunId}`,
-                            pilotFocus,
-                          )}
-                          title="No paired scorecard — open Benefit for Comparison unavailable detail"
-                        >
-                          Candidate
-                        </Link>
+                        e.candidateHasResult ? (
+                          <Link
+                            className="btn btn-ghost btn-compact"
+                            href={withPilotFocus(
+                              `/benefit/${e.candidateRunId}`,
+                              pilotFocus,
+                            )}
+                            title="No paired scorecard — open Benefit for Comparison unavailable detail"
+                          >
+                            Candidate
+                          </Link>
+                        ) : (
+                          <Link
+                            className="btn btn-ghost btn-compact"
+                            href={withPilotFocus(
+                              `/runs/${e.candidateRunId}`,
+                              pilotFocus,
+                            )}
+                            title="Tip candidate has no result.json — open run (Benefit needs a result)"
+                          >
+                            Candidate run
+                          </Link>
+                        )
                       ) : e.downloadsOk ? (
                         <Link
                           className="btn btn-ghost btn-compact"

@@ -4,6 +4,7 @@ import {
   loadRunResult,
   syncStatusFromResult,
 } from "@skillevalator/core";
+import { BenefitPairWaitingRefresh } from "@/components/BenefitPairWaitingRefresh";
 import { BenefitPending } from "@/components/BenefitPending";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
 import { EmptyState } from "@/components/EmptyState";
@@ -98,10 +99,12 @@ export default async function BenefitReportPage({
     baseline,
     candidate,
     evaluationId: resolvedEvaluationId,
+    pairPending,
   } = buildBenefitReportBundle(result, {
     runId,
     status: statusFile,
   });
+  const pairWaiting = pairPending === "waiting";
   const markdown = benefitReportToMarkdown(report);
   const baselineFakeProduce = baseline?.capture?.env?.fakeProduce === true;
   const candidateFakeProduce = candidate?.capture?.env?.fakeProduce === true;
@@ -264,6 +267,7 @@ export default async function BenefitReportPage({
             ) : null}
             . Score alone is not adoption evidence.
           </p>
+          {pairWaiting ? <BenefitPairWaitingRefresh /> : null}
         </div>
       )}
 
