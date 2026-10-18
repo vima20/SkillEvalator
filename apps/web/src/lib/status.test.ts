@@ -5,7 +5,15 @@ import {
   isBudgetStopWindDown,
   listWindDownRunIds,
   runIsActive,
+  statusBadgeKind,
 } from "./status.js";
+
+describe("statusBadgeKind", () => {
+  it("treats budget_stop wind-down as run, settled budget_stop as fail", () => {
+    expect(statusBadgeKind("budget_stop", false)).toBe("run");
+    expect(statusBadgeKind("budget_stop", true)).toBe("fail");
+  });
+});
 
 describe("runIsActive", () => {
   it("treats queued/running/cancel_requested as active", () => {

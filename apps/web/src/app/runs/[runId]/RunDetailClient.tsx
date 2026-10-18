@@ -24,6 +24,7 @@ import {
 import {
   isRetryBillingBlocked,
   isRetryBudgetStopping,
+  pairedCancelAlsoCopy,
   parseAlsoCancelledRunId,
   resolveCancelPostError,
   RETRY_INSUFFICIENT_QUOTA_BLOCKED,
@@ -43,7 +44,12 @@ function AlsoCancelledHint({
   pilotFocus: boolean;
 }) {
   return (
-    <p className="hint" role="status" style={{ marginTop: 10 }}>
+    <p
+      className="hint"
+      role="status"
+      style={{ marginTop: 10 }}
+      aria-label={pairedCancelAlsoCopy(alsoRunId)}
+    >
       Also cancelled the paired sibling{" "}
       <Link href={withPilotFocus(`/runs/${alsoRunId}`, pilotFocus)}>
         {alsoRunId}
@@ -609,7 +615,7 @@ export function RunDetailClient({
 
       <div className="meta-row">
         <span
-          className={`${statusBadgeClass(status)}${polling && !pollError ? " badge-live" : ""}`}
+          className={`${statusBadgeClass(status, Boolean(result))}${polling && !pollError ? " badge-live" : ""}`}
         >
           {status}
         </span>
@@ -975,6 +981,12 @@ export function RunDetailClient({
           ) : null}
           {jsonOpen ? (
             <pre className="json-block">{JSON.stringify(result, null, 2)}</pre>
+          ) : null}
+          {cancelAlsoRunId ? (
+            <AlsoCancelledHint
+              alsoRunId={cancelAlsoRunId}
+              pilotFocus={pilotFocus}
+            />
           ) : null}
           {status === "failed" ||
           status === "cancelled" ||

@@ -247,7 +247,7 @@ export default async function RunsPage({
                       </td>
                       <td>
                         <span
-                          className={`${statusBadgeClass(r.status)}${active ? " badge-live" : ""}`}
+                          className={`${statusBadgeClass(r.status, Boolean(r.result))}${active ? " badge-live" : ""}`}
                         >
                           {r.status ?? "unknown"}
                         </span>

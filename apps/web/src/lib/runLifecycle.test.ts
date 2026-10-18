@@ -668,6 +668,24 @@ describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
     expect(pairedCancelAlsoCopy("run_sib")).toMatch(/run_sib/);
     expect(pairedCancelAlsoCopy("run_sib")).toMatch(/paired sibling/i);
   });
+
+  it("RunDetailClient keeps AlsoCancelledHint on result scorecard path", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/app/runs/[runId]/RunDetailClient.tsx",
+      ),
+      "utf8",
+    );
+    expect(src).toMatch(/pairedCancelAlsoCopy/);
+    expect(src).toMatch(/aria-label=\{pairedCancelAlsoCopy/);
+    // Progress + result scorecard + cancelled-without-result.
+    expect(src.match(/AlsoCancelledHint/g)?.length ?? 0).toBeGreaterThanOrEqual(
+      3,
+    );
+  });
 });
 
 describe("runDetailFinalizeOrphansPath", () => {

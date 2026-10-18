@@ -138,7 +138,10 @@ export function comparisonPendingState(opts: {
   };
 }
 
-export function statusBadgeKind(status?: string | null): StatusBadgeKind {
+export function statusBadgeKind(
+  status?: string | null,
+  hasResult = false,
+): StatusBadgeKind {
   switch (status) {
     case "ok":
       return "ok";
@@ -146,15 +149,20 @@ export function statusBadgeKind(status?: string | null): StatusBadgeKind {
     case "queued":
     case "cancel_requested":
       return "run";
+    case "budget_stop":
+      // Wind-down (writing final result) is still in-flight, not a fail badge.
+      return hasResult ? "fail" : "run";
     case "failed":
     case "cancelled":
-    case "budget_stop":
       return "fail";
     default:
       return "wait";
   }
 }
 
-export function statusBadgeClass(status?: string | null): string {
-  return `badge badge-${statusBadgeKind(status)}`;
+export function statusBadgeClass(
+  status?: string | null,
+  hasResult = false,
+): string {
+  return `badge badge-${statusBadgeKind(status, hasResult)}`;
 }
