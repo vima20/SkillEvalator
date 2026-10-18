@@ -393,6 +393,33 @@ describe("benefitReport", () => {
     expect(report.rating.review).toMatch(/run_tip_cand/);
   });
 
+  it("superseded tipCandidateRunId beats waiting/unavailable when Comparison is null", () => {
+    const superseded = sample({
+      runId: "run_old_cand",
+      mode: "official",
+      score: 1,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      evaluationId: "eval_test",
+    });
+    const waiting = buildBenefitReport(superseded, {
+      comparison: null,
+      pairPending: "waiting",
+      tipCandidateRunId: "run_tip_cand",
+    });
+    expect(waiting.verdict.headline).toMatch(/superseded/i);
+    expect(waiting.verdict.headline).not.toMatch(/waiting/i);
+    expect(waiting.verdict.rationale).toMatch(/run_tip_cand/);
+
+    const unavailable = buildBenefitReport(superseded, {
+      comparison: null,
+      pairPending: "unavailable",
+      tipCandidateRunId: "run_tip_cand",
+    });
+    expect(unavailable.verdict.headline).toMatch(/superseded/i);
+    expect(unavailable.verdict.headline).not.toMatch(/unavailable/i);
+  });
+
   it("demotes superseded DO NOT USE and locks tip DO NOT USE until Comparison FAIL", () => {
     const superseded = sample({
       runId: "run_old_cand",

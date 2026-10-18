@@ -435,6 +435,11 @@ export function applyPairedComparisonGate(opts: {
    * paired scorecard (same gate as Comparison list).
    */
   pairPending?: BenefitPairPending;
+  /**
+   * Tip candidate runId when Comparison is not ready yet (healed meta).
+   * Superseded non-tip legs must not get waiting/unavailable copy.
+   */
+  tipCandidateRunId?: string | null;
 }): { verdict: BenefitVerdict; rating: BenefitRating } {
   const { result, comparison } = opts;
   let { verdict, rating } = opts;
@@ -518,6 +523,23 @@ export function applyPairedComparisonGate(opts: {
   }
 
   if (!comparison) {
+    const tipCand = opts.tipCandidateRunId;
+    if (tipCand && result.runId !== tipCand) {
+      verdict = {
+        recommendation: "inconclusive",
+        headline: "INCONCLUSIVE — superseded candidate leg",
+        decision:
+          "INCONCLUSIVE — this run is not the current Comparison candidate",
+        rationale: `Paired evaluationId ${result.evaluationId} tip candidate is ${tipCand}, not this run (${result.runId}). Benefit USE / DO NOT USE follow the tip candidate only — open Benefit for ${tipCand}.`,
+      };
+      rating = withUpdatedRecommendation(
+        rating,
+        4,
+        "Superseded candidate — adoption locked.",
+        `This run was replaced by ${tipCand} on the paired evaluation. Open that Benefit page for the adoption verdict.`,
+      );
+      return { verdict, rating };
+    }
     const pairPending = opts.pairPending ?? "waiting";
     if (pairPending === "unavailable") {
       verdict = {
@@ -727,6 +749,7 @@ export function buildBenefitReport(
   opts?: {
     comparison?: RunComparison | null;
     pairPending?: BenefitPairPending;
+    tipCandidateRunId?: string | null;
   },
 ): BenefitReport {
   const spread = result.scoreSpread ?? 0;
@@ -752,6 +775,9 @@ export function buildBenefitReport(
     rating: rateSkill(result),
     comparison: opts?.comparison,
     ...(opts?.pairPending ? { pairPending: opts.pairPending } : {}),
+    ...(opts?.tipCandidateRunId
+      ? { tipCandidateRunId: opts.tipCandidateRunId }
+      : {}),
   });
 
   return {

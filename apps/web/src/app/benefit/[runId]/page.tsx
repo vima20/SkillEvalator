@@ -104,7 +104,6 @@ export default async function BenefitReportPage({
     runId,
     status: statusFile,
   });
-  const pairWaiting = pairPending === "waiting";
   const markdown = benefitReportToMarkdown(report);
   const baselineFakeProduce = baseline?.capture?.env?.fakeProduce === true;
   const candidateFakeProduce = candidate?.capture?.env?.fakeProduce === true;
@@ -130,6 +129,9 @@ export default async function BenefitReportPage({
     tipCandidateRunId && tipCandidateRunId !== runId
       ? tipCandidateRunId
       : null;
+  // Superseded non-tip must not show waiting/unavailable (adoption follows tip).
+  const pairWaiting = !supersededTip && pairPending === "waiting";
+  const pairUnavailable = !supersededTip && pairPending === "unavailable";
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
   const showHarness =
@@ -245,27 +247,93 @@ export default async function BenefitReportPage({
             advice stays locked — re-run as a paired evaluation.
           </p>
         </div>
-      ) : (
-        <div className="panel callout-info">
-          <strong>Comparison vs Benefit</strong>
+      ) : supersededTip ? null : pairUnavailable ? (
+        <div className="panel callout-warn">
+          <strong>Comparison unavailable</strong>
           <p>
-            Benefit <strong>USE</strong> needs official paired{" "}
-            <strong>Comparison PASS</strong>; <strong>DO NOT USE</strong> needs{" "}
-            <strong>FAIL</strong>
+            Tip legs finished without a usable paired scorecard, so Benefit
+            stays <strong>INCONCLUSIVE</strong> — not USE / DO NOT USE.
             {resolvedEvaluationId ? (
               <>
                 {" "}
-                (
-                <Link href={withPilotFocus(
-                `/comparison/${resolvedEvaluationId}`,
-                pilotFocus,
-              )}>
-                  open Comparison
+                Open{" "}
+                <Link
+                  href={withPilotFocus(
+                    `/comparison/${resolvedEvaluationId}`,
+                    pilotFocus,
+                  )}
+                >
+                  Comparison
+                </Link>{" "}
+                or{" "}
+                <Link href={withPilotFocus("/", pilotFocus)}>
+                  start a new baseline↔candidate run
                 </Link>
-                )
+                .
               </>
-            ) : null}
-            . Score alone is not adoption evidence.
+            ) : (
+              <>
+                {" "}
+                <Link href={withPilotFocus("/", pilotFocus)}>
+                  Start a new baseline↔candidate run
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        </div>
+      ) : (
+        <div className="panel callout-info">
+          <strong>
+            {pairWaiting
+              ? "Waiting for Comparison"
+              : "Comparison vs Benefit"}
+          </strong>
+          <p>
+            {pairWaiting ? (
+              <>
+                Candidate score is ready, but paired Comparison is not —
+                Benefit stays <strong>INCONCLUSIVE</strong> until the sibling
+                leg finishes.
+                {resolvedEvaluationId ? (
+                  <>
+                    {" "}
+                    (
+                    <Link
+                      href={withPilotFocus(
+                        `/comparison/${resolvedEvaluationId}`,
+                        pilotFocus,
+                      )}
+                    >
+                      open Comparison
+                    </Link>
+                    )
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <>
+                Benefit <strong>USE</strong> needs official paired{" "}
+                <strong>Comparison PASS</strong>;{" "}
+                <strong>DO NOT USE</strong> needs <strong>FAIL</strong>
+                {resolvedEvaluationId ? (
+                  <>
+                    {" "}
+                    (
+                    <Link
+                      href={withPilotFocus(
+                        `/comparison/${resolvedEvaluationId}`,
+                        pilotFocus,
+                      )}
+                    >
+                      open Comparison
+                    </Link>
+                    )
+                  </>
+                ) : null}
+                . Score alone is not adoption evidence.
+              </>
+            )}
           </p>
           {pairWaiting ? <BenefitPairWaitingRefresh /> : null}
         </div>

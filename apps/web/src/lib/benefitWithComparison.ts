@@ -63,8 +63,13 @@ export function buildBenefitReportBundle(
     : null;
   const comparison = packed?.comparison ?? null;
   const meta = packed?.meta ?? null;
+  const tipCandidateRunId = resolveTipCandidateRunId({ comparison, meta });
+  const tipBaselineRunId = packed ? resolveTipBaselineRunId(packed) : null;
+  const supersededNonTip = Boolean(
+    tipCandidateRunId && tipCandidateRunId !== result.runId,
+  );
   const pairPending =
-    !comparison && packed
+    !comparison && packed && !supersededNonTip
       ? evaluationTipPairIsActive(packed)
         ? ("waiting" as const)
         : ("unavailable" as const)
@@ -73,11 +78,14 @@ export function buildBenefitReportBundle(
     report: buildBenefitReport(result, {
       comparison,
       ...(pairPending ? { pairPending } : {}),
+      ...(supersededNonTip && tipCandidateRunId
+        ? { tipCandidateRunId }
+        : {}),
     }),
     comparison,
     meta,
-    tipCandidateRunId: resolveTipCandidateRunId({ comparison, meta }),
-    tipBaselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
+    tipCandidateRunId,
+    tipBaselineRunId,
     baseline: packed?.baseline ?? null,
     candidate: packed?.candidate ?? null,
     evaluationId,

@@ -97,6 +97,15 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/pairPending/);
     expect(benefitDetail).toMatch(/BenefitPairWaitingRefresh/);
     expect(benefitDetail).toMatch(/pairWaiting \? <BenefitPairWaitingRefresh/);
+    expect(benefitDetail).toMatch(/pairUnavailable/);
+    expect(benefitDetail).toMatch(
+      /!supersededTip && pairPending === "unavailable"/,
+    );
+    expect(benefitDetail).toMatch(
+      /!supersededTip && pairPending === "waiting"/,
+    );
+    expect(benefitDetail).toMatch(/Comparison unavailable/);
+    expect(benefitDetail).toMatch(/Waiting for Comparison/);
     expect(benefitWait).toMatch(/setInterval/);
     expect(benefitWait).toMatch(/router\.refresh/);
   });
