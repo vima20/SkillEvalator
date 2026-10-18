@@ -8,7 +8,6 @@ import {
   AUTH_GATE_PROBE_FAILED_TITLE,
   AUTH_GATE_UNLOCK_BODY,
   AUTH_GATE_UNLOCK_TITLE,
-  AUTH_MISCONFIGURED_ERROR,
   resolveAuthClientError,
   resolveAuthPostError,
   tryResolveAuthApiError,
@@ -37,7 +36,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
       setNeeded(true);
       setMisconfigured(true);
       setCheckFailed(false);
-      setError(AUTH_MISCONFIGURED_ERROR);
+      // Card body (AUTH_GATE_MISCONFIGURED_BODY) carries guidance — no alert duplicate.
+      setError("");
       return;
     }
     setMisconfigured(false);
@@ -99,7 +99,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       if (q.get("misconfigured") === "1") {
         setMisconfigured(true);
         setNeeded(true);
-        setError(AUTH_MISCONFIGURED_ERROR);
+        setError("");
       }
     }
     (async () => {
@@ -152,6 +152,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
           setMisconfigured(true);
           setNeeded(true);
           setCheckFailed(false);
+          setError("");
+          return;
         }
         setError(resolveAuthPostError(data));
         return;

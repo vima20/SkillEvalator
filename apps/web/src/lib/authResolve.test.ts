@@ -126,11 +126,12 @@ describe("auth source locks", () => {
     expect(gate).toMatch(/resolveAuthClientError/);
     expect(gate).toMatch(/tryResolveAuthApiError/);
     expect(gate).toMatch(/applyFailedProbe/);
-    expect(gate).toMatch(/AUTH_MISCONFIGURED_ERROR/);
     expect(gate).toMatch(/AUTH_GATE_MISCONFIGURED_TITLE/);
+    expect(gate).toMatch(/AUTH_GATE_MISCONFIGURED_BODY/);
     expect(gate).toMatch(/AUTH_GATE_PROBE_FAILED_TITLE/);
     expect(gate).toMatch(/AUTH_GATE_UNLOCK_TITLE/);
     expect(gate).toMatch(/resolveAuthClientError\("unreachable"\)/);
+    expect(gate).not.toMatch(/AUTH_MISCONFIGURED_ERROR/);
     expect(gate).not.toMatch(/unauthorized/);
     expect(gate).not.toMatch(/Failed to fetch/);
     expect(gate).not.toMatch(/err\.message/);
