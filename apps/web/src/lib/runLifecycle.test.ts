@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { RETRY_ENQUEUE_LOCK_BUSY_ERROR as CORE_RETRY_ENQUEUE_LOCK_BUSY_ERROR } from "@skillevalator/core";
+import {
+  NON_RETRYABLE_ERROR_CODES,
+  officialEnqueueAllowed,
+  RETRY_ENQUEUE_LOCK_BUSY_ERROR as CORE_RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+} from "@skillevalator/core";
 import {
   cancelGate,
   CANCEL_FAILED_ERROR,
@@ -159,10 +163,7 @@ describe("RETRY_ENQUEUE_LOCK_BUSY_ERROR", () => {
 });
 
 describe("retryNonRetryableBlockedReason", () => {
-  it("matches core NON_RETRYABLE_ERROR_CODES", async () => {
-    const { NON_RETRYABLE_ERROR_CODES } = await import(
-      "@skillevalator/core"
-    );
+  it("matches core NON_RETRYABLE_ERROR_CODES", () => {
     expect([...RETRY_NON_RETRYABLE_ERROR_CODES].sort()).toEqual(
       [...NON_RETRYABLE_ERROR_CODES].sort(),
     );
@@ -459,8 +460,7 @@ describe("resolveRetryPostError", () => {
 });
 
 describe("officialAdmissionBlockedReason", () => {
-  it("matches core officialEnqueueAllowed static copy", async () => {
-    const { officialEnqueueAllowed } = await import("@skillevalator/core");
+  it("matches core officialEnqueueAllowed static copy", () => {
     const smoke = officialEnqueueAllowed({
       mode: "official",
       env: { FAKE_PRODUCE: "known-good", OPENAI_API_KEY: "sk" },

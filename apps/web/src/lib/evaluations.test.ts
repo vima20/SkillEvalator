@@ -2,7 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { writeJsonFile } from "@skillevalator/core";
+import {
+  releaseWxLock,
+  saveRetryMarker,
+  tryAcquireWxLock,
+  writeJsonFile,
+} from "@skillevalator/core";
 
 const temps: string[] = [];
 let resultsRoot = "";
@@ -236,8 +241,6 @@ describe("updateEvaluationMetaLeg", () => {
     const newCand = "run_100_new_heal";
     const baselineRunId = "run_100_base_heal";
 
-    const { saveRetryMarker, tryAcquireWxLock, releaseWxLock } =
-      await import("@skillevalator/core");
     const { loadEvaluationComparison, evaluationMetaPath } =
       await import("./evaluations.js");
 
