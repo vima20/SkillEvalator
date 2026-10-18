@@ -234,6 +234,8 @@ export async function POST(
       }
     }
     // Paired retry: same helper as retryAdmission (heal tip slot like Cancel).
+    // healGhostMetaLeg exposes parent in memory while enqueue lock is busy so
+    // this is not official_evaluation_leg_mismatch on a ghost tip.
     if (evaluationId && (mode === "dry-run" || mode === "official")) {
       const healed = resolveHealedMetaLegsForCancel(evaluationId);
       const pair = retryPairMetaAdmission({

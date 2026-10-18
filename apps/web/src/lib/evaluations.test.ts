@@ -413,7 +413,7 @@ describe("resolveHealedMetaLegsForCancel ghost tip", () => {
     ).toBe(false);
   });
 
-  it("skips heal while parent holds a fresh retry-enqueue.lock", async () => {
+  it("exposes parent in memory while lock busy without mutating disk tip", async () => {
     const evaluationId = "eval_100_ghostlock";
     const baselineRunId = "run_100_base_glck";
     const parentCand = "run_100_parentlk";
@@ -434,7 +434,7 @@ describe("resolveHealedMetaLegsForCancel ghost tip", () => {
     const healed = resolveHealedMetaLegsForCancel(evaluationId);
     expect(healed).toEqual({
       baselineRunId,
-      candidateRunId: ghostCand,
+      candidateRunId: parentCand,
     });
     const meta = JSON.parse(
       fs.readFileSync(
@@ -442,6 +442,7 @@ describe("resolveHealedMetaLegsForCancel ghost tip", () => {
         "utf8",
       ),
     ) as { candidateRunId: string };
+    // Disk tip stays on ghost until lock releases; marker kept for heal.
     expect(meta.candidateRunId).toBe(ghostCand);
     expect(
       fs.existsSync(path.join(resultsRoot, parentCand, "retry-of.json")),

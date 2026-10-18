@@ -74,6 +74,28 @@ describe("computeRunDetailRetryAdmission", () => {
     expect(out.blockedReason).toMatch(/already in progress/i);
   });
 
+  it("prefers lock-busy over leg_mismatch when healed tip is a ghost child", () => {
+    const out = computeRunDetailRetryAdmission(
+      base({
+        runId: "run_parent",
+        mode: "official",
+        evaluationId: "eval_1",
+        enqueueLockBusy: true,
+        healedMeta: {
+          baselineRunId: "run_base",
+          // Disk tip briefly points at in-flight ghost — parent is not a tip.
+          candidateRunId: "run_ghost",
+        },
+        explicitRole: "candidate",
+        webAuthKind: "required",
+        env: { OPENAI_API_KEY: "sk", FAKE_PRODUCE: "" },
+      }),
+    );
+    expect(out.canRetry).toBe(false);
+    expect(out.blockedReason).toMatch(/already in progress/i);
+    expect(out.blockedReason).not.toMatch(/tip/i);
+  });
+
   it("blocks when preflight not ok", () => {
     const out = computeRunDetailRetryAdmission(base({ preflightOk: false }));
     expect(out.canRetry).toBe(false);

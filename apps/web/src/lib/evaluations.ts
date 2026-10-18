@@ -159,7 +159,6 @@ function healGhostMetaLeg(opts: {
   if (hasLiveJobFile(jobsDir(), tip)) return tip;
   const parent = findRetryParentRunId(dir, tip);
   if (!parent) return tip;
-  if (isRetryEnqueueLockBusy(dir, parent)) return tip;
   const parentLeg = loadRetryChainLegInfo(dir, parent);
   if (
     !parentLeg ||
@@ -168,6 +167,9 @@ function healGhostMetaLeg(opts: {
   ) {
     return tip;
   }
+  // In-flight tip link (fresh retry-enqueue.lock): do not mutate disk/marker,
+  // but expose parent in memory so pair admission is not leg_mismatch on ghost.
+  if (isRetryEnqueueLockBusy(dir, parent)) return parent;
   if (
     updateEvaluationMetaLeg({
       evaluationId: opts.evaluationId,

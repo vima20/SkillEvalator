@@ -216,6 +216,16 @@ export function computeRunDetailRetryAdmission(opts: {
     };
   }
 
+  // Before pair-meta: in-flight tip link can leave disk tip on a ghost child
+  // while the parent still holds retry-enqueue.lock — prefer lock-busy copy
+  // over official_evaluation_leg_mismatch.
+  if (opts.enqueueLockBusy) {
+    return {
+      canRetry: false,
+      blockedReason: RETRY_ENQUEUE_LOCK_BUSY_ERROR,
+    };
+  }
+
   const pair = retryPairMetaAdmission({
     runId: opts.runId,
     mode,
@@ -243,13 +253,6 @@ export function computeRunDetailRetryAdmission(opts: {
   });
   if (!snapGate.allow) {
     return { canRetry: false, blockedReason: snapGate.error };
-  }
-
-  if (opts.enqueueLockBusy) {
-    return {
-      canRetry: false,
-      blockedReason: RETRY_ENQUEUE_LOCK_BUSY_ERROR,
-    };
   }
 
   return { canRetry: true, blockedReason: null };
