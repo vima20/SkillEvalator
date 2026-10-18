@@ -350,34 +350,50 @@ describe("updateEvaluationMetaLeg", () => {
 });
 
 describe("resolveHealedMetaLegsForCancel ghost tip", () => {
+  function plantGhostCandidateTip(opts: {
+    evaluationId: string;
+    baselineRunId: string;
+    parentCand: string;
+    ghostCand: string;
+  }) {
+    writeJsonFile(
+      path.join(resultsRoot, opts.evaluationId, "evaluation.json"),
+      {
+        evaluationId: opts.evaluationId,
+        evalSkillId: "code-debugging-eval",
+        mode: "official",
+        baselineRunId: opts.baselineRunId,
+        candidateRunId: opts.ghostCand,
+        createdAt: "2026-10-12T00:00:00.000Z",
+      },
+    );
+    writeJsonFile(path.join(resultsRoot, opts.baselineRunId, "status.json"), {
+      runId: opts.baselineRunId,
+      status: "ok",
+      role: "baseline",
+      evaluationId: opts.evaluationId,
+    });
+    writeJsonFile(path.join(resultsRoot, opts.parentCand, "status.json"), {
+      runId: opts.parentCand,
+      status: "failed",
+      role: "candidate",
+      evaluationId: opts.evaluationId,
+    });
+    // Ghost tip: no status/result; parent still has retry-of → ghost.
+    saveRetryMarker(resultsRoot, opts.parentCand, opts.ghostCand);
+  }
+
   it("rolls candidate tip back to parent when tip has no status/result/job", async () => {
     const evaluationId = "eval_100_ghosttip";
     const baselineRunId = "run_100_base_ghst";
     const parentCand = "run_100_parentgh";
     const ghostCand = "run_100_ghostxxx";
-
-    writeJsonFile(path.join(resultsRoot, evaluationId, "evaluation.json"), {
+    plantGhostCandidateTip({
       evaluationId,
-      evalSkillId: "code-debugging-eval",
-      mode: "official",
       baselineRunId,
-      candidateRunId: ghostCand,
-      createdAt: "2026-10-12T00:00:00.000Z",
+      parentCand,
+      ghostCand,
     });
-    writeJsonFile(path.join(resultsRoot, baselineRunId, "status.json"), {
-      runId: baselineRunId,
-      status: "ok",
-      role: "baseline",
-      evaluationId,
-    });
-    writeJsonFile(path.join(resultsRoot, parentCand, "status.json"), {
-      runId: parentCand,
-      status: "failed",
-      role: "candidate",
-      evaluationId,
-    });
-    // Ghost tip: no status/result; parent still has retry-of → ghost.
-    saveRetryMarker(resultsRoot, parentCand, ghostCand);
 
     const { resolveHealedMetaLegsForCancel } = await import("./evaluations.js");
     const healed = resolveHealedMetaLegsForCancel(evaluationId);
@@ -395,5 +411,40 @@ describe("resolveHealedMetaLegsForCancel ghost tip", () => {
     expect(
       fs.existsSync(path.join(resultsRoot, parentCand, "retry-of.json")),
     ).toBe(false);
+  });
+
+  it("skips heal while parent holds a fresh retry-enqueue.lock", async () => {
+    const evaluationId = "eval_100_ghostlock";
+    const baselineRunId = "run_100_base_glck";
+    const parentCand = "run_100_parentlk";
+    const ghostCand = "run_100_ghostlkx";
+    plantGhostCandidateTip({
+      evaluationId,
+      baselineRunId,
+      parentCand,
+      ghostCand,
+    });
+    fs.writeFileSync(
+      path.join(resultsRoot, parentCand, "retry-enqueue.lock"),
+      String(Date.now()),
+      "utf8",
+    );
+
+    const { resolveHealedMetaLegsForCancel } = await import("./evaluations.js");
+    const healed = resolveHealedMetaLegsForCancel(evaluationId);
+    expect(healed).toEqual({
+      baselineRunId,
+      candidateRunId: ghostCand,
+    });
+    const meta = JSON.parse(
+      fs.readFileSync(
+        path.join(resultsRoot, evaluationId, "evaluation.json"),
+        "utf8",
+      ),
+    ) as { candidateRunId: string };
+    expect(meta.candidateRunId).toBe(ghostCand);
+    expect(
+      fs.existsSync(path.join(resultsRoot, parentCand, "retry-of.json")),
+    ).toBe(true);
   });
 });

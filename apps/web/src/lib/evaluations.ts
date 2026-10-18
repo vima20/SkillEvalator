@@ -6,6 +6,7 @@ import {
   compareBaselineCandidate,
   findRetryParentRunId,
   hasLiveJobFile,
+  isRetryEnqueueLockBusy,
   loadRunResult,
   loadRunStatus,
   readJsonFile,
@@ -142,6 +143,8 @@ export function unlinkStaleBenefitReport(runId: string): void {
 /**
  * Tip linked before enqueue with no status/result/job is a ghost — roll back to
  * the parent recorded in retry-of.json so Retry/Comparison are not deadlocked.
+ * Skip while the parent holds a fresh retry-enqueue.lock (in-flight tip link
+ * before status/job lands — rolling back would orphan the paid child).
  */
 function healGhostMetaLeg(opts: {
   evaluationId: string;
@@ -156,6 +159,7 @@ function healGhostMetaLeg(opts: {
   if (hasLiveJobFile(jobsDir(), tip)) return tip;
   const parent = findRetryParentRunId(dir, tip);
   if (!parent) return tip;
+  if (isRetryEnqueueLockBusy(dir, parent)) return tip;
   const parentLeg = loadRetryChainLegInfo(dir, parent);
   if (
     !parentLeg ||

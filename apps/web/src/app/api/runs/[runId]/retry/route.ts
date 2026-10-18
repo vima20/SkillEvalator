@@ -453,7 +453,27 @@ export async function POST(
             : "enqueue failed";
         const revertFail = revertTipAfterFailedEnqueue(enqueueError);
         if (revertFail) return revertFail;
-        throw enqueueErr;
+        // Tip restored (or concurrent tip moved) — surface enqueue failure here
+        // instead of outer catch losing the message context.
+        if (enqueueError.startsWith("invalid ")) {
+          return NextResponse.json(
+            {
+              error: enqueueError || RETRY_INVALID_REQUEST_ERROR,
+              errorCode: "retry_invalid_request",
+            },
+            { status: 400 },
+          );
+        }
+        return NextResponse.json(
+          {
+            ok: false,
+            error: enqueueError.trim() ? enqueueError : RETRY_FAILED_ERROR,
+            errorCode: "retry_failed",
+            fromRunId: runId,
+            ...(evaluationId ? { evaluationId } : {}),
+          },
+          { status: 500 },
+        );
       }
       if (!queued.ok) {
         const revertFail = revertTipAfterFailedEnqueue(queued.error);
