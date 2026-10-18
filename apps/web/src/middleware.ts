@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
+  AUTH_MISCONFIGURED_API_ERROR,
+  AUTH_UNAUTHORIZED_API_ERROR,
+} from "@/lib/authResolve";
+import {
   safeUnlockNext,
   unlockNextFromRequest,
 } from "@/lib/safeUnlockNext";
@@ -31,7 +35,7 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         {
-          error: "WEB_AUTH_TOKEN misconfigured (empty or whitespace only)",
+          error: AUTH_MISCONFIGURED_API_ERROR,
           errorCode: "auth_misconfigured",
           misconfigured: true,
         },
@@ -64,7 +68,10 @@ export async function middleware(req: NextRequest) {
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json(
-      { error: "unauthorized", errorCode: "auth_unauthorized" },
+      {
+        error: AUTH_UNAUTHORIZED_API_ERROR,
+        errorCode: "auth_unauthorized",
+      },
       { status: 401 },
     );
   }

@@ -140,8 +140,14 @@ describe("auth source locks", () => {
       path.join(process.cwd(), "src/middleware.ts"),
       "utf8",
     );
+    expect(mw).toMatch(/AUTH_MISCONFIGURED_API_ERROR/);
+    expect(mw).toMatch(/AUTH_UNAUTHORIZED_API_ERROR/);
     expect(mw).toMatch(/errorCode:\s*"auth_misconfigured"/);
     expect(mw).toMatch(/errorCode:\s*"auth_unauthorized"/);
+    expect(mw).not.toMatch(
+      /error:\s*"WEB_AUTH_TOKEN misconfigured \(empty or whitespace only\)"/,
+    );
+    expect(mw).not.toMatch(/error:\s*"unauthorized"/);
   });
 
   it("AuthLock only reloads after successful DELETE", async () => {
