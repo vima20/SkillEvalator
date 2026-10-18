@@ -3,6 +3,7 @@ import {
   benefitListPairBlocksAdoption,
   benefitListPairChip,
   benefitListPairLockedLabel,
+  benefitPairCtaLabel,
   benefitPairEvidenceFromPacked,
 } from "./benefitListHints.js";
 
@@ -121,5 +122,21 @@ describe("benefitPairEvidenceFromPacked", () => {
     });
     expect(out.pairChip).toBeNull();
     expect(out.pairBlocked).toBe(false);
+  });
+});
+
+describe("benefitPairCtaLabel", () => {
+  it("mirrors Comparison list waiting/unavailable labels", () => {
+    expect(benefitPairCtaLabel("waiting").label).toBe("Benefit · waiting");
+    expect(benefitPairCtaLabel("unavailable").label).toBe(
+      "Benefit · unavailable",
+    );
+    expect(benefitPairCtaLabel(undefined).label).toBe("Benefit");
+    expect(
+      benefitPairCtaLabel(undefined, { readyLabel: "Open report" }).label,
+    ).toBe("Open report");
+    expect(benefitPairCtaLabel("waiting", { detailArrow: true }).label).toBe(
+      "Open Benefit · waiting →",
+    );
   });
 });

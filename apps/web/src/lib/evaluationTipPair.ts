@@ -14,6 +14,8 @@ type PackedTips = {
   candidate?: { status?: string } | null;
 };
 
+export type EvaluationPairPending = "waiting" | "unavailable";
+
 /**
  * Same tip-activity gate as Comparison list `tipActive` /
  * `hasPendingEvaluations`: status.json via syncStatusFromResult, else result.
@@ -38,4 +40,21 @@ export function evaluationTipPairIsActive(packed: PackedTips): boolean {
   return (
     runIsActive(baseStatus, baseHas) || runIsActive(candStatus, candHas)
   );
+}
+
+/**
+ * Benefit / Comparison pairPending when scorecard is missing.
+ * Superseded non-tip (`runId` ≠ tip candidate) returns undefined.
+ */
+export function evaluationPairPending(
+  packed: PackedTips | null | undefined,
+  opts?: { runId?: string },
+): EvaluationPairPending | undefined {
+  if (!packed || packed.comparison) return undefined;
+  // Need an evaluation folder/meta (or tip legs) — empty pack is not pending.
+  if (!packed.meta && !packed.baseline && !packed.candidate) return undefined;
+  const tipCand =
+    resolveTipCandidateRunId(packed) ?? packed.meta?.candidateRunId ?? null;
+  if (opts?.runId && tipCand && opts.runId !== tipCand) return undefined;
+  return evaluationTipPairIsActive(packed) ? "waiting" : "unavailable";
 }

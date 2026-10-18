@@ -122,6 +122,25 @@ describe("statusBadgeKind", () => {
     expect(benefitWait).toMatch(/windDownRunIds/);
     expect(benefitDetail).toMatch(/pairWindDownRunIds/);
     expect(benefitDetail).toMatch(/listWindDownRunIds/);
+    // Benefit list / Dashboard / Run detail share Comparison waiting labels.
+    const benefitList = fs.readFileSync(
+      path.join(cwd, "src/app/benefit/page.tsx"),
+      "utf8",
+    );
+    const dashboard = fs.readFileSync(
+      path.join(cwd, "src/app/dashboard/page.tsx"),
+      "utf8",
+    );
+    const runDetail = fs.readFileSync(
+      path.join(cwd, "src/app/runs/[runId]/RunDetailClient.tsx"),
+      "utf8",
+    );
+    expect(benefitList).toMatch(/benefitPairCtaLabel/);
+    expect(benefitList).toMatch(/pairPending/);
+    expect(dashboard).toMatch(/benefitPairCtaLabel/);
+    expect(dashboard).toMatch(/evaluationPairPending/);
+    expect(runDetail).toMatch(/benefitPairCtaLabel/);
+    expect(runDetail).toMatch(/data\.pairPending/);
   });
 });
 

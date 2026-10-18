@@ -100,3 +100,33 @@ export function benefitListPairLockedLabel(
   if (chip === "not attested") return "locked · not attested";
   return "locked · pair evidence";
 }
+
+/** Same waiting/unavailable labels as Comparison list Benefit column. */
+export function benefitPairCtaLabel(
+  pairPending?: "waiting" | "unavailable" | null,
+  opts?: { readyLabel?: string; detailArrow?: boolean },
+): { label: string; title?: string } {
+  if (pairPending === "waiting") {
+    return {
+      label: opts?.detailArrow
+        ? "Open Benefit · waiting →"
+        : "Benefit · waiting",
+      title:
+        "Candidate result ready — Benefit waiting for paired Comparison",
+    };
+  }
+  if (pairPending === "unavailable") {
+    return {
+      label: opts?.detailArrow
+        ? "Open Benefit · unavailable →"
+        : "Benefit · unavailable",
+      title:
+        "No paired scorecard — open Benefit for Comparison unavailable detail",
+    };
+  }
+  return {
+    label: opts?.detailArrow
+      ? "Open Benefit Report →"
+      : (opts?.readyLabel ?? "Benefit"),
+  };
+}

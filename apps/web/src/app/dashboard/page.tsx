@@ -5,6 +5,7 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
   benefitListPairLockedLabel,
+  benefitPairCtaLabel,
   benefitPairEvidenceFromPacked,
   type BenefitListPairChip,
 } from "@/lib/benefitListHints";
@@ -17,6 +18,7 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import { evaluationPairPending } from "@/lib/evaluationTipPair";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
@@ -39,6 +41,7 @@ type Row = {
   role: string;
   pairChip: BenefitListPairChip | null;
   pairBlocked: boolean;
+  pairPending?: "waiting" | "unavailable";
 };
 
 /** Same fixed task set + model → compare different skill implementations. */
@@ -76,6 +79,7 @@ export default async function DashboardPage({
       tipCandidateRunId: string | null;
       pairChip: BenefitListPairChip | null;
       pairBlocked: boolean;
+      packed: ReturnType<typeof loadEvaluationComparison>;
     }
   >();
   const pairFor = (evaluationId: string) => {
@@ -94,6 +98,7 @@ export default async function DashboardPage({
         tipCandidateRunId,
         pairChip,
         pairBlocked,
+        packed,
       });
     }
     return pairByEval.get(evaluationId)!;
@@ -114,7 +119,11 @@ export default async function DashboardPage({
           tipCandidateRunId: null as string | null,
           pairChip: null as BenefitListPairChip | null,
           pairBlocked: false,
+          packed: null as ReturnType<typeof loadEvaluationComparison> | null,
         };
+    const pairPending = evaluationPairPending(pair.packed, {
+      runId: r.runId,
+    });
     const baseOpts = {
       runId: r.runId,
       role: r.result.role,
@@ -149,6 +158,7 @@ export default async function DashboardPage({
         role: r.result.role,
         pairChip: pair.pairChip,
         pairBlocked: pair.pairBlocked,
+        ...(pairPending ? { pairPending } : {}),
       },
     ];
   });
@@ -449,22 +459,29 @@ export default async function DashboardPage({
                             <strong>{r.score ?? "—"}</strong>
                           </td>
                           <td>
-                            <Link
-                              className="btn btn-ghost btn-compact"
-                              href={withPilotFocus(
-                                `/benefit/${r.runId}`,
-                                pilotFocus,
-                              )}
-                              title={
-                                r.pairBlocked
-                                  ? "Pair evidence blocked (sibling smoke / unattested) — not adoption"
-                                  : undefined
-                              }
-                            >
-                              {r.pairBlocked
-                                ? benefitListPairLockedLabel(r.pairChip)
-                                : "Benefit"}
-                            </Link>
+                            {(() => {
+                              const cta = r.pairBlocked
+                                ? {
+                                    label: benefitListPairLockedLabel(
+                                      r.pairChip,
+                                    ),
+                                    title:
+                                      "Pair evidence blocked (sibling smoke / unattested) — not adoption",
+                                  }
+                                : benefitPairCtaLabel(r.pairPending);
+                              return (
+                                <Link
+                                  className="btn btn-ghost btn-compact"
+                                  href={withPilotFocus(
+                                    `/benefit/${r.runId}`,
+                                    pilotFocus,
+                                  )}
+                                  title={cta.title}
+                                >
+                                  {cta.label}
+                                </Link>
+                              );
+                            })()}
                             {r.evaluationId ? (
                               <>
                                 {" "}

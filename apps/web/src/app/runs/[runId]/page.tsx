@@ -88,7 +88,7 @@ export default async function RunDetailPage({
     );
   }
 
-  const { evaluationId, tipCandidateRunId, pairHarness } =
+  const { evaluationId, tipCandidateRunId, pairHarness, pairPending } =
     loadRunDetailEvaluationPack({
       runId,
       result,
@@ -120,6 +120,7 @@ export default async function RunDetailPage({
         }),
         tipCandidateRunId,
         pairHarness,
+        ...(pairPending ? { pairPending } : {}),
         resolvedEvaluationId: evaluationId,
         retryAdmission,
       }}

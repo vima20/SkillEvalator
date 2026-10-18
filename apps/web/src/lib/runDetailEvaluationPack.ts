@@ -10,6 +10,10 @@ import {
   loadEvaluationComparison,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import {
+  evaluationPairPending,
+  type EvaluationPairPending,
+} from "@/lib/evaluationTipPair";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import {
   runDetailPairHarness,
@@ -154,6 +158,8 @@ export type RunDetailEvaluationPack = {
   evaluationId: string | null;
   tipCandidateRunId: string | null;
   pairHarness: RunDetailPairHarness | null;
+  /** Same waiting/unavailable gate as Benefit detail / Comparison list. */
+  pairPending?: EvaluationPairPending;
 };
 
 /**
@@ -179,9 +185,11 @@ export function loadRunDetailEvaluationPack(opts: {
   }
   const loadPacked = opts.loadPacked ?? loadEvaluationComparison;
   const packed = loadPacked(evaluationId);
+  const pairPending = evaluationPairPending(packed, { runId: opts.runId });
   return {
     evaluationId,
     tipCandidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
     pairHarness: runDetailPairHarness(packed),
+    ...(pairPending ? { pairPending } : {}),
   };
 }

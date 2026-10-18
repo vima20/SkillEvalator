@@ -16,6 +16,7 @@ import { tryResolveAuthApiError } from "@/lib/authResolve";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
+import { benefitPairCtaLabel } from "@/lib/benefitListHints";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
   resolveRunDetailGetError,
@@ -140,6 +141,8 @@ type Payload = {
     baselineRunId: string;
     candidateRunId: string;
   } | null;
+  /** Same waiting/unavailable gate as Benefit detail / Comparison list. */
+  pairPending?: "waiting" | "unavailable";
   /** Full POST /retry admission mirror (preflight, Ready, pair, cost, snapshot). */
   retryAdmission?: {
     canRetry: boolean;
@@ -583,9 +586,15 @@ export function RunDetailClient({
                 </>
               );
             }
+            const cta = benefitPairCtaLabel(data.pairPending, {
+              detailArrow: true,
+            });
             return (
-              <Link href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}>
-                Open Benefit Report →
+              <Link
+                href={withPilotFocus(`/benefit/${runId}`, pilotFocus)}
+                title={cta.title}
+              >
+                {cta.label}
               </Link>
             );
           })()}

@@ -11,7 +11,7 @@ import {
   resolveTipCandidateRunId,
   type EvaluationMeta,
 } from "@/lib/evaluations";
-import { evaluationTipPairIsActive } from "@/lib/evaluationTipPair";
+import { evaluationPairPending } from "@/lib/evaluationTipPair";
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 
 /** Benefit with paired Comparison gate (USE / 5★ needs PASS). */
@@ -68,12 +68,9 @@ export function buildBenefitReportBundle(
   const supersededNonTip = Boolean(
     tipCandidateRunId && tipCandidateRunId !== result.runId,
   );
-  const pairPending =
-    !comparison && packed && !supersededNonTip
-      ? evaluationTipPairIsActive(packed)
-        ? ("waiting" as const)
-        : ("unavailable" as const)
-      : undefined;
+  const pairPending = evaluationPairPending(packed, {
+    runId: result.runId,
+  });
   return {
     report: buildBenefitReport(result, {
       comparison,

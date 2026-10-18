@@ -42,7 +42,7 @@ export async function GET(
         { status: 404 },
       );
     }
-    const { evaluationId, tipCandidateRunId, pairHarness } =
+    const { evaluationId, tipCandidateRunId, pairHarness, pairPending } =
       loadRunDetailEvaluationPack({
         runId,
         result,
@@ -69,6 +69,7 @@ export async function GET(
       }),
       tipCandidateRunId,
       pairHarness,
+      ...(pairPending ? { pairPending } : {}),
       resolvedEvaluationId: evaluationId,
       retryAdmission,
     });

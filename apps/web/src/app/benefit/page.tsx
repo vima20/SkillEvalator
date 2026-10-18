@@ -5,6 +5,7 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
   benefitListPairLockedLabel,
+  benefitPairCtaLabel,
   benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
@@ -55,6 +56,7 @@ export default async function BenefitIndexPage({
         baseline,
         candidate,
         evaluationId: bundleEvalId,
+        pairPending,
       } = buildBenefitReportBundle(r.result!, {
         runId: r.runId,
         evaluationId,
@@ -90,6 +92,7 @@ export default async function BenefitIndexPage({
         produceAttested,
         pairChip,
         pairBlocked,
+        pairPending,
       };
     })
     // Tip / unpaired first; waiting / superseded / smoke last.
@@ -300,15 +303,23 @@ export default async function BenefitIndexPage({
                           {benefitListPairLockedLabel(r.pairChip)}
                         </Link>
                       ) : (
-                        <Link
-                          className="btn btn-ghost btn-compact"
-                          href={withPilotFocus(
-                            `/benefit/${r.runId}`,
-                            pilotFocus,
-                          )}
-                        >
-                          Open report
-                        </Link>
+                        (() => {
+                          const cta = benefitPairCtaLabel(r.pairPending, {
+                            readyLabel: "Open report",
+                          });
+                          return (
+                            <Link
+                              className="btn btn-ghost btn-compact"
+                              href={withPilotFocus(
+                                `/benefit/${r.runId}`,
+                                pilotFocus,
+                              )}
+                              title={cta.title}
+                            >
+                              {cta.label}
+                            </Link>
+                          );
+                        })()
                       )}
                     </td>
                   </tr>
