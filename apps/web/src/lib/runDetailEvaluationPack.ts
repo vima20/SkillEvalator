@@ -3,8 +3,10 @@ import path from "node:path";
 import {
   JobManifestSchema,
   evaluationIdFromSources,
+  loadRunResult,
   loadRunStatus,
   readJsonFile,
+  syncStatusFromResult,
 } from "@skillevalator/core";
 import {
   loadEvaluationComparison,
@@ -19,6 +21,7 @@ import {
   runDetailPairHarness,
   type RunDetailPairHarness,
 } from "@/lib/runDetailPairHarness";
+import { listWindDownRunIds } from "@/lib/status";
 
 function readJobEvaluationIdFromPaths(
   candidates: string[],
@@ -161,6 +164,35 @@ export type RunDetailEvaluationPack = {
   /** Same waiting/unavailable gate as Benefit detail / Comparison list. */
   pairPending?: EvaluationPairPending;
 };
+
+/**
+ * Tip legs still in orphan wind-down while pairPending=waiting — same ids
+ * Benefit detail passes to BenefitPairWaitingRefresh (Run detail finalize).
+ */
+export function loadPairWaitingWindDownRunIds(opts: {
+  pairPending?: EvaluationPairPending | null;
+  baselineRunId?: string | null;
+  candidateRunId?: string | null;
+  root?: string;
+}): string[] {
+  if (opts.pairPending !== "waiting") return [];
+  const ids = [
+    ...new Set(
+      [opts.baselineRunId, opts.candidateRunId].filter(
+        (id): id is string => Boolean(id),
+      ),
+    ),
+  ];
+  if (ids.length === 0) return [];
+  const root = opts.root ?? resultsDir();
+  return listWindDownRunIds(
+    ids.map((id) => ({
+      runId: id,
+      status: syncStatusFromResult(root, id)?.status,
+      result: loadRunResult(root, id),
+    })),
+  );
+}
 
 /**
  * SSR + GET /api/runs/[runId] packed evaluation context for pair callouts.

@@ -141,6 +141,14 @@ describe("statusBadgeKind", () => {
       path.join(cwd, "src/app/runs/[runId]/RunDetailClient.tsx"),
       "utf8",
     );
+    const runDetailPage = fs.readFileSync(
+      path.join(cwd, "src/app/runs/[runId]/page.tsx"),
+      "utf8",
+    );
+    const runDetailApi = fs.readFileSync(
+      path.join(cwd, "src/app/api/runs/[runId]/route.ts"),
+      "utf8",
+    );
     expect(benefitList).toMatch(/benefitPairCtaLabel/);
     expect(benefitList).toMatch(/pairPending/);
     expect(dashboard).toMatch(/benefitPairCtaLabel/);
@@ -148,6 +156,13 @@ describe("statusBadgeKind", () => {
     expect(runDetail).toMatch(/benefitPairCtaLabel/);
     expect(runDetail).toMatch(/data\.pairPending/);
     expect(runDetail).toMatch(/runDetailShouldPoll/);
+    // Sibling wind-down finalize while pairPending waiting (Benefit parity).
+    expect(runDetail).toMatch(/pairWindDownRunIds/);
+    expect(runDetail).toMatch(/cost-cap or cancel/);
+    expect(runDetail).toMatch(/Resend cancel/);
+    expect(runDetail).toMatch(/orphanStuckFromFinalizePayload/);
+    expect(runDetailPage).toMatch(/loadPairWaitingWindDownRunIds/);
+    expect(runDetailApi).toMatch(/loadPairWaitingWindDownRunIds/);
     // Benefit CTA stays visible while pairPending waiting still polls.
     expect(runDetail).toMatch(/\{result \? \(/);
     expect(runDetail).not.toMatch(/\{result && !polling \?/);

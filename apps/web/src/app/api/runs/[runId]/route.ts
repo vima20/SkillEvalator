@@ -10,7 +10,10 @@ import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
 } from "@/lib/runCsvExportAllowed";
-import { loadRunDetailEvaluationPack } from "@/lib/runDetailEvaluationPack";
+import {
+  loadPairWaitingWindDownRunIds,
+  loadRunDetailEvaluationPack,
+} from "@/lib/runDetailEvaluationPack";
 import { runDetailRetryAdmissionForRun } from "@/lib/runDetailRetryAdmission";
 import {
   RUN_DETAIL_FAILED_ERROR,
@@ -52,6 +55,11 @@ export async function GET(
         result,
         status,
       });
+    const pairWindDownRunIds = loadPairWaitingWindDownRunIds({
+      pairPending,
+      baselineRunId: pairHarness?.baselineRunId,
+      candidateRunId: pairHarness?.candidateRunId,
+    });
     const preflight = runPreflight();
     // Heal already applied above; admission defaults to no full heal (wind-down).
     const retryAdmission = runDetailRetryAdmissionForRun({
@@ -75,6 +83,7 @@ export async function GET(
       tipCandidateRunId,
       pairHarness,
       ...(pairPending ? { pairPending } : {}),
+      ...(pairWindDownRunIds.length > 0 ? { pairWindDownRunIds } : {}),
       resolvedEvaluationId: evaluationId,
       retryAdmission,
     });

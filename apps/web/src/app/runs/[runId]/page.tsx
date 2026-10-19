@@ -13,7 +13,10 @@ import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
 } from "@/lib/runCsvExportAllowed";
-import { loadRunDetailEvaluationPack } from "@/lib/runDetailEvaluationPack";
+import {
+  loadPairWaitingWindDownRunIds,
+  loadRunDetailEvaluationPack,
+} from "@/lib/runDetailEvaluationPack";
 import { runDetailRetryAdmissionForRun } from "@/lib/runDetailRetryAdmission";
 import { runPreflight } from "@/lib/runPreflight";
 import { RunDetailClient } from "./RunDetailClient";
@@ -95,6 +98,11 @@ export default async function RunDetailPage({
       result,
       status,
     });
+  const pairWindDownRunIds = loadPairWaitingWindDownRunIds({
+    pairPending,
+    baselineRunId: pairHarness?.baselineRunId,
+    candidateRunId: pairHarness?.candidateRunId,
+  });
 
   const preflight = runPreflight();
   const retryAdmission = runDetailRetryAdmissionForRun({
@@ -123,6 +131,7 @@ export default async function RunDetailPage({
         pairHarness,
         hasLiveJob: hasLiveJobFile(jobsDir(), runId),
         ...(pairPending ? { pairPending } : {}),
+        ...(pairWindDownRunIds.length > 0 ? { pairWindDownRunIds } : {}),
         resolvedEvaluationId: evaluationId,
         retryAdmission,
       }}

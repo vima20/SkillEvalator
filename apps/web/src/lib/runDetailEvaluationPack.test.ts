@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  loadPairWaitingWindDownRunIds,
   loadRunDetailEvaluationPack,
   resolveListRunEvaluationId,
   resolveRunDetailEvaluationId,
@@ -112,5 +113,34 @@ describe("loadRunDetailEvaluationPack", () => {
       tipCandidateRunId: null,
       pairHarness: null,
     });
+  });
+});
+
+describe("loadPairWaitingWindDownRunIds", () => {
+  it("returns empty unless pairPending is waiting", () => {
+    expect(
+      loadPairWaitingWindDownRunIds({
+        pairPending: "unavailable",
+        baselineRunId: "run_b",
+        candidateRunId: "run_c",
+      }),
+    ).toEqual([]);
+    expect(
+      loadPairWaitingWindDownRunIds({
+        pairPending: undefined,
+        baselineRunId: "run_b",
+        candidateRunId: "run_c",
+      }),
+    ).toEqual([]);
+  });
+
+  it("returns empty when tip ids missing", () => {
+    expect(
+      loadPairWaitingWindDownRunIds({
+        pairPending: "waiting",
+        baselineRunId: null,
+        candidateRunId: null,
+      }),
+    ).toEqual([]);
   });
 });

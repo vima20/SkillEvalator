@@ -519,7 +519,8 @@ const RUN_DETAIL_POLL_TERMINAL = new Set([
 /**
  * Run detail live poll: active statuses, budget_stop wind-down, and
  * pairPending=waiting after result.json (Benefit CTA / CSV gate catch-up —
- * same window as BenefitPairWaitingRefresh).
+ * same window as BenefitPairWaitingRefresh; sibling wind-down finalize uses
+ * pairWindDownRunIds after WIND_DOWN_ORPHAN_MS).
  */
 export function runDetailShouldPoll(opts: {
   status?: string;

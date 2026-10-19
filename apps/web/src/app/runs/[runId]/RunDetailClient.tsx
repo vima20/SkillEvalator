@@ -38,6 +38,7 @@ import {
 } from "@/lib/runLifecycle";
 import {
   isOrphanActiveWindDown,
+  orphanStuckFromFinalizePayload,
   statusBadgeClass,
 } from "@/lib/status";
 
@@ -147,6 +148,11 @@ type Payload = {
   } | null;
   /** Same waiting/unavailable gate as Benefit detail / Comparison list. */
   pairPending?: "waiting" | "unavailable";
+  /**
+   * Tip siblings in budget_stop / cancel_requested without result while
+   * pairPending=waiting — finalize after shared orphan timeout (Benefit parity).
+   */
+  pairWindDownRunIds?: string[];
   /** Job file still on disk (finalize heal noop while worker finishing). */
   hasLiveJob?: boolean;
   /** Full POST /retry admission mirror (preflight, Ready, pair, cost, snapshot). */
@@ -221,6 +227,11 @@ export function RunDetailClient({
   const [retryError, setRetryError] = useState<string | null>(null);
   const [refreshBusy, setRefreshBusy] = useState(false);
   const [finalizeGen, setFinalizeGen] = useState(0);
+  const [pairFinalizeGen, setPairFinalizeGen] = useState(0);
+  const [pairOrphanStuck, setPairOrphanStuck] = useState(false);
+  const pairWindDownKey = [...new Set(data.pairWindDownRunIds ?? [])]
+    .sort()
+    .join("\0");
 
   const refresh = useCallback(
     async (opts?: { finalizeOrphans?: boolean }): Promise<Payload | null> => {
@@ -311,6 +322,43 @@ export function RunDetailClient({
     }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
   }, [data.status?.status, data.result, refresh, finalizeGen]);
+
+  // pairPending=waiting + sibling wind-down: finalize tip legs (Benefit parity).
+  // This run may already have result.json so the self-finalize effect above skips.
+  useEffect(() => {
+    if (data.pairPending !== "waiting" || !pairWindDownKey) {
+      setPairOrphanStuck(false);
+      return;
+    }
+    const ids = pairWindDownKey.split("\0").filter(Boolean);
+    const timers = ids.map((siblingId) =>
+      window.setTimeout(() => {
+        void (async () => {
+          let stuck = true;
+          try {
+            const res = await apiFetch(
+              runDetailFinalizeOrphansPath(siblingId),
+              { cache: "no-store" },
+            );
+            const body = (await res.json().catch(() => ({}))) as {
+              status?: { status?: string } | null;
+              result?: unknown | null;
+              hasLiveJob?: boolean;
+            };
+            stuck = orphanStuckFromFinalizePayload(body);
+          } catch {
+            /* treat as stuck */
+          }
+          setPairOrphanStuck(stuck);
+          await refresh();
+          if (!stuck) setPairFinalizeGen((g) => g + 1);
+        })();
+      }, WIND_DOWN_ORPHAN_MS),
+    );
+    return () => {
+      for (const id of timers) window.clearTimeout(id);
+    };
+  }, [data.pairPending, pairWindDownKey, refresh, pairFinalizeGen]);
 
   const status = data.status?.status ?? "unknown";
   const result = data.result;
@@ -617,6 +665,34 @@ export function RunDetailClient({
             );
           })()}
         </p>
+      ) : null}
+
+      {data.pairPending === "waiting" && pairWindDownKey ? (
+        <div style={{ marginTop: 8 }}>
+          <p className="hint">
+            {pairOrphanStuck
+              ? "Orphan wind-down stuck — Cancel / Resend cancel or Refresh (heal)"
+              : "Sibling cost-cap or cancel wind-down — auto-settle after shared orphan timeout"}
+          </p>
+          <p className="hint" style={{ marginTop: 6 }}>
+            {pairWindDownKey
+              .split("\0")
+              .filter((id) => id && id !== runId)
+              .map((id, i) => (
+                <span key={id}>
+                  {i > 0 ? " · " : null}
+                  <Link
+                    href={withPilotFocus(`/runs/${id}`, pilotFocus)}
+                    title="Open sibling — Cancel / Resend cancel or Refresh (heal)"
+                  >
+                    {pairOrphanStuck
+                      ? `Settle stuck leg ${id}`
+                      : `Open wind-down leg ${id}`}
+                  </Link>
+                </span>
+              ))}
+          </p>
+        </div>
       ) : null}
 
       {data.pairHarness ? (
