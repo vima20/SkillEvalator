@@ -177,7 +177,9 @@ function ComparisonPendingInner({
         ? "Writing final results"
         : "Comparison not ready";
   const body = orphanStuck
-    ? "A tip is stuck in budget_stop or cancel_requested without result.json (worker may be gone). Open that run → Cancel / Resend cancel or Refresh (heal). Retry unlocks after settle — same as run detail."
+    ? stillWaiting
+      ? "A tip is stuck in budget_stop or cancel_requested without result.json (worker may be gone). Settle that leg now — Cancel / Resend cancel or Refresh (heal) — while the other tip may still be running."
+      : "A tip is stuck in budget_stop or cancel_requested without result.json (worker may be gone). Open that run → Cancel / Resend cancel or Refresh (heal). Retry unlocks after settle — same as run detail."
     : unavailable
       ? "Both baseline and candidate finished without a complete paired scorecard (failed, cancelled, or budget_stop without usable results). Open the run pages for details, or start a new paired evaluation."
       : windDown

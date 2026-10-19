@@ -99,6 +99,7 @@ describe("statusBadgeKind", () => {
     // orphanStuck keeps poll + Refresh now (catch external heal without hard reload).
     expect(pendingUi).toMatch(/!stillWaiting && !orphanStuck/);
     expect(pendingUi).toMatch(/Resend cancel or Refresh \(heal\)/);
+    expect(pendingUi).toMatch(/while the other tip may still be running/);
     expect(pendingUi).toMatch(/orphanStuck \? \(/);
     const benefitPendingUi = fs.readFileSync(
       path.join(cwd, "src/components/BenefitPending.tsx"),
@@ -391,7 +392,8 @@ describe("comparisonPendingState", () => {
     expect(mid.baselineWindDown).toBe(true);
     expect(mid.stillWaiting).toBe(true);
     expect(mid.unavailable).toBe(false);
-    expect(mid.orphanStuck).toBe(false);
+    // Stuck CTA + Refresh (heal) while the other tip is still running.
+    expect(mid.orphanStuck).toBe(true);
 
     const both = comparisonPendingState({
       baseline: {

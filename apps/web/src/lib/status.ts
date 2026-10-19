@@ -121,7 +121,10 @@ export type ComparisonPendingGates = {
   windDown: boolean;
   stillWaiting: boolean;
   unavailable: boolean;
-  /** At least one tip is orphan wind-down after timeout — Cancel/Refresh on run. */
+  /**
+   * At least one tip is orphan wind-down after timeout — Cancel/Refresh on run.
+   * Does not wait for the other tip to settle (heal while sibling still runs).
+   */
   orphanStuck: boolean;
 };
 
@@ -164,9 +167,8 @@ export function comparisonPendingState(opts: {
     comparisonLegSettled(opts.baseline) &&
     comparisonLegSettled(opts.candidate);
   const orphanStuck =
-    unavailable &&
-    ((baselineWindDown && opts.baseline.budgetTimedOut) ||
-      (candidateWindDown && opts.candidate.budgetTimedOut));
+    (baselineWindDown && opts.baseline.budgetTimedOut) ||
+    (candidateWindDown && opts.candidate.budgetTimedOut);
   return {
     baselineWindDown,
     candidateWindDown,
