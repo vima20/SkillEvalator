@@ -70,6 +70,12 @@ function BenefitPendingInner({
           const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
             cache: "no-store",
           });
+          if (!res.ok) {
+            // Transport/HTTP failure — re-arm, do not fake orphan stuck.
+            router.refresh();
+            setFinalizeGen((g) => g + 1);
+            return;
+          }
           const body = (await res.json().catch(() => ({}))) as {
             status?: { status?: string } | null;
             result?: unknown | null;
@@ -77,7 +83,9 @@ function BenefitPendingInner({
           };
           stuck = orphanStuckFromFinalizePayload(body);
         } catch {
-          /* treat as stuck so Cancel/heal path is offered */
+          router.refresh();
+          setFinalizeGen((g) => g + 1);
+          return;
         }
         setBudgetTimedOut(stuck);
         router.refresh();
@@ -153,27 +161,26 @@ function BenefitPendingInner({
                 void (async () => {
                   // Finalize during wind-down (not only orphanStuck) — list parity.
                   if (windDown) {
-                    let stuck = true;
                     try {
                       const res = await apiFetch(
                         runDetailFinalizeOrphansPath(runId),
                         { cache: "no-store" },
                       );
                       if (!res.ok) {
-                        stuck = true;
+                        setFinalizeGen((g) => g + 1);
                       } else {
                         const body = (await res.json().catch(() => ({}))) as {
                           status?: { status?: string } | null;
                           result?: unknown | null;
                           hasLiveJob?: boolean;
                         };
-                        stuck = orphanStuckFromFinalizePayload(body);
+                        const stuck = orphanStuckFromFinalizePayload(body);
+                        setBudgetTimedOut(stuck);
+                        if (!stuck) setFinalizeGen((g) => g + 1);
                       }
                     } catch {
-                      /* keep stuck / re-arm path */
+                      setFinalizeGen((g) => g + 1);
                     }
-                    setBudgetTimedOut(stuck);
-                    if (!stuck) setFinalizeGen((g) => g + 1);
                   }
                   router.refresh();
                   window.setTimeout(() => setBusy(false), 400);

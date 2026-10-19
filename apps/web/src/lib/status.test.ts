@@ -103,7 +103,9 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/orphanStuck \? \(/);
     // Waiting Refresh finalizes wind-down legs (list / run detail parity).
     expect(pendingUi).toMatch(/baselineWindDown && baselineRunId/);
-    expect(pendingUi).toMatch(/if \(!res\.ok\) return true/);
+    // !ok / network → re-arm (false), not fake stuck.
+    expect(pendingUi).toMatch(/if \(!res\.ok\) return false/);
+    expect(pendingUi).toMatch(/catch \{\s*return false/);
     const benefitPendingUi = fs.readFileSync(
       path.join(cwd, "src/components/BenefitPending.tsx"),
       "utf8",
@@ -113,6 +115,9 @@ describe("statusBadgeKind", () => {
     expect(benefitPendingUi).toMatch(/Open run — Cancel \/ Resend cancel/);
     expect(benefitPendingUi).toMatch(/orphanStuckFromFinalizePayload/);
     expect(benefitPendingUi).toMatch(/if \(windDown\)/);
+    expect(benefitPendingUi).toMatch(
+      /do not fake orphan stuck|Transport\/HTTP failure/,
+    );
     // Benefit detail with result + pairPending waiting must poll (stale INCONCLUSIVE).
     const benefitDetail = fs.readFileSync(
       path.join(cwd, "src/app/benefit/[runId]/page.tsx"),

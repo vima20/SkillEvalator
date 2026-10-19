@@ -15,7 +15,11 @@ import {
   statusBadgeClass,
 } from "@/lib/status";
 
-/** true = orphan stuck; false = live job still finishing / retry (re-arm). */
+/**
+ * true = orphan stuck (dead wind-down).
+ * false = live job still finishing OR transport/!ok failure → re-arm timer
+ * (RunsAutoRefresh / run detail parity — do not fake stuck on network errors).
+ */
 async function finalizeOrphanLeg(
   runId: string | undefined,
 ): Promise<boolean> {
@@ -24,7 +28,7 @@ async function finalizeOrphanLeg(
     const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
       cache: "no-store",
     });
-    if (!res.ok) return true;
+    if (!res.ok) return false;
     const body = (await res.json().catch(() => ({}))) as {
       status?: { status?: string } | null;
       result?: unknown | null;
@@ -32,7 +36,7 @@ async function finalizeOrphanLeg(
     };
     return orphanStuckFromFinalizePayload(body);
   } catch {
-    return true;
+    return false;
   }
 }
 
