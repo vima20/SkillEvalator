@@ -617,6 +617,11 @@ describe("resolveEnqueuePostError", () => {
     expect(src).toMatch(/OFFICIAL_ADMISSION_PAIR_REQUIRED/);
     expect(src).toMatch(/errorCode: "enqueue_failed"/);
     expect(src).not.toMatch(/Failed to fetch/);
+    // Preflight demote official→dry-run must alert (same as selectMode).
+    expect(src).toMatch(/officialBlockedMessage/);
+    expect(src).toMatch(
+      /officialBlocked && mode === "official"[\s\S]*?setMsg\(officialBlockedMessage/,
+    );
   });
 
   it("POST /api/runs uses enqueue_preflight_blocked and catch codes", async () => {

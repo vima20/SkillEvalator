@@ -161,20 +161,27 @@ export function NewRunForm({
   const canQueue =
     preflight?.ok === true && !preflightError && !costOverCap;
 
+  function officialBlockedMessage(opts?: { apiRejects?: boolean }): string {
+    const suffix = opts?.apiRejects ? " (API also rejects)" : "";
+    return `Official mode blocked — Settings not Ready: ${
+      pilotBlockers.join("; ") || "see Settings"
+    }.${suffix}`;
+  }
+
+  // Preflight poll can flip Ready→blocked while Official is selected: demote
+  // to dry-run with the same alert as selectMode (do not silently switch).
   useEffect(() => {
     if (officialBlocked && mode === "official") {
       setMode("dry-run");
+      setError(true);
+      setMsg(officialBlockedMessage());
     }
-  }, [officialBlocked, mode]);
+  }, [officialBlocked, mode, pilotBlockers]);
 
   function selectMode(next: "dry-run" | "official", focus = false) {
     if (next === "official" && officialBlocked) {
       setError(true);
-      setMsg(
-        `Official mode blocked — Settings not Ready: ${
-          pilotBlockers.join("; ") || "see Settings"
-        }.`,
-      );
+      setMsg(officialBlockedMessage());
       return;
     }
     setMode(next);
@@ -206,11 +213,7 @@ export function NewRunForm({
     }
     if (mode === "official" && officialBlocked) {
       setError(true);
-      setMsg(
-        `Official mode blocked — Settings not Ready: ${
-          pilotBlockers.join("; ") || "see Settings"
-        } (API also rejects).`,
-      );
+      setMsg(officialBlockedMessage({ apiRejects: true }));
       return;
     }
     if (mode === "official" && !withBaseline) {
