@@ -210,6 +210,9 @@ describe("statusBadgeKind", () => {
     // Network / !ok finalize must re-arm — do not drop settle for the session.
     expect(listRefresh).toMatch(/if \(!res\.ok\)/);
     expect(listRefresh).toMatch(/catch \{\s*\/\/ Network/);
+    // Manual Refresh finalizes wind-down ids (same helper as the 90s timer).
+    expect(listRefresh).toMatch(/finalizeListWindDownIds/);
+    expect(listRefresh).toMatch(/if \(windDownKey\)/);
   });
 });
 
