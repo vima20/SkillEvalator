@@ -47,6 +47,11 @@ export function RunsAutoRefresh({
               const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
                 cache: "no-store",
               });
+              if (!res.ok) {
+                // Retry the shared orphan window — do not drop settle for the session.
+                rearm = true;
+                return;
+              }
               const body = (await res.json().catch(() => ({}))) as {
                 status?: { status?: string } | null;
                 result?: unknown | null;
@@ -62,7 +67,8 @@ export function RunsAutoRefresh({
                 rearm = true;
               }
             } catch {
-              /* refresh still shows disk state */
+              // Network / parse failure: re-arm like live-job noop (pending parity).
+              rearm = true;
             }
           }),
         );

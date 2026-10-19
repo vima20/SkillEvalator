@@ -207,6 +207,9 @@ describe("statusBadgeKind", () => {
     expect(listRefresh).toMatch(/finalizeGen/);
     expect(listRefresh).toMatch(/isOrphanActiveWindDown/);
     expect(listRefresh).toMatch(/hasLiveJob/);
+    // Network / !ok finalize must re-arm — do not drop settle for the session.
+    expect(listRefresh).toMatch(/if \(!res\.ok\)/);
+    expect(listRefresh).toMatch(/catch \{\s*\/\/ Network/);
   });
 });
 
