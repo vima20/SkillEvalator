@@ -189,6 +189,11 @@ describe("statusBadgeKind", () => {
     );
     expect(runDetail).toMatch(/Worker may be gone/);
     expect(runDetail).toMatch(/Cost hard-stop hit/);
+    // Successful Cancel clears cancelling so Resend cancel can re-enable.
+    expect(runDetail).toMatch(
+      /await refresh\(\);[\s\S]*?setCancelling\(false\)/,
+    );
+    expect(runDetail).toMatch(/Resend cancel/);
     expect(runDetailPage).toMatch(/loadPairWaitingWindDownRunIds/);
     expect(runDetailApi).toMatch(/loadPairWaitingWindDownRunIds/);
     // Benefit CTA stays visible while pairPending waiting still polls.

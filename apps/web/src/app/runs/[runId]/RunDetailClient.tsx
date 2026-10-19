@@ -472,6 +472,9 @@ export function RunDetailClient({
       setCancelAlsoRunId(parseAlsoCancelledRunId(body.alsoCancelled));
       setPolling(true);
       await refresh();
+      // Clear busy flag even while cancel_requested still polls — otherwise
+      // Resend cancel stays disabled as "Cancelling…" until remount.
+      setCancelling(false);
     } catch (e) {
       if (e instanceof UnauthorizedError) {
         setCancelling(false);
