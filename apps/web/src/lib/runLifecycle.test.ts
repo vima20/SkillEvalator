@@ -622,6 +622,9 @@ describe("resolveEnqueuePostError", () => {
     expect(src).toMatch(
       /officialBlocked && mode === "official"[\s\S]*?setMsg\(officialBlockedMessage/,
     );
+    // Settings Ready CTA → ?mode=official applied after first preflight.
+    expect(src).toMatch(/preferOfficial/);
+    expect(src).toMatch(/preferOfficialApplied/);
   });
 
   it("POST /api/runs uses enqueue_preflight_blocked and catch codes", async () => {

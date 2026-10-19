@@ -212,7 +212,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
               <>
                 <Link
                   className="btn btn-primary"
-                  href={withPilotFocus("/", true)}
+                  href={withPilotFocus("/?mode=official", true)}
                 >
                   Start official baseline↔candidate
                 </Link>{" "}

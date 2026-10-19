@@ -55,9 +55,12 @@ type Preflight = {
 export function NewRunForm({
   skills: initialSkills,
   pilotFocus = false,
+  /** Settings Ready CTA / ?mode=official — apply after first preflight. */
+  preferOfficial = false,
 }: {
   skills: SkillOption[];
   pilotFocus?: boolean;
+  preferOfficial?: boolean;
 }) {
   const router = useRouter();
   const [skills, setSkills] = useState(initialSkills);
@@ -81,6 +84,7 @@ export function NewRunForm({
   const [preflightError, setPreflightError] = useState<string | null>(null);
   const dryRunModeRef = useRef<HTMLButtonElement>(null);
   const officialModeRef = useRef<HTMLButtonElement>(null);
+  const preferOfficialApplied = useRef(false);
 
   const selected = skills.find((s) => s.id === evalSkillId) ?? skills[0];
   const minRepeats = mode === "official" ? OFFICIAL_MIN_REPEATS : 1;
@@ -195,6 +199,15 @@ export function NewRunForm({
       });
     }
   }
+
+  // Settings Ready CTA (?mode=official): wait for preflight so we do not
+  // demote-with-alert while pilotReady is still unknown (preflight == null).
+  useEffect(() => {
+    if (!preferOfficial || preferOfficialApplied.current) return;
+    if (preflight == null) return;
+    preferOfficialApplied.current = true;
+    selectMode("official");
+  }, [preferOfficial, preflight, officialBlocked, pilotBlockers]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

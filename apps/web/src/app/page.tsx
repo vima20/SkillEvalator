@@ -8,13 +8,21 @@ import { NewRunForm } from "./NewRunForm";
 
 export const dynamic = "force-dynamic";
 
+function isOfficialModeParam(
+  mode: string | string[] | undefined,
+): boolean {
+  const v = Array.isArray(mode) ? mode[0] : mode;
+  return v === "official";
+}
+
 export default async function NewRunPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string | string[] }>;
+  searchParams: Promise<{ focus?: string | string[]; mode?: string | string[] }>;
 }) {
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
+  const preferOfficial = isOfficialModeParam(sp.mode);
   const skills = listSkills(skillsDirs());
 
   return (
@@ -65,7 +73,11 @@ export default async function NewRunPage({
           />
         </div>
       ) : (
-        <NewRunForm skills={skills} pilotFocus={pilotFocus} />
+        <NewRunForm
+          skills={skills}
+          pilotFocus={pilotFocus}
+          preferOfficial={preferOfficial}
+        />
       )}
     </div>
   );
