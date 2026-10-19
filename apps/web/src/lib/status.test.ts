@@ -100,6 +100,14 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/!stillWaiting && !orphanStuck/);
     expect(pendingUi).toMatch(/Resend cancel or Refresh \(heal\)/);
     expect(pendingUi).toMatch(/orphanStuck \? \(/);
+    const benefitPendingUi = fs.readFileSync(
+      path.join(cwd, "src/components/BenefitPending.tsx"),
+      "utf8",
+    );
+    expect(benefitPendingUi).toMatch(/!stillWaiting && !orphanStuck/);
+    expect(benefitPendingUi).toMatch(/stillWaiting \|\| orphanStuck/);
+    expect(benefitPendingUi).toMatch(/Open run — Cancel \/ Resend cancel/);
+    expect(benefitPendingUi).toMatch(/orphanStuckFromFinalizePayload/);
     // Benefit detail with result + pairPending waiting must poll (stale INCONCLUSIVE).
     const benefitDetail = fs.readFileSync(
       path.join(cwd, "src/app/benefit/[runId]/page.tsx"),

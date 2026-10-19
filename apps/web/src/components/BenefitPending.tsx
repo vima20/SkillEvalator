@@ -87,13 +87,15 @@ function BenefitPendingInner({
     return () => window.clearTimeout(id);
   }, [windDown, runId, router, finalizeGen]);
 
+  // Poll while waiting OR orphanStuck — external heal (run detail / list) must
+  // clear stale stuck UI without a hard reload (ComparisonPending parity).
   useEffect(() => {
-    if (!stillWaiting) return;
+    if (!stillWaiting && !orphanStuck) return;
     const id = window.setInterval(() => {
       router.refresh();
     }, 2500);
     return () => window.clearInterval(id);
-  }, [router, stillWaiting]);
+  }, [router, stillWaiting, orphanStuck]);
 
   const cancelWindDown = status === "cancel_requested";
   const pageHeading = orphanStuck
@@ -141,15 +143,36 @@ function BenefitPendingInner({
                 : "This run has no result.json yet. Waiting for the worker — this page refreshes automatically."}
         </p>
         <div className="action-row" style={{ marginTop: 14 }}>
-          {stillWaiting ? (
+          {stillWaiting || orphanStuck ? (
             <button
               type="button"
               className="btn btn-ghost btn-compact"
               disabled={busy}
               onClick={() => {
                 setBusy(true);
-                router.refresh();
-                window.setTimeout(() => setBusy(false), 400);
+                void (async () => {
+                  if (orphanStuck) {
+                    let stuck = true;
+                    try {
+                      const res = await apiFetch(
+                        runDetailFinalizeOrphansPath(runId),
+                        { cache: "no-store" },
+                      );
+                      const body = (await res.json().catch(() => ({}))) as {
+                        status?: { status?: string } | null;
+                        result?: unknown | null;
+                        hasLiveJob?: boolean;
+                      };
+                      stuck = orphanStuckFromFinalizePayload(body);
+                    } catch {
+                      /* keep stuck */
+                    }
+                    setBudgetTimedOut(stuck);
+                    if (!stuck) setFinalizeGen((g) => g + 1);
+                  }
+                  router.refresh();
+                  window.setTimeout(() => setBusy(false), 400);
+                })();
               }}
             >
               {busy ? "Refreshing…" : "Refresh now"}
@@ -159,7 +182,9 @@ function BenefitPendingInner({
             className="btn btn-primary btn-compact"
             href={withPilotFocus(`/runs/${runId}`, pilotFocus)}
           >
-            {orphanStuck ? "Open run — Cancel / Refresh" : "Open run"}
+            {orphanStuck
+              ? "Open run — Cancel / Resend cancel"
+              : "Open run"}
           </Link>
         </div>
       </div>
