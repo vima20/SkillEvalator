@@ -176,13 +176,18 @@ export function NewRunForm({
 
   // Preflight poll can flip Ready→blocked while Official is selected: demote
   // to dry-run with the same alert as selectMode (do not silently switch).
+  // When ?mode=official, clear applied so Ready can re-select Official again
+  // (manual dry-run while Ready leaves applied true — no force-back).
   useEffect(() => {
     if (officialBlocked && mode === "official") {
       setMode("dry-run");
       setError(true);
       setMsg(officialBlockedMessage());
+      if (preferOfficial) {
+        preferOfficialApplied.current = false;
+      }
     }
-  }, [officialBlocked, mode, pilotBlockers]);
+  }, [officialBlocked, mode, pilotBlockers, preferOfficial]);
 
   function selectMode(next: "dry-run" | "official", focus = false) {
     if (next === "official" && officialBlocked) {
@@ -194,6 +199,9 @@ export function NewRunForm({
     if (next === "official") {
       setRepeats((r) => Math.max(r, OFFICIAL_MIN_REPEATS));
       setWithBaseline(true);
+      // Clear stale "Official mode blocked" after Ready / preferOfficial apply.
+      setError(false);
+      setMsg("");
     }
     if (focus) {
       void Promise.resolve().then(() => {

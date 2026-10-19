@@ -629,6 +629,13 @@ describe("resolveEnqueuePostError", () => {
     expect(src).toMatch(
       /if \(officialBlocked\)[\s\S]*?preferOfficialAlerted[\s\S]*?return;[\s\S]*?preferOfficialApplied\.current = true/,
     );
+    // Demote clears applied for ?mode=official; successful Official clears alert.
+    expect(src).toMatch(
+      /if \(preferOfficial\) \{\s*preferOfficialApplied\.current = false/,
+    );
+    expect(src).toMatch(
+      /setWithBaseline\(true\);\s*\/\/ Clear stale[\s\S]*?setError\(false\)/,
+    );
   });
 
   it("POST /api/runs uses enqueue_preflight_blocked and catch codes", async () => {
