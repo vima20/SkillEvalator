@@ -183,6 +183,12 @@ describe("statusBadgeKind", () => {
       /refresh\(\{\s*finalizeOrphans:\s*healSelf\s*\}\)/,
     );
     expect(runDetail).toMatch(/isOrphanActiveWindDown/);
+    // Live vs gone cost-cap copy uses hasLiveJob, not the poll flag.
+    expect(runDetail).toMatch(
+      /budgetStopWindDown && data\.hasLiveJob === true/,
+    );
+    expect(runDetail).toMatch(/Worker may be gone/);
+    expect(runDetail).toMatch(/Cost hard-stop hit/);
     expect(runDetailPage).toMatch(/loadPairWaitingWindDownRunIds/);
     expect(runDetailApi).toMatch(/loadPairWaitingWindDownRunIds/);
     // Benefit CTA stays visible while pairPending waiting still polls.

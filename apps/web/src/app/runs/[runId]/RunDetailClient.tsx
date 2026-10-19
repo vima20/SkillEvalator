@@ -367,8 +367,13 @@ export function RunDetailClient({
   const cancelRequested = status === "cancel_requested";
   /** Orphan/settling cost-cap — same as POST retry admission + cancelGate. */
   const budgetStopWindDown = isRetryBudgetStopping(status, Boolean(result));
-  /** Live wind-down while still polling for result.json. */
-  const budgetStoppingLive = budgetStopWindDown && polling;
+  /**
+   * Live cost-cap wind-down: job file still on disk writing result.json.
+   * Do not key off `polling` — a failed GET must not flip copy to
+   * "Worker may be gone" / Cancel while the worker is still finishing.
+   */
+  const budgetStoppingLive =
+    budgetStopWindDown && data.hasLiveJob === true;
   // Cancel matches POST /cancel — resend allowed while cancel_requested.
   const canCancel = runDetailCanCancel({
     status,
