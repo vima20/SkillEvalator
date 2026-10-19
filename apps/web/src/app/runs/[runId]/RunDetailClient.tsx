@@ -278,12 +278,13 @@ export function RunDetailClient({
     return () => window.clearInterval(id);
   }, [polling, refresh]);
 
-  // budget_stop without result should not poll forever (orphan / crashed worker).
-  // Final refresh uses finalizeOrphans so orphan budget_stop → failed and Retry
-  // is not stuck; live poll uses read-heal and keeps Cancel available.
+  // budget_stop / cancel_requested without result should not poll forever
+  // (orphan / crashed worker). Final refresh uses finalizeOrphans so orphan
+  // active → failed and Retry is not stuck; live poll uses read-heal.
   useEffect(() => {
     const st = data.status?.status;
-    if (st !== "budget_stop" || data.result) return;
+    if (data.result) return;
+    if (st !== "budget_stop" && st !== "cancel_requested") return;
     const id = window.setTimeout(() => {
       void (async () => {
         await refresh({ finalizeOrphans: true });
@@ -302,12 +303,11 @@ export function RunDetailClient({
   const budgetStopWindDown = isRetryBudgetStopping(status, Boolean(result));
   /** Live wind-down while still polling for result.json. */
   const budgetStoppingLive = budgetStopWindDown && polling;
-  // Cancel matches POST /cancel — including wind-down after 90s poll stop.
+  // Cancel matches POST /cancel — resend allowed while cancel_requested.
   const canCancel = runDetailCanCancel({
     status,
     hasResult: Boolean(result),
     cancelling,
-    cancelRequested,
   });
   const retryTerminal =
     status === "failed" ||
@@ -727,13 +727,15 @@ export function RunDetailClient({
           </div>
           <div className="action-row progress-actions">
             <p className="hint">
-              {cancelling || cancelRequested
+              {cancelling
                 ? "Cancel requested — waiting for the worker to stop."
-                : budgetStoppingLive
-                  ? "Cost hard-stop hit — writing final result (no further produce/grade)."
-                  : budgetStopWindDown
-                    ? "Worker may be gone — Cancel to settle, or Refresh after heal. Retry stays blocked until result.json exists."
-                    : "Refresh is automatic. You can leave this page open."}
+                : cancelRequested
+                  ? "Cancel requested — waiting for the worker to stop. Resend refreshes the .cancel marker; after the shared orphan timeout Refresh (heal) settles a dead worker."
+                  : budgetStoppingLive
+                    ? "Cost hard-stop hit — writing final result (no further produce/grade)."
+                    : budgetStopWindDown
+                      ? "Worker may be gone — Cancel to settle, or Refresh after heal. Retry stays blocked until result.json exists."
+                      : "Refresh is automatic. You can leave this page open."}
             </p>
             <button
               type="button"
@@ -741,7 +743,11 @@ export function RunDetailClient({
               disabled={!canCancel}
               onClick={() => void onCancel()}
             >
-              {cancelling ? "Cancelling…" : "Cancel run"}
+              {cancelling
+                ? "Cancelling…"
+                : cancelRequested
+                  ? "Resend cancel"
+                  : "Cancel run"}
             </button>
           </div>
           {cancelError ? (

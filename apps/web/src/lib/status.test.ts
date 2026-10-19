@@ -3,6 +3,7 @@ import {
   benefitPendingState,
   comparisonPendingState,
   isBudgetStopWindDown,
+  isOrphanActiveWindDown,
   listWindDownRunIds,
   runIsActive,
   statusBadgeKind,
@@ -80,6 +81,7 @@ describe("statusBadgeKind", () => {
     );
     expect(pendingUi).toMatch(/pageHeading/);
     expect(pendingUi).toMatch(/Settle the stuck leg/);
+    expect(pendingUi).toMatch(/cancel_requested/);
     expect(pendingUi).toMatch(/Waiting for results/);
     expect(pendingUi).toMatch(
       /candidateRunId && candidateHasResult/,
@@ -171,16 +173,21 @@ describe("runIsActive", () => {
 });
 
 describe("listWindDownRunIds", () => {
-  it("collects budget_stop without result only", () => {
+  it("collects budget_stop and cancel_requested without result", () => {
     expect(isBudgetStopWindDown("budget_stop", false)).toBe(true);
     expect(isBudgetStopWindDown("budget_stop", true)).toBe(false);
+    expect(isOrphanActiveWindDown("budget_stop", false)).toBe(true);
+    expect(isOrphanActiveWindDown("cancel_requested", false)).toBe(true);
+    expect(isOrphanActiveWindDown("cancel_requested", true)).toBe(false);
+    expect(isOrphanActiveWindDown("running", false)).toBe(false);
     expect(
       listWindDownRunIds([
         { runId: "run_a", status: "budget_stop", result: null },
         { runId: "run_b", status: "budget_stop", result: { score: 1 } },
-        { runId: "run_c", status: "running", result: null },
+        { runId: "run_c", status: "cancel_requested", result: null },
+        { runId: "run_d", status: "running", result: null },
       ]),
-    ).toEqual(["run_a"]);
+    ).toEqual(["run_a", "run_c"]);
   });
 });
 
@@ -215,6 +222,31 @@ describe("benefitPendingState", () => {
     });
     expect(
       benefitPendingState({ status: "budget_stop", budgetTimedOut: true }),
+    ).toEqual({
+      windDown: true,
+      stillWaiting: false,
+      unavailable: true,
+      orphanStuck: true,
+    });
+  });
+
+  it("polls during cancel_requested until orphan timeout", () => {
+    expect(
+      benefitPendingState({
+        status: "cancel_requested",
+        budgetTimedOut: false,
+      }),
+    ).toEqual({
+      windDown: true,
+      stillWaiting: true,
+      unavailable: false,
+      orphanStuck: false,
+    });
+    expect(
+      benefitPendingState({
+        status: "cancel_requested",
+        budgetTimedOut: true,
+      }),
     ).toEqual({
       windDown: true,
       stillWaiting: false,
@@ -293,6 +325,26 @@ describe("comparisonPendingState", () => {
     expect(both.stillWaiting).toBe(false);
     expect(both.unavailable).toBe(true);
     expect(both.orphanStuck).toBe(true);
+  });
+
+  it("times out cancel_requested orphan legs like budget_stop", () => {
+    const g = comparisonPendingState({
+      baseline: {
+        status: "cancel_requested",
+        hasResult: false,
+        budgetTimedOut: true,
+      },
+      candidate: {
+        status: "cancel_requested",
+        hasResult: false,
+        budgetTimedOut: true,
+      },
+    });
+    expect(g.baselineWindDown).toBe(true);
+    expect(g.candidateWindDown).toBe(true);
+    expect(g.stillWaiting).toBe(false);
+    expect(g.unavailable).toBe(true);
+    expect(g.orphanStuck).toBe(true);
   });
 
   it("treats budget_stop with result as settled wind-down complete", () => {

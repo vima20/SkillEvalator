@@ -130,11 +130,11 @@ function ComparisonPendingInner({
         ? "Writing final results"
         : "Waiting for results";
   const eyebrow = orphanStuck
-    ? "Orphan cost-cap wind-down"
+    ? "Orphan wind-down stuck"
     : unavailable
       ? "Comparison unavailable"
       : windDown
-        ? "Cost hard-stop wind-down"
+        ? "Wind-down in progress"
         : "Waiting for both legs";
   const title = orphanStuck
     ? "Settle the stuck leg on its run page"
@@ -144,11 +144,11 @@ function ComparisonPendingInner({
         ? "Writing final results"
         : "Comparison not ready";
   const body = orphanStuck
-    ? "A tip hit COST_CAP_USD and never wrote result.json (worker may be gone). Open that run → Cancel or Refresh (heal). Retry stays blocked until result.json exists — same as run detail."
+    ? "A tip is stuck in budget_stop or cancel_requested without result.json (worker may be gone). Open that run → Cancel / Resend cancel or Refresh (heal). Retry unlocks after settle — same as run detail."
     : unavailable
       ? "Both baseline and candidate finished without a complete paired scorecard (failed, cancelled, or budget_stop without usable results). Open the run pages for details, or start a new paired evaluation."
       : windDown
-        ? "A leg hit the cost cap and is writing its final result.json. Each wind-down leg gets its own orphan timeout; polling continues while the other leg is still active."
+        ? "A tip is in cost-cap or cancel wind-down. Each wind-down leg gets its own orphan timeout; polling continues while the other leg is still active."
         : "Baseline and candidate must finish before lift and PASS/FAIL can be computed. This page refreshes automatically.";
 
   const stuckBaselineId =

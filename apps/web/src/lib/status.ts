@@ -30,7 +30,19 @@ export function isBudgetStopWindDown(
 }
 
 /**
- * Run ids still in budget_stop wind-down (list SSR → RunsAutoRefresh finalize).
+ * Orphan mid-run without result.json: budget_stop or cancel_requested.
+ * Same 90s finalize window as lists / pending / run detail.
+ */
+export function isOrphanActiveWindDown(
+  status: string | undefined,
+  hasResult = false,
+): boolean {
+  if (hasResult) return false;
+  return status === "budget_stop" || status === "cancel_requested";
+}
+
+/**
+ * Run ids still in orphan wind-down (list SSR → RunsAutoRefresh finalize).
  */
 export function listWindDownRunIds(
   runs: Array<{
@@ -40,7 +52,7 @@ export function listWindDownRunIds(
   }>,
 ): string[] {
   return runs
-    .filter((r) => isBudgetStopWindDown(r.status, Boolean(r.result)))
+    .filter((r) => isOrphanActiveWindDown(r.status, Boolean(r.result)))
     .map((r) => r.runId);
 }
 
@@ -48,9 +60,9 @@ const BENEFIT_SETTLED = new Set(["ok", "failed", "cancelled"]);
 
 /**
  * BenefitPending wait/unavailable gates (pure — vitest without React).
- * Poll while not settled and budget wind-down has not orphan-timed-out,
+ * Poll while not settled and orphan wind-down has not timed out,
  * including missing/`unknown` status (status.json may lag result.json).
- * `orphanStuck`: timed-out budget_stop without result — open run for Cancel/heal.
+ * `orphanStuck`: timed-out budget_stop / cancel_requested without result.
  */
 export function benefitPendingState(opts: {
   status?: string | null;
@@ -62,7 +74,7 @@ export function benefitPendingState(opts: {
   orphanStuck: boolean;
 } {
   const st = opts.status ?? undefined;
-  const windDown = st === "budget_stop";
+  const windDown = isOrphanActiveWindDown(st, false);
   const settled = BENEFIT_SETTLED.has(st ?? "");
   const orphanStuck = windDown && opts.budgetTimedOut;
   const stillWaiting = !settled && !orphanStuck;
@@ -82,12 +94,12 @@ export type ComparisonPendingGates = {
   windDown: boolean;
   stillWaiting: boolean;
   unavailable: boolean;
-  /** At least one tip is orphan budget_stop after timeout — Cancel/Refresh on run. */
+  /** At least one tip is orphan wind-down after timeout — Cancel/Refresh on run. */
   orphanStuck: boolean;
 };
 
 function comparisonLegWindDown(leg: ComparisonLegPending): boolean {
-  return leg.status === "budget_stop" && !leg.hasResult;
+  return isOrphanActiveWindDown(leg.status, leg.hasResult);
 }
 
 function comparisonLegActive(leg: ComparisonLegPending): boolean {
@@ -99,7 +111,7 @@ function comparisonLegActive(leg: ComparisonLegPending): boolean {
 function comparisonLegSettled(leg: ComparisonLegPending): boolean {
   const s = leg.status ?? "";
   if (BENEFIT_SETTLED.has(s)) return true;
-  if (s === "budget_stop") {
+  if (s === "budget_stop" || s === "cancel_requested") {
     return leg.hasResult || leg.budgetTimedOut;
   }
   // Result landed while status.json lags as missing/unknown — do not leave

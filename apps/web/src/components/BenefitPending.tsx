@@ -82,12 +82,17 @@ function BenefitPendingInner({
     return () => window.clearInterval(id);
   }, [router, stillWaiting]);
 
+  const cancelWindDown = status === "cancel_requested";
   const pageHeading = orphanStuck
-    ? "Cost-cap wind-down stuck"
+    ? cancelWindDown
+      ? "Cancel stuck"
+      : "Cost-cap wind-down stuck"
     : unavailable
       ? "Benefit unavailable"
       : windDown
-        ? "Writing final result"
+        ? cancelWindDown
+          ? "Cancel in progress"
+          : "Writing final result"
         : "Report not ready";
 
   return (
@@ -98,20 +103,28 @@ function BenefitPendingInner({
         <div className="empty-state-mark" aria-hidden="true" />
         <h2>
           {orphanStuck
-            ? "Cost-cap wind-down stuck"
+            ? cancelWindDown
+              ? "Cancel stuck"
+              : "Cost-cap wind-down stuck"
             : unavailable
               ? "Benefit unavailable"
               : windDown
-                ? "Writing final result"
+                ? cancelWindDown
+                  ? "Cancel in progress"
+                  : "Writing final result"
                 : "No result yet"}
         </h2>
         <p>
           {orphanStuck
-            ? "This run hit COST_CAP_USD and never wrote result.json. Open the run → Cancel or Refresh (heal). Retry stays blocked until result.json exists — same as run detail."
+            ? cancelWindDown
+              ? "Cancel never finished (worker may be gone). Open the run → Resend cancel or Refresh (heal). Retry unlocks after settle — same as run detail."
+              : "This run hit COST_CAP_USD and never wrote result.json. Open the run → Cancel or Refresh (heal). Retry stays blocked until result.json exists — same as run detail."
             : unavailable
               ? `This run ended as ${status ?? "unknown"} without a result.json, so a Benefit Report cannot be built. Open the run for status details.`
               : windDown
-                ? "Cost hard-stop is writing the final result.json. This page refreshes automatically (stops after the shared orphan timeout if the worker is stuck)."
+                ? cancelWindDown
+                  ? "Cancel was requested and this page refreshes automatically (stops after the shared orphan timeout if the worker is stuck)."
+                  : "Cost hard-stop is writing the final result.json. This page refreshes automatically (stops after the shared orphan timeout if the worker is stuck)."
                 : "This run has no result.json yet. Waiting for the worker — this page refreshes automatically."}
         </p>
         <div className="action-row" style={{ marginTop: 14 }}>

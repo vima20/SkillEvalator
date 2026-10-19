@@ -642,15 +642,21 @@ describe("runDetailCanCancel", () => {
     ).toBe(true);
   });
 
-  it("blocks settled budget_stop and cancel_requested UI", () => {
+  it("blocks settled budget_stop; allows cancel_requested resend", () => {
     expect(
       runDetailCanCancel({ status: "budget_stop", hasResult: true }),
     ).toBe(false);
     expect(
       runDetailCanCancel({
-        status: "budget_stop",
+        status: "cancel_requested",
         hasResult: false,
-        cancelRequested: true,
+      }),
+    ).toBe(true);
+    expect(
+      runDetailCanCancel({
+        status: "cancel_requested",
+        hasResult: false,
+        cancelling: true,
       }),
     ).toBe(false);
   });

@@ -110,16 +110,19 @@ export function pairedCancelAlsoCopy(alsoCancelledRunId: string): string {
 /**
  * Run detail Cancel button — same allow as POST /cancel (cancelGate),
  * including orphan budget_stop wind-down after poll timeout.
+ * `cancel_requested` stays clickable so the UI can resend `.cancel`
+ * (API rewrites the marker; do not stamp failed until finalize timeout).
  */
 export function runDetailCanCancel(opts: {
   status?: string;
   hasResult: boolean;
   cancelling?: boolean;
+  /** @deprecated Ignored — resend Cancel while cancel_requested. */
   cancelRequested?: boolean;
   /** @deprecated Ignored — Cancel POST does not need a healthy live poll. */
   pollError?: boolean;
 }): boolean {
-  if (opts.cancelling || opts.cancelRequested) {
+  if (opts.cancelling) {
     return false;
   }
   const gate = cancelGate(opts.status, opts.hasResult);
@@ -492,13 +495,14 @@ export function resolveEnqueuePostError(
 }
 
 /**
- * Shared orphan wait for budget_stop → result.json (run detail, Comparison,
- * Benefit pending). After this, final heal refresh + Cancel CTA — not Retry.
+ * Shared orphan wait for budget_stop / cancel_requested without result.json
+ * (run detail, Comparison, Benefit pending). After this, final heal refresh
+ * + Cancel/Resend — not Retry.
  */
 export const WIND_DOWN_ORPHAN_MS = 90_000;
 
 /**
- * Client-safe GET path for healRunForFinalize (orphan budget_stop → failed).
+ * Client-safe GET path for healRunForFinalize (orphan active → failed).
  * Keep here — do not import from healOrphans in client components (core/Node).
  */
 export function runDetailFinalizeOrphansPath(runId: string): string {
