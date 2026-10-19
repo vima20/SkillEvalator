@@ -124,6 +124,8 @@ describe("statusBadgeKind", () => {
     expect(benefitWait).toMatch(/WIND_DOWN_ORPHAN_MS/);
     expect(benefitWait).toMatch(/runDetailFinalizeOrphansPath/);
     expect(benefitWait).toMatch(/windDownRunIds/);
+    expect(benefitWait).toMatch(/cost-cap or cancel/);
+    expect(benefitWait).toMatch(/Resend cancel/);
     expect(benefitDetail).toMatch(/pairWindDownRunIds/);
     expect(benefitDetail).toMatch(/listWindDownRunIds/);
     // Benefit list / Dashboard / Run detail share Comparison waiting labels.

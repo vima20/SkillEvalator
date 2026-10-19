@@ -13,14 +13,14 @@ import { orphanStuckFromFinalizePayload } from "@/lib/status";
 
 /**
  * Benefit detail with result.json but pairPending=waiting: poll until sibling
- * Comparison lands. Orphan budget_stop siblings get the same 90s finalize as
- * ComparisonPending / RunsAutoRefresh so waiting cannot stick forever.
+ * Comparison lands. Orphan wind-down siblings (budget_stop / cancel_requested)
+ * get the same 90s finalize as ComparisonPending / RunsAutoRefresh.
  */
 export function BenefitPairWaitingRefresh({
   windDownRunIds = [],
   pilotFocus = false,
 }: {
-  /** Tip legs in budget_stop without result.json. */
+  /** Tip legs in budget_stop / cancel_requested without result.json. */
   windDownRunIds?: string[];
   pilotFocus?: boolean;
 }) {
@@ -90,9 +90,9 @@ export function BenefitPairWaitingRefresh({
         </button>
         <span className="hint">
           {orphanStuck
-            ? "Orphan cost-cap wind-down — settle the stuck leg"
+            ? "Orphan wind-down stuck — Cancel / Resend cancel or Refresh (heal)"
             : stuckIds.length > 0
-              ? "Sibling cost-cap wind-down — auto-settle after shared orphan timeout"
+              ? "Sibling cost-cap or cancel wind-down — auto-settle after shared orphan timeout"
               : "Auto-refresh while Comparison catches up"}
         </span>
       </div>
@@ -103,7 +103,7 @@ export function BenefitPairWaitingRefresh({
               {i > 0 ? " · " : null}
               <Link
                 href={withPilotFocus(`/runs/${id}`, pilotFocus)}
-                title="Open stuck sibling — Cancel or Refresh (heal)"
+                title="Open sibling — Cancel / Resend cancel or Refresh (heal)"
               >
                 {orphanStuck
                   ? `Settle stuck leg ${id}`
