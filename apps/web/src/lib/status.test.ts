@@ -142,6 +142,10 @@ describe("statusBadgeKind", () => {
     // Refresh now heals orphanStuck siblings (not router.refresh alone).
     expect(benefitWait).toMatch(/orphanStuck && stuckIds\.length > 0/);
     expect(benefitWait).toMatch(/runDetailFinalizeOrphansPath\(runId\)/);
+    // Multi-sibling: aggregate stillStuck (not per-id setOrphanStuck races).
+    expect(benefitWait).toMatch(/let stillStuck = false/);
+    expect(benefitWait).toMatch(/if \(stuck\) stillStuck = true/);
+    expect(benefitWait).toMatch(/setOrphanStuck\(stillStuck\)/);
     expect(benefitDetail).toMatch(/pairWindDownRunIds/);
     expect(benefitDetail).toMatch(/listWindDownRunIds/);
     // Benefit list / Dashboard / Run detail share Comparison waiting labels.
@@ -177,6 +181,7 @@ describe("statusBadgeKind", () => {
     expect(runDetail).toMatch(/cost-cap or cancel/);
     expect(runDetail).toMatch(/Resend cancel/);
     expect(runDetail).toMatch(/orphanStuckFromFinalizePayload/);
+    expect(runDetail).toMatch(/setPairOrphanStuck\(stillStuck\)/);
     // Manual Refresh heals orphan wind-down (not healRunForRead-only GET).
     expect(runDetail).toMatch(/async function onManualRefresh/);
     expect(runDetail).toMatch(

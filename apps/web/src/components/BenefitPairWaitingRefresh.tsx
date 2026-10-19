@@ -43,32 +43,37 @@ export function BenefitPairWaitingRefresh({
       return;
     }
     const ids = windDownKey.split("\0").filter(Boolean);
-    const timers = ids.map((runId) =>
-      window.setTimeout(() => {
-        void (async () => {
-          let stuck = true;
-          try {
-            const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
-              cache: "no-store",
-            });
-            const body = (await res.json().catch(() => ({}))) as {
-              status?: { status?: string } | null;
-              result?: unknown | null;
-              hasLiveJob?: boolean;
-            };
-            stuck = orphanStuckFromFinalizePayload(body);
-          } catch {
-            /* treat as stuck */
-          }
-          setOrphanStuck(stuck);
-          router.refresh();
-          if (!stuck) setFinalizeGen((g) => g + 1);
-        })();
-      }, WIND_DOWN_ORPHAN_MS),
-    );
-    return () => {
-      for (const id of timers) window.clearTimeout(id);
-    };
+    // One shared window + aggregate stuck (not per-id setOrphanStuck races).
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        let stillStuck = false;
+        let rearm = false;
+        await Promise.all(
+          ids.map(async (runId) => {
+            let stuck = true;
+            try {
+              const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
+                cache: "no-store",
+              });
+              const body = (await res.json().catch(() => ({}))) as {
+                status?: { status?: string } | null;
+                result?: unknown | null;
+                hasLiveJob?: boolean;
+              };
+              stuck = orphanStuckFromFinalizePayload(body);
+            } catch {
+              /* treat as stuck */
+            }
+            if (stuck) stillStuck = true;
+            else rearm = true;
+          }),
+        );
+        setOrphanStuck(stillStuck);
+        router.refresh();
+        if (rearm) setFinalizeGen((g) => g + 1);
+      })();
+    }, WIND_DOWN_ORPHAN_MS);
+    return () => window.clearTimeout(timer);
   }, [windDownKey, router, finalizeGen]);
 
   const stuckIds = windDownKey ? windDownKey.split("\0").filter(Boolean) : [];
