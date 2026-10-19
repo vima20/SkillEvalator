@@ -82,8 +82,37 @@ export function BenefitPairWaitingRefresh({
           disabled={busy}
           onClick={() => {
             setBusy(true);
-            router.refresh();
-            window.setTimeout(() => setBusy(false), 400);
+            void (async () => {
+              // Copy promises "Refresh (heal)" when orphanStuck — match
+              // ComparisonPending / BenefitPending / run detail Refresh.
+              if (orphanStuck && stuckIds.length > 0) {
+                let stillStuck = false;
+                let rearm = false;
+                for (const runId of stuckIds) {
+                  let stuck = true;
+                  try {
+                    const res = await apiFetch(
+                      runDetailFinalizeOrphansPath(runId),
+                      { cache: "no-store" },
+                    );
+                    const body = (await res.json().catch(() => ({}))) as {
+                      status?: { status?: string } | null;
+                      result?: unknown | null;
+                      hasLiveJob?: boolean;
+                    };
+                    stuck = orphanStuckFromFinalizePayload(body);
+                  } catch {
+                    /* treat as stuck */
+                  }
+                  if (stuck) stillStuck = true;
+                  else rearm = true;
+                }
+                setOrphanStuck(stillStuck);
+                if (rearm) setFinalizeGen((g) => g + 1);
+              }
+              router.refresh();
+              window.setTimeout(() => setBusy(false), 400);
+            })();
           }}
         >
           {busy ? "Refreshing…" : "Refresh now"}

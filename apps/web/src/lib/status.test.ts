@@ -138,6 +138,9 @@ describe("statusBadgeKind", () => {
     expect(benefitWait).toMatch(/windDownRunIds/);
     expect(benefitWait).toMatch(/cost-cap or cancel/);
     expect(benefitWait).toMatch(/Resend cancel/);
+    // Refresh now heals orphanStuck siblings (not router.refresh alone).
+    expect(benefitWait).toMatch(/orphanStuck && stuckIds\.length > 0/);
+    expect(benefitWait).toMatch(/runDetailFinalizeOrphansPath\(runId\)/);
     expect(benefitDetail).toMatch(/pairWindDownRunIds/);
     expect(benefitDetail).toMatch(/listWindDownRunIds/);
     // Benefit list / Dashboard / Run detail share Comparison waiting labels.
