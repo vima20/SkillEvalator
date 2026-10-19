@@ -480,7 +480,36 @@ export function RunDetailClient({
   async function onManualRefresh() {
     setRefreshBusy(true);
     setPollError(null);
-    await refresh();
+    // Copy promises "Refresh (heal)" for orphan wind-down — healRunForRead alone
+    // leaves budget_stop / cancel_requested stuck; finalize settles dead workers.
+    const healSelf = isOrphanActiveWindDown(
+      data.status?.status,
+      Boolean(data.result),
+    );
+    const siblingIds = [...new Set(data.pairWindDownRunIds ?? [])].filter(
+      (id) => id && id !== runId,
+    );
+    for (const siblingId of siblingIds) {
+      try {
+        await apiFetch(runDetailFinalizeOrphansPath(siblingId), {
+          cache: "no-store",
+        });
+      } catch {
+        /* still refresh this run below */
+      }
+    }
+    const next = await refresh({ finalizeOrphans: healSelf });
+    if (
+      healSelf &&
+      next &&
+      isOrphanActiveWindDown(next.status?.status, Boolean(next.result)) &&
+      next.hasLiveJob === true
+    ) {
+      setFinalizeGen((g) => g + 1);
+    }
+    if ((next?.pairWindDownRunIds?.length ?? 0) > 0) {
+      setPairFinalizeGen((g) => g + 1);
+    }
     setRefreshBusy(false);
   }
 
@@ -828,7 +857,7 @@ export function RunDetailClient({
                   : budgetStoppingLive
                     ? "Cost hard-stop hit — writing final result (no further produce/grade)."
                     : budgetStopWindDown
-                      ? "Worker may be gone — Cancel to settle, or Refresh after heal. Retry stays blocked until result.json exists."
+                      ? "Worker may be gone — Cancel to settle, or Refresh (heal). Retry stays blocked until result.json exists."
                       : "Refresh is automatic. You can leave this page open."}
             </p>
             <button

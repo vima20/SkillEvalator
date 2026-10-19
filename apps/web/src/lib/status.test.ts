@@ -161,6 +161,12 @@ describe("statusBadgeKind", () => {
     expect(runDetail).toMatch(/cost-cap or cancel/);
     expect(runDetail).toMatch(/Resend cancel/);
     expect(runDetail).toMatch(/orphanStuckFromFinalizePayload/);
+    // Manual Refresh heals orphan wind-down (not healRunForRead-only GET).
+    expect(runDetail).toMatch(/async function onManualRefresh/);
+    expect(runDetail).toMatch(
+      /refresh\(\{\s*finalizeOrphans:\s*healSelf\s*\}\)/,
+    );
+    expect(runDetail).toMatch(/isOrphanActiveWindDown/);
     expect(runDetailPage).toMatch(/loadPairWaitingWindDownRunIds/);
     expect(runDetailApi).toMatch(/loadPairWaitingWindDownRunIds/);
     // Benefit CTA stays visible while pairPending waiting still polls.
