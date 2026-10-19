@@ -303,7 +303,7 @@ export function RunDetailClient({
   }, [polling, refresh]);
 
   // budget_stop / cancel_requested without result: finalize after 90s.
-  // Live job (heal noop) re-arms; orphan heal / settle stops via shouldPoll.
+  // Live job (heal noop) or failed GET re-arms — same as RunsAutoRefresh.
   useEffect(() => {
     const st = data.status?.status;
     if (data.result) return;
@@ -312,9 +312,9 @@ export function RunDetailClient({
       void (async () => {
         const next = await refresh({ finalizeOrphans: true });
         if (
-          next &&
-          isOrphanActiveWindDown(next.status?.status, Boolean(next.result)) &&
-          next.hasLiveJob === true
+          !next ||
+          (isOrphanActiveWindDown(next.status?.status, Boolean(next.result)) &&
+            next.hasLiveJob === true)
         ) {
           setFinalizeGen((g) => g + 1);
         }

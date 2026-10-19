@@ -15,7 +15,7 @@ import {
   statusBadgeClass,
 } from "@/lib/status";
 
-/** true = orphan stuck; false = live job still finishing (re-arm timer). */
+/** true = orphan stuck; false = live job still finishing / retry (re-arm). */
 async function finalizeOrphanLeg(
   runId: string | undefined,
 ): Promise<boolean> {
@@ -24,6 +24,7 @@ async function finalizeOrphanLeg(
     const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
       cache: "no-store",
     });
+    if (!res.ok) return true;
     const body = (await res.json().catch(() => ({}))) as {
       status?: { status?: string } | null;
       result?: unknown | null;
@@ -353,8 +354,21 @@ function ComparisonPendingInner({
             disabled={busy}
             onClick={() => {
               setBusy(true);
-              router.refresh();
-              window.setTimeout(() => setBusy(false), 400);
+              void (async () => {
+                // List / run detail parity: finalize wind-down legs before stuck.
+                if (baselineWindDown && baselineRunId) {
+                  const stuck = await finalizeOrphanLeg(baselineRunId);
+                  setBaselineBudgetTimedOut(stuck);
+                  if (!stuck) setBaselineFinalizeGen((g) => g + 1);
+                }
+                if (candidateWindDown && candidateRunId) {
+                  const stuck = await finalizeOrphanLeg(candidateRunId);
+                  setCandidateBudgetTimedOut(stuck);
+                  if (!stuck) setCandidateFinalizeGen((g) => g + 1);
+                }
+                router.refresh();
+                window.setTimeout(() => setBusy(false), 400);
+              })();
             }}
           >
             {busy ? "Refreshing…" : "Refresh now"}

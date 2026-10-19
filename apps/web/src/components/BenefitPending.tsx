@@ -151,21 +151,26 @@ function BenefitPendingInner({
               onClick={() => {
                 setBusy(true);
                 void (async () => {
-                  if (orphanStuck) {
+                  // Finalize during wind-down (not only orphanStuck) — list parity.
+                  if (windDown) {
                     let stuck = true;
                     try {
                       const res = await apiFetch(
                         runDetailFinalizeOrphansPath(runId),
                         { cache: "no-store" },
                       );
-                      const body = (await res.json().catch(() => ({}))) as {
-                        status?: { status?: string } | null;
-                        result?: unknown | null;
-                        hasLiveJob?: boolean;
-                      };
-                      stuck = orphanStuckFromFinalizePayload(body);
+                      if (!res.ok) {
+                        stuck = true;
+                      } else {
+                        const body = (await res.json().catch(() => ({}))) as {
+                          status?: { status?: string } | null;
+                          result?: unknown | null;
+                          hasLiveJob?: boolean;
+                        };
+                        stuck = orphanStuckFromFinalizePayload(body);
+                      }
                     } catch {
-                      /* keep stuck */
+                      /* keep stuck / re-arm path */
                     }
                     setBudgetTimedOut(stuck);
                     if (!stuck) setFinalizeGen((g) => g + 1);

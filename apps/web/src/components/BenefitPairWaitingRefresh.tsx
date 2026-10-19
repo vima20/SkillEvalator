@@ -88,9 +88,9 @@ export function BenefitPairWaitingRefresh({
           onClick={() => {
             setBusy(true);
             void (async () => {
-              // Copy promises "Refresh (heal)" when orphanStuck — match
-              // ComparisonPending / BenefitPending / run detail Refresh.
-              if (orphanStuck && stuckIds.length > 0) {
+              // Finalize sibling wind-down on Refresh (list / run detail parity),
+              // not only after orphanStuck copy appears.
+              if (stuckIds.length > 0) {
                 let stillStuck = false;
                 let rearm = false;
                 for (const runId of stuckIds) {
@@ -100,6 +100,10 @@ export function BenefitPairWaitingRefresh({
                       runDetailFinalizeOrphansPath(runId),
                       { cache: "no-store" },
                     );
+                    if (!res.ok) {
+                      rearm = true;
+                      continue;
+                    }
                     const body = (await res.json().catch(() => ({}))) as {
                       status?: { status?: string } | null;
                       result?: unknown | null;
@@ -107,7 +111,8 @@ export function BenefitPairWaitingRefresh({
                     };
                     stuck = orphanStuckFromFinalizePayload(body);
                   } catch {
-                    /* treat as stuck */
+                    rearm = true;
+                    continue;
                   }
                   if (stuck) stillStuck = true;
                   else rearm = true;

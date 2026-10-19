@@ -101,6 +101,9 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/Resend cancel or Refresh \(heal\)/);
     expect(pendingUi).toMatch(/while the other tip may still be running/);
     expect(pendingUi).toMatch(/orphanStuck \? \(/);
+    // Waiting Refresh finalizes wind-down legs (list / run detail parity).
+    expect(pendingUi).toMatch(/baselineWindDown && baselineRunId/);
+    expect(pendingUi).toMatch(/if \(!res\.ok\) return true/);
     const benefitPendingUi = fs.readFileSync(
       path.join(cwd, "src/components/BenefitPending.tsx"),
       "utf8",
@@ -109,6 +112,7 @@ describe("statusBadgeKind", () => {
     expect(benefitPendingUi).toMatch(/stillWaiting \|\| orphanStuck/);
     expect(benefitPendingUi).toMatch(/Open run — Cancel \/ Resend cancel/);
     expect(benefitPendingUi).toMatch(/orphanStuckFromFinalizePayload/);
+    expect(benefitPendingUi).toMatch(/if \(windDown\)/);
     // Benefit detail with result + pairPending waiting must poll (stale INCONCLUSIVE).
     const benefitDetail = fs.readFileSync(
       path.join(cwd, "src/app/benefit/[runId]/page.tsx"),
@@ -139,8 +143,8 @@ describe("statusBadgeKind", () => {
     expect(benefitWait).toMatch(/windDownRunIds/);
     expect(benefitWait).toMatch(/cost-cap or cancel/);
     expect(benefitWait).toMatch(/Resend cancel/);
-    // Refresh now heals orphanStuck siblings (not router.refresh alone).
-    expect(benefitWait).toMatch(/orphanStuck && stuckIds\.length > 0/);
+    // Refresh now finalizes wind-down siblings (not only after orphanStuck).
+    expect(benefitWait).toMatch(/if \(stuckIds\.length > 0\)/);
     expect(benefitWait).toMatch(/runDetailFinalizeOrphansPath\(runId\)/);
     // Multi-sibling: aggregate stillStuck (not per-id setOrphanStuck races).
     expect(benefitWait).toMatch(/let stillStuck = false/);
@@ -199,6 +203,10 @@ describe("statusBadgeKind", () => {
       /await refresh\(\);[\s\S]*?setCancelling\(false\)/,
     );
     expect(runDetail).toMatch(/Resend cancel/);
+    // Auto-finalize re-arms on failed GET (list parity), not only live job.
+    expect(runDetail).toMatch(
+      /!next \|\|\s*\([\s\S]*?hasLiveJob === true\)/,
+    );
     expect(runDetailPage).toMatch(/loadPairWaitingWindDownRunIds/);
     expect(runDetailApi).toMatch(/loadPairWaitingWindDownRunIds/);
     // Benefit CTA stays visible while pairPending waiting still polls.
