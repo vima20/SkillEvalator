@@ -149,6 +149,14 @@ describe("statusBadgeKind", () => {
     // Benefit CTA stays visible while pairPending waiting still polls.
     expect(runDetail).toMatch(/\{result \? \(/);
     expect(runDetail).not.toMatch(/\{result && !polling \?/);
+    // List finalize re-arms when live job remains (same as detail/pending).
+    const listRefresh = fs.readFileSync(
+      path.join(cwd, "src/components/RunsAutoRefresh.tsx"),
+      "utf8",
+    );
+    expect(listRefresh).toMatch(/finalizeGen/);
+    expect(listRefresh).toMatch(/isOrphanActiveWindDown/);
+    expect(listRefresh).toMatch(/hasLiveJob/);
   });
 });
 
