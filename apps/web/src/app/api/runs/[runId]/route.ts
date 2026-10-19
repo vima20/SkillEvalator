@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { loadRunResult, syncStatusFromResult } from "@skillevalator/core";
+import {
+  hasLiveJobFile,
+  loadRunResult,
+  syncStatusFromResult,
+} from "@skillevalator/core";
 import { healRunForFinalize, healRunForRead } from "@/lib/healOrphans";
-import { resultsDir } from "@/lib/paths";
+import { jobsDir, resultsDir } from "@/lib/paths";
 import {
   runCsvExportAllowed,
   runCsvExportBlockReason,
@@ -61,6 +65,7 @@ export async function GET(
       runId,
       status,
       result,
+      hasLiveJob: hasLiveJobFile(jobsDir(), runId),
       csvExportAllowed: runCsvExportAllowed({ runId, result, status }),
       csvExportBlockReason: runCsvExportBlockReason({
         runId,

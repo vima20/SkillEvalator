@@ -42,6 +42,33 @@ export function isOrphanActiveWindDown(
 }
 
 /**
+ * After finalizeOrphans: show stuck UI only when wind-down remains and there
+ * is no live job file (heal noop while worker still finishing is not stuck).
+ */
+export function orphanWindDownIsStuck(opts: {
+  status?: string;
+  hasResult: boolean;
+  hasLiveJob: boolean;
+}): boolean {
+  return (
+    isOrphanActiveWindDown(opts.status, opts.hasResult) && !opts.hasLiveJob
+  );
+}
+
+/** Parse GET ?finalizeOrphans=1 JSON for stuck vs live wind-down. */
+export function orphanStuckFromFinalizePayload(body: {
+  status?: { status?: string } | null;
+  result?: unknown | null;
+  hasLiveJob?: boolean;
+}): boolean {
+  return orphanWindDownIsStuck({
+    status: body.status?.status,
+    hasResult: Boolean(body.result),
+    hasLiveJob: body.hasLiveJob === true,
+  });
+}
+
+/**
  * Run ids still in orphan wind-down (list SSR → RunsAutoRefresh finalize).
  */
 export function listWindDownRunIds(

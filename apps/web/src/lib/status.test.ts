@@ -5,6 +5,8 @@ import {
   isBudgetStopWindDown,
   isOrphanActiveWindDown,
   listWindDownRunIds,
+  orphanStuckFromFinalizePayload,
+  orphanWindDownIsStuck,
   runIsActive,
   statusBadgeKind,
 } from "./status.js";
@@ -192,6 +194,37 @@ describe("listWindDownRunIds", () => {
         { runId: "run_d", status: "running", result: null },
       ]),
     ).toEqual(["run_a", "run_c"]);
+  });
+
+  it("marks stuck only when wind-down remains without a live job", () => {
+    expect(
+      orphanWindDownIsStuck({
+        status: "cancel_requested",
+        hasResult: false,
+        hasLiveJob: true,
+      }),
+    ).toBe(false);
+    expect(
+      orphanWindDownIsStuck({
+        status: "cancel_requested",
+        hasResult: false,
+        hasLiveJob: false,
+      }),
+    ).toBe(true);
+    expect(
+      orphanStuckFromFinalizePayload({
+        status: { status: "budget_stop" },
+        result: null,
+        hasLiveJob: true,
+      }),
+    ).toBe(false);
+    expect(
+      orphanStuckFromFinalizePayload({
+        status: { status: "failed" },
+        result: null,
+        hasLiveJob: false,
+      }),
+    ).toBe(false);
   });
 });
 

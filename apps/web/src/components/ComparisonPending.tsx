@@ -9,14 +9,29 @@ import {
   runDetailFinalizeOrphansPath,
   WIND_DOWN_ORPHAN_MS,
 } from "@/lib/runLifecycle";
-import { comparisonPendingState, statusBadgeClass } from "@/lib/status";
+import {
+  comparisonPendingState,
+  orphanStuckFromFinalizePayload,
+  statusBadgeClass,
+} from "@/lib/status";
 
-async function finalizeOrphanLeg(runId: string | undefined): Promise<void> {
-  if (!runId) return;
+/** true = orphan stuck; false = live job still finishing (re-arm timer). */
+async function finalizeOrphanLeg(
+  runId: string | undefined,
+): Promise<boolean> {
+  if (!runId) return true;
   try {
-    await apiFetch(runDetailFinalizeOrphansPath(runId), { cache: "no-store" });
+    const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      status?: { status?: string } | null;
+      result?: unknown | null;
+      hasLiveJob?: boolean;
+    };
+    return orphanStuckFromFinalizePayload(body);
   } catch {
-    /* refresh still shows disk state */
+    return true;
   }
 }
 
@@ -63,6 +78,8 @@ function ComparisonPendingInner({
   const [busy, setBusy] = useState(false);
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
   const [candidateBudgetTimedOut, setCandidateBudgetTimedOut] = useState(false);
+  const [baselineFinalizeGen, setBaselineFinalizeGen] = useState(0);
+  const [candidateFinalizeGen, setCandidateFinalizeGen] = useState(0);
 
   const {
     baselineWindDown,
@@ -90,14 +107,21 @@ function ComparisonPendingInner({
       return;
     }
     const id = window.setTimeout(() => {
-      setBaselineBudgetTimedOut(true);
       void (async () => {
-        await finalizeOrphanLeg(baselineRunId);
+        const stuck = await finalizeOrphanLeg(baselineRunId);
+        setBaselineBudgetTimedOut(stuck);
         router.refresh();
+        if (!stuck) setBaselineFinalizeGen((g) => g + 1);
       })();
     }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
-  }, [baselineWindDown, evaluationId, baselineRunId, router]);
+  }, [
+    baselineWindDown,
+    evaluationId,
+    baselineRunId,
+    router,
+    baselineFinalizeGen,
+  ]);
 
   useEffect(() => {
     if (!candidateWindDown) {
@@ -105,14 +129,21 @@ function ComparisonPendingInner({
       return;
     }
     const id = window.setTimeout(() => {
-      setCandidateBudgetTimedOut(true);
       void (async () => {
-        await finalizeOrphanLeg(candidateRunId);
+        const stuck = await finalizeOrphanLeg(candidateRunId);
+        setCandidateBudgetTimedOut(stuck);
         router.refresh();
+        if (!stuck) setCandidateFinalizeGen((g) => g + 1);
       })();
     }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
-  }, [candidateWindDown, evaluationId, candidateRunId, router]);
+  }, [
+    candidateWindDown,
+    evaluationId,
+    candidateRunId,
+    router,
+    candidateFinalizeGen,
+  ]);
 
   useEffect(() => {
     if (!stillWaiting) return;

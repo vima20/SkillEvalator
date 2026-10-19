@@ -9,6 +9,7 @@ import {
   runDetailFinalizeOrphansPath,
   WIND_DOWN_ORPHAN_MS,
 } from "@/lib/runLifecycle";
+import { orphanStuckFromFinalizePayload } from "@/lib/status";
 
 /**
  * Benefit detail with result.json but pairPending=waiting: poll until sibling
@@ -26,6 +27,7 @@ export function BenefitPairWaitingRefresh({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [orphanStuck, setOrphanStuck] = useState(false);
+  const [finalizeGen, setFinalizeGen] = useState(0);
   const windDownKey = [...new Set(windDownRunIds)].sort().join("\0");
 
   useEffect(() => {
@@ -43,23 +45,31 @@ export function BenefitPairWaitingRefresh({
     const ids = windDownKey.split("\0").filter(Boolean);
     const timers = ids.map((runId) =>
       window.setTimeout(() => {
-        setOrphanStuck(true);
         void (async () => {
+          let stuck = true;
           try {
-            await apiFetch(runDetailFinalizeOrphansPath(runId), {
+            const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
               cache: "no-store",
             });
+            const body = (await res.json().catch(() => ({}))) as {
+              status?: { status?: string } | null;
+              result?: unknown | null;
+              hasLiveJob?: boolean;
+            };
+            stuck = orphanStuckFromFinalizePayload(body);
           } catch {
-            /* refresh still shows disk state */
+            /* treat as stuck */
           }
+          setOrphanStuck(stuck);
           router.refresh();
+          if (!stuck) setFinalizeGen((g) => g + 1);
         })();
       }, WIND_DOWN_ORPHAN_MS),
     );
     return () => {
       for (const id of timers) window.clearTimeout(id);
     };
-  }, [windDownKey, router]);
+  }, [windDownKey, router, finalizeGen]);
 
   const stuckIds = windDownKey ? windDownKey.split("\0").filter(Boolean) : [];
 

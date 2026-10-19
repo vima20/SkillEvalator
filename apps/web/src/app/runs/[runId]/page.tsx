@@ -1,12 +1,13 @@
 import Link from "next/link";
 import {
+  hasLiveJobFile,
   loadRunResult,
   loadRunStatus,
   syncStatusFromResult,
 } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { healRunForRead } from "@/lib/healOrphans";
-import { resultsDir } from "@/lib/paths";
+import { jobsDir, resultsDir } from "@/lib/paths";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   runCsvExportAllowed,
@@ -120,6 +121,7 @@ export default async function RunDetailPage({
         }),
         tipCandidateRunId,
         pairHarness,
+        hasLiveJob: hasLiveJobFile(jobsDir(), runId),
         ...(pairPending ? { pairPending } : {}),
         resolvedEvaluationId: evaluationId,
         retryAdmission,

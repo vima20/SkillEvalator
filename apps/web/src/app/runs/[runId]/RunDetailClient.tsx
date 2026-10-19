@@ -36,7 +36,10 @@ import {
   runDetailShouldPoll,
   WIND_DOWN_ORPHAN_MS,
 } from "@/lib/runLifecycle";
-import { statusBadgeClass } from "@/lib/status";
+import {
+  isOrphanActiveWindDown,
+  statusBadgeClass,
+} from "@/lib/status";
 
 function AlsoCancelledHint({
   alsoRunId,
@@ -144,6 +147,8 @@ type Payload = {
   } | null;
   /** Same waiting/unavailable gate as Benefit detail / Comparison list. */
   pairPending?: "waiting" | "unavailable";
+  /** Job file still on disk (finalize heal noop while worker finishing). */
+  hasLiveJob?: boolean;
   /** Full POST /retry admission mirror (preflight, Ready, pair, cost, snapshot). */
   retryAdmission?: {
     canRetry: boolean;
@@ -215,62 +220,68 @@ export function RunDetailClient({
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [refreshBusy, setRefreshBusy] = useState(false);
+  const [finalizeGen, setFinalizeGen] = useState(0);
 
-  const refresh = useCallback(async (opts?: { finalizeOrphans?: boolean }) => {
-    try {
-      const path = opts?.finalizeOrphans
-        ? runDetailFinalizeOrphansPath(runId)
-        : `/api/runs/${encodeURIComponent(runId)}`;
-      const res = await apiFetch(path, { cache: "no-store" });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          errorCode?: string;
-          misconfigured?: boolean;
-        };
+  const refresh = useCallback(
+    async (opts?: { finalizeOrphans?: boolean }): Promise<Payload | null> => {
+      try {
+        const path = opts?.finalizeOrphans
+          ? runDetailFinalizeOrphansPath(runId)
+          : `/api/runs/${encodeURIComponent(runId)}`;
+        const res = await apiFetch(path, { cache: "no-store" });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            errorCode?: string;
+            misconfigured?: boolean;
+          };
+          setPolling(false);
+          setPollError(
+            tryResolveAuthApiError(body) ??
+              resolveRunDetailGetError(
+                body.errorCode || body.error
+                  ? body
+                  : {
+                      errorCode:
+                        res.status === 404
+                          ? "run_detail_not_found"
+                          : "run_detail_failed",
+                    },
+                resolveRunDetailHttpError(res.status),
+              ),
+          );
+          return null;
+        }
+        setPollError(null);
+        const next = (await res.json()) as Payload;
+        setData(next);
+        if (
+          !runDetailShouldPoll({
+            status: next.status?.status,
+            hasResult: !!next.result,
+            pairPending: next.pairPending,
+          })
+        ) {
+          setPolling(false);
+          setCancelling(false);
+        } else {
+          setPolling(true);
+        }
+        return next;
+      } catch (e) {
+        if (e instanceof UnauthorizedError) {
+          setPolling(false);
+          return null;
+        }
         setPolling(false);
         setPollError(
-          tryResolveAuthApiError(body) ??
-            resolveRunDetailGetError(
-              body.errorCode || body.error
-                ? body
-                : {
-                    errorCode:
-                      res.status === 404
-                        ? "run_detail_not_found"
-                        : "run_detail_failed",
-                  },
-              resolveRunDetailHttpError(res.status),
-            ),
+          resolveRunDetailGetError({ errorCode: "run_detail_failed" }),
         );
-        return;
+        return null;
       }
-      setPollError(null);
-      const next = (await res.json()) as Payload;
-      setData(next);
-      if (
-        !runDetailShouldPoll({
-          status: next.status?.status,
-          hasResult: !!next.result,
-          pairPending: next.pairPending,
-        })
-      ) {
-        setPolling(false);
-        setCancelling(false);
-      } else {
-        setPolling(true);
-      }
-    } catch (e) {
-      if (e instanceof UnauthorizedError) {
-        setPolling(false);
-        return;
-      }
-      setPolling(false);
-      setPollError(
-        resolveRunDetailGetError({ errorCode: "run_detail_failed" }),
-      );
-    }
-  }, [runId]);
+    },
+    [runId],
+  );
 
   useEffect(() => {
     if (!polling) return;
@@ -280,21 +291,26 @@ export function RunDetailClient({
     return () => window.clearInterval(id);
   }, [polling, refresh]);
 
-  // budget_stop / cancel_requested without result should not poll forever
-  // (orphan / crashed worker). Final refresh uses finalizeOrphans so orphan
-  // active → failed and Retry is not stuck; live poll uses read-heal.
+  // budget_stop / cancel_requested without result: finalize after 90s.
+  // Live job (heal noop) re-arms; orphan heal / settle stops via shouldPoll.
   useEffect(() => {
     const st = data.status?.status;
     if (data.result) return;
     if (st !== "budget_stop" && st !== "cancel_requested") return;
     const id = window.setTimeout(() => {
       void (async () => {
-        await refresh({ finalizeOrphans: true });
-        setPolling(false);
+        const next = await refresh({ finalizeOrphans: true });
+        if (
+          next &&
+          isOrphanActiveWindDown(next.status?.status, Boolean(next.result)) &&
+          next.hasLiveJob === true
+        ) {
+          setFinalizeGen((g) => g + 1);
+        }
       })();
     }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
-  }, [data.status?.status, data.result, refresh]);
+  }, [data.status?.status, data.result, refresh, finalizeGen]);
 
   const status = data.status?.status ?? "unknown";
   const result = data.result;

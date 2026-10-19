@@ -9,7 +9,10 @@ import {
   runDetailFinalizeOrphansPath,
   WIND_DOWN_ORPHAN_MS,
 } from "@/lib/runLifecycle";
-import { benefitPendingState } from "@/lib/status";
+import {
+  benefitPendingState,
+  orphanStuckFromFinalizePayload,
+} from "@/lib/status";
 
 /** Auto-refresh while waiting for result.json / benefit report. */
 export function BenefitPending(props: {
@@ -46,6 +49,8 @@ function BenefitPendingInner({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [budgetTimedOut, setBudgetTimedOut] = useState(false);
+  /** Re-arm 90s finalize while a live job is still finishing. */
+  const [finalizeGen, setFinalizeGen] = useState(0);
 
   const { windDown, stillWaiting, unavailable, orphanStuck } =
     benefitPendingState({
@@ -59,20 +64,28 @@ function BenefitPendingInner({
       return;
     }
     const id = window.setTimeout(() => {
-      setBudgetTimedOut(true);
       void (async () => {
+        let stuck = true;
         try {
-          await apiFetch(runDetailFinalizeOrphansPath(runId), {
+          const res = await apiFetch(runDetailFinalizeOrphansPath(runId), {
             cache: "no-store",
           });
+          const body = (await res.json().catch(() => ({}))) as {
+            status?: { status?: string } | null;
+            result?: unknown | null;
+            hasLiveJob?: boolean;
+          };
+          stuck = orphanStuckFromFinalizePayload(body);
         } catch {
-          /* refresh still shows disk state */
+          /* treat as stuck so Cancel/heal path is offered */
         }
+        setBudgetTimedOut(stuck);
         router.refresh();
+        if (!stuck) setFinalizeGen((g) => g + 1);
       })();
     }, WIND_DOWN_ORPHAN_MS);
     return () => window.clearTimeout(id);
-  }, [windDown, runId, router]);
+  }, [windDown, runId, router, finalizeGen]);
 
   useEffect(() => {
     if (!stillWaiting) return;
