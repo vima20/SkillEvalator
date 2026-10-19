@@ -96,6 +96,10 @@ describe("statusBadgeKind", () => {
     );
     expect(pendingUi).toMatch(/Open candidate run/);
     expect(pendingUi).toMatch(/Refresh now/);
+    // orphanStuck keeps poll + Refresh now (catch external heal without hard reload).
+    expect(pendingUi).toMatch(/!stillWaiting && !orphanStuck/);
+    expect(pendingUi).toMatch(/Resend cancel or Refresh \(heal\)/);
+    expect(pendingUi).toMatch(/orphanStuck \? \(/);
     // Benefit detail with result + pairPending waiting must poll (stale INCONCLUSIVE).
     const benefitDetail = fs.readFileSync(
       path.join(cwd, "src/app/benefit/[runId]/page.tsx"),

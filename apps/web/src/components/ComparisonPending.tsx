@@ -145,13 +145,15 @@ function ComparisonPendingInner({
     candidateFinalizeGen,
   ]);
 
+  // Poll while waiting OR orphanStuck — external heal (run detail / list) must
+  // clear stale "Settle the stuck leg" without a hard reload.
   useEffect(() => {
-    if (!stillWaiting) return;
+    if (!stillWaiting && !orphanStuck) return;
     const id = window.setInterval(() => {
       router.refresh();
     }, 4000);
     return () => window.clearInterval(id);
-  }, [router, evaluationId, stillWaiting]);
+  }, [router, evaluationId, stillWaiting, orphanStuck]);
 
   const pageHeading = orphanStuck
     ? "Settle the stuck leg"
@@ -243,49 +245,78 @@ function ComparisonPendingInner({
         </div>
       </dl>
       {orphanStuck ? (
-        <p className="hint" style={{ marginTop: 12 }}>
-          Prefer the{" "}
-          {stuckBaselineId ? (
-            <Link
-              href={withPilotFocus(`/runs/${stuckBaselineId}`, pilotFocus)}
-            >
-              baseline run
-            </Link>
-          ) : null}
-          {stuckBaselineId && stuckCandidateId ? " and " : null}
-          {stuckCandidateId ? (
-            <Link
-              href={withPilotFocus(`/runs/${stuckCandidateId}`, pilotFocus)}
-            >
-              candidate run
-            </Link>
-          ) : null}
-          {!stuckBaselineId && !stuckCandidateId
-            ? candidateRunId
-              ? (
-                  <Link
-                    href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}
-                  >
-                    candidate run
-                  </Link>
-                )
-              : baselineRunId
+        <div className="action-row" style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-compact"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              void (async () => {
+                if (stuckBaselineId) {
+                  const stuck = await finalizeOrphanLeg(stuckBaselineId);
+                  setBaselineBudgetTimedOut(stuck);
+                  if (!stuck) setBaselineFinalizeGen((g) => g + 1);
+                }
+                if (stuckCandidateId) {
+                  const stuck = await finalizeOrphanLeg(stuckCandidateId);
+                  setCandidateBudgetTimedOut(stuck);
+                  if (!stuck) setCandidateFinalizeGen((g) => g + 1);
+                }
+                router.refresh();
+                window.setTimeout(() => setBusy(false), 400);
+              })();
+            }}
+          >
+            {busy ? "Refreshing…" : "Refresh now"}
+          </button>
+          <p className="hint">
+            Prefer the{" "}
+            {stuckBaselineId ? (
+              <Link
+                href={withPilotFocus(`/runs/${stuckBaselineId}`, pilotFocus)}
+              >
+                baseline run
+              </Link>
+            ) : null}
+            {stuckBaselineId && stuckCandidateId ? " and " : null}
+            {stuckCandidateId ? (
+              <Link
+                href={withPilotFocus(`/runs/${stuckCandidateId}`, pilotFocus)}
+              >
+                candidate run
+              </Link>
+            ) : null}
+            {!stuckBaselineId && !stuckCandidateId
+              ? candidateRunId
                 ? (
                     <Link
                       href={withPilotFocus(
-                        `/runs/${baselineRunId}`,
+                        `/runs/${candidateRunId}`,
                         pilotFocus,
                       )}
                     >
-                      baseline run
+                      candidate run
                     </Link>
                   )
-                : (
-                    "run page"
-                  )
-            : null}{" "}
-          → Cancel / Refresh.
-        </p>
+                : baselineRunId
+                  ? (
+                      <Link
+                        href={withPilotFocus(
+                          `/runs/${baselineRunId}`,
+                          pilotFocus,
+                        )}
+                      >
+                        baseline run
+                      </Link>
+                    )
+                  : (
+                      "run page"
+                    )
+              : null}{" "}
+            → Cancel / Resend cancel or Refresh (heal).
+          </p>
+        </div>
       ) : unavailable ? (
         <div className="action-row" style={{ marginTop: 12 }}>
           {candidateRunId && candidateHasResult ? (
