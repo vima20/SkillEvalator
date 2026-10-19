@@ -143,6 +143,10 @@ describe("statusBadgeKind", () => {
     expect(dashboard).toMatch(/evaluationPairPending/);
     expect(runDetail).toMatch(/benefitPairCtaLabel/);
     expect(runDetail).toMatch(/data\.pairPending/);
+    expect(runDetail).toMatch(/runDetailShouldPoll/);
+    // Benefit CTA stays visible while pairPending waiting still polls.
+    expect(runDetail).toMatch(/\{result \? \(/);
+    expect(runDetail).not.toMatch(/\{result && !polling \?/);
   });
 });
 

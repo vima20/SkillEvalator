@@ -54,6 +54,7 @@ import {
   retryOfficialPilotBlockedReason,
   retrySnapshotGate,
   runDetailCanCancel,
+  runDetailShouldPoll,
 } from "./runLifecycle.js";
 
 const formatCost = (n: number) => `cost-cap:${n}`;
@@ -669,6 +670,43 @@ describe("runDetailCanCancel", () => {
         pollError: true,
       }),
     ).toBe(true);
+  });
+});
+
+describe("runDetailShouldPoll", () => {
+  it("stops when result exists unless pairPending is waiting", () => {
+    expect(
+      runDetailShouldPoll({ status: "ok", hasResult: true }),
+    ).toBe(false);
+    expect(
+      runDetailShouldPoll({
+        status: "ok",
+        hasResult: true,
+        pairPending: "unavailable",
+      }),
+    ).toBe(false);
+    expect(
+      runDetailShouldPoll({
+        status: "ok",
+        hasResult: true,
+        pairPending: "waiting",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps polling active statuses and budget_stop wind-down", () => {
+    expect(
+      runDetailShouldPoll({ status: "running", hasResult: false }),
+    ).toBe(true);
+    expect(
+      runDetailShouldPoll({ status: "cancel_requested", hasResult: false }),
+    ).toBe(true);
+    expect(
+      runDetailShouldPoll({ status: "budget_stop", hasResult: false }),
+    ).toBe(true);
+    expect(
+      runDetailShouldPoll({ status: "failed", hasResult: false }),
+    ).toBe(false);
   });
 });
 

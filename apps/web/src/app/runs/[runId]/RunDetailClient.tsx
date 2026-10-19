@@ -33,6 +33,7 @@ import {
   resolveRetryPostError,
   runDetailCanCancel,
   runDetailFinalizeOrphansPath,
+  runDetailShouldPoll,
   WIND_DOWN_ORPHAN_MS,
 } from "@/lib/runLifecycle";
 import { statusBadgeClass } from "@/lib/status";
@@ -150,15 +151,6 @@ type Payload = {
   } | null;
 };
 
-const TERMINAL = new Set(["ok", "failed", "cancelled", "budget_stop"]);
-
-function shouldPoll(status: string | undefined, hasResult: boolean): boolean {
-  if (hasResult) return false;
-  // Mid-loop budget_stop is written before result.json — keep polling.
-  if (status === "budget_stop") return true;
-  return !TERMINAL.has(status ?? "");
-}
-
 function RetryActions({
   canRetry,
   retrying,
@@ -208,7 +200,11 @@ export function RunDetailClient({
   const router = useRouter();
   const [data, setData] = useState(initial);
   const [polling, setPolling] = useState(
-    shouldPoll(initial.status?.status, !!initial.result),
+    runDetailShouldPoll({
+      status: initial.status?.status,
+      hasResult: !!initial.result,
+      pairPending: initial.pairPending,
+    }),
   );
   const [pollError, setPollError] = useState<string | null>(null);
   const [jsonOpen, setJsonOpen] = useState(false);
@@ -252,7 +248,13 @@ export function RunDetailClient({
       setPollError(null);
       const next = (await res.json()) as Payload;
       setData(next);
-      if (!shouldPoll(next.status?.status, !!next.result)) {
+      if (
+        !runDetailShouldPoll({
+          status: next.status?.status,
+          hasResult: !!next.result,
+          pairPending: next.pairPending,
+        })
+      ) {
         setPolling(false);
         setCancelling(false);
       } else {
@@ -503,7 +505,7 @@ export function RunDetailClient({
           {refreshBusy ? "Refreshing…" : "Refresh"}
         </button>
       </div>
-      {result && !polling ? (
+      {result ? (
         <p className="hint">
           {(() => {
             const pair = data.pairHarness;

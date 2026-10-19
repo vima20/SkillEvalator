@@ -509,6 +509,29 @@ export function runDetailFinalizeOrphansPath(runId: string): string {
   return `/api/runs/${encodeURIComponent(runId)}?finalizeOrphans=1`;
 }
 
+const RUN_DETAIL_POLL_TERMINAL = new Set([
+  "ok",
+  "failed",
+  "cancelled",
+  "budget_stop",
+]);
+
+/**
+ * Run detail live poll: active statuses, budget_stop wind-down, and
+ * pairPending=waiting after result.json (Benefit CTA / CSV gate catch-up —
+ * same window as BenefitPairWaitingRefresh).
+ */
+export function runDetailShouldPoll(opts: {
+  status?: string;
+  hasResult: boolean;
+  pairPending?: "waiting" | "unavailable" | null;
+}): boolean {
+  if (opts.pairPending === "waiting") return true;
+  if (opts.hasResult) return false;
+  if (opts.status === "budget_stop") return true;
+  return !RUN_DETAIL_POLL_TERMINAL.has(opts.status ?? "");
+}
+
 /**
  * Orphan wind-down: status budget_stop but result.json not written yet
  * (even when .running.json was healed away). POST /retry and UI must agree.
