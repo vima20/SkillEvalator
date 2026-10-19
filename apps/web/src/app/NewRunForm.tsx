@@ -85,6 +85,8 @@ export function NewRunForm({
   const dryRunModeRef = useRef<HTMLButtonElement>(null);
   const officialModeRef = useRef<HTMLButtonElement>(null);
   const preferOfficialApplied = useRef(false);
+  /** One alert while ?mode=official waits for Ready (retry until applied). */
+  const preferOfficialAlerted = useRef(false);
 
   const selected = skills.find((s) => s.id === evalSkillId) ?? skills[0];
   const minRepeats = mode === "official" ? OFFICIAL_MIN_REPEATS : 1;
@@ -202,9 +204,19 @@ export function NewRunForm({
 
   // Settings Ready CTA (?mode=official): wait for preflight so we do not
   // demote-with-alert while pilotReady is still unknown (preflight == null).
+  // Only mark applied after a successful Official select — blocked first paint
+  // must retry when Settings returns to Ready (URL still promises official).
   useEffect(() => {
     if (!preferOfficial || preferOfficialApplied.current) return;
     if (preflight == null) return;
+    if (officialBlocked) {
+      if (!preferOfficialAlerted.current) {
+        preferOfficialAlerted.current = true;
+        setError(true);
+        setMsg(officialBlockedMessage());
+      }
+      return;
+    }
     preferOfficialApplied.current = true;
     selectMode("official");
   }, [preferOfficial, preflight, officialBlocked, pilotBlockers]);
