@@ -132,6 +132,8 @@ const OFFICIAL_PINS = {
   expectedCandidateEvalSkillVersion: "abc",
   expectedBaselinePromptKind: "baseline_neutral" as const,
   expectedCandidatePromptKind: "skill_md" as const,
+  expectedTaskSetId: "cde-v1",
+  expectedTaskIds: ["bug-01"],
 };
 
 function officialOpts(
@@ -203,6 +205,74 @@ describe("compareBaselineCandidate", () => {
     const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
     expect(c.verdict).toBe("PASS");
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
+  it("official INCONCLUSIVE when taskIds disagree with trusted skill-snapshot", () => {
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      taskIds: ["bug-01", "bug-forged"],
+      perTask: [
+        {
+          taskId: "bug-01",
+          score: 0.9,
+          status: "ok",
+          scriptResults: [],
+        },
+        {
+          taskId: "bug-forged",
+          score: 0.9,
+          status: "ok",
+          scriptResults: [],
+        },
+      ],
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      taskIds: ["bug-01", "bug-forged"],
+      perTask: [
+        {
+          taskId: "bug-01",
+          score: 1,
+          status: "ok",
+          scriptResults: [],
+        },
+        {
+          taskId: "bug-forged",
+          score: 1,
+          status: "ok",
+          scriptResults: [],
+        },
+      ],
+    });
+    const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) =>
+        /≠ trusted expectedTaskIds|trusted expectedTaskIds/i.test(i),
+      ),
+    ).toBe(true);
+  });
+
+  it("dry-run never yields PASS even with strong lift (defense-in-depth)", () => {
+    const c = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.7 }),
+      sample({ runId: "c", role: "candidate", score: 1 }),
+    );
+    expect(c.mode).toBe("dry-run");
+    expect(c.verdict).not.toBe("PASS");
+    expect(c.verdict).not.toBe("FAIL");
+    expect(c.verdict).toBe("INCONCLUSIVE");
   });
 
   it("official INCONCLUSIVE when perTask is empty despite taskIds + run score", () => {

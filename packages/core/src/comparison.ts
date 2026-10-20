@@ -290,6 +290,12 @@ export function checkComparisonParity(
      */
     expectedBaselineJob?: TrustedJobAttestation;
     expectedCandidateJob?: TrustedJobAttestation;
+    /**
+     * Trusted official task set from skill-snapshot/manifest.json.
+     * Forged matching leg↔leg taskIds alone must not PASS.
+     */
+    expectedTaskSetId?: string;
+    expectedTaskIds?: string[];
     /** Extra parity issues (e.g. from resolveEvaluationMetaMode). */
     extraParityIssues?: string[];
   },
@@ -738,6 +744,43 @@ export function checkComparisonParity(
   if (!sameSorted(baseline.taskIds, candidate.taskIds)) {
     issues.push("taskIds differ between baseline and candidate");
   }
+  // Official: pin task set to skill-snapshot (not only forged leg↔leg agreement).
+  if (officialProvenance) {
+    const expectedTaskSetId = opts?.expectedTaskSetId?.trim() ?? "";
+    if (!expectedTaskSetId) {
+      issues.push(
+        "official Comparison requires trusted expectedTaskSetId (skill-snapshot manifest)",
+      );
+    } else {
+      if (baseline.taskSetId !== expectedTaskSetId) {
+        issues.push(
+          `baseline.taskSetId ${baseline.taskSetId} ≠ trusted expectedTaskSetId ${expectedTaskSetId}`,
+        );
+      }
+      if (candidate.taskSetId !== expectedTaskSetId) {
+        issues.push(
+          `candidate.taskSetId ${candidate.taskSetId} ≠ trusted expectedTaskSetId ${expectedTaskSetId}`,
+        );
+      }
+    }
+    const expectedTaskIds = opts?.expectedTaskIds ?? [];
+    if (expectedTaskIds.length === 0) {
+      issues.push(
+        "official Comparison requires trusted expectedTaskIds (skill-snapshot manifest)",
+      );
+    } else {
+      if (!sameSorted(baseline.taskIds, expectedTaskIds)) {
+        issues.push(
+          "baseline.taskIds ≠ trusted expectedTaskIds (skill-snapshot manifest)",
+        );
+      }
+      if (!sameSorted(candidate.taskIds, expectedTaskIds)) {
+        issues.push(
+          "candidate.taskIds ≠ trusted expectedTaskIds (skill-snapshot manifest)",
+        );
+      }
+    }
+  }
   // Scorecard must cover taskIds (empty/partial/dupe perTask must not PASS).
   for (const [label, leg] of [
     ["baseline", baseline],
@@ -946,6 +989,8 @@ export function compareBaselineCandidate(
     expectedCandidatePromptKind?: SnapshotPromptKind;
     expectedBaselineJob?: TrustedJobAttestation;
     expectedCandidateJob?: TrustedJobAttestation;
+    expectedTaskSetId?: string;
+    expectedTaskIds?: string[];
     extraParityIssues?: string[];
   },
 ): RunComparison {
@@ -1024,6 +1069,17 @@ export function compareBaselineCandidate(
   if (verdict === "FAIL" && candidate.mode !== "official") {
     verdict = "INCONCLUSIVE";
     rationale = `Dry-run paired result is not an adoption FAIL. ${rationale} Re-run mode=official for a decisive Comparison verdict.`;
+  }
+
+  // Defense-in-depth: PASS is official adoption only (thresholds unchanged).
+  if (
+    verdict === "PASS" &&
+    (candidate.mode !== "official" || baseline.mode !== "official")
+  ) {
+    verdict = "INCONCLUSIVE";
+    rationale =
+      "Internal guard: Comparison PASS requires both legs mode=official. " +
+      rationale;
   }
 
   return {
@@ -1384,6 +1440,26 @@ export function loadPairedComparison(opts: {
       "official Comparison rejects evaluation.json smoke=true (fixture plant)",
     );
   }
+  if (
+    officialDisk &&
+    baselineSnapPins.taskSetId &&
+    candidateSnapPins.taskSetId &&
+    baselineSnapPins.taskSetId !== candidateSnapPins.taskSetId
+  ) {
+    extraParityIssues.push(
+      `skill-snapshot taskSetId mismatch: baseline=${baselineSnapPins.taskSetId} candidate=${candidateSnapPins.taskSetId}`,
+    );
+  }
+  if (
+    officialDisk &&
+    baselineSnapPins.taskIds &&
+    candidateSnapPins.taskIds &&
+    !sameSorted(baselineSnapPins.taskIds, candidateSnapPins.taskIds)
+  ) {
+    extraParityIssues.push(
+      "skill-snapshot taskIds differ between baseline and candidate",
+    );
+  }
   return compareBaselineCandidate(baseline, candidate, {
     ...(skillPin.expectedEvalSkillId
       ? { expectedEvalSkillId: skillPin.expectedEvalSkillId }
@@ -1415,6 +1491,17 @@ export function loadPairedComparison(opts: {
     ...(candidateSnapPins.promptKind
       ? { expectedCandidatePromptKind: candidateSnapPins.promptKind }
       : {}),
+    // Prefer candidate snapshot task pins; baseline must match when both set.
+    ...(candidateSnapPins.taskSetId
+      ? { expectedTaskSetId: candidateSnapPins.taskSetId }
+      : baselineSnapPins.taskSetId
+        ? { expectedTaskSetId: baselineSnapPins.taskSetId }
+        : {}),
+    ...(candidateSnapPins.taskIds
+      ? { expectedTaskIds: candidateSnapPins.taskIds }
+      : baselineSnapPins.taskIds
+        ? { expectedTaskIds: baselineSnapPins.taskIds }
+        : {}),
     ...(expectedBaselineJob ? { expectedBaselineJob } : {}),
     ...(expectedCandidateJob ? { expectedCandidateJob } : {}),
     ...(extraParityIssues.length ? { extraParityIssues } : {}),

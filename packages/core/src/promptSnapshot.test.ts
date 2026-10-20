@@ -65,6 +65,8 @@ describe("resolveTrustedSnapshotManifestPinsFromSnapshotDir", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-manif-pin-"));
     temps.push(root);
     writeJsonFile(path.join(root, "manifest.json"), {
+      taskSetId: "cde-v1",
+      taskIds: ["bug-01", "bug-02"],
       _snapshot: {
         evalSkillVersion: "  deadbeef  ",
         promptKind: "skill_md",
@@ -73,6 +75,8 @@ describe("resolveTrustedSnapshotManifestPinsFromSnapshotDir", () => {
     expect(resolveTrustedSnapshotManifestPinsFromSnapshotDir(root)).toEqual({
       evalSkillVersion: "deadbeef",
       promptKind: "skill_md",
+      taskSetId: "cde-v1",
+      taskIds: ["bug-01", "bug-02"],
     });
   });
 

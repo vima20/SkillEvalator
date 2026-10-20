@@ -6,10 +6,14 @@ import { assertSafeId } from "./paths.js";
 
 export type SnapshotPromptKind = "baseline_neutral" | "skill_md";
 
-/** Pins from skill-snapshot/manifest.json `_snapshot` (worker write). */
+/** Pins from skill-snapshot/manifest.json (`_snapshot` + harness task set). */
 export type TrustedSnapshotManifestPins = {
   evalSkillVersion?: string;
   promptKind?: SnapshotPromptKind;
+  /** Official full task set id from skill-snapshot/manifest.json. */
+  taskSetId?: string;
+  /** Official full taskIds from skill-snapshot/manifest.json (not dryRunIds). */
+  taskIds?: string[];
 };
 
 /**
@@ -60,7 +64,7 @@ export function resolveTrustedPromptHashFromRunResultDir(
   }
 }
 
-/** Read `_snapshot.evalSkillVersion` / `promptKind` from skill-snapshot/manifest.json. */
+/** Read `_snapshot` pins + harness taskSetId/taskIds from skill-snapshot/manifest.json. */
 export function resolveTrustedSnapshotManifestPinsFromSnapshotDir(
   snapshotDir: string,
 ): TrustedSnapshotManifestPins {
@@ -69,23 +73,34 @@ export function resolveTrustedSnapshotManifestPinsFromSnapshotDir(
     const st = fs.lstatSync(manPath);
     if (st.isSymbolicLink() || !st.isFile()) return {};
     const raw = readJsonFile(manPath) as {
+      taskSetId?: unknown;
+      taskIds?: unknown;
       _snapshot?: {
         evalSkillVersion?: unknown;
         promptKind?: unknown;
       };
     };
+    const taskSetId =
+      typeof raw.taskSetId === "string" ? raw.taskSetId.trim() : "";
+    const taskIds = Array.isArray(raw.taskIds)
+      ? raw.taskIds.filter(
+          (id): id is string => typeof id === "string" && id.trim().length > 0,
+        )
+      : [];
     const snap = raw?._snapshot;
-    if (!snap || typeof snap !== "object") return {};
     const version =
-      typeof snap.evalSkillVersion === "string"
+      snap && typeof snap === "object" && typeof snap.evalSkillVersion === "string"
         ? snap.evalSkillVersion.trim()
         : "";
-    const kind = snap.promptKind;
+    const kind =
+      snap && typeof snap === "object" ? snap.promptKind : undefined;
     const promptKind: SnapshotPromptKind | undefined =
       kind === "baseline_neutral" || kind === "skill_md" ? kind : undefined;
     return {
       ...(version ? { evalSkillVersion: version } : {}),
       ...(promptKind ? { promptKind } : {}),
+      ...(taskSetId ? { taskSetId } : {}),
+      ...(taskIds.length > 0 ? { taskIds } : {}),
     };
   } catch {
     return {};
