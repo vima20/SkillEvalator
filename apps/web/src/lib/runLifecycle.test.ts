@@ -759,6 +759,26 @@ describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
       3,
     );
   });
+
+  it("RunDetailClient uses taskIds scorecard coverage (Benefit parity)", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/app/runs/[runId]/RunDetailClient.tsx",
+      ),
+      "utf8",
+    );
+    expect(src).toMatch(/taskScorecardCoverageIssues/);
+    expect(src).toMatch(/taskScorecardPassCounts/);
+    expect(src).toMatch(/listScorecardTaskIds/);
+    expect(src).toMatch(/Incomplete task scorecard/);
+    expect(src).toMatch(/displayScore/);
+    expect(src).not.toMatch(
+      /result\?\.perTask\.filter\(\(t\) => t\.status === "ok"\)/,
+    );
+  });
 });
 
 describe("runDetailFinalizeOrphansPath", () => {

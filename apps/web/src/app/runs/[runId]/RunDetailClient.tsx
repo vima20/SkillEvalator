@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  listScorecardTaskIds,
+  taskScorecardCoverageIssues,
+  taskScorecardPassCounts,
+} from "@skillevalator/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -536,9 +541,30 @@ export function RunDetailClient({
         ? 100
         : 0;
 
-  const passed =
-    result?.perTask.filter((t) => t.status === "ok").length ?? 0;
-  const total = result?.perTask.length ?? 0;
+  const coverageIssues = result
+    ? taskScorecardCoverageIssues(result.taskIds, result.perTask, {
+        requireFiniteScores: result.status === "ok",
+        runScore: result.status === "ok" ? result.score : undefined,
+      })
+    : [];
+  const scorecardBroken = coverageIssues.length > 0;
+  const { passed, total } = result
+    ? taskScorecardPassCounts(result.taskIds, result.perTask)
+    : { passed: 0, total: 0 };
+  const displayScore = scorecardBroken ? null : (result?.score ?? null);
+  const scorecardRows = result
+    ? listScorecardTaskIds(result.taskIds, result.perTask).map((taskId) => {
+        const row = result.perTask.find((t) => t.taskId === taskId);
+        return (
+          row ?? {
+            taskId,
+            score: null as number | null,
+            status: "missing" as const,
+            diffRatio: undefined as number | undefined,
+          }
+        );
+      })
+    : [];
 
   return (
     <div>
@@ -763,9 +789,16 @@ export function RunDetailClient({
           {status}
         </span>
         {result ? (
-          <span className="score" title="Aggregate score">
+          <span
+            className="score"
+            title={
+              scorecardBroken
+                ? `Scorecard incomplete — aggregate hidden (${coverageIssues.join("; ")})`
+                : "Aggregate score"
+            }
+          >
             <span className="stat-label">Score </span>
-            {result.score ?? "—"}
+            {displayScore ?? "—"}
           </span>
         ) : null}
         {result ? (
@@ -902,10 +935,31 @@ export function RunDetailClient({
 
       {result ? (
         <>
+          {scorecardBroken ? (
+            <div className="panel callout-warn">
+              <strong>Incomplete task scorecard</strong>
+              <p>
+                Declared taskIds and per-task rows do not line up (
+                {passed}/{total || 0} soft-pass). Aggregate score is hidden —
+                open Benefit for the same fail-closed gate, or re-run for a
+                complete scorecard.
+              </p>
+              <p className="hint" style={{ marginBottom: 0 }}>
+                {coverageIssues.join("; ")}
+              </p>
+            </div>
+          ) : null}
           <div className="stat-strip stat-strip-5">
             <div className="stat">
               <span className="stat-label">Tasks passed</span>
-              <span className="stat-value">
+              <span
+                className="stat-value"
+                title={
+                  scorecardBroken
+                    ? "Counted against declared taskIds (missing ≠ passed)"
+                    : undefined
+                }
+              >
                 {passed}/{total}
               </span>
             </div>
@@ -945,7 +999,7 @@ export function RunDetailClient({
           ) : null}
 
           <div className="panel">
-            {result.perTask.length === 0 ? (
+            {scorecardRows.length === 0 ? (
               <p className="empty">No per-task results.</p>
             ) : (
               <div className="table-scroll">
@@ -959,12 +1013,12 @@ export function RunDetailClient({
                     </tr>
                   </thead>
                   <tbody>
-                    {result.perTask.map((t) => (
+                    {scorecardRows.map((t) => (
                       <tr key={t.taskId}>
                         <td>
                           <code>{t.taskId}</code>
                         </td>
-                        <td>{t.score}</td>
+                        <td>{t.score ?? "—"}</td>
                         <td>
                           {typeof t.diffRatio === "number"
                             ? `${(t.diffRatio * 100).toFixed(1)}%`

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateRepeats,
   labelForScore,
+  listScorecardTaskIds,
   meanScores,
   scoreSpread,
   taskScorecardCoverageIssues,
+  taskScorecardPassCounts,
 } from "./scoring.js";
 
 describe("scoring", () => {
@@ -96,5 +98,24 @@ describe("scoring", () => {
         { requireFiniteScores: true, runScore: 0.9 },
       ),
     ).toEqual([]);
+  });
+
+  it("taskScorecardPassCounts uses taskIds (missing ≠ passed)", () => {
+    expect(
+      taskScorecardPassCounts(
+        ["bug-01", "bug-02"],
+        [{ taskId: "bug-01", score: 1 }],
+      ),
+    ).toEqual({
+      passed: 1,
+      total: 2,
+      failedTaskIds: ["bug-02"],
+    });
+    expect(
+      listScorecardTaskIds(
+        ["bug-01", "bug-02"],
+        [{ taskId: "bug-01" }, { taskId: "extra" }],
+      ),
+    ).toEqual(["bug-01", "bug-02", "extra"]);
   });
 });

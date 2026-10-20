@@ -6,26 +6,14 @@ import {
 import type { RunResult } from "./schema.js";
 import {
   labelForScore,
+  listScorecardTaskIds,
   taskScorecardCoverageIssues,
+  taskScorecardPassCounts,
   type ScoreLabel,
 } from "./scoring.js";
 
 function taskPassedSoft(score: number | null | undefined): boolean {
   return typeof score === "number" && score >= PASS_SCORE_FLOOR;
-}
-
-/** taskIds-based soft-pass counts (missing rows count as not passed). */
-function scorecardTaskPassCounts(result: RunResult): {
-  passed: number;
-  total: number;
-  failedTaskIds: string[];
-} {
-  const byId = new Map(result.perTask.map((t) => [t.taskId, t]));
-  const total = result.taskIds.length;
-  const failedTaskIds = result.taskIds.filter(
-    (id) => !taskPassedSoft(byId.get(id)?.score),
-  );
-  return { passed: total - failedTaskIds.length, total, failedTaskIds };
 }
 
 function scorecardCoverageIssuesForResult(result: RunResult): string[] {
@@ -38,11 +26,7 @@ function scorecardCoverageIssuesForResult(result: RunResult): string[] {
 /** One row per declared taskId; extras appended; missing → status missing. */
 function scorecardPerTaskRows(result: RunResult): BenefitReport["scorecard"]["perTask"] {
   const byId = new Map(result.perTask.map((t) => [t.taskId, t]));
-  const ids = [...result.taskIds];
-  for (const t of result.perTask) {
-    if (!ids.includes(t.taskId)) ids.push(t.taskId);
-  }
-  return ids.map((taskId) => {
+  return listScorecardTaskIds(result.taskIds, result.perTask).map((taskId) => {
     const t = byId.get(taskId);
     if (!t) {
       return {
@@ -183,8 +167,10 @@ function gradeForStars(stars: 1 | 2 | 3 | 4 | 5): string {
 export function rateSkill(result: RunResult): BenefitRating {
   const score = result.score;
   const status = result.status;
-  const { passed, total, failedTaskIds: failedTasks } =
-    scorecardTaskPassCounts(result);
+  const { passed, total, failedTaskIds: failedTasks } = taskScorecardPassCounts(
+    result.taskIds,
+    result.perTask,
+  );
   const coverageIssues = scorecardCoverageIssuesForResult(result);
   const scorecardBroken = coverageIssues.length > 0;
 
@@ -855,8 +841,10 @@ export function buildBenefitReport(
     : labelForScore(result.score, labelOpts);
   const scorecardScore = scorecardBroken ? null : result.score;
   const perTask = scorecardPerTaskRows(result);
-  const { passed: tasksPassed, total: tasksTotal } =
-    scorecardTaskPassCounts(result);
+  const { passed: tasksPassed, total: tasksTotal } = taskScorecardPassCounts(
+    result.taskIds,
+    result.perTask,
+  );
   const gated = applyPairedComparisonGate({
     result,
     verdict: decideSkillUse(result),

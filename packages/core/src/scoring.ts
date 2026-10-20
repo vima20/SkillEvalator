@@ -16,6 +16,35 @@ export type TaskScorecardRow = {
 /** Max |run.score − mean(perTask)| for status=ok adoption (scoreFromGradeAndDiff uses 3dp). */
 export const RUN_AGGREGATE_SCORE_EPS = 0.001;
 
+function taskPassedSoft(score: number | null | undefined): boolean {
+  return typeof score === "number" && score >= PASS_SCORE_FLOOR;
+}
+
+/** taskIds-based soft-pass counts (missing rows count as not passed). */
+export function taskScorecardPassCounts(
+  taskIds: string[],
+  perTask: TaskScorecardRow[],
+): { passed: number; total: number; failedTaskIds: string[] } {
+  const byId = new Map(perTask.map((t) => [t.taskId, t]));
+  const total = taskIds.length;
+  const failedTaskIds = taskIds.filter(
+    (id) => !taskPassedSoft(byId.get(id)?.score),
+  );
+  return { passed: total - failedTaskIds.length, total, failedTaskIds };
+}
+
+/** Declared taskIds first, then unknown perTask extras (stable UI order). */
+export function listScorecardTaskIds(
+  taskIds: string[],
+  perTask: Array<{ taskId: string }>,
+): string[] {
+  const ids = [...taskIds];
+  for (const t of perTask) {
+    if (!ids.includes(t.taskId)) ids.push(t.taskId);
+  }
+  return ids;
+}
+
 /**
  * Fail-closed scorecard integrity: taskIds ↔ perTask must be a bijection
  * (no empty task set, no duplicates, no missing/extra rows). When
