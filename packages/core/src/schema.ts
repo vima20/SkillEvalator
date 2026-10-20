@@ -97,15 +97,26 @@ export const TokenUsageSchema = z.object({
 
 export type TokenUsage = z.output<typeof TokenUsageSchema>;
 
+/** Finite score / ratio in [0, 1] — rejects NaN and ±Infinity. */
+export const UnitScoreSchema = z
+  .number({
+    invalid_type_error: "must be a finite number in [0, 1]",
+  })
+  .finite({ message: "must be a finite number in [0, 1] (not NaN/Infinity)" })
+  .min(0, { message: "must be >= 0" })
+  .max(1, { message: "must be <= 1" });
+
+export const NullableUnitScoreSchema = UnitScoreSchema.nullable();
+
 export const PerTaskResultSchema = z.object({
   taskId: z.string(),
   artifactRef: z.string().optional(),
   expectedRef: z.string().optional(),
   scriptResults: z.array(ScriptResultSchema),
-  score: z.number().min(0).max(1).nullable(),
+  score: NullableUnitScoreSchema,
   status: TaskStatusSchema,
   /** Normalized edit distance vs expected (0 = identical); omit when N/A. */
-  diffRatio: z.number().min(0).max(1).optional(),
+  diffRatio: UnitScoreSchema.optional(),
   /** Aggregated produce tokens across repeats for this task (when available). */
   tokens: TokenUsageSchema.optional(),
 });
@@ -183,10 +194,11 @@ export const RunResultSchema = z.object({
   }),
   repeats: z.number().int().positive().max(10),
   aggregate: z.literal("mean").default("mean"),
-  scoreSpread: z.number().optional(),
+  scoreSpread: UnitScoreSchema.optional(),
   perTask: z.array(PerTaskResultSchema),
-  score: z.number().min(0).max(1).nullable(),
-  subscores: z.record(z.number()).default({}),
+  score: NullableUnitScoreSchema,
+  /** Unit scores / ratios only (e.g. meanDiffRatio) — no unbounded numbers. */
+  subscores: z.record(UnitScoreSchema).default({}),
   rationale: z.string().default(""),
   findings: z.array(z.string()).default([]),
   costUsd: z.number().nonnegative().default(0),

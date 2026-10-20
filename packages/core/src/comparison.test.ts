@@ -232,6 +232,43 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
   });
 
+  it("official INCONCLUSIVE when candidate score is out of [0, 1]", () => {
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const forged = {
+      ...cand,
+      score: 1.5,
+      perTask: [
+        {
+          taskId: "bug-01",
+          score: 1.5,
+          status: "ok" as const,
+          scriptResults: [],
+        },
+      ],
+    };
+    const c = compareBaselineCandidate(b, forged, officialOpts(b, cand));
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /\[0, 1\]|must be in/.test(i)),
+    ).toBe(true);
+  });
+
   it("official INCONCLUSIVE when run score disagrees with perTask mean", () => {
     const b = sample({
       runId: "b",

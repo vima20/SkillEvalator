@@ -5,15 +5,17 @@ import {
 } from "./diffScore.js";
 import type { RunResult } from "./schema.js";
 import {
+  isUnitScore,
   labelForScore,
   listScorecardTaskIds,
   taskScorecardCoverageIssues,
   taskScorecardPassCounts,
+  unitScoreError,
   type ScoreLabel,
 } from "./scoring.js";
 
 function taskPassedSoft(score: number | null | undefined): boolean {
-  return typeof score === "number" && score >= PASS_SCORE_FLOOR;
+  return isUnitScore(score) && score >= PASS_SCORE_FLOOR;
 }
 
 function scorecardCoverageIssuesForResult(result: RunResult): string[] {
@@ -735,6 +737,16 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
       headline: "INCONCLUSIVE — incomplete task scorecard",
       decision: "INCONCLUSIVE — task scorecard coverage invalid",
       rationale: `Task scorecard is incomplete or inconsistent: ${coverageIssues.join("; ")}. Re-run for a complete per-task result before adoption.`,
+    };
+  }
+
+  // Non-null but invalid score must not unlock USE / DO NOT USE.
+  if (score !== null && !isUnitScore(score)) {
+    return {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — invalid score",
+      decision: "INCONCLUSIVE — score is not a finite unit value",
+      rationale: `${unitScoreError(score, "Run score")}. Re-run for a valid scorecard before adoption.`,
     };
   }
 

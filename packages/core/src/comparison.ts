@@ -26,7 +26,7 @@ import {
 } from "./results.js";
 import { resolveLegRunIdViaRetryChain } from "./retryDedup.js";
 import type { RunResult } from "./schema.js";
-import { taskScorecardCoverageIssues } from "./scoring.js";
+import { isUnitScore, taskScorecardCoverageIssues } from "./scoring.js";
 
 /** Unikie alustava PASS: candidate ≥ baseline + 5 percentage points. */
 export const LIFT_PASS_DELTA = 0.05;
@@ -76,7 +76,7 @@ export type RunComparison = {
 };
 
 function scoreOrNull(r: RunResult): number | null {
-  return typeof r.score === "number" && Number.isFinite(r.score) ? r.score : null;
+  return isUnitScore(r.score) ? r.score : null;
 }
 
 function sameSorted(a: string[], b: string[]): boolean {
@@ -907,10 +907,8 @@ export function buildTaskRegressions(
   return ids.map((taskId) => {
     const b = baseMap.get(taskId);
     const c = candMap.get(taskId);
-    const baselineScore =
-      typeof b?.score === "number" && Number.isFinite(b.score) ? b.score : null;
-    const candidateScore =
-      typeof c?.score === "number" && Number.isFinite(c.score) ? c.score : null;
+    const baselineScore = isUnitScore(b?.score) ? b.score : null;
+    const candidateScore = isUnitScore(c?.score) ? c.score : null;
     const delta =
       baselineScore !== null && candidateScore !== null
         ? Math.round((candidateScore - baselineScore) * 10_000) / 10_000

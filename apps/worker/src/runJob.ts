@@ -27,6 +27,7 @@ import {
   taskPaths,
   meanScores,
   aggregateRepeats,
+  taskScorecardCoverageIssues,
   normalizeRepeats,
   officialEnqueueAllowed,
   resolveWebAuthConfig,
@@ -908,7 +909,12 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
     const agg =
       repeatScores.length > 0
         ? aggregateRepeats(repeatScores)
-        : { score: 0, scoreSpread: 0 };
+        : { score: null as number | null, scoreSpread: 0 };
+    if (repeatScores.length === 0 && !stop) {
+      findings.push(
+        "no completed repeat scores — aggregate score unavailable (not coerced to 0)",
+      );
+    }
 
     const aggregatedPerTask: RunResult["perTask"] = taskIds.map((taskId) => {
       const last = lastByTask.get(taskId);
@@ -948,8 +954,24 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
 
     let status: RunResult["status"];
     if (stop) status = stop;
-    else if (agg.score < PASS_SCORE_FLOOR) status = "failed";
-    else status = "ok";
+    else if (agg.score === null || agg.score < PASS_SCORE_FLOOR) {
+      status = "failed";
+    } else status = "ok";
+
+    // Fail-closed: never stamp status=ok on a broken unit-score scorecard.
+    if (status === "ok") {
+      const coverageIssues = taskScorecardCoverageIssues(
+        taskIds,
+        aggregatedPerTask,
+        { requireFiniteScores: true, runScore: agg.score },
+      );
+      if (coverageIssues.length > 0) {
+        status = "failed";
+        for (const issue of coverageIssues) {
+          if (!findings.includes(issue)) findings.push(issue);
+        }
+      }
+    }
 
     const result = RunResultSchema.parse({
       runId,
