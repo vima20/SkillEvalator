@@ -14,6 +14,57 @@ function taskPassedSoft(score: number | null | undefined): boolean {
   return typeof score === "number" && score >= PASS_SCORE_FLOOR;
 }
 
+/** taskIds-based soft-pass counts (missing rows count as not passed). */
+function scorecardTaskPassCounts(result: RunResult): {
+  passed: number;
+  total: number;
+  failedTaskIds: string[];
+} {
+  const byId = new Map(result.perTask.map((t) => [t.taskId, t]));
+  const total = result.taskIds.length;
+  const failedTaskIds = result.taskIds.filter(
+    (id) => !taskPassedSoft(byId.get(id)?.score),
+  );
+  return { passed: total - failedTaskIds.length, total, failedTaskIds };
+}
+
+function scorecardCoverageIssuesForResult(result: RunResult): string[] {
+  return taskScorecardCoverageIssues(result.taskIds, result.perTask, {
+    requireFiniteScores: result.status === "ok",
+    runScore: result.status === "ok" ? result.score : undefined,
+  });
+}
+
+/** One row per declared taskId; extras appended; missing → status missing. */
+function scorecardPerTaskRows(result: RunResult): BenefitReport["scorecard"]["perTask"] {
+  const byId = new Map(result.perTask.map((t) => [t.taskId, t]));
+  const ids = [...result.taskIds];
+  for (const t of result.perTask) {
+    if (!ids.includes(t.taskId)) ids.push(t.taskId);
+  }
+  return ids.map((taskId) => {
+    const t = byId.get(taskId);
+    if (!t) {
+      return {
+        taskId,
+        score: null,
+        status: "missing",
+        label: "Fail" as const,
+      };
+    }
+    return {
+      taskId,
+      score: t.score,
+      status: t.status,
+      label: labelForScore(t.score, {
+        ...(typeof t.diffRatio === "number"
+          ? { meanDiffRatio: t.diffRatio, scoreSpread: 0 }
+          : {}),
+      }),
+    };
+  });
+}
+
 /** Harness recommendation: should Unikie use this skill (for this model/mode)? */
 export type SkillUseVerdict = "use" | "do_not_use" | "inconclusive";
 
@@ -132,18 +183,21 @@ function gradeForStars(stars: 1 | 2 | 3 | 4 | 5): string {
 export function rateSkill(result: RunResult): BenefitRating {
   const score = result.score;
   const status = result.status;
-  const passed = result.perTask.filter((t) => taskPassedSoft(t.score)).length;
-  const total = result.perTask.length;
-  const failedTasks = result.perTask
-    .filter((t) => !taskPassedSoft(t.score))
-    .map((t) => t.taskId);
+  const { passed, total, failedTaskIds: failedTasks } =
+    scorecardTaskPassCounts(result);
+  const coverageIssues = scorecardCoverageIssuesForResult(result);
+  const scorecardBroken = coverageIssues.length > 0;
 
   const smokeHarness = result.capture?.env?.fakeProduce === true;
   const roleMissing = result.role === undefined;
   const isBaseline = result.role === "baseline";
   /** Align with decideSkillUse — these must not look like Excellent / USE. */
   const adoptionBlocked =
-    smokeHarness || roleMissing || status === "failed" || isBaseline;
+    smokeHarness ||
+    roleMissing ||
+    status === "failed" ||
+    isBaseline ||
+    scorecardBroken;
 
   let stars: 1 | 2 | 3 | 4 | 5 = 1;
 
@@ -153,7 +207,8 @@ export function rateSkill(result: RunResult): BenefitRating {
     status === "failed" ||
     score === null ||
     smokeHarness ||
-    roleMissing
+    roleMissing ||
+    scorecardBroken
   ) {
     stars = 1;
   } else if (score <= 0) {
@@ -192,7 +247,19 @@ export function rateSkill(result: RunResult): BenefitRating {
   let summary: string;
   let reviewSections: ReviewSection[];
 
-  if (smokeHarness) {
+  if (scorecardBroken) {
+    summary = "Incomplete task scorecard — rating withheld.";
+    reviewSections = [
+      {
+        heading: "Situation",
+        body: `Task scorecard is incomplete or inconsistent (${passed}/${total || 0} soft-pass vs declared taskIds): ${coverageIssues.join("; ")}. Stars stay at ${stars}/5 — aggregate score/label are not an adoption signal.`,
+      },
+      {
+        heading: "Recommendation",
+        body: "Re-run so every declared taskId has a finite per-task score and the run score matches the perTask mean before reading Benefit stars or USE.",
+      },
+    ];
+  } else if (smokeHarness) {
     summary = "Smoke harness — not an adoption grade.";
     reviewSections = [
       {
@@ -780,17 +847,16 @@ export function buildBenefitReport(
     scoreSpread: spread,
     ...(typeof meanDiffRatio === "number" ? { meanDiffRatio } : {}),
   };
-  const label = labelForScore(result.score, labelOpts);
-  const perTask = result.perTask.map((t) => ({
-    taskId: t.taskId,
-    score: t.score,
-    status: t.status,
-    label: labelForScore(t.score, {
-      ...(typeof t.diffRatio === "number"
-        ? { meanDiffRatio: t.diffRatio, scoreSpread: 0 }
-        : {}),
-    }),
-  }));
+  const coverageIssues = scorecardCoverageIssuesForResult(result);
+  const scorecardBroken = coverageIssues.length > 0;
+  // Broken scorecard must not show Strong / full score next to INCONCLUSIVE.
+  const label: ScoreLabel = scorecardBroken
+    ? "Fail"
+    : labelForScore(result.score, labelOpts);
+  const scorecardScore = scorecardBroken ? null : result.score;
+  const perTask = scorecardPerTaskRows(result);
+  const { passed: tasksPassed, total: tasksTotal } =
+    scorecardTaskPassCounts(result);
   const gated = applyPairedComparisonGate({
     result,
     verdict: decideSkillUse(result),
@@ -829,10 +895,10 @@ export function buildBenefitReport(
     },
     scorecard: {
       label,
-      score: result.score,
+      score: scorecardScore,
       scoreSpread: spread,
-      tasksPassed: perTask.filter((t) => taskPassedSoft(t.score)).length,
-      tasksTotal: perTask.length,
+      tasksPassed,
+      tasksTotal,
       perTask,
     },
     harnessChecks: {

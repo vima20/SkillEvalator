@@ -524,4 +524,34 @@ describe("benefitReport", () => {
     expect(report.rating.review).toMatch(/INCONCLUSIVE/i);
     expect(report.rating.review).not.toMatch(/dry-run Comparison floor/i);
   });
+
+  it("does not show Strong 1/1 scorecard when taskIds outnumber perTask", () => {
+    const report = buildBenefitReport(
+      sample({
+        mode: "official",
+        score: 1,
+        repeats: 3,
+        modelId: "gpt-4.1-mini",
+        taskIds: ["bug-01", "bug-02"],
+        perTask: [
+          {
+            taskId: "bug-01",
+            scriptResults: [],
+            score: 1,
+            status: "ok",
+          },
+        ],
+      }),
+    );
+    expect(report.verdict.headline).toMatch(/incomplete task scorecard/i);
+    expect(report.scorecard.tasksTotal).toBe(2);
+    expect(report.scorecard.tasksPassed).toBe(1);
+    expect(report.scorecard.score).toBeNull();
+    expect(report.scorecard.label).toBe("Fail");
+    expect(report.scorecard.perTask.find((t) => t.taskId === "bug-02")).toEqual(
+      expect.objectContaining({ status: "missing", score: null, label: "Fail" }),
+    );
+    expect(report.rating.stars).toBe(1);
+    expect(report.rating.summary).toMatch(/Incomplete task scorecard/i);
+  });
 });
