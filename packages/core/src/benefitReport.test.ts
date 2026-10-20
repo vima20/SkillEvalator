@@ -40,6 +40,25 @@ function comparisonStub(
 }
 
 function sample(overrides: Partial<RunResult> = {}): RunResult {
+  const score = overrides.score !== undefined ? overrides.score : 1;
+  const taskIds = overrides.taskIds ?? ["bug-01"];
+  const status = overrides.status ?? "ok";
+  const defaultPerTask = taskIds.map((taskId) => ({
+    taskId,
+    scriptResults: [{ name: "grade", exitCode: 0, summary: "ok" }],
+    score:
+      typeof score === "number" && Number.isFinite(score)
+        ? score
+        : status === "ok"
+          ? 1
+          : null,
+    status:
+      status === "cancelled" || status === "budget_stop"
+        ? status
+        : typeof score === "number" && score >= 0.8
+          ? ("ok" as const)
+          : ("failed" as const),
+  }));
   return {
     runId: "run_test",
     evalSkillId: "code-debugging-eval",
@@ -47,33 +66,26 @@ function sample(overrides: Partial<RunResult> = {}): RunResult {
     evalSkillGithubUrl:
       "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
     taskSetId: "cde-v1",
-    taskIds: ["bug-01"],
     pipeline: { produce: "model", grade: "docker_script" },
     modelId: "gpt-4o-mini",
     decoding: { temperature: 0, top_p: 1, seed: 42 },
     repeats: 1,
     aggregate: "mean",
     scoreSpread: 0,
-    perTask: [
-      {
-        taskId: "bug-01",
-        scriptResults: [{ name: "grade", exitCode: 0, summary: "ok" }],
-        score: 1,
-        status: "ok",
-      },
-    ],
-    score: 1,
+    score,
     subscores: {},
     rationale: "",
     findings: [],
     costUsd: 0.01,
     latencyMs: 1200,
-    status: "ok",
+    status,
     startedAt: "2026-01-01T00:00:00.000Z",
     finishedAt: "2026-01-01T00:00:02.000Z",
     mode: "dry-run",
     ...overrides,
     role: overrides.role ?? "candidate",
+    taskIds: overrides.taskIds ?? taskIds,
+    perTask: overrides.perTask ?? defaultPerTask,
   };
 }
 
@@ -90,6 +102,28 @@ describe("decideSkillUse", () => {
     );
     expect(v.recommendation).toBe("inconclusive");
     expect(v.headline).toMatch(/incomplete task scorecard/i);
+  });
+
+  it("inconclusive when run score disagrees with perTask mean", () => {
+    const v = decideSkillUse(
+      sample({
+        mode: "official",
+        score: 1,
+        repeats: 3,
+        modelId: "gpt-4.1-mini",
+        perTask: [
+          {
+            taskId: "bug-01",
+            scriptResults: [{ name: "grade", exitCode: 1, summary: "fail" }],
+            score: 0.5,
+            status: "failed",
+          },
+        ],
+      }),
+    );
+    expect(v.recommendation).toBe("inconclusive");
+    expect(v.headline).toMatch(/incomplete task scorecard/i);
+    expect(v.rationale).toMatch(/run score .* ≠ perTask mean/i);
   });
 
   it("inconclusive on passing dry-run", () => {

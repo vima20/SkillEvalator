@@ -13,16 +13,25 @@ export type TaskScorecardRow = {
   score?: number | null;
 };
 
+/** Max |run.score − mean(perTask)| for status=ok adoption (scoreFromGradeAndDiff uses 3dp). */
+export const RUN_AGGREGATE_SCORE_EPS = 0.001;
+
 /**
  * Fail-closed scorecard integrity: taskIds ↔ perTask must be a bijection
  * (no empty task set, no duplicates, no missing/extra rows). When
  * requireFiniteScores (status=ok adoption paths), every covered row needs a
- * finite score — null/NaN must not launder into PASS / USE.
+ * finite score — null/NaN must not launder into PASS / USE. When runScore is
+ * also provided, it must match mean(perTask.score) within RUN_AGGREGATE_SCORE_EPS.
  */
 export function taskScorecardCoverageIssues(
   taskIds: string[],
   perTask: TaskScorecardRow[],
-  opts?: { requireFiniteScores?: boolean; label?: string },
+  opts?: {
+    requireFiniteScores?: boolean;
+    label?: string;
+    /** status=ok run-level score — must match perTask mean when finite. */
+    runScore?: number | null;
+  },
 ): string[] {
   const prefix = opts?.label ? `${opts.label} ` : "";
   const issues: string[] = [];
@@ -77,6 +86,25 @@ export function taskScorecardCoverageIssues(
           `${prefix}perTask[${row.taskId}] score is missing or non-finite`.trim(),
         );
       }
+    }
+  }
+
+  const runScore = opts?.runScore;
+  if (
+    opts?.requireFiniteScores &&
+    typeof runScore === "number" &&
+    Number.isFinite(runScore) &&
+    missing.length === 0 &&
+    extra.length === 0 &&
+    duplicateRows.size === 0
+  ) {
+    const mean = meanScores(perTask.map((row) => row.score ?? null));
+    if (mean === null) {
+      issues.push(`${prefix}perTask mean score is missing`.trim());
+    } else if (Math.abs(mean - runScore) > RUN_AGGREGATE_SCORE_EPS) {
+      issues.push(
+        `${prefix}run score ${runScore.toFixed(3)} ≠ perTask mean ${mean.toFixed(3)}`.trim(),
+      );
     }
   }
 

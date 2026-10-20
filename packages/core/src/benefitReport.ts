@@ -671,7 +671,10 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
   const coverageIssues = taskScorecardCoverageIssues(
     result.taskIds,
     result.perTask,
-    { requireFiniteScores: status === "ok" },
+    {
+      requireFiniteScores: status === "ok",
+      runScore: status === "ok" ? score : undefined,
+    },
   );
   if (coverageIssues.length > 0) {
     return {

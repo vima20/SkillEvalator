@@ -77,5 +77,24 @@ describe("scoring", () => {
     ).toEqual([
       "candidate perTask[bug-01] score is missing or non-finite",
     ]);
+
+    expect(
+      taskScorecardCoverageIssues(
+        ["bug-01"],
+        [{ taskId: "bug-01", score: 0.5 }],
+        { requireFiniteScores: true, runScore: 1 },
+      ),
+    ).toEqual(["run score 1.000 ≠ perTask mean 0.500"]);
+
+    expect(
+      taskScorecardCoverageIssues(
+        ["bug-01", "bug-02"],
+        [
+          { taskId: "bug-01", score: 1 },
+          { taskId: "bug-02", score: 0.8 },
+        ],
+        { requireFiniteScores: true, runScore: 0.9 },
+      ),
+    ).toEqual([]);
   });
 });

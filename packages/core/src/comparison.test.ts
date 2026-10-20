@@ -232,6 +232,39 @@ describe("compareBaselineCandidate", () => {
     ).toBe(true);
   });
 
+  it("official INCONCLUSIVE when run score disagrees with perTask mean", () => {
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      perTask: [
+        {
+          taskId: "bug-01",
+          score: 0.5,
+          status: "failed",
+          scriptResults: [],
+        },
+      ],
+    });
+    const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /run score .* ≠ perTask mean/i.test(i)),
+    ).toBe(true);
+  });
+
   it("official INCONCLUSIVE when perTask has duplicate taskId", () => {
     const b = sample({
       runId: "b",
@@ -2405,7 +2438,7 @@ describe("compareBaselineCandidate", () => {
       sample({
         runId: "b",
         role: "baseline",
-        score: 0.8,
+        score: 0.95,
         taskIds: ["bug-01", "bug-02"],
         perTask: [
           {
@@ -2425,7 +2458,7 @@ describe("compareBaselineCandidate", () => {
       sample({
         runId: "c",
         role: "candidate",
-        score: 0.9,
+        score: 0.75,
         taskIds: ["bug-01", "bug-02"],
         perTask: [
           {

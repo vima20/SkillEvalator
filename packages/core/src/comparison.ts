@@ -746,8 +746,10 @@ export function checkComparisonParity(
     issues.push(
       ...taskScorecardCoverageIssues(leg.taskIds, leg.perTask, {
         label,
-        // status=ok adoption paths require finite per-task scores.
+        // status=ok adoption paths require finite per-task scores
+        // and run.score matching mean(perTask).
         requireFiniteScores: leg.status === "ok",
+        runScore: leg.status === "ok" ? leg.score : undefined,
       }),
     );
   }
