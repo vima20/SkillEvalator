@@ -78,6 +78,20 @@ function sample(overrides: Partial<RunResult> = {}): RunResult {
 }
 
 describe("decideSkillUse", () => {
+  it("inconclusive when perTask does not cover taskIds", () => {
+    const v = decideSkillUse(
+      sample({
+        mode: "official",
+        score: 1,
+        repeats: 3,
+        modelId: "gpt-4.1-mini",
+        perTask: [],
+      }),
+    );
+    expect(v.recommendation).toBe("inconclusive");
+    expect(v.headline).toMatch(/incomplete task scorecard/i);
+  });
+
   it("inconclusive on passing dry-run", () => {
     const v = decideSkillUse(sample({ mode: "dry-run", score: 1 }));
     expect(v.recommendation).toBe("inconclusive");

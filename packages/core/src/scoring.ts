@@ -1,9 +1,86 @@
 import { DIFF_STRONG_MAX, PASS_SCORE_FLOOR } from "./diffScore.js";
 
 export function meanScores(scores: Array<number | null>): number | null {
-  const nums = scores.filter((s): s is number => typeof s === "number");
+  const nums = scores.filter(
+    (s): s is number => typeof s === "number" && Number.isFinite(s),
+  );
   if (nums.length === 0) return null;
   return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+export type TaskScorecardRow = {
+  taskId: string;
+  score?: number | null;
+};
+
+/**
+ * Fail-closed scorecard integrity: taskIds ↔ perTask must be a bijection
+ * (no empty task set, no duplicates, no missing/extra rows). When
+ * requireFiniteScores (status=ok adoption paths), every covered row needs a
+ * finite score — null/NaN must not launder into PASS / USE.
+ */
+export function taskScorecardCoverageIssues(
+  taskIds: string[],
+  perTask: TaskScorecardRow[],
+  opts?: { requireFiniteScores?: boolean; label?: string },
+): string[] {
+  const prefix = opts?.label ? `${opts.label} ` : "";
+  const issues: string[] = [];
+
+  if (taskIds.length === 0) {
+    issues.push(`${prefix}taskIds is empty`.trim());
+  }
+
+  const declared = new Set<string>();
+  const duplicateDeclared = new Set<string>();
+  for (const id of taskIds) {
+    if (declared.has(id)) duplicateDeclared.add(id);
+    declared.add(id);
+  }
+  if (duplicateDeclared.size > 0) {
+    issues.push(
+      `${prefix}taskIds contains duplicates: ${[...duplicateDeclared].sort().join(", ")}`.trim(),
+    );
+  }
+
+  const seen = new Set<string>();
+  const duplicateRows = new Set<string>();
+  for (const row of perTask) {
+    if (seen.has(row.taskId)) duplicateRows.add(row.taskId);
+    seen.add(row.taskId);
+  }
+  if (duplicateRows.size > 0) {
+    issues.push(
+      `${prefix}perTask duplicate taskId(s): ${[...duplicateRows].sort().join(", ")}`.trim(),
+    );
+  }
+
+  const missing = [...declared].filter((id) => !seen.has(id)).sort();
+  if (missing.length > 0) {
+    issues.push(
+      `${prefix}perTask missing taskId(s): ${missing.join(", ")}`.trim(),
+    );
+  }
+
+  const extra = [...seen].filter((id) => !declared.has(id)).sort();
+  if (extra.length > 0) {
+    issues.push(
+      `${prefix}perTask has unknown taskId(s): ${extra.join(", ")}`.trim(),
+    );
+  }
+
+  if (opts?.requireFiniteScores) {
+    for (const row of perTask) {
+      if (!declared.has(row.taskId)) continue;
+      if (typeof row.score !== "number" || !Number.isFinite(row.score)) {
+        issues.push(
+          `${prefix}perTask[${row.taskId}] score is missing or non-finite`.trim(),
+        );
+      }
+    }
+  }
+
+  return issues;
 }
 
 export function scoreSpread(scores: number[]): number {

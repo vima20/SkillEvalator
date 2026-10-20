@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { aggregateRepeats, labelForScore, meanScores, scoreSpread } from "./scoring.js";
+import {
+  aggregateRepeats,
+  labelForScore,
+  meanScores,
+  scoreSpread,
+  taskScorecardCoverageIssues,
+} from "./scoring.js";
 
 describe("scoring", () => {
   it("means scores", () => {
     expect(meanScores([1, 0, 1])).toBeCloseTo(2 / 3);
     expect(meanScores([null, 1])).toBe(1);
     expect(meanScores([null])).toBeNull();
+    expect(meanScores([Number.NaN, 1])).toBe(1);
   });
 
   it("spread", () => {
@@ -33,5 +40,42 @@ describe("scoring", () => {
     const a = aggregateRepeats([1, 0, 1]);
     expect(a.score).toBeCloseTo(2 / 3);
     expect(a.scoreSpread).toBeGreaterThan(0);
+  });
+
+  it("taskScorecardCoverageIssues rejects empty/partial/duplicate scorecards", () => {
+    expect(
+      taskScorecardCoverageIssues(
+        ["bug-01"],
+        [{ taskId: "bug-01", score: 1 }],
+      ),
+    ).toEqual([]);
+
+    expect(
+      taskScorecardCoverageIssues(["bug-01"], []),
+    ).toEqual(["perTask missing taskId(s): bug-01"]);
+
+    expect(taskScorecardCoverageIssues([], [])).toEqual([
+      "taskIds is empty",
+    ]);
+
+    expect(
+      taskScorecardCoverageIssues(
+        ["bug-01"],
+        [
+          { taskId: "bug-01", score: 1 },
+          { taskId: "bug-01", score: 0.5 },
+        ],
+      ),
+    ).toEqual(["perTask duplicate taskId(s): bug-01"]);
+
+    expect(
+      taskScorecardCoverageIssues(
+        ["bug-01"],
+        [{ taskId: "bug-01", score: null }],
+        { requireFiniteScores: true, label: "candidate" },
+      ),
+    ).toEqual([
+      "candidate perTask[bug-01] score is missing or non-finite",
+    ]);
   });
 });

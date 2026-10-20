@@ -26,6 +26,7 @@ import {
 } from "./results.js";
 import { resolveLegRunIdViaRetryChain } from "./retryDedup.js";
 import type { RunResult } from "./schema.js";
+import { taskScorecardCoverageIssues } from "./scoring.js";
 
 /** Unikie alustava PASS: candidate ≥ baseline + 5 percentage points. */
 export const LIFT_PASS_DELTA = 0.05;
@@ -736,6 +737,19 @@ export function checkComparisonParity(
   }
   if (!sameSorted(baseline.taskIds, candidate.taskIds)) {
     issues.push("taskIds differ between baseline and candidate");
+  }
+  // Scorecard must cover taskIds (empty/partial/dupe perTask must not PASS).
+  for (const [label, leg] of [
+    ["baseline", baseline],
+    ["candidate", candidate],
+  ] as const) {
+    issues.push(
+      ...taskScorecardCoverageIssues(leg.taskIds, leg.perTask, {
+        label,
+        // status=ok adoption paths require finite per-task scores.
+        requireFiniteScores: leg.status === "ok",
+      }),
+    );
   }
   if (
     baseline.decoding.temperature !== candidate.decoding.temperature ||

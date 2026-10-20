@@ -56,7 +56,14 @@ function sampleResult(opts: {
     decoding: { temperature: 0, top_p: 1, seed: 42 },
     repeats: 1,
     aggregate: "mean",
-    perTask: [],
+    perTask: [
+      {
+        taskId: "bug-01",
+        scriptResults: [{ name: "grade", exitCode: 0, summary: "ok" }],
+        score: opts.score,
+        status: "ok",
+      },
+    ],
     score: opts.score,
     subscores: {},
     rationale: "",

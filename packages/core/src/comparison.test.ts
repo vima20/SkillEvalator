@@ -60,6 +60,25 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
       grade: "docker_script" as const,
     },
   };
+  const score = rest.score !== undefined ? rest.score : 0.9;
+  const taskIds = rest.taskIds ?? ["bug-01"];
+  const status = rest.status ?? "ok";
+  const defaultPerTask = taskIds.map((taskId) => ({
+    taskId,
+    scriptResults: [{ name: "grade", exitCode: 0, summary: "ok" }],
+    score:
+      typeof score === "number" && Number.isFinite(score)
+        ? score
+        : status === "ok"
+          ? 0.9
+          : null,
+    status:
+      status === "cancelled" || status === "budget_stop"
+        ? status
+        : typeof score === "number" && score >= 0.8
+          ? ("ok" as const)
+          : ("failed" as const),
+  }));
   return {
     evalSkillId: "code-debugging-eval",
     evalSkillVersion: "abc",
@@ -67,26 +86,26 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
       "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
     evaluationId: "eval_test_1",
     taskSetId: "cde-v1",
-    taskIds: ["bug-01"],
     pipeline: { produce: "model", grade: "docker_script" },
     modelId: "gpt-4o-mini",
     decoding: { temperature: 0, top_p: 1, seed: 42 },
     repeats: 1,
     aggregate: "mean",
-    perTask: [],
-    score: 0.9,
+    score,
     subscores: {},
     rationale: "",
     findings: [],
     costUsd: 0.01,
     latencyMs: 1000,
-    status: "ok",
+    status,
     startedAt: "2026-10-12T00:00:00.000Z",
     finishedAt: "2026-10-12T00:01:00.000Z",
     mode: "dry-run",
     ...rest,
     runId,
     role: resolvedRole,
+    taskIds: rest.taskIds ?? taskIds,
+    perTask: rest.perTask ?? defaultPerTask,
     // Default provenance for official PASS; explicit capture is used as-is
     // (parity tests must omit fields without default fill-in).
     capture: rest.capture
@@ -184,6 +203,72 @@ describe("compareBaselineCandidate", () => {
     const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
     expect(c.verdict).toBe("PASS");
     expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+  });
+
+  it("official INCONCLUSIVE when perTask is empty despite taskIds + run score", () => {
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      perTask: [],
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      perTask: [],
+    });
+    const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /perTask missing taskId/i.test(i)),
+    ).toBe(true);
+  });
+
+  it("official INCONCLUSIVE when perTask has duplicate taskId", () => {
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      perTask: [
+        {
+          taskId: "bug-01",
+          score: 1,
+          status: "ok",
+          scriptResults: [],
+        },
+        {
+          taskId: "bug-01",
+          score: 0.5,
+          status: "failed",
+          scriptResults: [],
+        },
+      ],
+    });
+    const c = compareBaselineCandidate(b, cand, officialOpts(b, cand));
+    expect(c.parity.ok).toBe(false);
+    expect(c.verdict).toBe("INCONCLUSIVE");
+    expect(
+      c.parity.issues.some((i) => /perTask duplicate taskId/i.test(i)),
+    ).toBe(true);
   });
 
   it("official INCONCLUSIVE when result.repeats ≠ skill-snapshot/job.json", () => {
@@ -2321,6 +2406,7 @@ describe("compareBaselineCandidate", () => {
         runId: "b",
         role: "baseline",
         score: 0.8,
+        taskIds: ["bug-01", "bug-02"],
         perTask: [
           {
             taskId: "bug-01",
@@ -2340,6 +2426,7 @@ describe("compareBaselineCandidate", () => {
         runId: "c",
         role: "candidate",
         score: 0.9,
+        taskIds: ["bug-01", "bug-02"],
         perTask: [
           {
             taskId: "bug-01",

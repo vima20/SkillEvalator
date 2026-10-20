@@ -4,7 +4,11 @@ import {
   PASS_SCORE_FLOOR,
 } from "./diffScore.js";
 import type { RunResult } from "./schema.js";
-import { labelForScore, type ScoreLabel } from "./scoring.js";
+import {
+  labelForScore,
+  taskScorecardCoverageIssues,
+  type ScoreLabel,
+} from "./scoring.js";
 
 function taskPassedSoft(score: number | null | undefined): boolean {
   return typeof score === "number" && score >= PASS_SCORE_FLOOR;
@@ -660,6 +664,21 @@ export function decideSkillUse(result: RunResult): BenefitVerdict {
         status === "cancelled"
           ? "Run was cancelled before a complete scorecard was produced."
           : "Cost hard-stop ended the run; score is not a valid adoption signal.",
+    };
+  }
+
+  // Incomplete/forged scorecard must not unlock USE (or look like a clean fail).
+  const coverageIssues = taskScorecardCoverageIssues(
+    result.taskIds,
+    result.perTask,
+    { requireFiniteScores: status === "ok" },
+  );
+  if (coverageIssues.length > 0) {
+    return {
+      recommendation: "inconclusive",
+      headline: "INCONCLUSIVE — incomplete task scorecard",
+      decision: "INCONCLUSIVE — task scorecard coverage invalid",
+      rationale: `Task scorecard is incomplete or inconsistent: ${coverageIssues.join("; ")}. Re-run for a complete per-task result before adoption.`,
     };
   }
 
