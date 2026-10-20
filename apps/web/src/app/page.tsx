@@ -3,17 +3,14 @@ import { listSkills } from "@skillevalator/core";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { skillsDirs } from "@/lib/paths";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isOfficialModeParam,
+  isPilotFocusParam,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import { NewRunForm } from "./NewRunForm";
 
 export const dynamic = "force-dynamic";
-
-function isOfficialModeParam(
-  mode: string | string[] | undefined,
-): boolean {
-  const v = Array.isArray(mode) ? mode[0] : mode;
-  return v === "official";
-}
 
 export default async function NewRunPage({
   searchParams,

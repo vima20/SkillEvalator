@@ -59,6 +59,6 @@ describe("preflight/settings source locks", () => {
     expect(settings).not.toMatch(/Failed to fetch/);
     // Ready CTA must open New run in official mode (not silent dry-run).
     expect(settings).toMatch(/Start official baseline↔candidate/);
-    expect(settings).toMatch(/\/\?mode=official/);
+    expect(settings).toMatch(/withNewRunHandoff\(true,\s*true\)/);
   });
 });

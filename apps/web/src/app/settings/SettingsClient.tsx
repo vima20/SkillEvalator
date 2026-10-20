@@ -14,6 +14,7 @@ import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { tryResolveAuthApiError } from "@/lib/authResolve";
 import {
   isPilotFocusParam,
+  withNewRunHandoff,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
 import { resolveSettingsRefreshError } from "@/lib/preflightSettingsResolve";
@@ -212,7 +213,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
               <>
                 <Link
                   className="btn btn-primary"
-                  href={withPilotFocus("/?mode=official", true)}
+                  href={withNewRunHandoff(true, true)}
                 >
                   Start official baseline↔candidate
                 </Link>{" "}

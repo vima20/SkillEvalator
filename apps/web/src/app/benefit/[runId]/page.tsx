@@ -17,6 +17,7 @@ import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import {
   isPilotFocusParam,
+  withNewRunHandoff,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
 import { listWindDownRunIds, statusBadgeClass } from "@/lib/status";
@@ -132,6 +133,12 @@ export default async function BenefitReportPage({
   // Superseded non-tip must not show waiting/unavailable (adoption follows tip).
   const pairWaiting = !supersededTip && pairPending === "waiting";
   const pairUnavailable = !supersededTip && pairPending === "unavailable";
+  // Official eval re-run must keep ?mode=official (Settings Ready parity).
+  const preferOfficial =
+    meta?.mode === "official" ||
+    result.mode === "official" ||
+    comparison?.mode === "official";
+  const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
   const showHarness =
@@ -285,7 +292,7 @@ export default async function BenefitReportPage({
                   Comparison
                 </Link>{" "}
                 or{" "}
-                <Link href={withPilotFocus("/", pilotFocus)}>
+                <Link href={newRunHref}>
                   start a new baseline↔candidate run
                 </Link>
                 .
@@ -293,7 +300,7 @@ export default async function BenefitReportPage({
             ) : (
               <>
                 {" "}
-                <Link href={withPilotFocus("/", pilotFocus)}>
+                <Link href={newRunHref}>
                   Start a new baseline↔candidate run
                 </Link>
                 .

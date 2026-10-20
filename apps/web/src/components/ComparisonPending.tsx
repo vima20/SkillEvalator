@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  withNewRunHandoff,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import {
   runDetailFinalizeOrphansPath,
   WIND_DOWN_ORPHAN_MS,
@@ -49,6 +53,8 @@ type ComparisonPendingProps = {
   /** True when that leg already has result.json (budget_stop may be settled). */
   baselineHasResult?: boolean;
   candidateHasResult?: boolean;
+  /** Evaluation mode — official re-run CTA must keep ?mode=official. */
+  mode?: "dry-run" | "official" | string;
 };
 
 export function ComparisonPending(props: ComparisonPendingProps) {
@@ -77,8 +83,10 @@ function ComparisonPendingInner({
   candidateStatus,
   baselineHasResult = false,
   candidateHasResult = false,
+  mode,
   pilotFocus,
 }: ComparisonPendingProps & { pilotFocus: boolean }) {
+  const preferOfficial = mode === "official";
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
@@ -345,7 +353,7 @@ function ComparisonPendingInner({
           ) : null}
           <Link
             className="btn btn-primary btn-compact"
-            href={withPilotFocus("/", pilotFocus)}
+            href={withNewRunHandoff(pilotFocus, preferOfficial)}
           >
             Start a new baseline↔candidate run
           </Link>

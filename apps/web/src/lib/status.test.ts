@@ -96,6 +96,10 @@ describe("statusBadgeKind", () => {
     );
     expect(pendingUi).toMatch(/Open candidate run/);
     expect(pendingUi).toMatch(/Refresh now/);
+    // Official unavailable re-run keeps ?mode=official (Settings Ready parity).
+    expect(pendingUi).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
+    expect(pendingUi).toMatch(/preferOfficial = mode === "official"/);
+    expect(detail).toMatch(/mode=\{meta\.mode\}/);
     // orphanStuck keeps poll + Refresh now (catch external heal without hard reload).
     expect(pendingUi).toMatch(/!stillWaiting && !orphanStuck/);
     expect(pendingUi).toMatch(/Resend cancel or Refresh \(heal\)/);
@@ -141,6 +145,9 @@ describe("statusBadgeKind", () => {
     );
     expect(benefitDetail).toMatch(/Comparison unavailable/);
     expect(benefitDetail).toMatch(/Waiting for Comparison/);
+    // Official Benefit unavailable → New run with ?mode=official.
+    expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
+    expect(benefitDetail).toMatch(/meta\?\.mode === "official"/);
     expect(benefitWait).toMatch(/setInterval/);
     expect(benefitWait).toMatch(/router\.refresh/);
     expect(benefitWait).toMatch(/WIND_DOWN_ORPHAN_MS/);

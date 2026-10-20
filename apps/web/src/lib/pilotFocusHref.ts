@@ -6,6 +6,14 @@ export function isPilotFocusParam(
   return v === "pilot";
 }
 
+/** Settings Ready / Comparison·Benefit re-run → New run preferOfficial. */
+export function isOfficialModeParam(
+  mode: string | string[] | undefined,
+): boolean {
+  const v = Array.isArray(mode) ? mode[0] : mode;
+  return v === "official";
+}
+
 export function withPilotFocus(href: string, pilotFocus: boolean): string {
   if (!pilotFocus) return href;
   const qIndex = href.indexOf("?");
@@ -14,4 +22,16 @@ export function withPilotFocus(href: string, pilotFocus: boolean): string {
   const params = new URLSearchParams(qs);
   params.set("focus", "pilot");
   return `${path}?${params.toString()}`;
+}
+
+/**
+ * New-run handoff: optional ?mode=official (Settings Ready parity) + focus=pilot.
+ * Dry-run / unknown mode → "/" only (plus focus when requested).
+ */
+export function withNewRunHandoff(
+  pilotFocus: boolean,
+  preferOfficial = false,
+): string {
+  const href = preferOfficial ? "/?mode=official" : "/";
+  return withPilotFocus(href, pilotFocus);
 }
