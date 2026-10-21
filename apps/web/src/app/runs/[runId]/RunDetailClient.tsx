@@ -4,7 +4,7 @@ import {
   listScorecardTaskIds,
   taskScorecardCoverageIssues,
   taskScorecardPassCounts,
-} from "@skillevalator/core";
+} from "@skillevalator/core/scoring";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";

@@ -115,6 +115,7 @@ describe("comparisonToCsv", () => {
       mode: "official",
       modelId: "gpt-4.1-mini",
       repeats: 3,
+      scoreSpread: 0,
       capture: officialCapture("baseline"),
     });
     const candidate = sample({
@@ -124,6 +125,16 @@ describe("comparisonToCsv", () => {
       mode: "official",
       modelId: "gpt-4.1-mini",
       repeats: 3,
+      scoreSpread: 0,
+      perTask: [
+        {
+          taskId: "bug-01",
+          score: 1,
+          status: "ok",
+          scriptResults: [],
+          tokens: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+        },
+      ],
       capture: officialCapture("candidate"),
     });
     const cmp = compareBaselineCandidate(baseline, candidate, {
@@ -134,6 +145,8 @@ describe("comparisonToCsv", () => {
       expectedCandidateEvalSkillVersion: "abc",
       expectedBaselinePromptKind: "baseline_neutral" as const,
       expectedCandidatePromptKind: "skill_md" as const,
+      expectedTaskSetId: "cde-v1",
+      expectedTaskIds: ["bug-01"],
       expectedBaselineJob: jobAttestationFromRunResult(baseline)!,
       expectedCandidateJob: jobAttestationFromRunResult(candidate)!,
     });

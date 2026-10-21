@@ -90,11 +90,14 @@ export function loadEvaluationMeta(
 export function syncEvaluationMetaMode(opts: {
   evaluationId: string;
   mode: "dry-run" | "official";
+  /** Default 80 for writes; use 1 on browse/heal paths when lock may be held. */
+  lockRetries?: number;
 }): boolean {
   const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
   const metaPath = evaluationMetaPath(evaluationId);
   const lockPath = `${metaPath}.lock`;
-  if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: 80 })) {
+  const lockRetries = opts.lockRetries ?? 80;
+  if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: lockRetries })) {
     return false;
   }
   try {
@@ -118,6 +121,7 @@ export function updateEvaluationMetaLeg(opts: {
   runId: string;
   mode?: "dry-run" | "official";
   evalSkillId?: string;
+  lockRetries?: number;
 }): boolean {
   const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
   const runId = assertSafeId(opts.runId, "runId");
@@ -126,7 +130,8 @@ export function updateEvaluationMetaLeg(opts: {
     : undefined;
   const metaPath = evaluationMetaPath(evaluationId);
   const lockPath = `${metaPath}.lock`;
-  if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: 80 })) {
+  const lockRetries = opts.lockRetries ?? 80;
+  if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: lockRetries })) {
     return false;
   }
   try {
@@ -171,6 +176,7 @@ function healGhostMetaLeg(opts: {
   tipRunId: string;
   mode?: "dry-run" | "official";
   evalSkillId?: string;
+  lockRetries?: number;
 }): string {
   const dir = resultsDir();
   const tip = opts.tipRunId;
@@ -196,6 +202,7 @@ function healGhostMetaLeg(opts: {
       runId: parent,
       ...(opts.mode ? { mode: opts.mode } : {}),
       evalSkillId: opts.evalSkillId,
+      ...(opts.lockRetries !== undefined ? { lockRetries: opts.lockRetries } : {}),
     })
   ) {
     clearRetryMarker(dir, parent);
@@ -369,6 +376,7 @@ export function loadEvaluationComparison(
             ? { mode: meta.mode }
             : {}),
           evalSkillId: meta.evalSkillId,
+          lockRetries: 1,
         })
       ) {
         baselineRunId = baseTip.runId;
@@ -390,6 +398,7 @@ export function loadEvaluationComparison(
             ? { mode: meta.mode }
             : {}),
           evalSkillId: meta.evalSkillId,
+          lockRetries: 1,
         })
       ) {
         candidateRunId = candTip.runId;
@@ -410,6 +419,7 @@ export function loadEvaluationComparison(
       tipRunId: baselineRunId,
       ...modeOpt,
       evalSkillId: meta.evalSkillId,
+      lockRetries: 1,
     });
     candidateRunId = healGhostMetaLeg({
       evaluationId,
@@ -417,6 +427,7 @@ export function loadEvaluationComparison(
       tipRunId: candidateRunId,
       ...modeOpt,
       evalSkillId: meta.evalSkillId,
+      lockRetries: 1,
     });
     meta = loadEvaluationMeta(evaluationId) ?? meta;
   }
@@ -441,7 +452,9 @@ export function loadEvaluationComparison(
     meta.mode !== baseline.mode
   ) {
     const legMode = baseline.mode;
-    if (syncEvaluationMetaMode({ evaluationId, mode: legMode })) {
+    if (
+      syncEvaluationMetaMode({ evaluationId, mode: legMode, lockRetries: 1 })
+    ) {
       meta = loadEvaluationMeta(evaluationId) ?? { ...meta, mode: legMode };
     } else {
       meta = { ...meta, mode: legMode };
