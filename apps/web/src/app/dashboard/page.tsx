@@ -9,6 +9,7 @@ import {
   benefitPairEvidenceFromPacked,
   type BenefitListPairChip,
 } from "@/lib/benefitListHints";
+import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   includeInDashboardLeaderboard,
   includeInDashboardRanking,
@@ -42,6 +43,7 @@ type Row = {
   pairChip: BenefitListPairChip | null;
   pairBlocked: boolean;
   pairPending?: "waiting" | "unavailable";
+  comparisonMeta: { label: string; title?: string } | null;
 };
 
 /** Same fixed task set + model → compare different skill implementations. */
@@ -158,6 +160,7 @@ export default async function DashboardPage({
         role: r.result.role,
         pairChip: pair.pairChip,
         pairBlocked: pair.pairBlocked,
+        comparisonMeta: comparisonCellMetaFromPacked(pair.packed),
         ...(pairPending ? { pairPending } : {}),
       },
     ];
@@ -491,9 +494,18 @@ export default async function DashboardPage({
                                     `/comparison/${r.evaluationId}`,
                                     pilotFocus,
                                   )}
+                                  title={r.comparisonMeta?.title}
                                 >
                                   Comparison
                                 </Link>
+                                {r.comparisonMeta ? (
+                                  <div
+                                    className="cell-meta"
+                                    title={r.comparisonMeta.title}
+                                  >
+                                    {r.comparisonMeta.label}
+                                  </div>
+                                ) : null}
                               </>
                             ) : null}
                           </td>
