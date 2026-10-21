@@ -26,6 +26,7 @@ import {
 import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitPairCtaLabel } from "@/lib/benefitListHints";
+import { PROVISIONAL_OFFICIAL_PASS_CTA_TITLE } from "@/lib/comparisonVerdictDisplay";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
   resolveRunDetailGetError,
@@ -745,6 +746,9 @@ export function RunDetailClient({
             }
             const cta = benefitPairCtaLabel(data.pairPending, {
               detailArrow: true,
+              ...(data.comparisonProvisional
+                ? { comparisonMetaTitle: PROVISIONAL_OFFICIAL_PASS_CTA_TITLE }
+                : {}),
             });
             return (
               <Link

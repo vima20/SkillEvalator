@@ -1,5 +1,9 @@
 import type { AdoptionConfirmation } from "@skillevalator/core";
 
+/** Tooltip for Benefit / Dashboard CTAs when official PASS is provisional (1/N). */
+export const PROVISIONAL_OFFICIAL_PASS_CTA_TITLE =
+  "Provisional official PASS — run a second official pair to confirm Benefit USE";
+
 /** Provisional official PASS awaiting a second confirming pair. */
 export function isProvisionalOfficialPass(opts: {
   verdict?: string | null;

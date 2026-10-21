@@ -3,6 +3,7 @@ import type { AdoptionConfirmation } from "@skillevalator/core";
 import {
   comparisonVerdictListLabel,
   isProvisionalOfficialPass,
+  PROVISIONAL_OFFICIAL_PASS_CTA_TITLE,
 } from "@/lib/comparisonVerdictDisplay";
 import { pairedEvalDisplayMode } from "@/lib/pilotFocusHref";
 
@@ -43,8 +44,7 @@ export function comparisonCellMetaFromPacked(
       adoptionConfirmation: comparison.adoptionConfirmation,
     })
   ) {
-    title =
-      "Provisional official PASS — run a second official pair to confirm Benefit USE";
+    title = PROVISIONAL_OFFICIAL_PASS_CTA_TITLE;
   }
   return { label, title };
 }
