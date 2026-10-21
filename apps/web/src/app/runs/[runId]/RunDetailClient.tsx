@@ -18,7 +18,11 @@ import {
 } from "@/lib/captureEnvEvidence";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { tryResolveAuthApiError } from "@/lib/authResolve";
-import { withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  pairedEvalPreferOfficial,
+  withNewRunHandoff,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitPairCtaLabel } from "@/lib/benefitListHints";
@@ -153,6 +157,10 @@ type Payload = {
   } | null;
   /** Same waiting/unavailable gate as Benefit detail / Comparison list. */
   pairPending?: "waiting" | "unavailable";
+  comparisonProvisional?: { step: number; required: number };
+  metaMode?: string;
+  baselineMode?: string;
+  candidateMode?: string;
   /**
    * Tip siblings in budget_stop / cancel_requested without result while
    * pairPending=waiting — finalize after shared orphan timeout (Benefit parity).
@@ -787,6 +795,43 @@ export function RunDetailClient({
           candidateRunId={data.pairHarness.candidateRunId}
           pilotFocus={pilotFocus}
         />
+      ) : null}
+
+      {data.comparisonProvisional && resolvedEvaluationId ? (
+        <div className="panel callout-warn" style={{ marginTop: "1rem" }}>
+          <strong>
+            Provisional official PASS ({data.comparisonProvisional.step}/
+            {data.comparisonProvisional.required})
+          </strong>
+          <p>
+            Paired Comparison met adoption gates for this tip pair. Benefit{" "}
+            <strong>USE</strong> needs a second independent official PASS —{" "}
+            <Link
+              href={withPilotFocus(
+                `/comparison/${resolvedEvaluationId}`,
+                pilotFocus,
+              )}
+            >
+              open Comparison
+            </Link>
+            .
+          </p>
+          <div className="action-row" style={{ marginTop: 12 }}>
+            <Link
+              className="btn btn-primary btn-compact"
+              href={withNewRunHandoff(
+                pilotFocus,
+                pairedEvalPreferOfficial({
+                  metaMode: data.metaMode,
+                  baselineMode: data.baselineMode,
+                  candidateMode: data.candidateMode,
+                }),
+              )}
+            >
+              Confirm adoption — new official pair
+            </Link>
+          </div>
+        </div>
       ) : null}
 
       {pollError ? (

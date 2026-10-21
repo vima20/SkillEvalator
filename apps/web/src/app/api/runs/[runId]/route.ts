@@ -49,12 +49,20 @@ export async function GET(
         { status: 404 },
       );
     }
-    const { evaluationId, tipCandidateRunId, pairHarness, pairPending } =
-      loadRunDetailEvaluationPack({
-        runId,
-        result,
-        status,
-      });
+    const {
+      evaluationId,
+      tipCandidateRunId,
+      pairHarness,
+      pairPending,
+      comparisonProvisional,
+      metaMode,
+      baselineMode,
+      candidateMode,
+    } = loadRunDetailEvaluationPack({
+      runId,
+      result,
+      status,
+    });
     const pairWindDownRunIds = loadPairWaitingWindDownRunIds({
       pairPending,
       baselineRunId: pairHarness?.baselineRunId,
@@ -83,6 +91,10 @@ export async function GET(
       tipCandidateRunId,
       pairHarness,
       ...(pairPending ? { pairPending } : {}),
+      ...(comparisonProvisional ? { comparisonProvisional } : {}),
+      ...(metaMode ? { metaMode } : {}),
+      ...(baselineMode ? { baselineMode } : {}),
+      ...(candidateMode ? { candidateMode } : {}),
       ...(pairWindDownRunIds.length > 0 ? { pairWindDownRunIds } : {}),
       resolvedEvaluationId: evaluationId,
       retryAdmission,

@@ -8,6 +8,7 @@ import {
   readJsonFile,
   syncStatusFromResult,
 } from "@skillevalator/core";
+import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
 import {
   loadEvaluationComparison,
   resolveTipCandidateRunId,
@@ -163,6 +164,11 @@ export type RunDetailEvaluationPack = {
   pairHarness: RunDetailPairHarness | null;
   /** Same waiting/unavailable gate as Benefit detail / Comparison list. */
   pairPending?: EvaluationPairPending;
+  /** Official Comparison provisional PASS (1/N) — Benefit USE still locked. */
+  comparisonProvisional?: { step: number; required: number };
+  metaMode?: string;
+  baselineMode?: string;
+  candidateMode?: string;
 };
 
 /**
@@ -218,10 +224,24 @@ export function loadRunDetailEvaluationPack(opts: {
   const loadPacked = opts.loadPacked ?? loadEvaluationComparison;
   const packed = loadPacked(evaluationId);
   const pairPending = evaluationPairPending(packed, { runId: opts.runId });
+  const comparison = packed?.comparison;
+  const comparisonProvisional =
+    comparison &&
+    isProvisionalOfficialPass({
+      verdict: comparison.verdict,
+      displayMode: comparison.mode,
+      adoptionConfirmation: comparison.adoptionConfirmation,
+    })
+      ? comparison.adoptionConfirmation
+      : undefined;
   return {
     evaluationId,
     tipCandidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
     pairHarness: runDetailPairHarness(packed),
     ...(pairPending ? { pairPending } : {}),
+    ...(comparisonProvisional ? { comparisonProvisional } : {}),
+    ...(packed?.meta?.mode ? { metaMode: packed.meta.mode } : {}),
+    ...(packed?.baseline?.mode ? { baselineMode: packed.baseline.mode } : {}),
+    ...(packed?.candidate?.mode ? { candidateMode: packed.candidate.mode } : {}),
   };
 }

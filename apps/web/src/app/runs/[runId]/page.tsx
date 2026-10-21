@@ -92,12 +92,20 @@ export default async function RunDetailPage({
     );
   }
 
-  const { evaluationId, tipCandidateRunId, pairHarness, pairPending } =
-    loadRunDetailEvaluationPack({
-      runId,
-      result,
-      status,
-    });
+  const {
+    evaluationId,
+    tipCandidateRunId,
+    pairHarness,
+    pairPending,
+    comparisonProvisional,
+    metaMode,
+    baselineMode,
+    candidateMode,
+  } = loadRunDetailEvaluationPack({
+    runId,
+    result,
+    status,
+  });
   const pairWindDownRunIds = loadPairWaitingWindDownRunIds({
     pairPending,
     baselineRunId: pairHarness?.baselineRunId,
@@ -131,6 +139,10 @@ export default async function RunDetailPage({
         pairHarness,
         hasLiveJob: hasLiveJobFile(jobsDir(), runId),
         ...(pairPending ? { pairPending } : {}),
+        ...(comparisonProvisional ? { comparisonProvisional } : {}),
+        ...(metaMode ? { metaMode } : {}),
+        ...(baselineMode ? { baselineMode } : {}),
+        ...(candidateMode ? { candidateMode } : {}),
         ...(pairWindDownRunIds.length > 0 ? { pairWindDownRunIds } : {}),
         resolvedEvaluationId: evaluationId,
         retryAdmission,

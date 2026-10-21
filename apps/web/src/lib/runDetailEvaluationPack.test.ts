@@ -100,6 +100,29 @@ describe("loadRunDetailEvaluationPack", () => {
     });
   });
 
+  it("surfaces provisional official PASS from packed comparison", () => {
+    const out = loadRunDetailEvaluationPack({
+      runId: "run_cand",
+      status: { evaluationId: "eval_prov" },
+      result: { evaluationId: "eval_prov", role: "candidate" },
+      loadPacked: () =>
+        ({
+          meta: { mode: "official", baselineRunId: "run_b", candidateRunId: "run_cand" },
+          comparison: {
+            verdict: "INCONCLUSIVE",
+            mode: "official",
+            adoptionConfirmation: { step: 1, required: 2 },
+          },
+          baseline: { mode: "official" },
+          candidate: { mode: "official" },
+        }) as ReturnType<
+          typeof import("@/lib/evaluations").loadEvaluationComparison
+        >,
+    });
+    expect(out.comparisonProvisional).toEqual({ step: 1, required: 2 });
+    expect(out.metaMode).toBe("official");
+  });
+
   it("returns null pack when no evaluationId source", () => {
     expect(
       loadRunDetailEvaluationPack({
