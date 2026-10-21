@@ -16,6 +16,7 @@ import {
   tryAcquireWxLock,
   unlinkBenefitReportCache,
   writeJsonFile,
+  type OfficialPassProvisional,
   type RunComparison,
 } from "@skillevalator/core";
 import { jobsDir, resultsDir } from "@/lib/paths";
@@ -30,6 +31,8 @@ export type EvaluationMeta = {
   updatedAt?: string;
   /** Fixture plant (smoke:official) — never adoption PASS on disk. */
   smoke?: boolean;
+  /** First official PASS tip pair awaiting confirmation run. */
+  officialPassProvisional?: OfficialPassProvisional;
 };
 
 export function evaluationMetaPath(evaluationId: string): string {

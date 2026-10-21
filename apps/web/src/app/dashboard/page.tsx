@@ -199,8 +199,8 @@ export default async function DashboardPage({
             <Link href={withPilotFocus("/comparison", pilotFocus)}>
               Comparison
             </Link>
-            . Cross-model bake-off is
-            out of scope for this MVP.
+            (official PASS may show provisional 1/2 until a second tip pair
+            confirms). Cross-model bake-off is out of scope for this MVP.
             {pilotFocus ? (
               <>
                 {" "}

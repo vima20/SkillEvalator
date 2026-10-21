@@ -9,6 +9,7 @@ import {
   benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
+import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   candidateLegKind,
   candidateLegLabel,
@@ -50,6 +51,7 @@ export default async function BenefitIndexPage({
       });
       const {
         report,
+        comparison,
         tipCandidateRunId,
         tipBaselineRunId,
         meta,
@@ -93,6 +95,12 @@ export default async function BenefitIndexPage({
         pairChip,
         pairBlocked,
         pairPending,
+        comparisonMeta: comparisonCellMetaFromPacked({
+          meta,
+          baseline,
+          candidate,
+          comparison,
+        }),
       };
     })
     // Tip / unpaired first; waiting / superseded / smoke last.
@@ -160,8 +168,9 @@ export default async function BenefitIndexPage({
             Comparison
           </Link>{" "}
           = baseline↔candidate lift
-          (PASS/FAIL). Benefit USE / 5★ unlocks only on official PASS; DO NOT
-          USE follows official FAIL.
+          (PASS/FAIL). Official PASS needs two independent tip pairs when the
+          first is provisional (1/2). Benefit USE / 5★ unlocks only on
+          confirmed official PASS; DO NOT USE follows official FAIL.
           Baseline legs are omitted from this list. Tip candidates sort first;
           superseded retries and smoke harness rows stay visible but demoted
           (or hidden in Pilot focus).
@@ -229,9 +238,13 @@ export default async function BenefitIndexPage({
                                 `/comparison/${r.evaluationId}`,
                                 pilotFocus,
                               )}
+                              title={r.comparisonMeta?.title}
                             >
                               Comparison
                             </Link>
+                            {r.comparisonMeta
+                              ? ` · ${r.comparisonMeta.label}`
+                              : null}
                           </>
                         ) : null}
                       </div>
