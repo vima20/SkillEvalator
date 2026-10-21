@@ -213,7 +213,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
               <>
                 <Link
                   className="btn btn-primary"
-                  href={withNewRunHandoff(true, true)}
+                  href={withNewRunHandoff(pilotFocus, true)}
                 >
                   Start official baseline↔candidate
                 </Link>{" "}

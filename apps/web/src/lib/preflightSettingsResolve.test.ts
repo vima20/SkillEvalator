@@ -57,8 +57,9 @@ describe("preflight/settings source locks", () => {
     expect(settings).toMatch(/resolveSettingsRefreshError\("network"\)/);
     expect(settings).not.toMatch(/Settings refresh failed \(\$\{/);
     expect(settings).not.toMatch(/Failed to fetch/);
-    // Ready CTA must open New run in official mode (not silent dry-run).
+    // Ready CTA must open New run in official mode (not silent dry-run),
+    // while respecting the current pilot-focus toggle.
     expect(settings).toMatch(/Start official baseline↔candidate/);
-    expect(settings).toMatch(/withNewRunHandoff\(true,\s*true\)/);
+    expect(settings).toMatch(/withNewRunHandoff\(pilotFocus,\s*true\)/);
   });
 });
