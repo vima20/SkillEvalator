@@ -104,7 +104,12 @@ export function benefitListPairLockedLabel(
 /** Same waiting/unavailable labels as Comparison list Benefit column. */
 export function benefitPairCtaLabel(
   pairPending?: "waiting" | "unavailable" | null,
-  opts?: { readyLabel?: string; detailArrow?: boolean },
+  opts?: {
+    readyLabel?: string;
+    detailArrow?: boolean;
+    /** e.g. provisional official PASS tooltip from Comparison meta */
+    comparisonMetaTitle?: string;
+  },
 ): { label: string; title?: string } {
   if (pairPending === "waiting") {
     return {
@@ -128,5 +133,8 @@ export function benefitPairCtaLabel(
     label: opts?.detailArrow
       ? "Open Benefit Report →"
       : (opts?.readyLabel ?? "Benefit"),
+    ...(opts?.comparisonMetaTitle
+      ? { title: opts.comparisonMetaTitle }
+      : {}),
   };
 }

@@ -319,6 +319,7 @@ export default async function BenefitIndexPage({
                         (() => {
                           const cta = benefitPairCtaLabel(r.pairPending, {
                             readyLabel: "Open report",
+                            comparisonMetaTitle: r.comparisonMeta?.title,
                           });
                           return (
                             <Link

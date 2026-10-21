@@ -138,5 +138,10 @@ describe("benefitPairCtaLabel", () => {
     expect(benefitPairCtaLabel("waiting", { detailArrow: true }).label).toBe(
       "Open Benefit · waiting →",
     );
+    expect(
+      benefitPairCtaLabel(undefined, {
+        comparisonMetaTitle: "Provisional official PASS",
+      }).title,
+    ).toBe("Provisional official PASS");
   });
 });

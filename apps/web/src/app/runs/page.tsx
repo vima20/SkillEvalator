@@ -131,6 +131,8 @@ export default async function RunsPage({
           <p>
             Queued and completed evaluation jobs. Candidate tip / smoke /
             superseded and pair evidence chips match Benefit demotion.
+            Comparison links show paired verdict (including provisional official{" "}
+            1/2).
             {pilotFocus ? (
               <>
                 {" "}

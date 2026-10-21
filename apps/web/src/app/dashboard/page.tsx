@@ -471,7 +471,10 @@ export default async function DashboardPage({
                                     title:
                                       "Pair evidence blocked (sibling smoke / unattested) — not adoption",
                                   }
-                                : benefitPairCtaLabel(r.pairPending);
+                                : benefitPairCtaLabel(r.pairPending, {
+                                    comparisonMetaTitle:
+                                      r.comparisonMeta?.title,
+                                  });
                               return (
                                 <Link
                                   className="btn btn-ghost btn-compact"
