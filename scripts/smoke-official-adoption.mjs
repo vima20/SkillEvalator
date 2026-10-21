@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Unikie official adoption smoke without OpenAI:
- * 1) In-memory Comparison PASS/FAIL → Benefit USE / DO NOT USE (algorithm guard).
+ * 1) In-memory official adoption: provisional PASS 1/2 → confirmed PASS → USE;
+ *    soft-pass below USE floor → FAIL → DO NOT USE.
  * 2) Disk plant with smoke markers must stay INCONCLUSIVE (no adoption pollution).
  *
  * Usage: npm run smoke:official
@@ -12,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import {
   OFFICIAL_MIN_REPEATS,
   OFFICIAL_USE_SCORE_FLOOR,
+  applyOfficialPassConfirmationPolicy,
   buildBenefitReport,
   compareBaselineCandidate,
   findRepoRoot,
@@ -178,6 +180,35 @@ function asAttestedLive(result) {
   };
 }
 
+function officialCompareOpts(evaluationId) {
+  return {
+    expectedEvalSkillId: skill.id,
+    expectedEvaluationMode: "official",
+    expectedEvaluationId: evaluationId,
+    expectedGradeHash: gradeHash,
+    expectedBaselinePromptHash: hashPromptInstruction(promptBodyFor("baseline")),
+    expectedCandidatePromptHash: hashPromptInstruction(promptBodyFor("candidate")),
+    expectedBaselineEvalSkillVersion: skill.version,
+    expectedCandidateEvalSkillVersion: skill.version,
+    expectedBaselinePromptKind: "baseline_neutral",
+    expectedCandidatePromptKind: "skill_md",
+    expectedTaskSetId: skill.manifest.taskSetId,
+    expectedTaskIds: taskIds,
+  };
+}
+
+function compareAttestedPair(baseline, candidate, evaluationId) {
+  return compareBaselineCandidate(
+    asAttestedLive(baseline),
+    asAttestedLive(candidate),
+    {
+      ...officialCompareOpts(evaluationId),
+      expectedBaselineJob: jobAttestationFromRunResult(asAttestedLive(baseline)),
+      expectedCandidateJob: jobAttestationFromRunResult(asAttestedLive(candidate)),
+    },
+  );
+}
+
 function writePair(evaluationId, baseline, candidate, label) {
   for (const r of [baseline, candidate]) {
     const dir = path.join(resultsDir, r.runId);
@@ -260,28 +291,7 @@ function writePair(evaluationId, baseline, candidate, label) {
   );
 
   // Algorithm path: same score/lift math with worker-shaped attestation.
-  const comparison = compareBaselineCandidate(
-    asAttestedLive(baseline),
-    asAttestedLive(candidate),
-    {
-      expectedEvalSkillId: skill.id,
-      expectedEvaluationMode: "official",
-      expectedEvaluationId: evaluationId,
-      expectedGradeHash: gradeHash,
-      expectedBaselinePromptHash: hashPromptInstruction(promptBodyFor("baseline")),
-      expectedCandidatePromptHash: hashPromptInstruction(
-        promptBodyFor("candidate"),
-      ),
-      expectedBaselineEvalSkillVersion: skill.version,
-      expectedCandidateEvalSkillVersion: skill.version,
-      expectedBaselinePromptKind: "baseline_neutral",
-      expectedCandidatePromptKind: "skill_md",
-      expectedBaselineJob: jobAttestationFromRunResult(asAttestedLive(baseline)),
-      expectedCandidateJob: jobAttestationFromRunResult(
-        asAttestedLive(candidate),
-      ),
-    },
-  );
+  const comparison = compareAttestedPair(baseline, candidate, evaluationId);
   const benefit = buildBenefitReport(asAttestedLive(candidate), {
     comparison,
   });
@@ -339,6 +349,54 @@ if (pass.benefit.verdict.recommendation !== "use") {
     `expected Benefit USE on tip PASS, got ${pass.benefit.verdict.recommendation}`,
   );
 }
+
+// Disk loader applies 2×PASS policy; confirm second pair in memory.
+const provisional = applyOfficialPassConfirmationPolicy(pass.comparison, null);
+if (provisional.comparison.verdict !== "INCONCLUSIVE") {
+  fail(
+    `expected provisional INCONCLUSIVE after policy on first PASS, got ${provisional.comparison.verdict}`,
+  );
+}
+
+// Second independent tip pair confirms adoption → PASS + USE (in-memory only).
+const pass2EvalId = `eval_smoke_off_pass2_${stamp}`;
+const pass2BaseId = `run_smoke_off_base_pass2_${stamp}`;
+const pass2CandId = `run_smoke_off_cand_pass2_${stamp}`;
+const pass2Baseline = buildOfficialResult({
+  runId: pass2BaseId,
+  role: "baseline",
+  evaluationId: pass2EvalId,
+  ...passBaseScores,
+});
+const pass2Candidate = buildOfficialResult({
+  runId: pass2CandId,
+  role: "candidate",
+  evaluationId: pass2EvalId,
+  ...passCandScores,
+});
+const rawPass2 = compareAttestedPair(pass2Baseline, pass2Candidate, pass2EvalId);
+if (rawPass2.verdict !== "PASS") {
+  fail(`expected raw PASS on second pair, got ${rawPass2.verdict}`);
+}
+const confirmed = applyOfficialPassConfirmationPolicy(rawPass2, {
+  baselineRunId: passBaseId,
+  candidateRunId: passCandId,
+  recordedAt: startedAt,
+});
+if (confirmed.comparison.verdict !== "PASS") {
+  fail(
+    `expected confirmed Comparison PASS, got ${confirmed.comparison.verdict}`,
+  );
+}
+const benefitConfirmed = buildBenefitReport(asAttestedLive(pass2Candidate), {
+  comparison: confirmed.comparison,
+});
+if (benefitConfirmed.verdict.recommendation !== "use") {
+  fail(
+    `expected Benefit USE after confirmed PASS, got ${benefitConfirmed.verdict.recommendation}`,
+  );
+}
+console.log("CONFIRMED PASS case", pass2EvalId, "benefit", benefitConfirmed.verdict.recommendation);
 
 // --- FAIL case: soft-pass lift but candidate below USE floor ---
 const failEvalId = `eval_smoke_off_fail_${stamp}`;
