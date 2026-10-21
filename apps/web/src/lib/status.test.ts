@@ -50,6 +50,8 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/evaluationTipPairIsActive/);
     // Pending list chip: tip legs beat stale evaluation.json mode.
     expect(list).toMatch(/pairedEvalDisplayMode/);
+    expect(list).toMatch(/comparisonVerdictListLabel/);
+    expect(list).toMatch(/adoptionConfirmation/);
     // tipActive + result.json → Benefit (waiting); without result → run detail.
     expect(list).toMatch(
       /e\.tipActive \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}[\s\S]*?Benefit · waiting/,

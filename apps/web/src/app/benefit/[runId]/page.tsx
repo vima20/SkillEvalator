@@ -10,6 +10,7 @@ import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallout
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
+import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
@@ -324,6 +325,36 @@ export default async function BenefitReportPage({
                 Candidate score is ready, but paired Comparison is not —
                 Benefit stays <strong>INCONCLUSIVE</strong> until the sibling
                 leg finishes.
+                {resolvedEvaluationId ? (
+                  <>
+                    {" "}
+                    (
+                    <Link
+                      href={withPilotFocus(
+                        `/comparison/${resolvedEvaluationId}`,
+                        pilotFocus,
+                      )}
+                    >
+                      open Comparison
+                    </Link>
+                    )
+                  </>
+                ) : null}
+              </>
+            ) : isProvisionalOfficialPass({
+                verdict: comparison?.verdict,
+                displayMode: comparison?.mode,
+                adoptionConfirmation: comparison?.adoptionConfirmation,
+              }) ? (
+              <>
+                Official Comparison met adoption gates for this tip pair (
+                <strong>
+                  provisional PASS {comparison!.adoptionConfirmation!.step}/
+                  {comparison!.adoptionConfirmation!.required}
+                </strong>
+                ). Benefit <strong>USE</strong> stays locked until a{" "}
+                <strong>second independent official PASS</strong> on new tip
+                legs.
                 {resolvedEvaluationId ? (
                   <>
                     {" "}

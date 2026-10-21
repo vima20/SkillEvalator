@@ -13,6 +13,7 @@ import {
   officialComparisonExportGate,
 } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
+import { comparisonVerdictListLabel } from "@/lib/comparisonVerdictDisplay";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
@@ -121,6 +122,7 @@ export default async function ComparisonListPage({
       tipActive,
       scorecardUnavailable,
       verdict: c?.verdict ?? null,
+      adoptionConfirmation: c?.adoptionConfirmation ?? null,
       lift: c?.lift ?? null,
       displayMode,
       baselineStatus,
@@ -143,6 +145,7 @@ export default async function ComparisonListPage({
         smoke: e.smoke,
         displayMode,
         verdict: c?.verdict ?? null,
+        adoptionConfirmation: c?.adoptionConfirmation ?? null,
         baselineFakeProduce: pairEvidence.baselineFakeProduce,
         candidateFakeProduce: pairEvidence.candidateFakeProduce,
         baselineProduceAttested: pairEvidence.baselineProduceAttested,
@@ -301,11 +304,18 @@ export default async function ComparisonListPage({
                           title={
                             e.displayMode === "dry-run"
                               ? "Dry-run — not adoption evidence"
-                              : undefined
+                              : e.adoptionConfirmation &&
+                                  e.adoptionConfirmation.step <
+                                    e.adoptionConfirmation.required
+                                ? "Provisional official PASS — run a second official pair to confirm"
+                                : undefined
                           }
                         >
-                          {e.verdict}
-                          {e.displayMode === "dry-run" ? " · dry-run" : ""}
+                          {comparisonVerdictListLabel({
+                            verdict: e.verdict,
+                            displayMode: e.displayMode,
+                            adoptionConfirmation: e.adoptionConfirmation,
+                          })}
                         </span>
                       ) : (
                         "—"

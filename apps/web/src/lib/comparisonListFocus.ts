@@ -1,9 +1,14 @@
+import type { AdoptionConfirmation } from "@skillevalator/core";
+
+import { isProvisionalOfficialPass } from "./comparisonVerdictDisplay.js";
+
 /** Smoke plants, dry-run, unattested tips, and non-decisive official — not handoff. */
 export function isPilotNoiseEvaluation(opts: {
   smoke?: boolean;
   displayMode: string;
   /** Loaded Comparison verdict; null/undefined = still waiting (keep visible). */
   verdict?: string | null;
+  adoptionConfirmation?: AdoptionConfirmation | null;
   baselineFakeProduce?: boolean;
   candidateFakeProduce?: boolean;
   /**
@@ -21,11 +26,18 @@ export function isPilotNoiseEvaluation(opts: {
   if (opts.baselineFakeProduce === true) return true;
   if (opts.candidateFakeProduce === true) return true;
   if (opts.displayMode === "dry-run") return true;
-  // Align list with CSV/archive bar: official without PASS/FAIL is not handoff.
+  // Provisional official PASS (1/N) needs a confirming run — keep in Pilot focus.
   if (
-    opts.displayMode === "official" &&
-    opts.verdict === "INCONCLUSIVE"
+    isProvisionalOfficialPass({
+      verdict: opts.verdict,
+      displayMode: opts.displayMode,
+      adoptionConfirmation: opts.adoptionConfirmation,
+    })
   ) {
+    return false;
+  }
+  // Align list with CSV/archive bar: other official INCONCLUSIVE is not handoff.
+  if (opts.displayMode === "official" && opts.verdict === "INCONCLUSIVE") {
     return true;
   }
   if (

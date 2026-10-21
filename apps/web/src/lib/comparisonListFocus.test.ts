@@ -36,6 +36,16 @@ describe("isPilotNoiseEvaluation", () => {
     expect(isPilotNoiseEvaluation({ displayMode, verdict: null })).toBe(true);
   });
 
+  it("keeps provisional official PASS 1/N visible in Pilot focus", () => {
+    expect(
+      isPilotNoiseEvaluation({
+        displayMode: "official",
+        verdict: "INCONCLUSIVE",
+        adoptionConfirmation: { step: 1, required: 2 },
+      }),
+    ).toBe(false);
+  });
+
   it("hides dry-run, smoke meta, FAKE_PRODUCE, and official INCONCLUSIVE", () => {
     expect(isPilotNoiseEvaluation({ displayMode: "dry-run" })).toBe(true);
     expect(
