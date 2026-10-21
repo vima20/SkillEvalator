@@ -86,6 +86,32 @@ export function loadEvaluationMeta(
  * matches the retried leg (stale meta must not leave Comparison INCONCLUSIVE).
  * Exclusive lock so concurrent baseline+candidate retries cannot clobber each other.
  */
+/** Best-effort: tip legs agree but evaluation.json mode lagged (retry / tip-heal). */
+export function syncEvaluationMetaMode(opts: {
+  evaluationId: string;
+  mode: "dry-run" | "official";
+}): boolean {
+  const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
+  const metaPath = evaluationMetaPath(evaluationId);
+  const lockPath = `${metaPath}.lock`;
+  if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: 80 })) {
+    return false;
+  }
+  try {
+    const meta = loadEvaluationMeta(evaluationId);
+    if (!meta) return false;
+    if (meta.mode === opts.mode) return true;
+    writeJsonFile(metaPath, {
+      ...meta,
+      mode: opts.mode,
+      updatedAt: new Date().toISOString(),
+    });
+    return true;
+  } finally {
+    releaseWxLock(lockPath);
+  }
+}
+
 export function updateEvaluationMetaLeg(opts: {
   evaluationId: string;
   role: "baseline" | "candidate";
@@ -404,6 +430,23 @@ export function loadEvaluationComparison(
       : null,
     loadResult: (runId) => loadRunResult(dir, runId),
   });
+
+  if (
+    meta &&
+    baseline &&
+    candidate &&
+    baseline.mode === candidate.mode &&
+    (baseline.mode === "dry-run" || baseline.mode === "official") &&
+    (meta.mode === "dry-run" || meta.mode === "official") &&
+    meta.mode !== baseline.mode
+  ) {
+    const legMode = baseline.mode;
+    if (syncEvaluationMetaMode({ evaluationId, mode: legMode })) {
+      meta = loadEvaluationMeta(evaluationId) ?? { ...meta, mode: legMode };
+    } else {
+      meta = { ...meta, mode: legMode };
+    }
+  }
 
   // Same pin path as worker Benefit cache — do not re-implement parity opts here
   // (expectedTaskIds / taskSetId and snapshot mismatches must stay in sync).

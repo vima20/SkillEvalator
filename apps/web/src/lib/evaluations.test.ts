@@ -274,7 +274,7 @@ describe("loadEvaluationComparison meta mode", () => {
 });
 
 describe("updateEvaluationMetaLeg", () => {
-  it("syncs mode so comparison meta parity matches retried legs", async () => {
+  it("loadEvaluationComparison heals stale meta mode from agreeing tip legs", async () => {
     const evaluationId = "eval_100_modesync";
     const baselineRunId = "run_100_base_dry";
     const candidateRunId = "run_100_cand_dry";
@@ -310,47 +310,28 @@ describe("updateEvaluationMetaLeg", () => {
       }),
     );
 
-    const { updateEvaluationMetaLeg, loadEvaluationComparison } = await import(
-      "./evaluations.js"
-    );
+    const { loadEvaluationComparison } = await import("./evaluations.js");
 
-    const before = loadEvaluationComparison(evaluationId);
-    expect(before.comparison).not.toBeNull();
-    expect(before.comparison?.verdict).toBe("INCONCLUSIVE");
+    const loaded = loadEvaluationComparison(evaluationId);
+    expect(loaded.comparison).not.toBeNull();
+    expect(loaded.meta?.mode).toBe("dry-run");
     expect(
-      before.comparison?.parity.issues.some((i) =>
+      loaded.comparison?.parity.issues.some((i) =>
         i.includes("evaluation meta mode"),
       ),
-    ).toBe(true);
+    ).toBe(false);
+    // Dry-run never emits adoption PASS even when lift clears delta.
+    expect(loaded.comparison?.verdict).toBe("INCONCLUSIVE");
+    expect(loaded.comparison?.lift).toBeGreaterThan(0);
 
-    expect(
-      updateEvaluationMetaLeg({
-        evaluationId,
-        role: "candidate",
-        runId: candidateRunId,
-        mode: "dry-run",
-        evalSkillId: "code-debugging-eval",
-      }),
-    ).toBe(true);
-
-    const meta = JSON.parse(
+    const disk = JSON.parse(
       fs.readFileSync(
         path.join(resultsRoot, evaluationId, "evaluation.json"),
         "utf8",
       ),
     ) as { mode: string; candidateRunId: string };
-    expect(meta.mode).toBe("dry-run");
-    expect(meta.candidateRunId).toBe(candidateRunId);
-
-    const after = loadEvaluationComparison(evaluationId);
-    expect(
-      after.comparison?.parity.issues.some((i) =>
-        i.includes("evaluation meta mode"),
-      ),
-    ).toBe(false);
-    // Dry-run never emits adoption PASS even when lift clears delta.
-    expect(after.comparison?.verdict).toBe("INCONCLUSIVE");
-    expect(after.comparison?.lift).toBeGreaterThan(0);
+    expect(disk.mode).toBe("dry-run");
+    expect(disk.candidateRunId).toBe(candidateRunId);
   });
 
   it("unlinks superseded benefit cache when tip-heal lock fails", async () => {
