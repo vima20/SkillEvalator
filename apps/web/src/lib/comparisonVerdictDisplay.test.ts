@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  benefitListVerdictChipLabel,
   comparisonVerdictListLabel,
   isProvisionalOfficialPass,
 } from "./comparisonVerdictDisplay.js";
@@ -20,6 +21,21 @@ describe("comparisonVerdictDisplay", () => {
         adoptionConfirmation: { step: 1, required: 2 },
       }),
     ).toBe("INCONCLUSIVE · 1/2");
+  });
+
+  it("benefitListVerdictChipLabel mirrors comparison list for provisional PASS", () => {
+    expect(
+      benefitListVerdictChipLabel({
+        recommendation: "inconclusive",
+        comparisonListLabel: "INCONCLUSIVE · 1/2",
+      }),
+    ).toBe("INCONCLUSIVE · 1/2");
+    expect(
+      benefitListVerdictChipLabel({
+        recommendation: "use",
+        comparisonListLabel: "PASS",
+      }),
+    ).toBe("USE");
   });
 
   it("leaves confirmed PASS unchanged", () => {

@@ -9,6 +9,7 @@ import {
   benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
+import { benefitListVerdictChipLabel } from "@/lib/comparisonVerdictDisplay";
 import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   candidateLegKind,
@@ -260,11 +261,10 @@ export default async function BenefitIndexPage({
                         className={`verdict-chip verdict-${r.verdict.recommendation}`}
                         title={r.verdict.headline}
                       >
-                        {r.verdict.recommendation === "use"
-                          ? "USE"
-                          : r.verdict.recommendation === "do_not_use"
-                            ? "DO NOT USE"
-                            : "INCONCLUSIVE"}
+                        {benefitListVerdictChipLabel({
+                          recommendation: r.verdict.recommendation,
+                          comparisonListLabel: r.comparisonMeta?.label,
+                        })}
                       </span>
                     </td>
                     <td>

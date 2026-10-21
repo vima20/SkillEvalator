@@ -36,3 +36,15 @@ export function comparisonVerdictListLabel(opts: {
   if (opts.displayMode === "dry-run") label += " · dry-run";
   return label;
 }
+
+/** Benefit list verdict chip — reuse Comparison list label when paired eval is loaded. */
+export function benefitListVerdictChipLabel(opts: {
+  recommendation: string;
+  comparisonListLabel?: string | null;
+}): string {
+  if (opts.recommendation === "use") return "USE";
+  if (opts.recommendation === "do_not_use") return "DO NOT USE";
+  const list = opts.comparisonListLabel?.trim();
+  if (list && list.length > 0) return list;
+  return "INCONCLUSIVE";
+}

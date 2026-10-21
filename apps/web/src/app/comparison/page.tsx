@@ -174,14 +174,17 @@ export default async function ComparisonListPage({
           <h1>Comparison</h1>
           <p>
             Baseline↔candidate lift on the same task set. Official{" "}
-            <strong>PASS</strong> requires candidate ≥0.99 + lift and unlocks
-            Benefit <strong>USE</strong>. Dry-run stays{" "}
+            <strong>PASS</strong> needs candidate ≥0.99 + lift, stability, and
+            two independent tip pairs (first may show provisional{" "}
+            <strong>1/2</strong>). Confirmed PASS unlocks Benefit{" "}
+            <strong>USE</strong>. Dry-run stays{" "}
             <strong>INCONCLUSIVE</strong> (no adoption PASS/FAIL).
             {pilotFocus ? (
               <>
                 {" "}
                 <strong>Pilot focus</strong> hides dry-run, smoke / unattested
-                tip legs, and official INCONCLUSIVE
+                tip legs, and non-handoff official INCONCLUSIVE (keeps
+                provisional 1/2 visible)
                 {hidden > 0 ? ` (${hidden} hidden)` : ""}.
               </>
             ) : null}

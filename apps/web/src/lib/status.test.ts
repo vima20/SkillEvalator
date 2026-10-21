@@ -196,6 +196,8 @@ describe("statusBadgeKind", () => {
     expect(benefitList).toMatch(/benefitPairCtaLabel/);
     expect(benefitList).toMatch(/pairPending/);
     expect(benefitList).toMatch(/comparisonCellMetaFromPacked/);
+    expect(benefitList).toMatch(/benefitListVerdictChipLabel/);
+    expect(list).toMatch(/provisional/);
     expect(dashboard).toMatch(/benefitPairCtaLabel/);
     expect(dashboard).toMatch(/evaluationPairPending/);
     expect(dashboard).toMatch(/comparisonCellMetaFromPacked/);
