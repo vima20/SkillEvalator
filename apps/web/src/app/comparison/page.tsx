@@ -16,7 +16,11 @@ import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  pairedEvalDisplayMode,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import {
   listEvaluations,
   loadEvaluationComparison,
@@ -71,8 +75,15 @@ export default async function ComparisonListPage({
       resolveTipCandidateRunId(packed) ?? e.candidateRunId;
     const tipBaselineRunId =
       resolveTipBaselineRunId(packed) ?? e.baselineRunId;
-    // Chip/label mode from Comparison object (same source as detail), not stale meta.
-    const displayMode = c?.mode ?? e.mode;
+    // Scorecard mode, else tip legs, else meta (stale official meta + dry-run tips).
+    const displayMode =
+      c?.mode ??
+      pairedEvalDisplayMode({
+        metaMode: e.mode,
+        baselineMode: packed.baseline?.mode,
+        candidateMode: packed.candidate?.mode,
+      }) ??
+      e.mode;
     const { pairEvidence, pairChip, pairBlocked } =
       benefitPairEvidenceFromPacked({
         tipBaselineRunId,

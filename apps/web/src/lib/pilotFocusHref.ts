@@ -35,3 +35,40 @@ export function withNewRunHandoff(
   const href = preferOfficial ? "/?mode=official" : "/";
   return withPilotFocus(href, pilotFocus);
 }
+
+/**
+ * List chip / Pilot noise / re-run handoff: tip legs beat stale evaluation.json
+ * (official↔dry-run desync after tip-heal). Official tip wins; else dry-run tip;
+ * else meta mode.
+ */
+export function pairedEvalDisplayMode(opts: {
+  metaMode?: string | null;
+  baselineMode?: string | null;
+  candidateMode?: string | null;
+}): string | undefined {
+  if (
+    opts.baselineMode === "official" ||
+    opts.candidateMode === "official"
+  ) {
+    return "official";
+  }
+  if (
+    opts.baselineMode === "dry-run" ||
+    opts.candidateMode === "dry-run"
+  ) {
+    return "dry-run";
+  }
+  if (opts.metaMode === "official" || opts.metaMode === "dry-run") {
+    return opts.metaMode;
+  }
+  return opts.metaMode ?? undefined;
+}
+
+/** Prefer ?mode=official for Comparison / Benefit New-run CTAs. */
+export function pairedEvalPreferOfficial(opts: {
+  metaMode?: string | null;
+  baselineMode?: string | null;
+  candidateMode?: string | null;
+}): boolean {
+  return pairedEvalDisplayMode(opts) === "official";
+}

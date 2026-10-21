@@ -17,6 +17,7 @@ import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import {
   isPilotFocusParam,
+  pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
@@ -133,11 +134,13 @@ export default async function BenefitReportPage({
   // Superseded non-tip must not show waiting/unavailable (adoption follows tip).
   const pairWaiting = !supersededTip && pairPending === "waiting";
   const pairUnavailable = !supersededTip && pairPending === "unavailable";
-  // Official eval re-run must keep ?mode=official (Settings Ready parity).
-  const preferOfficial =
-    meta?.mode === "official" ||
-    result.mode === "official" ||
-    comparison?.mode === "official";
+  // Tip legs beat stale evaluation.json (dry-run legs + official meta).
+  const preferOfficial = pairedEvalPreferOfficial({
+    metaMode: meta?.mode ?? comparison?.mode,
+    baselineMode: baseline?.mode ?? (result.role === "baseline" ? result.mode : undefined),
+    candidateMode:
+      candidate?.mode ?? (result.role === "candidate" ? result.mode : undefined),
+  });
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;

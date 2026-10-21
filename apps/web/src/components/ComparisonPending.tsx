@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
 import {
   isPilotFocusParam,
+  pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
@@ -91,11 +92,12 @@ function ComparisonPendingInner({
   candidateMode,
   pilotFocus,
 }: ComparisonPendingProps & { pilotFocus: boolean }) {
-  // Tip-heal can leave evaluation.json on dry-run while legs are already official.
-  const preferOfficial =
-    mode === "official" ||
-    baselineMode === "official" ||
-    candidateMode === "official";
+  // Tip legs beat stale evaluation.json mode (official↔dry-run desync).
+  const preferOfficial = pairedEvalPreferOfficial({
+    metaMode: mode,
+    baselineMode,
+    candidateMode,
+  });
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);

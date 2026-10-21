@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   isOfficialModeParam,
   isPilotFocusParam,
+  pairedEvalDisplayMode,
+  pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
 } from "./pilotFocusHref.js";
@@ -39,6 +41,37 @@ describe("pilotFocusHref", () => {
     expect(withNewRunHandoff(true, true)).toBe(
       "/?mode=official&focus=pilot",
     );
+  });
+
+  it("pairedEvalDisplayMode lets tip legs override stale meta mode", () => {
+    expect(
+      pairedEvalDisplayMode({
+        metaMode: "dry-run",
+        baselineMode: "official",
+        candidateMode: "official",
+      }),
+    ).toBe("official");
+    expect(
+      pairedEvalDisplayMode({
+        metaMode: "official",
+        baselineMode: "dry-run",
+        candidateMode: "dry-run",
+      }),
+    ).toBe("dry-run");
+    expect(
+      pairedEvalDisplayMode({
+        metaMode: "official",
+        baselineMode: undefined,
+        candidateMode: undefined,
+      }),
+    ).toBe("official");
+    expect(
+      pairedEvalPreferOfficial({
+        metaMode: "official",
+        baselineMode: "dry-run",
+        candidateMode: "dry-run",
+      }),
+    ).toBe(false);
   });
 
   it("empty-skills New run surfaces ?mode=official until skills exist", async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isPilotNoiseEvaluation } from "./comparisonListFocus.js";
+import { pairedEvalDisplayMode } from "./pilotFocusHref.js";
 
 describe("isPilotNoiseEvaluation", () => {
   it("keeps official PASS/FAIL and waiting pairs", () => {
@@ -22,6 +23,17 @@ describe("isPilotNoiseEvaluation", () => {
         verdict: null,
       }),
     ).toBe(false);
+  });
+
+  it("hides stale-meta official when tip legs are dry-run", () => {
+    const displayMode =
+      pairedEvalDisplayMode({
+        metaMode: "official",
+        baselineMode: "dry-run",
+        candidateMode: "dry-run",
+      }) ?? "official";
+    expect(displayMode).toBe("dry-run");
+    expect(isPilotNoiseEvaluation({ displayMode, verdict: null })).toBe(true);
   });
 
   it("hides dry-run, smoke meta, FAKE_PRODUCE, and official INCONCLUSIVE", () => {

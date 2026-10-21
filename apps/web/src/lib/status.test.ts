@@ -48,6 +48,8 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/tipActive/);
     expect(list).toMatch(/scorecardUnavailable/);
     expect(list).toMatch(/evaluationTipPairIsActive/);
+    // Pending list chip: tip legs beat stale evaluation.json mode.
+    expect(list).toMatch(/pairedEvalDisplayMode/);
     // tipActive + result.json → Benefit (waiting); without result → run detail.
     expect(list).toMatch(
       /e\.tipActive \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}[\s\S]*?Benefit · waiting/,
@@ -98,9 +100,7 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/Refresh now/);
     // Official unavailable re-run keeps ?mode=official (Benefit / Settings parity).
     expect(pendingUi).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
-    expect(pendingUi).toMatch(
-      /preferOfficial =\s*mode === "official"[\s\S]*?baselineMode === "official"[\s\S]*?candidateMode === "official"/,
-    );
+    expect(pendingUi).toMatch(/pairedEvalPreferOfficial/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);
     expect(detail).toMatch(/baselineMode=\{baseline\?\.mode\}/);
     expect(detail).toMatch(/candidateMode=\{candidate\?\.mode\}/);
@@ -151,7 +151,7 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/Waiting for Comparison/);
     // Official Benefit unavailable → New run with ?mode=official.
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
-    expect(benefitDetail).toMatch(/meta\?\.mode === "official"/);
+    expect(benefitDetail).toMatch(/pairedEvalPreferOfficial/);
     expect(benefitWait).toMatch(/setInterval/);
     expect(benefitWait).toMatch(/router\.refresh/);
     expect(benefitWait).toMatch(/WIND_DOWN_ORPHAN_MS/);
