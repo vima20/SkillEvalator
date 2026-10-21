@@ -2989,6 +2989,7 @@ describe("loadPairedComparison official PASS confirmation", () => {
       officialPassProvisional?: {
         baselineRunId: string;
         candidateRunId: string;
+        recordedAt?: string;
       };
     };
     expect(metaAfterFirst.officialPassProvisional).toMatchObject({
