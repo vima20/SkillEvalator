@@ -134,6 +134,8 @@ export default async function ComparisonDetailPage({
           baselineHasResult={!!baseline}
           candidateHasResult={!!candidate}
           mode={meta.mode}
+          baselineMode={baseline?.mode}
+          candidateMode={candidate?.mode}
         />
       </div>
     );

@@ -53,8 +53,11 @@ type ComparisonPendingProps = {
   /** True when that leg already has result.json (budget_stop may be settled). */
   baselineHasResult?: boolean;
   candidateHasResult?: boolean;
-  /** Evaluation mode — official re-run CTA must keep ?mode=official. */
+  /** evaluation.json mode — tip-heal may lag behind tip legs. */
   mode?: "dry-run" | "official" | string;
+  /** Tip leg modes (Benefit parity: official handoff if any is official). */
+  baselineMode?: "dry-run" | "official" | string;
+  candidateMode?: "dry-run" | "official" | string;
 };
 
 export function ComparisonPending(props: ComparisonPendingProps) {
@@ -84,9 +87,15 @@ function ComparisonPendingInner({
   baselineHasResult = false,
   candidateHasResult = false,
   mode,
+  baselineMode,
+  candidateMode,
   pilotFocus,
 }: ComparisonPendingProps & { pilotFocus: boolean }) {
-  const preferOfficial = mode === "official";
+  // Tip-heal can leave evaluation.json on dry-run while legs are already official.
+  const preferOfficial =
+    mode === "official" ||
+    baselineMode === "official" ||
+    candidateMode === "official";
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);

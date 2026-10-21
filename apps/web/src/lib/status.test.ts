@@ -96,10 +96,14 @@ describe("statusBadgeKind", () => {
     );
     expect(pendingUi).toMatch(/Open candidate run/);
     expect(pendingUi).toMatch(/Refresh now/);
-    // Official unavailable re-run keeps ?mode=official (Settings Ready parity).
+    // Official unavailable re-run keeps ?mode=official (Benefit / Settings parity).
     expect(pendingUi).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
-    expect(pendingUi).toMatch(/preferOfficial = mode === "official"/);
+    expect(pendingUi).toMatch(
+      /preferOfficial =\s*mode === "official"[\s\S]*?baselineMode === "official"[\s\S]*?candidateMode === "official"/,
+    );
     expect(detail).toMatch(/mode=\{meta\.mode\}/);
+    expect(detail).toMatch(/baselineMode=\{baseline\?\.mode\}/);
+    expect(detail).toMatch(/candidateMode=\{candidate\?\.mode\}/);
     // orphanStuck keeps poll + Refresh now (catch external heal without hard reload).
     expect(pendingUi).toMatch(/!stillWaiting && !orphanStuck/);
     expect(pendingUi).toMatch(/Resend cancel or Refresh \(heal\)/);
