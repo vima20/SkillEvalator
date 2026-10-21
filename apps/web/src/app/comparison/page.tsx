@@ -107,11 +107,15 @@ export default async function ComparisonListPage({
     const downloadGate = c
       ? officialComparisonExportGate(c, pairEvidence)
       : null;
+    const comparisonMode =
+      displayMode === "official" || displayMode === "dry-run"
+        ? displayMode
+        : "dry-run";
     const downloadsOk = c
       ? canShowOfficialComparisonDownloads({
           comparison: {
             verdict: c.verdict,
-            mode: displayMode,
+            mode: comparisonMode,
           },
           ...pairEvidence,
         })

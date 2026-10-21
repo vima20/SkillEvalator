@@ -104,7 +104,7 @@ describe("loadRunDetailEvaluationPack", () => {
     const out = loadRunDetailEvaluationPack({
       runId: "run_cand",
       status: { evaluationId: "eval_prov" },
-      result: { evaluationId: "eval_prov", role: "candidate" },
+      result: { evaluationId: "eval_prov" },
       loadPacked: () =>
         ({
           meta: { mode: "official", baselineRunId: "run_b", candidateRunId: "run_cand" },

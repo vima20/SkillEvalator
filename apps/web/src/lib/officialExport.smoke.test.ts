@@ -51,6 +51,7 @@ function officialLeg(
     modelId: "gpt-4.1-mini",
     decoding: { temperature: 0, top_p: 1, seed: 42 },
     repeats: OFFICIAL_MIN_REPEATS,
+    scoreSpread: 0,
     aggregate: "mean",
     perTask: [
       {
@@ -78,7 +79,7 @@ function officialLeg(
       license: "MIT",
       dependencies: [],
       skillVersion: "abc",
-      role: opts.role,
+      role: opts.role as "baseline" | "candidate",
       promptHash: opts.role === "baseline" ? "basehash_export" : "candhash_export",
       promptKind,
       env: {

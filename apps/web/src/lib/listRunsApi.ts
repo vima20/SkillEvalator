@@ -2,9 +2,9 @@ import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
 
 export type ListRunApiSource = {
   runId: string;
-  status: unknown;
+  status?: unknown;
   result?: {
-    score?: number;
+    score?: number | null;
     modelId?: string;
     mode?: string;
     role?: string;

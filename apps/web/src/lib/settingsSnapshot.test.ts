@@ -84,6 +84,7 @@ describe("loadSettingsSnapshot", () => {
             dryRunCount: 2,
             taskCount: 8,
             license: "MIT",
+            dependencies: [],
           },
         ],
         imported: [
@@ -94,6 +95,7 @@ describe("loadSettingsSnapshot", () => {
             dryRunCount: 1,
             taskCount: 3,
             license: "Apache-2.0",
+            dependencies: [],
           },
         ],
       },

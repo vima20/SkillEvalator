@@ -157,7 +157,7 @@ export default async function DashboardPage({
         skillId: r.result.evalSkillId,
         skillVersion: r.result.evalSkillVersion,
         evaluationId: evaluationId ?? undefined,
-        role: r.result.role,
+        role: r.result.role ?? "candidate",
         pairChip: pair.pairChip,
         pairBlocked: pair.pairBlocked,
         comparisonMeta: comparisonCellMetaFromPacked(pair.packed),

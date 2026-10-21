@@ -443,7 +443,7 @@ export async function POST(
           repeats,
           modelId,
           role,
-          evaluationId,
+          ...(evaluationId ? { evaluationId } : {}),
           skillSnapshotFromRunId,
           runId: newRunId,
         });

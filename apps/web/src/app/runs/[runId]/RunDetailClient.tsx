@@ -88,6 +88,7 @@ type Result = {
   evalSkillVersion: string;
   evalSkillGithubUrl?: string;
   taskSetId: string;
+  taskIds?: string[];
   mode: string;
   role?: string;
   evaluationId?: string;
@@ -553,19 +554,20 @@ export function RunDetailClient({
     data.status?.status,
     Boolean(data.result),
   );
+  const taskIds = result?.taskIds ?? result?.perTask.map((t) => t.taskId) ?? [];
   const coverageIssues = result
-    ? taskScorecardCoverageIssues(result.taskIds, result.perTask, {
+    ? taskScorecardCoverageIssues(taskIds, result.perTask, {
         requireFiniteScores: result.status === "ok",
         runScore: result.status === "ok" ? result.score : undefined,
       })
     : [];
   const scorecardBroken = coverageIssues.length > 0;
   const { passed, total } = result
-    ? taskScorecardPassCounts(result.taskIds, result.perTask)
+    ? taskScorecardPassCounts(taskIds, result.perTask)
     : { passed: 0, total: 0 };
   const displayScore = scorecardBroken ? null : (result?.score ?? null);
   const scorecardRows = result
-    ? listScorecardTaskIds(result.taskIds, result.perTask).map((taskId) => {
+    ? listScorecardTaskIds(taskIds, result.perTask).map((taskId) => {
         const row = result.perTask.find((t) => t.taskId === taskId);
         return (
           row ?? {

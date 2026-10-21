@@ -165,9 +165,9 @@ describe("runDetailRetryAdmissionForRun healQueue", () => {
       healedMeta: null,
       snapshotFlags: { hasSkillMd: true, hasPinnedVersion: true },
     });
-    let st = JSON.parse(
+    let st: { status: string; errorCode?: string } = JSON.parse(
       fs.readFileSync(path.join(resultsRoot, runId, "status.json"), "utf8"),
-    ) as { status: string };
+    );
     expect(st.status).toBe("budget_stop");
 
     runDetailRetryAdmissionForRun({
