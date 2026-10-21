@@ -24,7 +24,10 @@ export type OfficialComparisonExportDeny = {
  * unattested tip legs (produceAttested must be true on both).
  */
 export function officialComparisonExportGate(
-  comparison: Pick<RunComparison, "verdict" | "mode">,
+  comparison: Pick<
+    RunComparison,
+    "verdict" | "mode" | "adoptionConfirmation"
+  >,
   evidence: OfficialComparisonEvidence = {},
   product: "comparison CSV export" | "pilot archive download" =
     "comparison CSV export",
@@ -42,13 +45,20 @@ export function officialComparisonExportGate(
     };
   }
   if (verdict !== "PASS" && verdict !== "FAIL") {
+    const confirm = comparison.adoptionConfirmation;
+    const provisional =
+      confirm && confirm.step < confirm.required
+        ? `provisional official PASS ${confirm.step}/${confirm.required}`
+        : null;
     return {
       ok: false,
       status: 409,
       verdict,
       mode,
       errorCode: "comparison_export_inconclusive",
-      error: `${product} requires PASS or FAIL verdict (not INCONCLUSIVE)`,
+      error: provisional
+        ? `${product} locked — ${provisional}; confirm with a second independent official pair before export`
+        : `${product} requires PASS or FAIL verdict (not INCONCLUSIVE)`,
     };
   }
   if (evidence.metaSmoke === true) {

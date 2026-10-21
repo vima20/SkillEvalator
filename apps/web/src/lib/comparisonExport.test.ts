@@ -42,6 +42,18 @@ describe("comparisonCsvGate", () => {
     expect(out.error).toMatch(/INCONCLUSIVE/);
   });
 
+  it("explains provisional official PASS 1/N on export block", () => {
+    const out = officialComparisonExportGate({
+      verdict: "INCONCLUSIVE",
+      mode: "official",
+      adoptionConfirmation: { step: 1, required: 2 },
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.error).toMatch(/provisional official PASS 1\/2/i);
+    expect(out.error).toMatch(/second independent official pair/i);
+  });
+
   it("blocks smoke and FAKE_PRODUCE like pilot archive", () => {
     const smoke = comparisonCsvGate(
       { verdict: "PASS", mode: "official" },

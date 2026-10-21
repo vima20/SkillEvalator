@@ -103,6 +103,8 @@ describe("statusBadgeKind", () => {
     // Official unavailable re-run keeps ?mode=official (Benefit / Settings parity).
     expect(pendingUi).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(pendingUi).toMatch(/pairedEvalPreferOfficial/);
+    expect(detail).toMatch(/Confirm adoption — new official pair/);
+    expect(detail).toMatch(/isProvisionalOfficialPass/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);
     expect(detail).toMatch(/baselineMode=\{baseline\?\.mode\}/);
     expect(detail).toMatch(/candidateMode=\{candidate\?\.mode\}/);

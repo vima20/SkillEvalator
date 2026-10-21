@@ -26,8 +26,11 @@ import {
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
+import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
 import {
   isPilotFocusParam,
+  pairedEvalPreferOfficial,
+  withNewRunHandoff,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
 import { statusBadgeClass } from "@/lib/status";
@@ -162,6 +165,20 @@ export default async function ComparisonDetailPage({
   const downloadBlockReason = downloadGate.ok
     ? null
     : exportGateBlockMessage(downloadGate);
+  const provisionalPass = isProvisionalOfficialPass({
+    verdict: comparison.verdict,
+    displayMode: comparison.mode,
+    adoptionConfirmation: comparison.adoptionConfirmation,
+  });
+  const preferOfficial = pairedEvalPreferOfficial({
+    metaMode: meta.mode,
+    baselineMode: baseline?.mode,
+    candidateMode: candidate?.mode,
+  });
+  const confirmOfficialPairHref = withNewRunHandoff(
+    pilotFocus,
+    preferOfficial,
+  );
   return (
     <div>
       <header className="page-header page-header-row">
@@ -302,6 +319,30 @@ export default async function ComparisonDetailPage({
         candidateRunId={candidateRunId}
         pilotFocus={pilotFocus}
       />
+
+      {provisionalPass && comparison.adoptionConfirmation ? (
+        <div className="panel callout-warn" style={{ marginTop: "1rem" }}>
+          <strong>
+            Provisional official PASS (
+            {comparison.adoptionConfirmation.step}/
+            {comparison.adoptionConfirmation.required})
+          </strong>
+          <p>
+            This tip pair cleared lift, stability, and per-task gates. Benefit{" "}
+            <strong>USE</strong> and CSV / pilot archive stay locked until a{" "}
+            <strong>second independent official PASS</strong> on new baseline↔
+            candidate tip legs.
+          </p>
+          <div className="action-row" style={{ marginTop: 12 }}>
+            <Link
+              className="btn btn-primary btn-compact"
+              href={confirmOfficialPairHref}
+            >
+              Confirm adoption — new official pair
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <section className={verdictClass(comparison.verdict, comparison.mode)}>
         <p className="eyebrow">
