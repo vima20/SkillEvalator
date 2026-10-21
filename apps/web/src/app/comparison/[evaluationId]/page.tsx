@@ -255,9 +255,10 @@ export default async function ComparisonDetailPage({
         <strong>Comparison vs Benefit</strong>
         <p>
           <strong>{comparison.verdict}</strong> here is the paired lift gate
-          (baseline↔candidate). Official PASS also requires candidate score ≥
-          0.99 (Benefit USE floor). Benefit USE needs official PASS; DO NOT USE
-          needs official FAIL
+          (baseline↔candidate). Official PASS also needs candidate score ≥
+          0.99 (Benefit USE floor), lift ≥ +5 pp, no per-task regressions vs
+          baseline, and every candidate task soft-pass (≥0.8). Benefit USE
+          needs official PASS; DO NOT USE needs official FAIL
           {showOfficialDownloads ? (
             <>
               {" "}

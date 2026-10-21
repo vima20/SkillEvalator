@@ -26,10 +26,49 @@ import {
 } from "./results.js";
 import { resolveLegRunIdViaRetryChain } from "./retryDedup.js";
 import type { RunResult } from "./schema.js";
-import { isUnitScore, taskScorecardCoverageIssues } from "./scoring.js";
+import {
+  isUnitScore,
+  taskScorecardCoverageIssues,
+  taskScorecardPassCounts,
+} from "./scoring.js";
 
 /** Unikie alustava PASS: candidate ≥ baseline + 5 percentage points. */
 export const LIFT_PASS_DELTA = 0.05;
+
+/**
+ * Official adoption PASS: per-task gates on top of aggregate lift + USE floor.
+ * Prevents “one task carries the average” false positives.
+ */
+export function officialAdoptionTaskGate(opts: {
+  candidate: RunResult;
+  regressions: number;
+  improvements: number;
+}): { ok: true } | { ok: false; rationale: string } {
+  const { candidate, regressions, improvements } = opts;
+  if (regressions > 0) {
+    return {
+      ok: false,
+      rationale:
+        `Aggregate lift clears +${(LIFT_PASS_DELTA * 100).toFixed(0)} pp but ${regressions} task(s) scored lower than baseline. ` +
+        `Adoption requires benefit on every task in the set, not only on average. ` +
+        `Task deltas: ${improvements} improved, ${regressions} regressed.`,
+    };
+  }
+  const { failedTaskIds, total } = taskScorecardPassCounts(
+    candidate.taskIds,
+    candidate.perTask,
+  );
+  if (total > 0 && failedTaskIds.length > 0) {
+    return {
+      ok: false,
+      rationale:
+        `Candidate soft-passed ${total - failedTaskIds.length}/${total} tasks (≥${PASS_SCORE_FLOOR.toFixed(2)}). ` +
+        `Below floor: ${failedTaskIds.join(", ")}. ` +
+        `Official PASS needs the skill to clear every declared task, not only a strong aggregate.`,
+    };
+  }
+  return { ok: true };
+}
 
 export type ComparisonVerdict = "PASS" | "FAIL" | "INCONCLUSIVE";
 
@@ -1057,8 +1096,18 @@ export function compareBaselineCandidate(
       verdict = "INCONCLUSIVE";
       rationale = `Dry-run lift ${(lift * 100).toFixed(1)} pp (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}) looks encouraging but is not Comparison PASS. Re-run mode=official (≥${OFFICIAL_USE_SCORE_FLOOR} candidate + ≥${(LIFT_PASS_DELTA * 100).toFixed(0)} pp lift) for adoption evidence.`;
     } else {
-      verdict = "PASS";
-      rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed.`;
+      const taskGate = officialAdoptionTaskGate({
+        candidate,
+        regressions,
+        improvements,
+      });
+      if (!taskGate.ok) {
+        verdict = "FAIL";
+        rationale = taskGate.rationale;
+      } else {
+        verdict = "PASS";
+        rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed — every task held or improved.`;
+      }
     }
   } else {
     verdict = "FAIL";

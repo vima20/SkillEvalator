@@ -6,6 +6,7 @@ import {
   LIFT_PASS_DELTA,
   compareBaselineCandidate,
   loadPairedComparison,
+  officialAdoptionTaskGate,
   pairEvaluationRuns,
   resolveComparisonLegs,
   resolveEvaluationMetaEvalSkillId,
@@ -148,6 +149,37 @@ function officialOpts(
     ...extra,
   };
 }
+
+describe("officialAdoptionTaskGate", () => {
+  it("requires every candidate task to soft-pass", () => {
+    const candidate = sample({
+      runId: "c",
+      role: "candidate",
+      score: 0.85,
+      mode: "official",
+      taskIds: ["bug-01"],
+      perTask: [
+        { taskId: "bug-01", score: 0.85, status: "ok", scriptResults: [] },
+      ],
+    });
+    const gate = officialAdoptionTaskGate({
+      candidate,
+      regressions: 0,
+      improvements: 1,
+    });
+    expect(gate.ok).toBe(true);
+    candidate.perTask[0]!.score = 0.75;
+    const blocked = officialAdoptionTaskGate({
+      candidate,
+      regressions: 0,
+      improvements: 0,
+    });
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) {
+      expect(blocked.rationale).toMatch(/soft-pass/i);
+    }
+  });
+});
 
 describe("compareBaselineCandidate", () => {
   it("dry-run lift is INCONCLUSIVE (not adoption PASS)", () => {
@@ -2538,6 +2570,44 @@ describe("compareBaselineCandidate", () => {
     expect(
       gradeMismatch.parity.issues.some((i) => i.includes("pipeline.grade")),
     ).toBe(true);
+  });
+
+  it("official FAIL when aggregate lift passes but a task regresses", () => {
+    const b = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.85,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      taskIds: ["bug-01", "bug-02"],
+      perTask: [
+        { taskId: "bug-01", score: 0.7, status: "ok", scriptResults: [] },
+        { taskId: "bug-02", score: 1, status: "ok", scriptResults: [] },
+      ],
+    });
+    const cand = sample({
+      runId: "c",
+      role: "candidate",
+      score: 0.995,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      taskIds: ["bug-01", "bug-02"],
+      perTask: [
+        { taskId: "bug-01", score: 1, status: "ok", scriptResults: [] },
+        { taskId: "bug-02", score: 0.99, status: "ok", scriptResults: [] },
+      ],
+    });
+    const c = compareBaselineCandidate(
+      b,
+      cand,
+      officialOpts(b, cand, { expectedTaskIds: ["bug-01", "bug-02"] }),
+    );
+    expect(c.lift!).toBeGreaterThanOrEqual(LIFT_PASS_DELTA);
+    expect(c.regressions).toBe(1);
+    expect(c.verdict).toBe("FAIL");
+    expect(c.rationale).toMatch(/scored lower than baseline/i);
   });
 
   it("flags per-task regressions", () => {
