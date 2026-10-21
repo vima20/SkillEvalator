@@ -541,6 +541,10 @@ export function RunDetailClient({
         ? 100
         : 0;
 
+  const refreshHealsOrphan = isOrphanActiveWindDown(
+    data.status?.status,
+    Boolean(data.result),
+  );
   const coverageIssues = result
     ? taskScorecardCoverageIssues(result.taskIds, result.perTask, {
         requireFiniteScores: result.status === "ok",
@@ -633,8 +637,17 @@ export function RunDetailClient({
           className="btn btn-ghost btn-compact"
           disabled={refreshBusy}
           onClick={() => void onManualRefresh()}
+          title={
+            refreshHealsOrphan
+              ? "Finalize orphan wind-down (heal) then refresh"
+              : undefined
+          }
         >
-          {refreshBusy ? "Refreshing…" : "Refresh"}
+          {refreshBusy
+            ? "Refreshing…"
+            : refreshHealsOrphan
+              ? "Refresh (heal)"
+              : "Refresh"}
         </button>
       </div>
       {result ? (

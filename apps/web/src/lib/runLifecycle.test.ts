@@ -779,6 +779,23 @@ describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
       /result\?\.perTask\.filter\(\(t\) => t\.status === "ok"\)/,
     );
   });
+
+  it("RunDetailClient labels orphan Refresh as Refresh (heal)", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/app/runs/[runId]/RunDetailClient.tsx",
+      ),
+      "utf8",
+    );
+    expect(src).toMatch(/refreshHealsOrphan/);
+    expect(src).toMatch(/Refresh \(heal\)/);
+    expect(src).toMatch(
+      /refreshHealsOrphan\s*\?\s*"Refresh \(heal\)"\s*:\s*"Refresh"/,
+    );
+  });
 });
 
 describe("runDetailFinalizeOrphansPath", () => {
