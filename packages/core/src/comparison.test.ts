@@ -18,6 +18,7 @@ import {
   resolveEvaluationMetaMode,
   resolvePairedCancelSibling,
 } from "./comparison.js";
+import { hashGradeJsFile } from "./dockerGrade.js";
 import { writeJsonFile } from "./fsJson.js";
 import { OFFICIAL_MIN_REPEATS } from "./job.js";
 import { jobAttestationFromRunResult } from "./jobSnapshot.js";
@@ -159,6 +160,75 @@ function officialOpts(
     expectedCandidateJob: jobAttestationFromRunResult(candidate)!,
     ...extra,
   };
+}
+
+/** Minimal official disk leg (skill-snapshot pins + job.json) for loadPairedComparison. */
+function writeOfficialDiskLeg(
+  root: string,
+  opts: {
+    runId: string;
+    role: "baseline" | "candidate";
+    evaluationId: string;
+    score: number;
+  },
+): void {
+  const body =
+    opts.role === "baseline" ? "neutral baseline body" : "candidate skill body";
+  const promptHash = hashPromptInstruction(body);
+  const promptKind =
+    opts.role === "baseline" ? "baseline_neutral" : "skill_md";
+  const snap = path.join(root, opts.runId, "skill-snapshot");
+  const scripts = path.join(snap, "scripts");
+  fs.mkdirSync(scripts, { recursive: true });
+  fs.writeFileSync(
+    path.join(scripts, "grade.js"),
+    "module.exports = {};\n",
+    "utf8",
+  );
+  const gradeHash = hashGradeJsFile(path.join(scripts, "grade.js"));
+  if (!gradeHash) throw new Error("grade.js hash missing in test fixture");
+  fs.writeFileSync(path.join(snap, "SKILL.md"), `${body}\n`, "utf8");
+  writeJsonFile(path.join(snap, "manifest.json"), {
+    taskSetId: "cde-v1",
+    taskIds: ["bug-01"],
+    _snapshot: {
+      evalSkillVersion: "abc",
+      promptKind,
+    },
+  });
+  const base = sample({
+    runId: opts.runId,
+    role: opts.role,
+    evaluationId: opts.evaluationId,
+    score: opts.score,
+    mode: "official",
+    modelId: "gpt-4.1-mini",
+    repeats: 3,
+    scoreSpread: 0,
+    evalSkillVersion: "abc",
+  });
+  writeJsonFile(path.join(root, opts.runId, "result.json"), {
+    ...base,
+    capture: {
+      ...base.capture!,
+      promptHash,
+      promptKind,
+      skillVersion: "abc",
+      env: {
+        ...base.capture!.env!,
+        gradeHash,
+      },
+    },
+  });
+  writeJsonFile(path.join(snap, "job.json"), {
+    runId: opts.runId,
+    evalSkillId: "code-debugging-eval",
+    mode: "official",
+    modelId: "gpt-4.1-mini",
+    repeats: 3,
+    role: opts.role,
+    evaluationId: opts.evaluationId,
+  });
 }
 
 describe("officialAdoptionStabilityGate", () => {
@@ -2869,6 +2939,135 @@ describe("resolvePairedCancelSibling", () => {
         ],
       }),
     ).toBeNull();
+  });
+});
+
+describe("loadPairedComparison official PASS confirmation", () => {
+  it("persists provisional 1/2 on disk then PASS after a second official tip pair", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-pass-confirm-"));
+    pairedTemps.push(root);
+    const evaluationId = "eval_100_passcnf";
+    const b1 = "run_100_basecn1";
+    const c1 = "run_100_candcn1";
+    const b2 = "run_100_basecn2";
+    const c2 = "run_100_candcn2";
+    const metaPath = path.join(root, evaluationId, "evaluation.json");
+
+    writeJsonFile(metaPath, {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "official",
+      baselineRunId: b1,
+      candidateRunId: c1,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    writeOfficialDiskLeg(root, {
+      runId: b1,
+      role: "baseline",
+      evaluationId,
+      score: 0.9,
+    });
+    writeOfficialDiskLeg(root, {
+      runId: c1,
+      role: "candidate",
+      evaluationId,
+      score: 1,
+    });
+
+    const first = loadPairedComparison({ resultsDir: root, evaluationId });
+    expect(first).not.toBeNull();
+    expect(first!.parity.ok).toBe(true);
+    expect(first!.verdict).toBe("INCONCLUSIVE");
+    expect(first!.adoptionConfirmation?.step).toBe(1);
+    expect(first!.adoptionConfirmation?.required).toBe(
+      OFFICIAL_PASS_CONFIRMATIONS_REQUIRED,
+    );
+
+    const metaAfterFirst = JSON.parse(
+      fs.readFileSync(metaPath, "utf8"),
+    ) as {
+      officialPassProvisional?: {
+        baselineRunId: string;
+        candidateRunId: string;
+      };
+    };
+    expect(metaAfterFirst.officialPassProvisional).toMatchObject({
+      baselineRunId: b1,
+      candidateRunId: c1,
+    });
+    expect(metaAfterFirst.officialPassProvisional?.recordedAt).toBeTruthy();
+
+    writeOfficialDiskLeg(root, {
+      runId: b2,
+      role: "baseline",
+      evaluationId,
+      score: 0.9,
+    });
+    writeOfficialDiskLeg(root, {
+      runId: c2,
+      role: "candidate",
+      evaluationId,
+      score: 1,
+    });
+    writeJsonFile(metaPath, {
+      ...metaAfterFirst,
+      baselineRunId: b2,
+      candidateRunId: c2,
+      updatedAt: "2026-10-13T00:00:00.000Z",
+    });
+
+    const confirmed = loadPairedComparison({ resultsDir: root, evaluationId });
+    expect(confirmed).not.toBeNull();
+    expect(confirmed!.parity.ok).toBe(true);
+    expect(confirmed!.verdict).toBe("PASS");
+    expect(confirmed!.baselineRunId).toBe(b2);
+    expect(confirmed!.candidateRunId).toBe(c2);
+    expect(confirmed!.adoptionConfirmation?.step).toBe(
+      OFFICIAL_PASS_CONFIRMATIONS_REQUIRED,
+    );
+
+    const metaAfterPass = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
+      officialPassProvisional?: unknown;
+    };
+    expect(metaAfterPass.officialPassProvisional).toBeUndefined();
+  });
+
+  it("keeps provisional 1/2 when the same tip pair is reloaded from disk", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-pass-same-"));
+    pairedTemps.push(root);
+    const evaluationId = "eval_100_passame";
+    const baselineRunId = "run_100_basepsm";
+    const candidateRunId = "run_100_candpsm";
+    const metaPath = path.join(root, evaluationId, "evaluation.json");
+
+    writeJsonFile(metaPath, {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "official",
+      baselineRunId,
+      candidateRunId,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+    writeOfficialDiskLeg(root, {
+      runId: baselineRunId,
+      role: "baseline",
+      evaluationId,
+      score: 0.9,
+    });
+    writeOfficialDiskLeg(root, {
+      runId: candidateRunId,
+      role: "candidate",
+      evaluationId,
+      score: 1,
+    });
+
+    const first = loadPairedComparison({ resultsDir: root, evaluationId });
+    expect(first!.verdict).toBe("INCONCLUSIVE");
+
+    const again = loadPairedComparison({ resultsDir: root, evaluationId });
+    expect(again!.verdict).toBe("INCONCLUSIVE");
+    expect(again!.adoptionConfirmation?.step).toBe(1);
+    expect(again!.rationale).toMatch(/Provisional PASS 1\/2 already recorded/i);
   });
 });
 
