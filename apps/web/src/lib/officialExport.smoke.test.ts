@@ -27,6 +27,8 @@ const officialCompareOpts = {
   expectedCandidateEvalSkillVersion: "abc",
   expectedBaselinePromptKind: "baseline_neutral" as const,
   expectedCandidatePromptKind: "skill_md" as const,
+  expectedTaskSetId: "cde-v1",
+  expectedTaskIds: ["bug-01"],
 };
 
 function officialLeg(

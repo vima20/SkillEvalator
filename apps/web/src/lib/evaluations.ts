@@ -3,23 +3,16 @@ import path from "node:path";
 import {
   assertSafeId,
   clearRetryMarker,
-  compareBaselineCandidate,
   findRetryParentRunId,
   hasLiveJobFile,
   isRetryEnqueueLockBusy,
+  loadPairedComparison,
   loadRunResult,
   loadRunStatus,
   readJsonFile,
   releaseWxLock,
   resolveComparisonLegs,
-  resolveEvaluationMetaEvalSkillId,
-  resolveEvaluationMetaEvaluationId,
-  resolveEvaluationMetaMode,
   resolveLegRunIdViaRetryChain,
-  resolveTrustedGradeHashFromRunResultDir,
-  resolveTrustedJobAttestationFromRunResultDir,
-  resolveTrustedPromptHashFromRunResultDir,
-  resolveTrustedSnapshotManifestPinsFromRunResultDir,
   tryAcquireWxLock,
   unlinkBenefitReportCache,
   writeJsonFile,
@@ -412,109 +405,16 @@ export function loadEvaluationComparison(
     loadResult: (runId) => loadRunResult(dir, runId),
   });
 
+  // Same pin path as worker Benefit cache — do not re-implement parity opts here
+  // (expectedTaskIds / taskSetId and snapshot mismatches must stay in sync).
   const comparison =
     baseline && candidate
-      ? (() => {
-          const metaPresent = Boolean(meta);
-          const modePin = resolveEvaluationMetaMode({
-            metaMode: meta?.mode,
-            baselineMode: baseline.mode,
-            candidateMode: candidate.mode,
-            evaluationMetaPresent: metaPresent,
-          });
-          const skillPin = resolveEvaluationMetaEvalSkillId({
-            metaEvalSkillId: meta?.evalSkillId,
-            baselineEvalSkillId: baseline.evalSkillId,
-            candidateEvalSkillId: candidate.evalSkillId,
-            evaluationMetaPresent: metaPresent,
-          });
-          const evalIdPin = resolveEvaluationMetaEvaluationId({
-            folderEvaluationId: evaluationId,
-            metaEvaluationId: meta?.evaluationId,
-            evaluationMetaPresent: metaPresent,
-          });
-          const officialDisk =
-            modePin.expectedEvaluationMode === "official" ||
-            baseline.mode === "official" ||
-            candidate.mode === "official";
-          // Tip snapshot pins — grade from candidate; prompt hashes from each leg.
-          const expectedGradeHash = officialDisk
-            ? resolveTrustedGradeHashFromRunResultDir(dir, candidate.runId)
-            : undefined;
-          const expectedBaselinePromptHash = officialDisk
-            ? resolveTrustedPromptHashFromRunResultDir(dir, baseline.runId)
-            : undefined;
-          const expectedCandidatePromptHash = officialDisk
-            ? resolveTrustedPromptHashFromRunResultDir(dir, candidate.runId)
-            : undefined;
-          const baselineSnapPins = officialDisk
-            ? resolveTrustedSnapshotManifestPinsFromRunResultDir(
-                dir,
-                baseline.runId,
-              )
-            : {};
-          const candidateSnapPins = officialDisk
-            ? resolveTrustedSnapshotManifestPinsFromRunResultDir(
-                dir,
-                candidate.runId,
-              )
-            : {};
-          const expectedBaselineJob = officialDisk
-            ? resolveTrustedJobAttestationFromRunResultDir(dir, baseline.runId)
-            : undefined;
-          const expectedCandidateJob = officialDisk
-            ? resolveTrustedJobAttestationFromRunResultDir(dir, candidate.runId)
-            : undefined;
-          const extraParityIssues = [
-            ...modePin.issues,
-            ...skillPin.issues,
-            ...evalIdPin.issues,
-          ];
-          if (officialDisk && meta?.smoke === true) {
-            extraParityIssues.push(
-              "official Comparison rejects evaluation.json smoke=true (fixture plant)",
-            );
-          }
-          return compareBaselineCandidate(baseline, candidate, {
-            ...(skillPin.expectedEvalSkillId
-              ? { expectedEvalSkillId: skillPin.expectedEvalSkillId }
-              : {}),
-            ...(modePin.expectedEvaluationMode
-              ? { expectedEvaluationMode: modePin.expectedEvaluationMode }
-              : {}),
-            ...(evalIdPin.expectedEvaluationId
-              ? { expectedEvaluationId: evalIdPin.expectedEvaluationId }
-              : {}),
-            ...(expectedGradeHash ? { expectedGradeHash } : {}),
-            ...(expectedBaselinePromptHash
-              ? { expectedBaselinePromptHash }
-              : {}),
-            ...(expectedCandidatePromptHash
-              ? { expectedCandidatePromptHash }
-              : {}),
-            ...(baselineSnapPins.evalSkillVersion
-              ? {
-                  expectedBaselineEvalSkillVersion:
-                    baselineSnapPins.evalSkillVersion,
-                }
-              : {}),
-            ...(candidateSnapPins.evalSkillVersion
-              ? {
-                  expectedCandidateEvalSkillVersion:
-                    candidateSnapPins.evalSkillVersion,
-                }
-              : {}),
-            ...(baselineSnapPins.promptKind
-              ? { expectedBaselinePromptKind: baselineSnapPins.promptKind }
-              : {}),
-            ...(candidateSnapPins.promptKind
-              ? { expectedCandidatePromptKind: candidateSnapPins.promptKind }
-              : {}),
-            ...(expectedBaselineJob ? { expectedBaselineJob } : {}),
-            ...(expectedCandidateJob ? { expectedCandidateJob } : {}),
-            ...(extraParityIssues.length ? { extraParityIssues } : {}),
-          });
-        })()
+      ? loadPairedComparison({
+          resultsDir: dir,
+          evaluationId,
+          baselineRunId: baseline.runId,
+          candidateRunId: candidate.runId,
+        })
       : null;
 
   // Always return tip leg ids in meta (even when disk heal lock failed) so

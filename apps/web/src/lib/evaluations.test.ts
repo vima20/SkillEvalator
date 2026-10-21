@@ -119,6 +119,117 @@ describe("resolveTipCandidateRunId", () => {
 });
 
 describe("loadEvaluationComparison meta mode", () => {
+  it("delegates official Comparison pins to loadPairedComparison", async () => {
+    const fsSync = await import("node:fs");
+    const pathMod = await import("node:path");
+    const src = fsSync.readFileSync(
+      pathMod.join(process.cwd(), "src/lib/evaluations.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/loadPairedComparison/);
+    expect(src).not.toMatch(/compareBaselineCandidate/);
+  });
+
+  it("forwards skill-snapshot taskIds (no false missing expectedTaskIds)", async () => {
+    const { hashPromptInstruction, hashGradeJsFile } = await import(
+      "@skillevalator/core"
+    );
+    const evaluationId = "eval_100_taskpin";
+    const baselineRunId = "run_100_basetpin";
+    const candidateRunId = "run_100_candtpin";
+    const gradeBody = "module.exports = {};\n";
+
+    writeJsonFile(path.join(resultsRoot, evaluationId, "evaluation.json"), {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      mode: "official",
+      baselineRunId,
+      candidateRunId,
+      createdAt: "2026-10-12T00:00:00.000Z",
+    });
+
+    for (const [id, role, score] of [
+      [baselineRunId, "baseline", 0.9],
+      [candidateRunId, "candidate", 1],
+    ] as const) {
+      const body =
+        role === "baseline" ? "neutral baseline body" : "candidate skill body";
+      const snap = path.join(resultsRoot, id, "skill-snapshot");
+      fs.mkdirSync(path.join(snap, "scripts"), { recursive: true });
+      fs.writeFileSync(path.join(snap, "scripts", "grade.js"), gradeBody, "utf8");
+      fs.writeFileSync(path.join(snap, "SKILL.md"), `${body}\n`, "utf8");
+      writeJsonFile(path.join(snap, "manifest.json"), {
+        taskSetId: "cde-v1",
+        taskIds: ["bug-01"],
+        dryRunIds: ["bug-01"],
+        githubUrl:
+          "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
+        targetFile: { "bug-01": "app.js" },
+        _snapshot: {
+          evalSkillVersion: "abc",
+          promptKind: role === "baseline" ? "baseline_neutral" : "skill_md",
+        },
+      });
+      const gradeHash = hashGradeJsFile(path.join(snap, "scripts", "grade.js"))!;
+      const result = sampleResult({
+        runId: id,
+        role,
+        mode: "official",
+        evaluationId,
+        score,
+      });
+      writeJsonFile(path.join(resultsRoot, id, "result.json"), {
+        ...result,
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        capture: {
+          ...result.capture,
+          promptHash: hashPromptInstruction(body),
+          promptKind: role === "baseline" ? "baseline_neutral" : "skill_md",
+          env: {
+            fakeProduce: false,
+            produceAttested: true,
+            costCapUsd: 5,
+            costHardStop: true,
+            allowHostGrade: false,
+            gradeHash,
+            temperature: 0,
+            topP: 1,
+            seed: 42,
+            maxOutputTokens: 1024,
+            modelDryRun: "gpt-4o-mini",
+            modelOfficial: "gpt-4.1-mini",
+            grade: "docker_script",
+          },
+        },
+        tokens: { promptTokens: 10, completionTokens: 10, totalTokens: 20 },
+      });
+      writeJsonFile(path.join(resultsRoot, id, "job.json"), {
+        runId: id,
+        evalSkillId: "code-debugging-eval",
+        mode: "official",
+        modelId: "gpt-4.1-mini",
+        repeats: 3,
+        role,
+        evaluationId,
+      });
+    }
+
+    const { loadEvaluationComparison } = await import("./evaluations.js");
+    const out = loadEvaluationComparison(evaluationId);
+    expect(out.comparison).not.toBeNull();
+    expect(
+      out.comparison!.parity.issues.some((i) =>
+        /requires trusted expectedTaskIds/i.test(i),
+      ),
+    ).toBe(false);
+    expect(
+      out.comparison!.parity.issues.some((i) =>
+        /requires trusted expectedTaskSetId/i.test(i),
+      ),
+    ).toBe(false);
+  });
+
   it("INCONCLUSIVE when evaluation.json mode is garbage even if legs agree", async () => {
     const evaluationId = "eval_100_badmode";
     const baselineRunId = "run_100_base_bm";
