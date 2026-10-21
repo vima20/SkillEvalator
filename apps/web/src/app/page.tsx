@@ -62,6 +62,25 @@ export default async function NewRunPage({
 
       {skills.length === 0 ? (
         <div className="panel">
+          {preferOfficial ? (
+            <div className="panel callout-warn" style={{ marginBottom: 12 }}>
+              <strong>Official mode requested</strong>
+              <p>
+                <code>?mode=official</code> is set (Settings Ready handoff), but
+                New run cannot apply Official until at least one eval skill is
+                available. Add a skill under{" "}
+                <code>eval-skills/</code>, then refresh this page — Official
+                will be selected automatically.
+              </p>
+              <p className="hint" style={{ marginBottom: 0 }}>
+                Confirm{" "}
+                <Link href={withPilotFocus("/settings", pilotFocus)}>
+                  Settings
+                </Link>{" "}
+                stays Ready before enqueueing.
+              </p>
+            </div>
+          ) : null}
           <EmptyState
             title="No eval skills found"
             body="Add a skill under eval-skills/ with fixtures/manifest.json, then refresh this page."

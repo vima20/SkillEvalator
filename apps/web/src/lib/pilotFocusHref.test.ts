@@ -40,4 +40,16 @@ describe("pilotFocusHref", () => {
       "/?mode=official&focus=pilot",
     );
   });
+
+  it("empty-skills New run surfaces ?mode=official until skills exist", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const page = fs.readFileSync(
+      path.join(process.cwd(), "src/app/page.tsx"),
+      "utf8",
+    );
+    expect(page).toMatch(/Official mode requested/);
+    expect(page).toMatch(/preferOfficial \? \(/);
+    expect(page).toMatch(/\?mode=official/);
+  });
 });
