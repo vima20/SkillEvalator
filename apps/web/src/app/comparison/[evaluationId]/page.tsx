@@ -256,9 +256,11 @@ export default async function ComparisonDetailPage({
         <p>
           <strong>{comparison.verdict}</strong> here is the paired lift gate
           (baseline↔candidate). Official PASS also needs candidate score ≥
-          0.99 (Benefit USE floor), lift ≥ +5 pp, no per-task regressions vs
-          baseline, and every candidate task soft-pass (≥0.8). Benefit USE
-          needs official PASS; DO NOT USE needs official FAIL
+          0.99 (Benefit USE floor), lift ≥ +5 pp, repeat scoreSpread ≤0.05 on
+          both legs, no per-task regressions vs baseline, every candidate task
+          soft-pass (≥0.8), and two independent official PASS pairs (1/2
+          provisional). Benefit USE needs confirmed official PASS; DO NOT USE
+          needs official FAIL
           {showOfficialDownloads ? (
             <>
               {" "}
@@ -307,6 +309,13 @@ export default async function ComparisonDetailPage({
           {comparison.mode === "dry-run" ? " · dry-run" : ""}
         </p>
         <p className="verdict-headline">{comparison.verdict}</p>
+        {comparison.adoptionConfirmation ? (
+          <p className="verdict-decision">
+            Adoption confirmation{" "}
+            {comparison.adoptionConfirmation.step}/
+            {comparison.adoptionConfirmation.required}
+          </p>
+        ) : null}
         <p className="verdict-decision">
           Lift{" "}
           {comparison.lift !== null

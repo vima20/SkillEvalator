@@ -649,6 +649,29 @@ export function applyPairedComparisonGate(opts: {
   }
 
   const v: ComparisonVerdict = comparison.verdict;
+  const confirm = comparison.adoptionConfirmation;
+  if (
+    v === "INCONCLUSIVE" &&
+    comparison.mode === "official" &&
+    confirm &&
+    confirm.step < confirm.required
+  ) {
+    verdict = {
+      recommendation: "inconclusive",
+      headline: `INCONCLUSIVE — provisional official PASS (${confirm.step}/${confirm.required})`,
+      decision: "INCONCLUSIVE — second official pair required",
+      rationale:
+        `Official Comparison met lift, stability, and per-task gates for tip pair ${comparison.baselineRunId}↔${comparison.candidateRunId}, but adoption needs ${confirm.required} independent official PASS pairs. ` +
+        `Benefit USE stays locked until the confirming run PASSes. ${comparison.rationale}`,
+    };
+    rating = withUpdatedRecommendation(
+      rating,
+      4,
+      `Provisional PASS ${confirm.step}/${confirm.required} — USE locked.`,
+      "Enqueue another official baseline↔candidate run (new tip legs). Benefit USE unlocks only after the second PASS.",
+    );
+    return { verdict, rating };
+  }
   if (v === "PASS" && comparison.mode === "official") {
     // Tip PASS: keep score-based USE or DO NOT USE (floor shortfall).
     return { verdict, rating };

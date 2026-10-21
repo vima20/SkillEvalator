@@ -4,8 +4,12 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   LIFT_PASS_DELTA,
+  OFFICIAL_ADOPTION_MAX_SCORE_SPREAD,
+  OFFICIAL_PASS_CONFIRMATIONS_REQUIRED,
+  applyOfficialPassConfirmationPolicy,
   compareBaselineCandidate,
   loadPairedComparison,
+  officialAdoptionStabilityGate,
   officialAdoptionTaskGate,
   pairEvaluationRuns,
   resolveComparisonLegs,
@@ -15,6 +19,7 @@ import {
   resolvePairedCancelSibling,
 } from "./comparison.js";
 import { writeJsonFile } from "./fsJson.js";
+import { OFFICIAL_MIN_REPEATS } from "./job.js";
 import { jobAttestationFromRunResult } from "./jobSnapshot.js";
 import { hashPromptInstruction } from "./promptSnapshot.js";
 import { saveRetryMarker } from "./retryDedup.js";
@@ -107,6 +112,12 @@ function sample(over: Partial<RunResult> & Pick<RunResult, "runId" | "role">): R
     role: resolvedRole,
     taskIds: rest.taskIds ?? taskIds,
     perTask: rest.perTask ?? defaultPerTask,
+    scoreSpread:
+      rest.scoreSpread ??
+      ((rest.mode ?? "dry-run") === "official" &&
+      (rest.repeats ?? 1) >= OFFICIAL_MIN_REPEATS
+        ? 0
+        : undefined),
     // Default provenance for official PASS; explicit capture is used as-is
     // (parity tests must omit fields without default fill-in).
     capture: rest.capture
@@ -149,6 +160,75 @@ function officialOpts(
     ...extra,
   };
 }
+
+describe("officialAdoptionStabilityGate", () => {
+  it("blocks official PASS when repeat spread is high or missing", () => {
+    const stable = sample({
+      runId: "b",
+      role: "baseline",
+      mode: "official",
+      repeats: 3,
+      scoreSpread: 0,
+    });
+    expect(officialAdoptionStabilityGate(stable, stable).ok).toBe(true);
+
+    const volatile = sample({
+      runId: "c",
+      role: "candidate",
+      mode: "official",
+      repeats: 3,
+      scoreSpread: OFFICIAL_ADOPTION_MAX_SCORE_SPREAD + 0.02,
+    });
+    const blocked = officialAdoptionStabilityGate(stable, volatile);
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) expect(blocked.rationale).toMatch(/scoreSpread/i);
+  });
+});
+
+describe("applyOfficialPassConfirmationPolicy", () => {
+  it("requires two distinct official PASS pairs", () => {
+    const b1 = sample({
+      runId: "b1",
+      role: "baseline",
+      score: 0.94,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      scoreSpread: 0,
+    });
+    const c1 = sample({
+      runId: "c1",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      scoreSpread: 0,
+    });
+    const pass = compareBaselineCandidate(b1, c1, officialOpts(b1, c1));
+    expect(pass.verdict).toBe("PASS");
+
+    const first = applyOfficialPassConfirmationPolicy(pass, null);
+    expect(first.comparison.verdict).toBe("INCONCLUSIVE");
+    expect(first.comparison.adoptionConfirmation?.step).toBe(1);
+    expect(first.comparison.adoptionConfirmation?.required).toBe(
+      OFFICIAL_PASS_CONFIRMATIONS_REQUIRED,
+    );
+    expect(first.recordProvisional).not.toBeNull();
+
+    const secondPair = {
+      ...pass,
+      baselineRunId: "b2",
+      candidateRunId: "c2",
+    };
+    const confirmed = applyOfficialPassConfirmationPolicy(
+      secondPair,
+      first.recordProvisional,
+    );
+    expect(confirmed.comparison.verdict).toBe("PASS");
+    expect(confirmed.clearProvisional).toBe(true);
+  });
+});
 
 describe("officialAdoptionTaskGate", () => {
   it("requires every candidate task to soft-pass", () => {

@@ -387,6 +387,20 @@ describe("benefitReport", () => {
     });
     expect(inc.verdict.recommendation).toBe("inconclusive");
     expect(inc.rating.stars).toBe(4);
+
+    const provisional = applyPairedComparisonGate({
+      result,
+      verdict,
+      rating,
+      comparison: {
+        ...comparisonStub("INCONCLUSIVE"),
+        mode: "official",
+        adoptionConfirmation: { step: 1, required: 2 },
+      },
+    });
+    expect(provisional.verdict.recommendation).toBe("inconclusive");
+    expect(provisional.verdict.headline).toMatch(/provisional official PASS/i);
+    expect(provisional.rating.stars).toBe(4);
   });
 
   it("applyPairedComparisonGate distinguishes waiting vs unavailable without Comparison", () => {

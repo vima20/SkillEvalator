@@ -35,6 +35,23 @@ import {
 /** Unikie alustava PASS: candidate ≥ baseline + 5 percentage points. */
 export const LIFT_PASS_DELTA = 0.05;
 
+/** Official adoption: max repeat score variance (aligns with Strong label spread). */
+export const OFFICIAL_ADOPTION_MAX_SCORE_SPREAD = 0.05;
+
+/** Benefit USE / Comparison PASS: require two independent official PASS pairs. */
+export const OFFICIAL_PASS_CONFIRMATIONS_REQUIRED = 2;
+
+export type OfficialPassProvisional = {
+  baselineRunId: string;
+  candidateRunId: string;
+  recordedAt: string;
+};
+
+export type AdoptionConfirmation = {
+  step: number;
+  required: number;
+};
+
 /**
  * Official adoption PASS: per-task gates on top of aggregate lift + USE floor.
  * Prevents “one task carries the average” false positives.
@@ -68,6 +85,127 @@ export function officialAdoptionTaskGate(opts: {
     };
   }
   return { ok: true };
+}
+
+/** Official PASS: repeat spread on both legs must be low (stable signal). */
+export function officialAdoptionStabilityGate(
+  baseline: RunResult,
+  candidate: RunResult,
+): { ok: true } | { ok: false; rationale: string } {
+  if (baseline.mode !== "official" || candidate.mode !== "official") {
+    return { ok: true };
+  }
+  for (const leg of [
+    { label: "baseline", run: baseline },
+    { label: "candidate", run: candidate },
+  ] as const) {
+    if (leg.run.repeats < OFFICIAL_MIN_REPEATS) continue;
+    const spread = leg.run.scoreSpread;
+    if (spread === undefined || !Number.isFinite(spread)) {
+      return {
+        ok: false,
+        rationale:
+          `${leg.label} is missing scoreSpread across ${leg.run.repeats} official repeats — cannot confirm a stable adoption signal.`,
+      };
+    }
+    if (spread > OFFICIAL_ADOPTION_MAX_SCORE_SPREAD) {
+      return {
+        ok: false,
+        rationale:
+          `${leg.label} scoreSpread ${spread.toFixed(4)} exceeds official stability max ${OFFICIAL_ADOPTION_MAX_SCORE_SPREAD.toFixed(2)} (repeat variance too high). Re-run official before adoption.`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
+/**
+ * Downgrade first raw PASS to INCONCLUSIVE (1/N) until a second distinct
+ * official tip pair also PASSes. Clears provisional on official FAIL.
+ */
+export function applyOfficialPassConfirmationPolicy(
+  comparison: RunComparison,
+  provisional?: OfficialPassProvisional | null,
+): {
+  comparison: RunComparison;
+  recordProvisional: OfficialPassProvisional | null;
+  clearProvisional: boolean;
+} {
+  const required = OFFICIAL_PASS_CONFIRMATIONS_REQUIRED;
+  if (comparison.mode !== "official") {
+    return {
+      comparison,
+      recordProvisional: null,
+      clearProvisional: false,
+    };
+  }
+  if (comparison.verdict === "FAIL") {
+    return {
+      comparison,
+      recordProvisional: null,
+      clearProvisional: Boolean(provisional),
+    };
+  }
+  if (comparison.verdict !== "PASS") {
+    return {
+      comparison,
+      recordProvisional: null,
+      clearProvisional: false,
+    };
+  }
+
+  const pair = {
+    baselineRunId: comparison.baselineRunId,
+    candidateRunId: comparison.candidateRunId,
+  };
+
+  if (!provisional) {
+    const recordedAt = new Date().toISOString();
+    return {
+      comparison: {
+        ...comparison,
+        verdict: "INCONCLUSIVE",
+        rationale:
+          `Official adoption criteria met (provisional PASS 1/${required}). ` +
+          `Start a new official baseline↔candidate run (new tip legs) and PASS again to confirm Benefit USE. ` +
+          comparison.rationale,
+        adoptionConfirmation: { step: 1, required },
+      },
+      recordProvisional: { ...pair, recordedAt },
+      clearProvisional: false,
+    };
+  }
+
+  if (
+    provisional.baselineRunId === pair.baselineRunId &&
+    provisional.candidateRunId === pair.candidateRunId
+  ) {
+    return {
+      comparison: {
+        ...comparison,
+        verdict: "INCONCLUSIVE",
+        rationale:
+          `Provisional PASS 1/${required} already recorded for this tip pair. ` +
+          `Enqueue another official baseline↔candidate evaluation (new tip run ids) to confirm adoption. ` +
+          comparison.rationale,
+        adoptionConfirmation: { step: 1, required },
+      },
+      recordProvisional: null,
+      clearProvisional: false,
+    };
+  }
+
+  return {
+    comparison: {
+      ...comparison,
+      verdict: "PASS",
+      rationale:
+        `${comparison.rationale} Second independent official PASS confirmed (${required}/${required}).`,
+      adoptionConfirmation: { step: required, required },
+    },
+    recordProvisional: null,
+    clearProvisional: true,
+  };
 }
 
 export type ComparisonVerdict = "PASS" | "FAIL" | "INCONCLUSIVE";
@@ -112,6 +250,8 @@ export type RunComparison = {
   perTask: TaskRegression[];
   regressions: number;
   improvements: number;
+  /** Present when official PASS needs a second confirming pair (1/N). */
+  adoptionConfirmation?: AdoptionConfirmation;
 };
 
 function scoreOrNull(r: RunResult): number | null {
@@ -1096,17 +1236,23 @@ export function compareBaselineCandidate(
       verdict = "INCONCLUSIVE";
       rationale = `Dry-run lift ${(lift * 100).toFixed(1)} pp (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}) looks encouraging but is not Comparison PASS. Re-run mode=official (≥${OFFICIAL_USE_SCORE_FLOOR} candidate + ≥${(LIFT_PASS_DELTA * 100).toFixed(0)} pp lift) for adoption evidence.`;
     } else {
-      const taskGate = officialAdoptionTaskGate({
-        candidate,
-        regressions,
-        improvements,
-      });
-      if (!taskGate.ok) {
+      const stability = officialAdoptionStabilityGate(baseline, candidate);
+      if (!stability.ok) {
         verdict = "FAIL";
-        rationale = taskGate.rationale;
+        rationale = stability.rationale;
       } else {
-        verdict = "PASS";
-        rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed — every task held or improved.`;
+        const taskGate = officialAdoptionTaskGate({
+          candidate,
+          regressions,
+          improvements,
+        });
+        if (!taskGate.ok) {
+          verdict = "FAIL";
+          rationale = taskGate.rationale;
+        } else {
+          verdict = "PASS";
+          rationale = `Candidate improves on baseline by ${(lift * 100).toFixed(1)} pp (need ≥ ${(LIFT_PASS_DELTA * 100).toFixed(0)} pp). Lift ${lift.toFixed(3)} (candidate ${candScore.toFixed(3)} − baseline ${baseScore.toFixed(3)}). Task deltas: ${improvements} improved, ${regressions} regressed — every task held or improved.`;
+        }
       }
     }
   } else {
@@ -1281,6 +1427,8 @@ type EvaluationMetaDisk = {
   updatedAt?: string;
   /** Fixture plant (smoke:official) — never adoption PASS on disk. */
   smoke?: boolean;
+  /** First official PASS tip pair awaiting confirmation run. */
+  officialPassProvisional?: OfficialPassProvisional;
 };
 
 /**
@@ -1321,6 +1469,58 @@ function tryHealEvaluationMetaTipOnDisk(opts: {
   } finally {
     releaseWxLock(lockPath);
   }
+}
+
+function tryPersistOfficialPassProvisional(opts: {
+  metaPath: string;
+  evaluationId: string;
+  provisional: OfficialPassProvisional | null;
+}): void {
+  const metaPath = opts.metaPath;
+  const lockPath = `${metaPath}.lock`;
+  if (!tryAcquireWxLock(lockPath, { staleMs: 60_000, retries: 40 })) {
+    return;
+  }
+  try {
+    if (!fs.existsSync(metaPath)) return;
+    const meta = readJsonFile(metaPath) as EvaluationMetaDisk;
+    if (meta.evaluationId !== opts.evaluationId) return;
+    writeJsonFile(metaPath, {
+      ...meta,
+      officialPassProvisional: opts.provisional ?? undefined,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch {
+    /* best-effort */
+  } finally {
+    releaseWxLock(lockPath);
+  }
+}
+
+function finalizeOfficialPassConfirmation(opts: {
+  metaPath: string;
+  evaluationId: string;
+  meta: EvaluationMetaDisk | null;
+  comparison: RunComparison;
+}): RunComparison {
+  const applied = applyOfficialPassConfirmationPolicy(
+    opts.comparison,
+    opts.meta?.officialPassProvisional,
+  );
+  if (applied.clearProvisional) {
+    tryPersistOfficialPassProvisional({
+      metaPath: opts.metaPath,
+      evaluationId: opts.evaluationId,
+      provisional: null,
+    });
+  } else if (applied.recordProvisional) {
+    tryPersistOfficialPassProvisional({
+      metaPath: opts.metaPath,
+      evaluationId: opts.evaluationId,
+      provisional: applied.recordProvisional,
+    });
+  }
+  return applied.comparison;
 }
 
 /**
@@ -1509,7 +1709,7 @@ export function loadPairedComparison(opts: {
       "skill-snapshot taskIds differ between baseline and candidate",
     );
   }
-  return compareBaselineCandidate(baseline, candidate, {
+  const comparison = compareBaselineCandidate(baseline, candidate, {
     ...(skillPin.expectedEvalSkillId
       ? { expectedEvalSkillId: skillPin.expectedEvalSkillId }
       : {}),
@@ -1554,5 +1754,11 @@ export function loadPairedComparison(opts: {
     ...(expectedBaselineJob ? { expectedBaselineJob } : {}),
     ...(expectedCandidateJob ? { expectedCandidateJob } : {}),
     ...(extraParityIssues.length ? { extraParityIssues } : {}),
+  });
+  return finalizeOfficialPassConfirmation({
+    metaPath,
+    evaluationId,
+    meta,
+    comparison,
   });
 }
