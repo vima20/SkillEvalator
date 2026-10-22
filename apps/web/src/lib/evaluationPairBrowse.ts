@@ -40,6 +40,13 @@ export function pairExportEvidenceFromBrowse(
   };
 }
 
+/** APIs: one browse pass for export gates (tip modes beat stale comparison.json). */
+export function pairExportEvidenceFromPacked(
+  packed: PackedEvaluationBrowse,
+): ReturnType<typeof pairExportEvidenceFromBrowse> {
+  return pairExportEvidenceFromBrowse(evaluationPairBrowseFromPacked(packed));
+}
+
 export type EvaluationPairBrowseEntry = {
   packed: PackedEvaluationBrowse;
   tipCandidateRunId: string | null;

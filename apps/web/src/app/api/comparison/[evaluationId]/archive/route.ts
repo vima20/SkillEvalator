@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, findRepoRoot } from "@skillevalator/core";
-import {
-  evaluationPairBrowseFromPacked,
-  pairExportEvidenceFromBrowse,
-} from "@/lib/evaluationPairBrowse";
+import { pairExportEvidenceFromPacked } from "@/lib/evaluationPairBrowse";
 import {
   loadEvaluationComparison,
   resolveTipBaselineRunId,
@@ -54,9 +51,7 @@ export async function GET(
 
     const gate = pilotArchiveGate({
       comparison,
-      ...pairExportEvidenceFromBrowse(
-        evaluationPairBrowseFromPacked(packed),
-      ),
+      ...pairExportEvidenceFromPacked(packed),
     });
     if (!gate.ok) {
       return NextResponse.json(

@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, comparisonToCsv } from "@skillevalator/core";
 import { comparisonCsvGate } from "@/lib/comparisonExport";
-import {
-  evaluationPairBrowseFromPacked,
-  pairExportEvidenceFromBrowse,
-} from "@/lib/evaluationPairBrowse";
+import { pairExportEvidenceFromPacked } from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
   EXPORT_FAILED_ERROR,
@@ -39,7 +36,7 @@ export async function GET(
     }
     const gate = comparisonCsvGate(
       comparison,
-      pairExportEvidenceFromBrowse(evaluationPairBrowseFromPacked(packed)),
+      pairExportEvidenceFromPacked(packed),
     );
     if (!gate.ok) {
       return NextResponse.json(

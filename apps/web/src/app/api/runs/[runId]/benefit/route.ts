@@ -7,10 +7,7 @@ import {
 } from "@skillevalator/core";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
-import {
-  evaluationPairBrowseFromPacked,
-  pairExportEvidenceFromBrowse,
-} from "@/lib/evaluationPairBrowse";
+import { pairExportEvidenceFromPacked } from "@/lib/evaluationPairBrowse";
 import {
   EXPORT_FAILED_ERROR,
   EXPORT_INVALID_REQUEST_ERROR,
@@ -42,9 +39,7 @@ export async function GET(
       status,
     });
     const format = new URL(req.url).searchParams.get("format");
-    const pairEvidence = packed
-      ? pairExportEvidenceFromBrowse(evaluationPairBrowseFromPacked(packed))
-      : {};
+    const pairEvidence = packed ? pairExportEvidenceFromPacked(packed) : {};
     const gate = benefitExportGate({
       report,
       comparison,

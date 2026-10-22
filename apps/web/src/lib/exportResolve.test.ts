@@ -243,12 +243,12 @@ describe("resolveExportGetError", () => {
     );
     expect(cmp).toMatch(/export_evaluation_meta_missing/);
     expect(cmp).toMatch(/export_comparison_not_ready/);
-    expect(cmp).toMatch(/pairExportEvidenceFromBrowse/);
+    expect(cmp).toMatch(/pairExportEvidenceFromPacked/);
     const archive = fs.readFileSync(
       path.join(cwd, "src/app/api/comparison/[evaluationId]/archive/route.ts"),
       "utf8",
     );
-    expect(archive).toMatch(/pairExportEvidenceFromBrowse/);
-    expect(benefit).toMatch(/pairExportEvidenceFromBrowse/);
+    expect(archive).toMatch(/pairExportEvidenceFromPacked/);
+    expect(benefit).toMatch(/pairExportEvidenceFromPacked/);
   });
 });

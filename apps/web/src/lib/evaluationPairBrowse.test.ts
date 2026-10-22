@@ -4,8 +4,10 @@ import {
   createEvaluationPairBrowseCache,
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
+  pairExportEvidenceFromPacked,
   type PackedEvaluationBrowse,
 } from "./evaluationPairBrowse.js";
+import { officialComparisonExportGate } from "./comparisonExport.js";
 
 vi.mock("@/lib/evaluations", () => ({
   loadEvaluationComparison: vi.fn(() => ({
@@ -59,6 +61,27 @@ describe("evaluationPairBrowseFromPacked", () => {
     expect(evidence.baselineMode).toBe("official");
     expect(evidence.candidateMode).toBe("official");
     expect(evidence.metaMode).toBe("dry-run");
+  });
+
+  it("pairExportEvidenceFromPacked feeds official export gate (stale comparison mode)", () => {
+    const packed = {
+      meta: { mode: "dry-run", smoke: false },
+      baseline: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      candidate: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+    } as PackedEvaluationBrowse;
+    expect(
+      officialComparisonExportGate(
+        packed.comparison!,
+        pairExportEvidenceFromPacked(packed),
+      ).ok,
+    ).toBe(true);
   });
 });
 
