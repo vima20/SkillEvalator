@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, findRepoRoot } from "@skillevalator/core";
-import { pairExportEvidenceFromPacked } from "@/lib/evaluationPairBrowse";
+import {
+  pairedAdoptionComparisonMode,
+  pairedAdoptionModesFromPacked,
+  pairExportEvidenceFromPacked,
+} from "@/lib/evaluationPairBrowse";
 import {
   loadEvaluationComparison,
   resolveTipBaselineRunId,
@@ -82,6 +86,10 @@ export async function GET(
         candidateProduceAttested:
           candidate.capture?.env?.produceAttested === true,
       },
+      adoptionMode: pairedAdoptionComparisonMode(
+        comparison,
+        pairedAdoptionModesFromPacked(packed),
+      ),
     });
 
     return new NextResponse(new Uint8Array(zip), {

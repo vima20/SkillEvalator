@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -143,5 +144,73 @@ describe("buildPilotArchiveZip", () => {
     expect(zip.byteLength).toBeGreaterThan(100);
     // ZIP local file header magic
     expect(zip.subarray(0, 2).toString("binary")).toBe("PK");
+  });
+
+  it("MANIFEST mode uses adoptionMode and records stale comparisonJsonMode", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "se-pilot-manifest-"));
+    temps.push(root);
+    const resultsDir = path.join(root, "results");
+    const evaluationId = "eval_manifest_mode";
+    const baselineRunId = "run_manifest_base";
+    const candidateRunId = "run_manifest_cand";
+    writeJsonFile(path.join(resultsDir, evaluationId, "evaluation.json"), {
+      evaluationId,
+      baselineRunId,
+      candidateRunId,
+      mode: "official",
+      evalSkillId: "code-debugging-eval",
+      createdAt: "2026-10-15T00:00:00.000Z",
+    });
+    const comparison = {
+      evaluationId,
+      evalSkillId: "code-debugging-eval",
+      taskSetId: "cde-v1",
+      mode: "dry-run" as const,
+      modelId: "gpt-4.1-mini",
+      verdict: "PASS" as const,
+      lift: 0.1,
+      baselineRunId,
+      candidateRunId,
+      baselineScore: 0.9,
+      candidateScore: 1,
+      rationale: "test",
+      capture: {},
+    };
+    const zip = buildPilotArchiveZip({
+      resultsDir,
+      evaluationId,
+      baselineRunId,
+      candidateRunId,
+      comparison: comparison as never,
+      meta: {
+        evaluationId,
+        evalSkillId: "code-debugging-eval",
+        mode: "official",
+        baselineRunId,
+        candidateRunId,
+        createdAt: "2026-10-15T00:00:00.000Z",
+      },
+      build: {
+        gitSha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        gitShaShort: "bbbbbbb",
+        dirty: false,
+      },
+      adoptionMode: "official",
+    });
+    const zipPath = path.join(root, "out.zip");
+    fs.writeFileSync(zipPath, zip);
+    const extractDir = path.join(root, "extract");
+    fs.mkdirSync(extractDir, { recursive: true });
+    const tar = spawnSync(
+      "tar",
+      ["-xf", zipPath, "-C", extractDir, "MANIFEST.json"],
+      { encoding: "utf8", windowsHide: true },
+    );
+    expect(tar.status).toBe(0);
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(extractDir, "MANIFEST.json"), "utf8"),
+    ) as { mode: string; comparisonJsonMode?: string };
+    expect(manifest.mode).toBe("official");
+    expect(manifest.comparisonJsonMode).toBe("dry-run");
   });
 });

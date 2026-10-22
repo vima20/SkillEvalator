@@ -249,6 +249,7 @@ describe("resolveExportGetError", () => {
       "utf8",
     );
     expect(archive).toMatch(/pairExportEvidenceFromPacked/);
+    expect(archive).toMatch(/pairedAdoptionComparisonMode/);
     expect(benefit).toMatch(/pairExportEvidenceFromPacked/);
     expect(benefit).toMatch(/pairedAdoptionComparisonMode/);
   });

@@ -5,7 +5,7 @@ import {
   isProvisionalOfficialPass,
   PROVISIONAL_OFFICIAL_PASS_CTA_TITLE,
 } from "@/lib/comparisonVerdictDisplay";
-import { pairedEvalDisplayModeFromPacked } from "@/lib/evaluationPairBrowse";
+import { resolvePairedDisplayModeFromPacked } from "@/lib/evaluationPairBrowse";
 
 type PackedComparison = {
   meta?: { mode?: string } | null;
@@ -23,7 +23,8 @@ export function comparisonCellMetaFromPacked(
 ): { label: string; title?: string } | null {
   const comparison = packed?.comparison;
   if (!comparison) return null;
-  const displayMode = pairedEvalDisplayModeFromPacked(packed ?? {}) ?? "dry-run";
+  const displayMode =
+    resolvePairedDisplayModeFromPacked(packed ?? {}) ?? "dry-run";
   const label = comparisonVerdictListLabel({
     verdict: comparison.verdict,
     displayMode,
@@ -56,7 +57,7 @@ export function comparisonUiFromPacked(packed: PackedComparison | null): {
     return { comparisonMeta };
   }
   const pairedDisplayMode =
-    pairedEvalDisplayModeFromPacked(packed ?? {}) ?? undefined;
+    resolvePairedDisplayModeFromPacked(packed ?? {}) ?? undefined;
   const comparisonProvisional =
     pairedDisplayMode &&
     isProvisionalOfficialPass({

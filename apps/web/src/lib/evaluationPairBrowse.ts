@@ -72,7 +72,7 @@ export function pairedEvalPreferOfficialFromPacked(
 
 /** List/detail chip mode — tip legs only (not stale comparison.json). */
 export function resolvePairedDisplayModeFromPacked(
-  packed: PackedEvaluationBrowse,
+  packed: PackedAdoptionModeSource & { comparison?: unknown | null },
 ): string | undefined {
   if (!packed.comparison) return undefined;
   return pairedEvalDisplayModeFromPacked(packed);

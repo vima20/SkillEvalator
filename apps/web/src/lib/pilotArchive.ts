@@ -113,6 +113,8 @@ export function buildPilotArchiveZip(opts: {
     candidateFakeProduce?: boolean;
     candidateProduceAttested?: boolean;
   };
+  /** Resolved from tip legs — may differ from comparison.json on disk. */
+  adoptionMode?: RunComparison["mode"];
 }): Buffer {
   const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "se-pilot-archive-"));
@@ -132,6 +134,7 @@ export function buildPilotArchiveZip(opts: {
     stageRunDir(opts.resultsDir, opts.baselineRunId, staging, "baseline");
     stageRunDir(opts.resultsDir, opts.candidateRunId, staging, "candidate");
 
+    const adoptionMode = opts.adoptionMode ?? opts.comparison.mode;
     const manifest = {
       kind: "skillevalator-pilot-archive",
       version: 1,
@@ -139,7 +142,10 @@ export function buildPilotArchiveZip(opts: {
       evaluationId,
       evalSkillId: opts.comparison.evalSkillId,
       taskSetId: opts.comparison.taskSetId,
-      mode: opts.comparison.mode,
+      mode: adoptionMode,
+      ...(adoptionMode !== opts.comparison.mode
+        ? { comparisonJsonMode: opts.comparison.mode }
+        : {}),
       verdict: opts.comparison.verdict,
       lift: opts.comparison.lift,
       modelId: opts.comparison.modelId,
