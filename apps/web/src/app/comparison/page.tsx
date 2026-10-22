@@ -8,10 +8,7 @@ import {
   benefitListPairLockedLabel,
   benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
-import {
-  canShowOfficialComparisonDownloads,
-  officialComparisonExportGate,
-} from "@/lib/comparisonExport";
+import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
 import { comparisonVerdictListLabel } from "@/lib/comparisonVerdictDisplay";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
@@ -107,19 +104,7 @@ export default async function ComparisonListPage({
     const downloadGate = c
       ? officialComparisonExportGate(c, pairEvidence)
       : null;
-    const comparisonMode =
-      displayMode === "official" || displayMode === "dry-run"
-        ? displayMode
-        : "dry-run";
-    const downloadsOk = c
-      ? canShowOfficialComparisonDownloads({
-          comparison: {
-            verdict: c.verdict,
-            mode: comparisonMode,
-          },
-          ...pairEvidence,
-        })
-      : false;
+    const downloadsOk = downloadGate?.ok === true;
     return {
       ...e,
       pending,
