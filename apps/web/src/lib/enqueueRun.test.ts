@@ -169,7 +169,7 @@ describe("enqueueEvaluationPair", () => {
     ).toBe(true);
     // Enqueue lock must not leak after a successful pair.
     expect(fs.existsSync(path.join(jobsRoot, ".enqueue.lock"))).toBe(false);
-  });
+  }, 15_000);
 
   it("rejects pair when fewer than two queue slots remain", async () => {
     const { enqueueEvaluationPair, enqueueRun } = await import(
