@@ -35,7 +35,7 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 - [ ] Official Comparison **PASS** vain jos candidate ≥ USE floor ja lift ≥ kynnys ([ACCEPTANCE.md](./ACCEPTANCE.md))
 - [ ] **2× official PASS:** ensimmäinen hyväksytty tip-pari näkyy provisionaalisena (**INCONCLUSIVE · 1/2** / banneri); Benefit **USE** vasta kun **toinen eri** official tip-pari vahvistaa (levyllä `officialPassProvisional` poistuu)
 - [ ] Benefit **USE** vain vahvistetun PASS:n jälkeen — ei dry-run / smoke / FAKE_PRODUCE / unattested / pair-blocked / provisionaalinen 1/2
-- [ ] Vie CSV (run / Comparison / Benefit) / **Download pilot archive** — sama gate (ei smoke / unattested); UI näyttää 401/409 virheenä (ei raakaa JSON:ia); säilytä zip + `eval_*` + run-kansiot
+- [ ] Vie CSV (run / Comparison / Benefit) / **Download pilot archive** — sama gate (ei smoke / unattested); **official-mode** tip-jaloista (ei pelkkä vanhentunut `comparison.json` dry-run); UI näyttää 401/409 virheenä (ei raakaa JSON:ia); säilytä zip + `eval_*` + run-kansiot
 
 ## 5. Jos Ready = Blocked tai preflight punaista
 

@@ -168,8 +168,12 @@ describe("resolveExportGetError", () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const cwd = process.cwd();
+    const runCsvAllowed = fs.readFileSync(
+      path.join(cwd, "src/lib/runCsvExportAllowed.ts"),
+      "utf8",
+    );
+    expect(runCsvAllowed).toMatch(/pairExportEvidenceFromBrowse/);
     for (const rel of [
-      "src/lib/runCsvExportAllowed.ts",
       "src/app/benefit/[runId]/page.tsx",
       "src/app/comparison/[evaluationId]/page.tsx",
       "src/app/comparison/page.tsx",
@@ -239,5 +243,12 @@ describe("resolveExportGetError", () => {
     );
     expect(cmp).toMatch(/export_evaluation_meta_missing/);
     expect(cmp).toMatch(/export_comparison_not_ready/);
+    expect(cmp).toMatch(/pairExportEvidenceFromBrowse/);
+    const archive = fs.readFileSync(
+      path.join(cwd, "src/app/api/comparison/[evaluationId]/archive/route.ts"),
+      "utf8",
+    );
+    expect(archive).toMatch(/pairExportEvidenceFromBrowse/);
+    expect(benefit).toMatch(/pairExportEvidenceFromBrowse/);
   });
 });

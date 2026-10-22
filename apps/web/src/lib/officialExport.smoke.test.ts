@@ -366,6 +366,16 @@ describe("official export gates smoke", () => {
     expect(
       pilotArchiveGate({ comparison: staleComparison, ...liveTips }).ok,
     ).toBe(true);
+    expect(
+      benefitExportGate({
+        report: {
+          verdict: { recommendation: "use" },
+          config: { mode: "official", runId: "run_c_stale" },
+        },
+        comparison: staleComparison,
+        ...liveTips,
+      }).ok,
+    ).toBe(true);
   });
 
   it("dry-run Comparison is denied by all adoption export gates", () => {

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, findRepoRoot } from "@skillevalator/core";
 import {
+  evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
+} from "@/lib/evaluationPairBrowse";
+import {
   loadEvaluationComparison,
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
@@ -50,16 +54,9 @@ export async function GET(
 
     const gate = pilotArchiveGate({
       comparison,
-      metaSmoke: meta.smoke === true,
-      baselineFakeProduce: baseline.capture?.env?.fakeProduce === true,
-      candidateFakeProduce: candidate.capture?.env?.fakeProduce === true,
-      baselineProduceAttested:
-        baseline.capture?.env?.produceAttested === true,
-      candidateProduceAttested:
-        candidate.capture?.env?.produceAttested === true,
-      metaMode: meta.mode,
-      baselineMode: baseline.mode,
-      candidateMode: candidate.mode,
+      ...pairExportEvidenceFromBrowse(
+        evaluationPairBrowseFromPacked(packed),
+      ),
     });
     if (!gate.ok) {
       return NextResponse.json(

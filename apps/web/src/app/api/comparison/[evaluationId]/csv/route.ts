@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, comparisonToCsv } from "@skillevalator/core";
 import { comparisonCsvGate } from "@/lib/comparisonExport";
+import {
+  evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
+} from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
   EXPORT_FAILED_ERROR,
@@ -16,8 +20,8 @@ export async function GET(
   try {
     const { evaluationId: raw } = await ctx.params;
     const evaluationId = assertSafeId(raw, "evaluationId");
-    const { meta, comparison, baseline, candidate } =
-      loadEvaluationComparison(evaluationId);
+    const packed = loadEvaluationComparison(evaluationId);
+    const { meta, comparison, baseline, candidate } = packed;
     if (!meta || !comparison) {
       return NextResponse.json(
         !meta
@@ -33,18 +37,10 @@ export async function GET(
         { status: 404 },
       );
     }
-    const gate = comparisonCsvGate(comparison, {
-      metaSmoke: meta.smoke === true,
-      baselineFakeProduce: baseline?.capture?.env?.fakeProduce === true,
-      candidateFakeProduce: candidate?.capture?.env?.fakeProduce === true,
-      baselineProduceAttested:
-        baseline?.capture?.env?.produceAttested === true,
-      candidateProduceAttested:
-        candidate?.capture?.env?.produceAttested === true,
-      metaMode: meta.mode,
-      baselineMode: baseline?.mode,
-      candidateMode: candidate?.mode,
-    });
+    const gate = comparisonCsvGate(
+      comparison,
+      pairExportEvidenceFromBrowse(evaluationPairBrowseFromPacked(packed)),
+    );
     if (!gate.ok) {
       return NextResponse.json(
         {

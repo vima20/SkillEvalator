@@ -8,6 +8,10 @@ import {
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import {
+  evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
+} from "@/lib/evaluationPairBrowse";
+import {
   EXPORT_FAILED_ERROR,
   EXPORT_INVALID_REQUEST_ERROR,
 } from "@/lib/exportResolve";
@@ -33,23 +37,19 @@ export async function GET(
       );
     }
     const status = loadRunStatus(root, runId);
-    const { report, comparison, meta, baseline, candidate } =
-      buildBenefitReportBundle(result, { runId, status });
+    const { report, comparison, packed } = buildBenefitReportBundle(result, {
+      runId,
+      status,
+    });
     const format = new URL(req.url).searchParams.get("format");
+    const pairEvidence = packed
+      ? pairExportEvidenceFromBrowse(evaluationPairBrowseFromPacked(packed))
+      : {};
     const gate = benefitExportGate({
       report,
       comparison,
-      metaSmoke: meta?.smoke === true,
       fakeProduce: result.capture?.env?.fakeProduce === true,
-      baselineFakeProduce: baseline?.capture?.env?.fakeProduce === true,
-      candidateFakeProduce: candidate?.capture?.env?.fakeProduce === true,
-      baselineProduceAttested:
-        baseline?.capture?.env?.produceAttested === true,
-      candidateProduceAttested:
-        candidate?.capture?.env?.produceAttested === true,
-      metaMode: meta?.mode,
-      baselineMode: baseline?.mode,
-      candidateMode: candidate?.mode,
+      ...pairEvidence,
     });
     if (format === "md" || format === "markdown" || format === "csv") {
       if (!gate.ok) {

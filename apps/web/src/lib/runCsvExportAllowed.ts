@@ -1,9 +1,9 @@
 import type { RunResult } from "@skillevalator/core";
 import {
-  loadEvaluationComparison,
-  resolveTipBaselineRunId,
-  resolveTipCandidateRunId,
-} from "@/lib/evaluations";
+  evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
+} from "@/lib/evaluationPairBrowse";
+import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
   EXPORT_RESULT_NOT_READY,
   exportGateBlockMessage,
@@ -25,6 +25,9 @@ export function runCsvExportGateForRun(opts: {
   const packed = evaluationId
     ? loadEvaluationComparison(evaluationId)
     : null;
+  const pairBrowse = packed
+    ? evaluationPairBrowseFromPacked(packed)
+    : null;
   return runCsvExportGate({
     result: opts.result,
     evaluationId,
@@ -32,19 +35,9 @@ export function runCsvExportGateForRun(opts: {
     comparisonMode: packed?.comparison?.mode ?? null,
     comparisonAdoptionConfirmation:
       packed?.comparison?.adoptionConfirmation ?? null,
-    baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
-    candidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
-    metaSmoke: packed?.meta?.smoke === true,
-    baselineFakeProduce: packed?.baseline?.capture?.env?.fakeProduce === true,
-    candidateFakeProduce:
-      packed?.candidate?.capture?.env?.fakeProduce === true,
-    baselineProduceAttested:
-      packed?.baseline?.capture?.env?.produceAttested === true,
-    candidateProduceAttested:
-      packed?.candidate?.capture?.env?.produceAttested === true,
-    metaMode: packed?.meta?.mode,
-    baselineMode: packed?.baseline?.mode,
-    candidateMode: packed?.candidate?.mode,
+    baselineRunId: pairBrowse?.tipBaselineRunId ?? null,
+    candidateRunId: pairBrowse?.tipCandidateRunId ?? null,
+    ...(pairBrowse ? pairExportEvidenceFromBrowse(pairBrowse) : {}),
   });
 }
 

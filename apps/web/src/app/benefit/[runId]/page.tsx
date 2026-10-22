@@ -10,7 +10,10 @@ import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallout
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
-import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
+import {
+  evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
+} from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
@@ -110,24 +113,15 @@ export default async function BenefitReportPage({
     status: statusFile,
   });
   const markdown = benefitReportToMarkdown(report);
-  const baselineFakeProduce = baseline?.capture?.env?.fakeProduce === true;
-  const candidateFakeProduce = candidate?.capture?.env?.fakeProduce === true;
-  const baselineProduceAttested =
-    baseline?.capture?.env?.produceAttested === true;
-  const candidateProduceAttested =
-    candidate?.capture?.env?.produceAttested === true;
+  const pairBrowse = packed ? evaluationPairBrowseFromPacked(packed) : null;
+  const pairExportEvidence = pairBrowse
+    ? pairExportEvidenceFromBrowse(pairBrowse)
+    : {};
   const exportGate = benefitExportGate({
     report,
     comparison,
-    metaSmoke: meta?.smoke === true,
     fakeProduce: result.capture?.env?.fakeProduce === true,
-    baselineFakeProduce,
-    candidateFakeProduce,
-    baselineProduceAttested,
-    candidateProduceAttested,
-    metaMode: meta?.mode,
-    baselineMode: baseline?.mode,
-    candidateMode: candidate?.mode,
+    ...pairExportEvidence,
   });
   const exportAllowed = exportGate.ok;
   const exportBlockReason = exportGate.ok
@@ -147,7 +141,6 @@ export default async function BenefitReportPage({
     candidateMode:
       candidate?.mode ?? (result.role === "candidate" ? result.mode : undefined),
   });
-  const pairBrowse = packed ? evaluationPairBrowseFromPacked(packed) : null;
   const comparisonMeta = pairBrowse?.comparisonMeta ?? null;
   const comparisonProvisional = pairBrowse?.comparisonProvisional;
   const pairedDisplayMode = pairBrowse?.pairedDisplayMode;
@@ -244,8 +237,12 @@ export default async function BenefitReportPage({
       {showHarness ? (
         <ComparisonHarnessCallouts
           metaSmoke={meta?.smoke === true}
-          baselineFakeProduce={baselineFakeProduce}
-          candidateFakeProduce={candidateFakeProduce}
+          baselineFakeProduce={
+            pairBrowse?.pairEvidence.baselineFakeProduce === true
+          }
+          candidateFakeProduce={
+            pairBrowse?.pairEvidence.candidateFakeProduce === true
+          }
           baselineProduceAttested={
             baseline?.capture?.env?.produceAttested === true
           }
