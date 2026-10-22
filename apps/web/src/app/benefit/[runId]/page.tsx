@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
+import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
@@ -18,6 +19,7 @@ import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import {
   isPilotFocusParam,
+  pairedEvalDisplayMode,
   pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
@@ -142,6 +144,25 @@ export default async function BenefitReportPage({
     candidateMode:
       candidate?.mode ?? (result.role === "candidate" ? result.mode : undefined),
   });
+  const pairedDisplayMode = pairedEvalDisplayMode({
+    metaMode: meta?.mode,
+    baselineMode: baseline?.mode,
+    candidateMode: candidate?.mode,
+  });
+  const comparisonMeta = comparisonCellMetaFromPacked({
+    meta,
+    baseline,
+    candidate,
+    comparison,
+  });
+  const provisionalPass =
+    Boolean(comparison) &&
+    Boolean(pairedDisplayMode) &&
+    isProvisionalOfficialPass({
+      verdict: comparison?.verdict,
+      displayMode: pairedDisplayMode,
+      adoptionConfirmation: comparison?.adoptionConfirmation,
+    });
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
@@ -182,6 +203,20 @@ export default async function BenefitReportPage({
           </p>
           <h1>{report.title}</h1>
           <p>{report.generatedAt}</p>
+          {resolvedEvaluationId ? (
+            <p className="run-subtitle">
+              <Link
+                href={withPilotFocus(
+                  `/comparison/${resolvedEvaluationId}`,
+                  pilotFocus,
+                )}
+                title={comparisonMeta?.title}
+              >
+                Comparison
+                {comparisonMeta ? ` · ${comparisonMeta.label}` : null}
+              </Link>
+            </p>
+          ) : null}
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle
@@ -341,11 +376,7 @@ export default async function BenefitReportPage({
                   </>
                 ) : null}
               </>
-            ) : isProvisionalOfficialPass({
-                verdict: comparison?.verdict,
-                displayMode: comparison?.mode,
-                adoptionConfirmation: comparison?.adoptionConfirmation,
-              }) ? (
+            ) : provisionalPass ? (
               <>
                 Official Comparison met adoption gates for this tip pair (
                 <strong>
@@ -395,6 +426,16 @@ export default async function BenefitReportPage({
               </>
             )}
           </p>
+          {provisionalPass ? (
+            <div className="action-row" style={{ marginTop: 12 }}>
+              <Link
+                className="btn btn-primary btn-compact"
+                href={newRunHref}
+              >
+                Confirm adoption — new official pair
+              </Link>
+            </div>
+          ) : null}
           {pairWaiting ? (
             <BenefitPairWaitingRefresh
               windDownRunIds={pairWindDownRunIds}

@@ -29,6 +29,7 @@ import { resultsDir } from "@/lib/paths";
 import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
 import {
   isPilotFocusParam,
+  pairedEvalDisplayMode,
   pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
@@ -165,9 +166,15 @@ export default async function ComparisonDetailPage({
   const downloadBlockReason = downloadGate.ok
     ? null
     : exportGateBlockMessage(downloadGate);
+  const pairedDisplayMode =
+    pairedEvalDisplayMode({
+      metaMode: meta.mode,
+      baselineMode: baseline?.mode,
+      candidateMode: candidate?.mode,
+    }) ?? comparison.mode;
   const provisionalPass = isProvisionalOfficialPass({
     verdict: comparison.verdict,
-    displayMode: comparison.mode,
+    displayMode: pairedDisplayMode,
     adoptionConfirmation: comparison.adoptionConfirmation,
   });
   const preferOfficial = pairedEvalPreferOfficial({

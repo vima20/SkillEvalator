@@ -104,7 +104,8 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(pendingUi).toMatch(/pairedEvalPreferOfficial/);
     expect(detail).toMatch(/Confirm adoption — new official pair/);
-    expect(detail).toMatch(/isProvisionalOfficialPass/);
+    expect(detail).toMatch(/provisionalPass/);
+    expect(detail).toMatch(/pairedEvalDisplayMode/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);
     expect(detail).toMatch(/baselineMode=\{baseline\?\.mode\}/);
     expect(detail).toMatch(/candidateMode=\{candidate\?\.mode\}/);
@@ -156,6 +157,10 @@ describe("statusBadgeKind", () => {
     // Official Benefit unavailable → New run with ?mode=official.
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(benefitDetail).toMatch(/pairedEvalPreferOfficial/);
+    expect(benefitDetail).toMatch(/provisionalPass/);
+    expect(benefitDetail).toMatch(/pairedEvalDisplayMode/);
+    expect(benefitDetail).toMatch(/comparisonCellMetaFromPacked/);
+    expect(benefitDetail).toMatch(/Confirm adoption — new official pair/);
     expect(benefitWait).toMatch(/setInterval/);
     expect(benefitWait).toMatch(/router\.refresh/);
     expect(benefitWait).toMatch(/WIND_DOWN_ORPHAN_MS/);

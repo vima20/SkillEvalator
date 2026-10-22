@@ -808,6 +808,7 @@ describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
       "utf8",
     );
     expect(src).toMatch(/comparisonProvisional/);
+    expect(src).toMatch(/comparisonMeta/);
     expect(src).toMatch(/Confirm adoption — new official pair/);
   });
 });
