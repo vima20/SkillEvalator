@@ -5,6 +5,7 @@ import {
   isProvisionalOfficialPass,
   PROVISIONAL_OFFICIAL_PASS_CTA_TITLE,
 } from "@/lib/comparisonVerdictDisplay";
+import { pairedAdoptionModesFromPacked } from "@/lib/evaluationPairBrowse";
 import { pairedEvalDisplayMode } from "@/lib/pilotFocusHref";
 
 type PackedComparison = {
@@ -24,11 +25,8 @@ export function comparisonCellMetaFromPacked(
   const comparison = packed?.comparison;
   if (!comparison) return null;
   const displayMode =
-    pairedEvalDisplayMode({
-      metaMode: packed?.meta?.mode,
-      baselineMode: packed?.baseline?.mode,
-      candidateMode: packed?.candidate?.mode,
-    }) ?? "dry-run";
+    pairedEvalDisplayMode(pairedAdoptionModesFromPacked(packed ?? {})) ??
+    "dry-run";
   const label = comparisonVerdictListLabel({
     verdict: comparison.verdict,
     displayMode,
@@ -61,11 +59,8 @@ export function comparisonUiFromPacked(packed: PackedComparison | null): {
     return { comparisonMeta };
   }
   const pairedDisplayMode =
-    pairedEvalDisplayMode({
-      metaMode: packed?.meta?.mode,
-      baselineMode: packed?.baseline?.mode,
-      candidateMode: packed?.candidate?.mode,
-    }) ?? undefined;
+    pairedEvalDisplayMode(pairedAdoptionModesFromPacked(packed ?? {})) ??
+    undefined;
   const comparisonProvisional =
     pairedDisplayMode &&
     isProvisionalOfficialPass({

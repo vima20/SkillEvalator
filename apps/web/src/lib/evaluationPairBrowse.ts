@@ -25,9 +25,16 @@ export type PairedAdoptionModes = {
   candidateMode?: RunResult["mode"];
 };
 
+/** Subset of a loaded evaluation pack — modes only (list meta, Benefit, export). */
+export type PackedAdoptionModeSource = {
+  meta?: { mode?: string } | null;
+  baseline?: { mode?: RunResult["mode"] } | null;
+  candidate?: { mode?: RunResult["mode"] } | null;
+};
+
 /** Tip leg + meta modes for adoption gates (Benefit USE, export, list chips). */
 export function pairedAdoptionModesFromPacked(
-  packed: PackedEvaluationBrowse,
+  packed: PackedAdoptionModeSource,
 ): PairedAdoptionModes {
   return {
     ...(packed.meta?.mode ? { metaMode: packed.meta.mode } : {}),

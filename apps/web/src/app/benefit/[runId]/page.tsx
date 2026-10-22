@@ -13,6 +13,7 @@ import { StarRating } from "@/components/StarRating";
 import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
+  pairedAdoptionModesFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
@@ -134,12 +135,15 @@ export default async function BenefitReportPage({
   // Superseded non-tip must not show waiting/unavailable (adoption follows tip).
   const pairWaiting = !supersededTip && pairPending === "waiting";
   const pairUnavailable = !supersededTip && pairPending === "unavailable";
-  // Tip legs beat stale evaluation.json (dry-run legs + official meta).
+  const adoptionModes = packed ? pairedAdoptionModesFromPacked(packed) : {};
   const preferOfficial = pairedEvalPreferOfficial({
-    metaMode: meta?.mode ?? comparison?.mode,
-    baselineMode: baseline?.mode ?? (result.role === "baseline" ? result.mode : undefined),
+    metaMode: adoptionModes.metaMode ?? meta?.mode,
+    baselineMode:
+      adoptionModes.baselineMode ??
+      (result.role === "baseline" ? result.mode : baseline?.mode),
     candidateMode:
-      candidate?.mode ?? (result.role === "candidate" ? result.mode : undefined),
+      adoptionModes.candidateMode ??
+      (result.role === "candidate" ? result.mode : candidate?.mode),
   });
   const comparisonMeta = pairBrowse?.comparisonMeta ?? null;
   const comparisonProvisional = pairBrowse?.comparisonProvisional;

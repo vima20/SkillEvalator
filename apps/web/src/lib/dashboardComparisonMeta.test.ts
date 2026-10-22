@@ -37,6 +37,17 @@ describe("comparisonCellMetaFromPacked", () => {
   it("returns null when comparison missing", () => {
     expect(comparisonCellMetaFromPacked({ comparison: null })).toBeNull();
   });
+
+  it("uses official tip legs when meta mode is stale dry-run", () => {
+    const out = comparisonCellMetaFromPacked({
+      meta: { mode: "dry-run" },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+      comparison: { verdict: "PASS" },
+    });
+    expect(out?.label).toBe("PASS");
+    expect(out?.title).toBeUndefined();
+  });
 });
 
 describe("comparisonUiFromPacked", () => {
