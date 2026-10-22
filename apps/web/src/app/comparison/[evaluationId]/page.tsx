@@ -152,8 +152,7 @@ export default async function ComparisonDetailPage({
     : exportGateBlockMessage(downloadGate);
   const { comparisonMeta, comparisonProvisional, pairedDisplayMode } =
     pairBrowse;
-  const displayMode =
-    pairedDisplayMode ?? meta.mode ?? comparison.mode;
+  const displayMode = pairedDisplayMode ?? meta.mode ?? "dry-run";
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);

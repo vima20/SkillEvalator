@@ -7,6 +7,7 @@ import {
   pairExportEvidenceFromPacked,
   pairedAdoptionComparisonMode,
   pairedAdoptionModesFromPacked,
+  pilotArchiveAdoptionFromPacked,
   pairedEvalPreferOfficialFromPacked,
   type PackedEvaluationBrowse,
 } from "./evaluationPairBrowse.js";
@@ -87,6 +88,19 @@ describe("evaluationPairBrowseFromPacked", () => {
     expect(evidence.baselineMode).toBe("official");
     expect(evidence.candidateMode).toBe("official");
     expect(evidence.metaMode).toBe("dry-run");
+  });
+
+  it("pilotArchiveAdoptionFromPacked records comparisonJsonMode when disk mode is stale", () => {
+    const packed = {
+      meta: { mode: "dry-run" },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+    } as PackedEvaluationBrowse;
+    expect(pilotArchiveAdoptionFromPacked(packed)).toEqual({
+      adoptionMode: "official",
+      comparisonJsonMode: "dry-run",
+    });
   });
 
   it("pairedAdoptionComparisonMode prefers official tip legs over stale comparison.json", () => {

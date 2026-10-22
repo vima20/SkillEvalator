@@ -108,6 +108,23 @@ export function pairExportEvidenceFromPacked(
   return pairExportEvidenceFromBrowse(evaluationPairBrowseFromPacked(packed));
 }
 
+/** Archive zip: resolved adoption mode + optional stale comparison.json mode. */
+export function pilotArchiveAdoptionFromPacked(
+  packed: PackedEvaluationBrowse,
+): {
+  adoptionMode: RunComparison["mode"];
+  comparisonJsonMode?: RunComparison["mode"];
+} {
+  const comparison = packed.comparison!;
+  const adoptionMode = pairedAdoptionComparisonMode(
+    comparison,
+    pairedAdoptionModesFromPacked(packed),
+  );
+  return adoptionMode === comparison.mode
+    ? { adoptionMode }
+    : { adoptionMode, comparisonJsonMode: comparison.mode };
+}
+
 export type EvaluationPairBrowseEntry = {
   packed: PackedEvaluationBrowse;
   tipCandidateRunId: string | null;

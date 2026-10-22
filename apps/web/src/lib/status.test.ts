@@ -52,6 +52,7 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/evaluationPairBrowseFromPacked/);
     expect(list).toMatch(/pairExportEvidenceFromBrowse/);
     expect(list).toMatch(/pairBrowse\.pairedDisplayMode/);
+    expect(list).toMatch(/resolvePairedDisplayModeFromPacked/);
     expect(list).toMatch(/comparisonVerdictListLabel/);
     expect(list).toMatch(/adoptionConfirmation/);
     expect(list).toMatch(/downloadsOk = downloadGate\?\.ok === true/);

@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, findRepoRoot } from "@skillevalator/core";
 import {
-  pairedAdoptionComparisonMode,
-  pairedAdoptionModesFromPacked,
   pairExportEvidenceFromPacked,
+  pilotArchiveAdoptionFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import {
   loadEvaluationComparison,
@@ -86,10 +85,7 @@ export async function GET(
         candidateProduceAttested:
           candidate.capture?.env?.produceAttested === true,
       },
-      adoptionMode: pairedAdoptionComparisonMode(
-        comparison,
-        pairedAdoptionModesFromPacked(packed),
-      ),
+      adoptionMode: pilotArchiveAdoptionFromPacked(packed).adoptionMode,
     });
 
     return new NextResponse(new Uint8Array(zip), {
