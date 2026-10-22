@@ -364,8 +364,8 @@ export default async function BenefitReportPage({
               <>
                 Official Comparison met adoption gates for this tip pair (
                 <strong>
-                  provisional PASS {comparison!.adoptionConfirmation!.step}/
-                  {comparison!.adoptionConfirmation!.required}
+                  provisional PASS {comparisonProvisional!.step}/
+                  {comparisonProvisional!.required}
                 </strong>
                 ). Benefit <strong>USE</strong> stays locked until a{" "}
                 <strong>second independent official PASS</strong> on new tip

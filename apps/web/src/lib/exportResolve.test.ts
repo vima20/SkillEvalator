@@ -227,6 +227,7 @@ describe("resolveExportGetError", () => {
       "utf8",
     );
     expect(runCsv).toMatch(/export_result_not_ready/);
+    expect(runCsv).toMatch(/comparisonAdoptionConfirmation/);
     const benefit = fs.readFileSync(
       path.join(cwd, "src/app/api/runs/[runId]/benefit/route.ts"),
       "utf8",
