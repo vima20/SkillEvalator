@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  canShowOfficialComparisonDownloads,
   comparisonCsvGate,
   officialComparisonExportGate,
 } from "./comparisonExport.js";
@@ -99,20 +98,14 @@ describe("comparisonCsvGate", () => {
 
     const comparison = { verdict: "PASS" as const, mode: "official" as const };
     expect(
-      canShowOfficialComparisonDownloads({
-        comparison,
-        metaSmoke: true,
-      }),
-    ).toBe(false);
-    expect(
       pilotArchiveGate({ comparison, metaSmoke: true }).ok,
     ).toBe(false);
     expect(
       officialComparisonExportGate(comparison, { metaSmoke: true }).ok,
     ).toBe(false);
     expect(
-      canShowOfficialComparisonDownloads({ comparison, ...liveTips }),
+      officialComparisonExportGate(comparison, liveTips).ok,
     ).toBe(true);
-    expect(canShowOfficialComparisonDownloads({ comparison })).toBe(false);
+    expect(officialComparisonExportGate(comparison).ok).toBe(false);
   });
 });

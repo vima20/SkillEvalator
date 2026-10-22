@@ -832,7 +832,7 @@ export function RunDetailClient({
               href={withNewRunHandoff(
                 pilotFocus,
                 pairedEvalPreferOfficial({
-                  metaMode: data.metaMode,
+                  metaMode: data.pairedDisplayMode ?? data.metaMode,
                   baselineMode: data.baselineMode,
                   candidateMode: data.candidateMode,
                 }),

@@ -92,6 +92,8 @@ export function runResultToCsv(result: RunResult): string {
 
 /** Tip-leg smoke / attestation pins for Comparison CSV audit columns. */
 export type ComparisonCsvTipEvidence = {
+  /** Resolved adoption mode (tip legs); overrides comparison.mode in CSV. */
+  adoptionMode?: RunComparison["mode"];
   baselineFakeProduce?: boolean;
   baselineProduceAttested?: boolean;
   candidateFakeProduce?: boolean;
@@ -132,11 +134,12 @@ export function comparisonToCsv(
     "candidateProduceAttested",
   ]);
   const lines = [header];
+  const modeCell = tips.adoptionMode ?? comparison.mode;
   const common = [
     comparison.evaluationId,
     comparison.evalSkillId,
     comparison.taskSetId,
-    comparison.mode,
+    modeCell,
     comparison.modelId,
     comparison.baselineRunId,
     comparison.candidateRunId,

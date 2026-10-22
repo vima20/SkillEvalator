@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, comparisonToCsv } from "@skillevalator/core";
 import { comparisonCsvGate } from "@/lib/comparisonExport";
-import { pairExportEvidenceFromPacked } from "@/lib/evaluationPairBrowse";
+import {
+  pairExportEvidenceFromPacked,
+  pilotArchiveAdoptionFromPacked,
+} from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
   EXPORT_FAILED_ERROR,
@@ -51,6 +54,7 @@ export async function GET(
       );
     }
     const csv = comparisonToCsv(comparison, {
+      adoptionMode: pilotArchiveAdoptionFromPacked(packed).adoptionMode,
       baselineFakeProduce: baseline?.capture?.env?.fakeProduce === true,
       baselineProduceAttested:
         baseline?.capture?.env?.produceAttested === true,

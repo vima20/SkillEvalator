@@ -240,6 +240,17 @@ describe("comparisonToCsv", () => {
     expect(csv).toContain("INCONCLUSIVE");
     expect(csv).toContain("modelId mismatch");
   });
+
+  it("uses adoptionMode for mode column when tip legs differ from comparison.json", () => {
+    const cmp = compareBaselineCandidate(
+      sample({ runId: "b", role: "baseline", score: 0.9, mode: "dry-run" }),
+      sample({ runId: "c", role: "candidate", score: 1, mode: "dry-run" }),
+    );
+    const csv = comparisonToCsv(cmp, { adoptionMode: "official" });
+    const dataLine = csv.trim().split("\n")[1]!;
+    expect(dataLine).toContain("official");
+    expect(dataLine).not.toMatch(/,dry-run,/);
+  });
 });
 
 describe("benefitReportToCsv", () => {

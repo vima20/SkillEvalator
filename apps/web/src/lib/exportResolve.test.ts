@@ -244,6 +244,7 @@ describe("resolveExportGetError", () => {
     expect(cmp).toMatch(/export_evaluation_meta_missing/);
     expect(cmp).toMatch(/export_comparison_not_ready/);
     expect(cmp).toMatch(/pairExportEvidenceFromPacked/);
+    expect(cmp).toMatch(/pilotArchiveAdoptionFromPacked/);
     const archive = fs.readFileSync(
       path.join(cwd, "src/app/api/comparison/[evaluationId]/archive/route.ts"),
       "utf8",

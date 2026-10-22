@@ -143,20 +143,3 @@ export function comparisonCsvGate(
   );
 }
 
-/** Detail-page visibility for CSV + pilot archive buttons (same bar as APIs). */
-export function canShowOfficialComparisonDownloads(
-  opts: {
-    comparison: Pick<
-      RunComparison,
-      "verdict" | "mode" | "adoptionConfirmation"
-    >;
-  } & OfficialComparisonEvidence,
-): boolean {
-  return officialComparisonExportGate(opts.comparison, {
-    metaSmoke: opts.metaSmoke,
-    baselineFakeProduce: opts.baselineFakeProduce,
-    candidateFakeProduce: opts.candidateFakeProduce,
-    baselineProduceAttested: opts.baselineProduceAttested,
-    candidateProduceAttested: opts.candidateProduceAttested,
-  }).ok;
-}
