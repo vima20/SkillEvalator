@@ -33,6 +33,8 @@ const COMPARISON_EXPORT_SUFFIX: Record<string, string> = {
     "requires mode=official (dry-run is not adoption evidence)",
   comparison_export_inconclusive:
     "requires PASS or FAIL verdict (not INCONCLUSIVE)",
+  comparison_export_provisional_pass:
+    "locked — provisional official PASS (confirm with a second official pair before export)",
   comparison_export_smoke_forbidden:
     "rejects evaluation.smoke=true (fixture plant)",
   comparison_export_fake_produce_forbidden:

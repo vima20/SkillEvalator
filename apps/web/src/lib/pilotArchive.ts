@@ -24,7 +24,10 @@ export type PilotArchiveBuildInfo = {
  * Live official pilot archive — same evidence bar as Comparison CSV.
  */
 export function pilotArchiveGate(opts: {
-  comparison: Pick<RunComparison, "verdict" | "mode">;
+  comparison: Pick<
+    RunComparison,
+    "verdict" | "mode" | "adoptionConfirmation"
+  >;
 } & OfficialComparisonEvidence):
   | { ok: true }
   | OfficialComparisonExportDeny {

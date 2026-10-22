@@ -42,6 +42,18 @@ describe("comparisonCsvGate", () => {
     expect(out.error).toMatch(/INCONCLUSIVE/);
   });
 
+  it("blocks PASS when adoption confirmation is still provisional 1/N", () => {
+    const out = officialComparisonExportGate({
+      verdict: "PASS",
+      mode: "official",
+      adoptionConfirmation: { step: 1, required: 2 },
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("comparison_export_provisional_pass");
+    expect(out.error).toMatch(/provisional official PASS 1\/2/i);
+  });
+
   it("explains provisional official PASS 1/N on export block", () => {
     const out = officialComparisonExportGate({
       verdict: "INCONCLUSIVE",

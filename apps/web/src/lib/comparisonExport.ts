@@ -61,6 +61,21 @@ export function officialComparisonExportGate(
         : `${product} requires PASS or FAIL verdict (not INCONCLUSIVE)`,
     };
   }
+  const pendingConfirm = comparison.adoptionConfirmation;
+  if (
+    verdict === "PASS" &&
+    isAdoptionConfirmationPending(pendingConfirm)
+  ) {
+    return {
+      ok: false,
+      status: 409,
+      verdict,
+      mode,
+      errorCode: "comparison_export_provisional_pass",
+      error:
+        `${product} locked — provisional official PASS ${pendingConfirm!.step}/${pendingConfirm!.required}; confirm with a second independent official pair before export`,
+    };
+  }
   if (evidence.metaSmoke === true) {
     return {
       ok: false,
@@ -104,7 +119,10 @@ export function officialComparisonExportGate(
  * and would allow dry-run PASS/FAIL CSV laundering.
  */
 export function comparisonCsvGate(
-  comparison: Pick<RunComparison, "verdict" | "mode">,
+  comparison: Pick<
+    RunComparison,
+    "verdict" | "mode" | "adoptionConfirmation"
+  >,
   evidence: OfficialComparisonEvidence = {},
 ): { ok: true } | OfficialComparisonExportDeny {
   return officialComparisonExportGate(
@@ -117,7 +135,10 @@ export function comparisonCsvGate(
 /** Detail-page visibility for CSV + pilot archive buttons (same bar as APIs). */
 export function canShowOfficialComparisonDownloads(
   opts: {
-    comparison: Pick<RunComparison, "verdict" | "mode">;
+    comparison: Pick<
+      RunComparison,
+      "verdict" | "mode" | "adoptionConfirmation"
+    >;
   } & OfficialComparisonEvidence,
 ): boolean {
   return officialComparisonExportGate(opts.comparison, {
