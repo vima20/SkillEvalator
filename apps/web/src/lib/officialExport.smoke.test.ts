@@ -7,7 +7,9 @@ import {
   OFFICIAL_MIN_REPEATS,
   buildBenefitReport,
   compareBaselineCandidate,
+  comparisonToCsv,
   jobAttestationFromRunResult,
+  type RunComparison,
   type RunResult,
 } from "@skillevalator/core";
 import { benefitExportGate } from "./benefitExport.js";
@@ -388,6 +390,34 @@ describe("official export gates smoke", () => {
       adoptionMode: "official",
       comparisonJsonMode: "dry-run",
     });
+    const packed = {
+      meta: { mode: "dry-run" },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+      comparison: staleComparison,
+    } as never;
+    const adoption = pilotArchiveAdoptionFromPacked(packed);
+    const csv = comparisonToCsv(
+      {
+        ...staleComparison,
+        evaluationId: "eval_stale_mode",
+        evalSkillId: "code-debugging-eval",
+        taskSetId: "cde-v1",
+        modelId: "gpt-4.1-mini",
+        baselineScore: 0.9,
+        candidateScore: 1,
+        lift: 0.1,
+        baselineStatus: "ok",
+        candidateStatus: "ok",
+        rationale: "",
+        parity: { ok: true, issues: [] },
+        perTask: [],
+      } as RunComparison,
+      { adoptionMode: adoption.adoptionMode },
+    );
+    const dataLine = csv.trim().split("\n")[1]!;
+    expect(dataLine).toContain("official");
+    expect(dataLine).not.toMatch(/,dry-run,/);
   });
 
   it("dry-run Comparison is denied by all adoption export gates", () => {

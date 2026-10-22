@@ -262,6 +262,9 @@ describe("statusBadgeKind", () => {
     expect(runDetailApi).toMatch(/loadPairWaitingWindDownRunIds/);
     expect(runDetailPage).toMatch(/pairedDisplayMode/);
     expect(runDetailApi).toMatch(/pairedDisplayMode/);
+    expect(runDetail).toMatch(
+      /metaMode: data\.pairedDisplayMode \?\? data\.metaMode/,
+    );
     // Benefit CTA stays visible while pairPending waiting still polls.
     expect(runDetail).toMatch(/\{result \? \(/);
     expect(runDetail).not.toMatch(/\{result && !polling \?/);
