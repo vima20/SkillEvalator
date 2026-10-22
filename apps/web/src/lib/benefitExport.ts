@@ -130,7 +130,7 @@ export function benefitExportGate(opts: {
       };
     }
     const confirm = comparison.adoptionConfirmation;
-    if (isAdoptionConfirmationPending(confirm)) {
+    if (isAdoptionConfirmationPending(confirm) && confirm) {
       return {
         ok: false,
         status: 409,

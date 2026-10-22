@@ -324,12 +324,7 @@ describe("official export gates smoke", () => {
     expect(
       benefitExportGate({
         report: {
-          verdict: {
-            recommendation: "use",
-            headline: "x",
-            decision: "x",
-            rationale: "x",
-          },
+          verdict: { recommendation: "use" },
           config: { mode: "official", runId: "run_c_prov" },
         },
         comparison: passUnconfirmed,
