@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createEvaluationPairBrowseCache } from "./evaluationPairBrowse.js";
+import {
+  createEvaluationPairBrowseCache,
+  evaluationPairBrowseFromPacked,
+  type PackedEvaluationBrowse,
+} from "./evaluationPairBrowse.js";
 
 vi.mock("@/lib/evaluations", () => ({
   loadEvaluationComparison: vi.fn(() => ({
@@ -21,6 +25,28 @@ vi.mock("@/lib/evaluations", () => ({
   resolveTipCandidateRunId: () => "run_cand",
   resolveTipBaselineRunId: () => "run_base",
 }));
+
+describe("evaluationPairBrowseFromPacked", () => {
+  it("includes provisional confirmation from comparison UI", () => {
+    const out = evaluationPairBrowseFromPacked({
+      meta: { mode: "official", smoke: false },
+      baseline: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      candidate: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      comparison: {
+        verdict: "INCONCLUSIVE",
+        adoptionConfirmation: { step: 1, required: 2 },
+      },
+    } as PackedEvaluationBrowse);
+    expect(out.comparisonProvisional).toEqual({ step: 1, required: 2 });
+    expect(out.pairedDisplayMode).toBe("official");
+  });
+});
 
 describe("createEvaluationPairBrowseCache", () => {
   it("caches comparison meta with provisional 1/N label", async () => {

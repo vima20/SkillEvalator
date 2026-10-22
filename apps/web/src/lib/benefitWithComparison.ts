@@ -41,6 +41,8 @@ export function buildBenefitReportBundle(
   candidate: RunResult | null;
   /** Same source as pairHarness / retryAdmission. */
   evaluationId: string | null;
+  /** Loaded evaluation folder (null when no evaluationId). */
+  packed: ReturnType<typeof loadEvaluationComparison> | null;
   /**
    * When Comparison is missing: tip still active (`waiting`) or settled
    * without a scorecard (`unavailable`). Undefined when Comparison exists
@@ -86,6 +88,7 @@ export function buildBenefitReportBundle(
     baseline: packed?.baseline ?? null,
     candidate: packed?.candidate ?? null,
     evaluationId,
+    packed,
     ...(pairPending ? { pairPending } : {}),
   };
 }

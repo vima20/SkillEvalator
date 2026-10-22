@@ -10,7 +10,7 @@ import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallout
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
-import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
+import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
@@ -104,6 +104,7 @@ export default async function BenefitReportPage({
     candidate,
     evaluationId: resolvedEvaluationId,
     pairPending,
+    packed,
   } = buildBenefitReportBundle(result, {
     runId,
     status: statusFile,
@@ -143,11 +144,10 @@ export default async function BenefitReportPage({
     candidateMode:
       candidate?.mode ?? (result.role === "candidate" ? result.mode : undefined),
   });
-  const {
-    comparisonMeta,
-    comparisonProvisional,
-    pairedDisplayMode,
-  } = comparisonUiFromPacked({ meta, baseline, candidate, comparison });
+  const pairBrowse = packed ? evaluationPairBrowseFromPacked(packed) : null;
+  const comparisonMeta = pairBrowse?.comparisonMeta ?? null;
+  const comparisonProvisional = pairBrowse?.comparisonProvisional;
+  const pairedDisplayMode = pairBrowse?.pairedDisplayMode;
   const provisionalPass = Boolean(comparisonProvisional);
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";

@@ -6,14 +6,13 @@ import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
   benefitListPairLockedLabel,
   benefitPairCtaLabel,
-  benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import {
   benefitListVerdictChipLabel,
   benefitVerdictChipToneFromComparison,
 } from "@/lib/comparisonVerdictDisplay";
-import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
+import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
 import {
   candidateLegKind,
   candidateLegLabel,
@@ -57,10 +56,7 @@ export default async function BenefitIndexPage({
         report,
         comparison,
         tipCandidateRunId,
-        tipBaselineRunId,
-        meta,
-        baseline,
-        candidate,
+        packed,
         evaluationId: bundleEvalId,
         pairPending,
       } = buildBenefitReportBundle(r.result!, {
@@ -79,23 +75,11 @@ export default async function BenefitIndexPage({
         evaluationId: resolvedId ?? undefined,
         tipCandidateRunId,
       }) as CandidateLegKind;
-      const { pairChip, pairBlocked } = benefitPairEvidenceFromPacked({
-        tipBaselineRunId,
-        tipCandidateRunId,
-        metaSmoke: meta?.smoke === true,
-        baseline,
-        candidate,
-      });
-      const comparisonUi = comparisonUiFromPacked({
-        meta,
-        baseline,
-        candidate,
-        comparison,
-      });
+      const pairBrowse = packed ? evaluationPairBrowseFromPacked(packed) : null;
       const verdictChipTone = benefitVerdictChipToneFromComparison({
         recommendation: report.verdict.recommendation,
         comparison,
-        pairedDisplayMode: comparisonUi.pairedDisplayMode,
+        pairedDisplayMode: pairBrowse?.pairedDisplayMode,
       });
       return {
         runId: r.runId,
@@ -107,10 +91,10 @@ export default async function BenefitIndexPage({
         kind,
         fakeProduce,
         produceAttested,
-        pairChip,
-        pairBlocked,
+        pairChip: pairBrowse?.pairChip ?? null,
+        pairBlocked: pairBrowse?.pairBlocked ?? false,
         pairPending,
-        comparisonMeta: comparisonUi.comparisonMeta,
+        comparisonMeta: pairBrowse?.comparisonMeta ?? null,
         verdictChipTone,
       };
     })

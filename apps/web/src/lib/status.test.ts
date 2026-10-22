@@ -163,7 +163,7 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(benefitDetail).toMatch(/pairedEvalPreferOfficial/);
     expect(benefitDetail).toMatch(/provisionalPass/);
-    expect(benefitDetail).toMatch(/comparisonUiFromPacked/);
+    expect(benefitDetail).toMatch(/evaluationPairBrowseFromPacked/);
     expect(benefitDetail).toMatch(/comparisonProvisional/);
     expect(benefitDetail).toMatch(/comparisonVerdictBannerClass/);
     expect(benefitDetail).toMatch(/Confirm adoption — new official pair/);
@@ -206,7 +206,7 @@ describe("statusBadgeKind", () => {
     );
     expect(benefitList).toMatch(/benefitPairCtaLabel/);
     expect(benefitList).toMatch(/pairPending/);
-    expect(benefitList).toMatch(/comparisonUiFromPacked/);
+    expect(benefitList).toMatch(/evaluationPairBrowseFromPacked/);
     expect(benefitList).toMatch(/comparisonMeta\?\.title/);
     expect(benefitList).toMatch(/verdictChipTone/);
     expect(benefitList).toMatch(/benefitVerdictChipToneFromComparison/);
