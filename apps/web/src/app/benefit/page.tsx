@@ -10,7 +10,7 @@ import {
 } from "@/lib/benefitListHints";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { benefitListVerdictChipLabel } from "@/lib/comparisonVerdictDisplay";
-import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
+import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   candidateLegKind,
   candidateLegLabel,
@@ -96,12 +96,12 @@ export default async function BenefitIndexPage({
         pairChip,
         pairBlocked,
         pairPending,
-        comparisonMeta: comparisonCellMetaFromPacked({
+        comparisonMeta: comparisonUiFromPacked({
           meta,
           baseline,
           candidate,
           comparison,
-        }),
+        }).comparisonMeta,
       };
     })
     // Tip / unpaired first; waiting / superseded / smoke last.

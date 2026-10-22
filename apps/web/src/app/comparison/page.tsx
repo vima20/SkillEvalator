@@ -11,7 +11,10 @@ import {
 import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
-import { comparisonVerdictListLabel } from "@/lib/comparisonVerdictDisplay";
+import {
+  comparisonVerdictChipTone,
+  comparisonVerdictListLabel,
+} from "@/lib/comparisonVerdictDisplay";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
@@ -297,14 +300,13 @@ export default async function ComparisonListPage({
                     <td>
                       {e.verdict ? (
                         <span
-                          className={`verdict-chip verdict-${
-                            e.displayMode === "official" && e.verdict === "PASS"
-                              ? "use"
-                              : e.displayMode === "official" &&
-                                  e.verdict === "FAIL"
-                                ? "do_not_use"
-                                : "inconclusive"
-                          }`}
+                          className={`verdict-chip verdict-${comparisonVerdictChipTone(
+                            {
+                              verdict: e.verdict,
+                              displayMode: e.displayMode,
+                              adoptionConfirmation: e.adoptionConfirmation,
+                            },
+                          )}`}
                           title={e.comparisonMeta?.title}
                         >
                           {e.comparisonMeta?.label ??

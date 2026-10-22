@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   benefitListVerdictChipLabel,
+  comparisonVerdictChipTone,
   comparisonVerdictListLabel,
   isAdoptionConfirmationPending,
   isProvisionalOfficialPass,
@@ -11,6 +12,30 @@ describe("comparisonVerdictDisplay", () => {
     expect(isAdoptionConfirmationPending({ step: 1, required: 2 })).toBe(true);
     expect(isAdoptionConfirmationPending({ step: 2, required: 2 })).toBe(false);
     expect(isAdoptionConfirmationPending(null)).toBe(false);
+  });
+
+  it("comparisonVerdictChipTone stays inconclusive for provisional 1/N", () => {
+    expect(
+      comparisonVerdictChipTone({
+        verdict: "INCONCLUSIVE",
+        displayMode: "official",
+        adoptionConfirmation: { step: 1, required: 2 },
+      }),
+    ).toBe("inconclusive");
+    expect(
+      comparisonVerdictChipTone({
+        verdict: "PASS",
+        displayMode: "official",
+        adoptionConfirmation: { step: 2, required: 2 },
+      }),
+    ).toBe("use");
+    expect(
+      comparisonVerdictChipTone({
+        verdict: "PASS",
+        displayMode: "official",
+        adoptionConfirmation: { step: 1, required: 2 },
+      }),
+    ).toBe("inconclusive");
   });
 
   it("detects provisional official PASS 1/N", () => {

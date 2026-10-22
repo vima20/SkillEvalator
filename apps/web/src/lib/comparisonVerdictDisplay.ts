@@ -50,6 +50,35 @@ export function comparisonVerdictListLabel(opts: {
   return label;
 }
 
+/** CSS tone for Comparison list verdict chips (not raw PASS when provisional 1/N). */
+export function comparisonVerdictChipTone(opts: {
+  verdict: string;
+  displayMode: string;
+  adoptionConfirmation?: AdoptionConfirmation | null;
+}): "use" | "do_not_use" | "inconclusive" {
+  if (
+    isProvisionalOfficialPass({
+      verdict: opts.verdict,
+      displayMode: opts.displayMode,
+      adoptionConfirmation: opts.adoptionConfirmation,
+    })
+  ) {
+    return "inconclusive";
+  }
+  if (
+    opts.displayMode === "official" &&
+    opts.verdict === "PASS" &&
+    isAdoptionConfirmationPending(opts.adoptionConfirmation)
+  ) {
+    return "inconclusive";
+  }
+  if (opts.displayMode === "official" && opts.verdict === "PASS") return "use";
+  if (opts.displayMode === "official" && opts.verdict === "FAIL") {
+    return "do_not_use";
+  }
+  return "inconclusive";
+}
+
 /** Benefit list verdict chip — reuse Comparison list label when paired eval is loaded. */
 export function benefitListVerdictChipLabel(opts: {
   recommendation: string;
