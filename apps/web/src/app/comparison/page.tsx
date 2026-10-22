@@ -4,11 +4,8 @@ import { ClearSmokeNoise } from "@/components/ClearSmokeNoise";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
-import {
-  benefitListPairLockedLabel,
-  benefitPairEvidenceFromPacked,
-} from "@/lib/benefitListHints";
-import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
+import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
+import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
 import {
@@ -22,8 +19,6 @@ import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   listEvaluations,
   loadEvaluationComparison,
-  resolveTipBaselineRunId,
-  resolveTipCandidateRunId,
 } from "@/lib/evaluations";
 import { evaluationTipPairIsActive } from "@/lib/evaluationTipPair";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
@@ -69,29 +64,14 @@ export default async function ComparisonListPage({
     const c = packed.comparison;
     const pending = !c;
     // Prefer Comparison tip legs (then healed meta) so Benefit CTA matches PASS/FAIL.
+    const pairBrowse = evaluationPairBrowseFromPacked(packed);
     const tipCandidateRunId =
-      resolveTipCandidateRunId(packed) ?? e.candidateRunId;
-    const tipBaselineRunId =
-      resolveTipBaselineRunId(packed) ?? e.baselineRunId;
-    const packedForUi = c
-      ? {
-          meta: packed.meta ?? { mode: e.mode },
-          baseline: packed.baseline,
-          candidate: packed.candidate,
-          comparison: c,
-        }
-      : null;
-    const { comparisonMeta, pairedDisplayMode: pairedFromUi } =
-      comparisonUiFromPacked(packedForUi);
-    const displayMode = pairedFromUi ?? c?.mode ?? e.mode;
-    const { pairEvidence, pairChip, pairBlocked } =
-      benefitPairEvidenceFromPacked({
-        tipBaselineRunId,
-        tipCandidateRunId,
-        metaSmoke: e.smoke === true,
-        baseline: packed.baseline,
-        candidate: packed.candidate,
-      });
+      pairBrowse.tipCandidateRunId ?? e.candidateRunId;
+    const tipBaselineRunId = pairBrowse.tipBaselineRunId ?? e.baselineRunId;
+    const displayMode =
+      pairBrowse.pairedDisplayMode ?? c?.mode ?? e.mode;
+    const { pairEvidence, pairChip, pairBlocked, comparisonMeta } =
+      pairBrowse;
     const baselineStatus =
       syncStatusFromResult(root, tipBaselineRunId)?.status ??
       packed.baseline?.status;

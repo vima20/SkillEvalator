@@ -13,10 +13,8 @@ import {
   formatCaptureEnvSnapshot,
   formatCaptureGradePolicy,
 } from "@/lib/captureEnvEvidence";
-import {
-  benefitListPairLockedLabel,
-  benefitPairEvidenceFromPacked,
-} from "@/lib/benefitListHints";
+import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
+import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
@@ -26,7 +24,6 @@ import {
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
-import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import {
   isPilotFocusParam,
@@ -136,14 +133,8 @@ export default async function ComparisonDetailPage({
   }
 
   const capture = comparison.capture;
-  const { pairEvidence, pairChip, pairBlocked } =
-    benefitPairEvidenceFromPacked({
-      tipBaselineRunId: baselineRunId,
-      tipCandidateRunId: candidateRunId,
-      metaSmoke: meta.smoke === true,
-      baseline,
-      candidate,
-    });
+  const pairBrowse = evaluationPairBrowseFromPacked(packed);
+  const { pairEvidence, pairChip, pairBlocked } = pairBrowse;
   const baselineFakeProduce = pairEvidence.baselineFakeProduce;
   const candidateFakeProduce = pairEvidence.candidateFakeProduce;
   const baselineProduceAttested = pairEvidence.baselineProduceAttested;
@@ -160,7 +151,7 @@ export default async function ComparisonDetailPage({
     comparisonMeta,
     comparisonProvisional,
     pairedDisplayMode: pairedDisplayModeFromUi,
-  } = comparisonUiFromPacked(packed);
+  } = pairBrowse;
   const pairedDisplayMode = pairedDisplayModeFromUi ?? comparison.mode;
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;

@@ -8,11 +8,8 @@ import {
   readJsonFile,
   syncStatusFromResult,
 } from "@skillevalator/core";
-import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
-import {
-  loadEvaluationComparison,
-  resolveTipCandidateRunId,
-} from "@/lib/evaluations";
+import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
+import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
   evaluationPairPending,
   type EvaluationPairPending,
@@ -226,12 +223,12 @@ export function loadRunDetailEvaluationPack(opts: {
   const loadPacked = opts.loadPacked ?? loadEvaluationComparison;
   const packed = loadPacked(evaluationId);
   const pairPending = evaluationPairPending(packed, { runId: opts.runId });
-  const { comparisonMeta, comparisonProvisional } = comparisonUiFromPacked(
-    packed,
-  );
+  const pairBrowse = evaluationPairBrowseFromPacked(packed);
+  const { comparisonMeta, comparisonProvisional, tipCandidateRunId } =
+    pairBrowse;
   return {
     evaluationId,
-    tipCandidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
+    tipCandidateRunId,
     pairHarness: runDetailPairHarness(packed),
     ...(pairPending ? { pairPending } : {}),
     ...(comparisonProvisional ? { comparisonProvisional } : {}),

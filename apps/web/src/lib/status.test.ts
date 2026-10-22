@@ -49,11 +49,10 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/scorecardUnavailable/);
     expect(list).toMatch(/evaluationTipPairIsActive/);
     // Pending list chip: tip legs beat stale evaluation.json mode.
-    expect(list).toMatch(/comparisonUiFromPacked/);
+    expect(list).toMatch(/evaluationPairBrowseFromPacked/);
     expect(list).toMatch(/comparisonVerdictListLabel/);
     expect(list).toMatch(/adoptionConfirmation/);
     expect(list).toMatch(/downloadsOk = downloadGate\?\.ok === true/);
-    expect(list).toMatch(/comparisonUiFromPacked/);
     expect(list).toMatch(/e\.comparisonMeta\?\.title/);
     // tipActive + result.json → Benefit (waiting); without result → run detail.
     expect(list).toMatch(
@@ -108,7 +107,7 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/pairedEvalPreferOfficial/);
     expect(detail).toMatch(/Confirm adoption — new official pair/);
     expect(detail).toMatch(/provisionalPass/);
-    expect(detail).toMatch(/comparisonUiFromPacked/);
+    expect(detail).toMatch(/evaluationPairBrowseFromPacked/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);
     expect(detail).toMatch(/verdictHeadline/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);

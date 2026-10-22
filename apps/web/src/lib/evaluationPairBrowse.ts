@@ -15,10 +15,15 @@ export type PackedEvaluationBrowse = ReturnType<
   typeof loadEvaluationComparison
 >;
 
+export type EvaluationPairEvidence = ReturnType<
+  typeof benefitPairEvidenceFromPacked
+>["pairEvidence"];
+
 export type EvaluationPairBrowseEntry = {
   packed: PackedEvaluationBrowse;
   tipCandidateRunId: string | null;
   tipBaselineRunId: string | null;
+  pairEvidence: EvaluationPairEvidence;
   pairChip: BenefitListPairChip | null;
   pairBlocked: boolean;
   comparisonMeta: ReturnType<
@@ -34,7 +39,7 @@ export function evaluationPairBrowseFromPacked(
 ): EvaluationPairBrowseEntry {
   const tipCandidateRunId = resolveTipCandidateRunId(packed);
   const tipBaselineRunId = resolveTipBaselineRunId(packed);
-  const { pairChip, pairBlocked } = benefitPairEvidenceFromPacked({
+  const { pairChip, pairBlocked, pairEvidence } = benefitPairEvidenceFromPacked({
     tipBaselineRunId,
     tipCandidateRunId,
     metaSmoke: packed.meta?.smoke === true,
@@ -50,6 +55,7 @@ export function evaluationPairBrowseFromPacked(
     packed,
     tipCandidateRunId,
     tipBaselineRunId,
+    pairEvidence,
     pairChip,
     pairBlocked,
     comparisonMeta,
