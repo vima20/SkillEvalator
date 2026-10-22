@@ -1,4 +1,8 @@
-import type { AdoptionConfirmation, RunResult } from "@skillevalator/core";
+import type {
+  AdoptionConfirmation,
+  RunComparison,
+  RunResult,
+} from "@skillevalator/core";
 
 import {
   benefitPairEvidenceFromPacked,
@@ -10,6 +14,11 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
+import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
+import {
+  pairedEvalDisplayMode,
+  pairedEvalPreferOfficial,
+} from "@/lib/pilotFocusHref";
 
 export type PackedEvaluationBrowse = ReturnType<
   typeof loadEvaluationComparison
@@ -28,8 +37,8 @@ export type PairedAdoptionModes = {
 /** Subset of a loaded evaluation pack — modes only (list meta, Benefit, export). */
 export type PackedAdoptionModeSource = {
   meta?: { mode?: string } | null;
-  baseline?: { mode?: RunResult["mode"] } | null;
-  candidate?: { mode?: RunResult["mode"] } | null;
+  baseline?: { mode?: string } | null;
+  candidate?: { mode?: string } | null;
 };
 
 /** Tip leg + meta modes for adoption gates (Benefit USE, export, list chips). */
@@ -38,13 +47,40 @@ export function pairedAdoptionModesFromPacked(
 ): PairedAdoptionModes {
   return {
     ...(packed.meta?.mode ? { metaMode: packed.meta.mode } : {}),
-    ...(packed.baseline?.mode
+    ...(packed.baseline?.mode === "official" ||
+    packed.baseline?.mode === "dry-run"
       ? { baselineMode: packed.baseline.mode }
       : {}),
-    ...(packed.candidate?.mode
+    ...(packed.candidate?.mode === "official" ||
+    packed.candidate?.mode === "dry-run"
       ? { candidateMode: packed.candidate.mode }
       : {}),
   };
+}
+
+export function pairedEvalDisplayModeFromPacked(
+  packed: PackedAdoptionModeSource,
+): string | undefined {
+  return pairedEvalDisplayMode(pairedAdoptionModesFromPacked(packed));
+}
+
+export function pairedEvalPreferOfficialFromPacked(
+  packed: PackedAdoptionModeSource,
+): boolean {
+  return pairedEvalPreferOfficial(pairedAdoptionModesFromPacked(packed));
+}
+
+/** Exported CSV metadata — same resolution as export gates. */
+export function pairedAdoptionComparisonMode(
+  comparison: Pick<RunComparison, "mode">,
+  modes: PairedAdoptionModes,
+): RunComparison["mode"] {
+  return (
+    pairedEvaluationAdoptionMode({
+      comparisonMode: comparison.mode,
+      ...modes,
+    }) ?? comparison.mode
+  );
 }
 
 /** Comparison / run CSV export gates — tip modes beat stale comparison.json. */

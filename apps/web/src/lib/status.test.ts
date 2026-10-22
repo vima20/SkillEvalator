@@ -110,7 +110,8 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/provisionalPass/);
     expect(detail).toMatch(/evaluationPairBrowseFromPacked/);
     expect(detail).toMatch(/pairExportEvidenceFromBrowse/);
-    expect(detail).toMatch(/pairedEvalDisplayMode/);
+    expect(detail).toMatch(/pairedEvalDisplayModeFromPacked/);
+    expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);
     expect(detail).toMatch(/verdictHeadline/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);

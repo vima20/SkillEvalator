@@ -17,6 +17,8 @@ import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
+  pairedEvalDisplayModeFromPacked,
+  pairedEvalPreferOfficialFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
@@ -30,8 +32,6 @@ import { resultsDir } from "@/lib/paths";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import {
   isPilotFocusParam,
-  pairedEvalDisplayMode,
-  pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
@@ -158,19 +158,11 @@ export default async function ComparisonDetailPage({
   } = pairBrowse;
   const pairedDisplayMode =
     pairedDisplayModeFromUi ??
-    pairedEvalDisplayMode({
-      metaMode: meta.mode,
-      baselineMode: baseline?.mode,
-      candidateMode: candidate?.mode,
-    }) ??
+    pairedEvalDisplayModeFromPacked(packed) ??
     comparison.mode;
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
-  const preferOfficial = pairedEvalPreferOfficial({
-    metaMode: meta.mode,
-    baselineMode: baseline?.mode,
-    candidateMode: candidate?.mode,
-  });
+  const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);
   const confirmOfficialPairHref = withNewRunHandoff(
     pilotFocus,
     preferOfficial,

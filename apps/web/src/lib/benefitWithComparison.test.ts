@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { OFFICIAL_MIN_REPEATS } from "@skillevalator/core";
 import type { RunComparison, RunResult } from "@skillevalator/core";
+import type { loadEvaluationComparison } from "@/lib/evaluations";
 import { buildBenefitReportBundle } from "./benefitWithComparison.js";
 
 vi.mock("@/lib/evaluations", () => ({
@@ -44,7 +45,9 @@ function officialCandidate(): RunResult {
     finishedAt: "2026-10-14T00:01:00.000Z",
     mode: "official",
     role: "candidate",
-    capture: { env: { fakeProduce: false, produceAttested: true } },
+    capture: {
+      env: { fakeProduce: false, produceAttested: true },
+    } as RunResult["capture"],
   };
 }
 
@@ -67,7 +70,7 @@ describe("buildBenefitReportBundle", () => {
         candidateRunId: "run_cand_tip",
         baselineRunId: "run_base_tip",
       } as RunComparison,
-    });
+    } as ReturnType<typeof loadEvaluationComparison>);
     const { report } = buildBenefitReportBundle(officialCandidate(), {
       evaluationId: "eval_stale_cmp",
     });

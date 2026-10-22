@@ -5,7 +5,9 @@ import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
   pairExportEvidenceFromPacked,
+  pairedAdoptionComparisonMode,
   pairedAdoptionModesFromPacked,
+  pairedEvalPreferOfficialFromPacked,
   type PackedEvaluationBrowse,
 } from "./evaluationPairBrowse.js";
 import { officialComparisonExportGate } from "./comparisonExport.js";
@@ -75,6 +77,22 @@ describe("evaluationPairBrowseFromPacked", () => {
     expect(evidence.baselineMode).toBe("official");
     expect(evidence.candidateMode).toBe("official");
     expect(evidence.metaMode).toBe("dry-run");
+  });
+
+  it("pairedAdoptionComparisonMode prefers official tip legs over stale comparison.json", () => {
+    const packed = {
+      meta: { mode: "dry-run" },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+    } as PackedEvaluationBrowse;
+    expect(
+      pairedAdoptionComparisonMode(
+        packed.comparison!,
+        pairedAdoptionModesFromPacked(packed),
+      ),
+    ).toBe("official");
+    expect(pairedEvalPreferOfficialFromPacked(packed)).toBe(true);
   });
 
   it("pairExportEvidenceFromPacked feeds official export gate (stale comparison mode)", () => {

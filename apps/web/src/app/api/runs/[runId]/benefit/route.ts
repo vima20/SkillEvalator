@@ -7,7 +7,11 @@ import {
 } from "@skillevalator/core";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
-import { pairExportEvidenceFromPacked } from "@/lib/evaluationPairBrowse";
+import {
+  pairedAdoptionComparisonMode,
+  pairedAdoptionModesFromPacked,
+  pairExportEvidenceFromPacked,
+} from "@/lib/evaluationPairBrowse";
 import {
   EXPORT_FAILED_ERROR,
   EXPORT_INVALID_REQUEST_ERROR,
@@ -72,7 +76,13 @@ export async function GET(
       return new NextResponse(
         benefitReportToCsv(report, {
           comparisonVerdict: comparison?.verdict,
-          comparisonMode: comparison?.mode,
+          comparisonMode:
+            comparison && packed
+              ? pairedAdoptionComparisonMode(
+                  comparison,
+                  pairedAdoptionModesFromPacked(packed),
+                )
+              : comparison?.mode,
           comparisonLift: comparison?.lift,
           fakeProduce: result.capture?.env?.fakeProduce === true,
           produceAttested: result.capture?.env?.produceAttested === true,
