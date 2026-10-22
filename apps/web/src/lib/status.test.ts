@@ -106,6 +106,8 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/Confirm adoption — new official pair/);
     expect(detail).toMatch(/provisionalPass/);
     expect(detail).toMatch(/pairedEvalDisplayMode/);
+    expect(detail).toMatch(/comparisonVerdictListLabel/);
+    expect(detail).toMatch(/verdictHeadline/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);
     expect(detail).toMatch(/baselineMode=\{baseline\?\.mode\}/);
     expect(detail).toMatch(/candidateMode=\{candidate\?\.mode\}/);

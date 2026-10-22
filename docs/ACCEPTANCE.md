@@ -10,7 +10,8 @@
 | Tulos | Merkitys | Ei tarkoita |
 | --- | --- | --- |
 | **Comparison PASS** (official) | Candidate ≥ USE-floor **ja** lift ≥ kynnys samalla task setillä, Docker-gradella, pinneillä kunnossa | “Skill on tuotantovalmis kaikkeen” |
-| **Benefit USE** | PASS:n jälkeinen adoption-suositus (CSV / Benefit Report) | Smoke- tai dry-run -tulos |
+| **Provisional official PASS (1/2)** | Ensimmäinen hyväksytty official tip-pari täyttää gateit, mutta UI/levy näyttää **INCONCLUSIVE · 1/2** kunnes **toinen eri** tip-pari vahvistaa (`officialPassProvisional` poistuu) | Yksittäinen PASS ilman vahvistusta |
+| **Benefit USE** | Vahvistetun official **Comparison PASS** jälkeinen adoption-suositus (CSV / Benefit Report) | Smoke-, dry-run- tai provisionaalinen 1/2 -tulos |
 | **Comparison FAIL** | Official-ajo ei täytä PASS-kynnystä (tai fail-closed pin rikkoo) | “Skill on hyödytön” |
 | **INCONCLUSIVE** | Dry-run / smoke / puuttuva tip / riittämätön toisto | Official adoption |
 
@@ -51,4 +52,6 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 
 Official Comparison vaatii `capture.env.grade=docker_script`, `pipeline.grade=docker_script` ja `allowHostGrade=false` (host grade ei ole adoption-todiste).
 
-**Download pilot archive**, **Comparison CSV**, **run CSV** ja **Benefit CSV** (sama evidence-palkki): official PASS/FAIL, ei dry-run / `evaluation.smoke` / FAKE_PRODUCE; molemmat tip-jalat `produceAttested=true`. Archive pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA + baseline/candidate `fakeProduce` / `produceAttested`).
+**Download pilot archive**, **Comparison CSV**, **run CSV** ja **Benefit CSV** (sama evidence-palkki): official PASS/FAIL, ei dry-run / `evaluation.smoke` / FAKE_PRODUCE / **provisional 1/2**; molemmat tip-jalat `produceAttested=true`. Archive pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA + baseline/candidate `fakeProduce` / `produceAttested`).
+
+Official adoption vaatii **kaksi itsenäistä official PASS** -tip-paria (ensimmäinen näkyy provisionaalisena kunnes toinen eri pari vahvistaa — sama sääntö kuin Benefit USE -lukko).

@@ -26,7 +26,10 @@ import {
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
-import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
+import {
+  comparisonVerdictListLabel,
+  isProvisionalOfficialPass,
+} from "@/lib/comparisonVerdictDisplay";
 import {
   isPilotFocusParam,
   pairedEvalDisplayMode,
@@ -177,6 +180,11 @@ export default async function ComparisonDetailPage({
     displayMode: pairedDisplayMode,
     adoptionConfirmation: comparison.adoptionConfirmation,
   });
+  const verdictHeadline = comparisonVerdictListLabel({
+    verdict: comparison.verdict,
+    displayMode: pairedDisplayMode,
+    adoptionConfirmation: comparison.adoptionConfirmation,
+  });
   const preferOfficial = pairedEvalPreferOfficial({
     metaMode: meta.mode,
     baselineMode: baseline?.mode,
@@ -306,7 +314,7 @@ export default async function ComparisonDetailPage({
         </p>
       </div>
 
-      {comparison.mode === "dry-run" ? (
+      {pairedDisplayMode === "dry-run" ? (
         <div className="panel callout-warn">
           <strong>Dry-run only</strong>
           <p>
@@ -351,19 +359,14 @@ export default async function ComparisonDetailPage({
         </div>
       ) : null}
 
-      <section className={verdictClass(comparison.verdict, comparison.mode)}>
+      <section
+        className={verdictClass(comparison.verdict, pairedDisplayMode)}
+      >
         <p className="eyebrow">
           Unikie paired verdict
-          {comparison.mode === "dry-run" ? " · dry-run" : ""}
+          {pairedDisplayMode === "dry-run" ? " · dry-run" : ""}
         </p>
-        <p className="verdict-headline">{comparison.verdict}</p>
-        {comparison.adoptionConfirmation ? (
-          <p className="verdict-decision">
-            Adoption confirmation{" "}
-            {comparison.adoptionConfirmation.step}/
-            {comparison.adoptionConfirmation.required}
-          </p>
-        ) : null}
+        <p className="verdict-headline">{verdictHeadline}</p>
         <p className="verdict-decision">
           Lift{" "}
           {comparison.lift !== null
