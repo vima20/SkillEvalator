@@ -19,17 +19,17 @@ export type EvaluationPairEvidence = ReturnType<
   typeof benefitPairEvidenceFromPacked
 >["pairEvidence"];
 
-/** Comparison / run CSV export gates — tip modes beat stale comparison.json. */
-export function pairExportEvidenceFromBrowse(
-  entry: EvaluationPairBrowseEntry,
-): EvaluationPairEvidence & {
+export type PairedAdoptionModes = {
   metaMode?: string;
   baselineMode?: RunResult["mode"];
   candidateMode?: RunResult["mode"];
-} {
-  const packed = entry.packed;
+};
+
+/** Tip leg + meta modes for adoption gates (Benefit USE, export, list chips). */
+export function pairedAdoptionModesFromPacked(
+  packed: PackedEvaluationBrowse,
+): PairedAdoptionModes {
   return {
-    ...entry.pairEvidence,
     ...(packed.meta?.mode ? { metaMode: packed.meta.mode } : {}),
     ...(packed.baseline?.mode
       ? { baselineMode: packed.baseline.mode }
@@ -37,6 +37,16 @@ export function pairExportEvidenceFromBrowse(
     ...(packed.candidate?.mode
       ? { candidateMode: packed.candidate.mode }
       : {}),
+  };
+}
+
+/** Comparison / run CSV export gates — tip modes beat stale comparison.json. */
+export function pairExportEvidenceFromBrowse(
+  entry: EvaluationPairBrowseEntry,
+): EvaluationPairEvidence & PairedAdoptionModes {
+  return {
+    ...entry.pairEvidence,
+    ...pairedAdoptionModesFromPacked(entry.packed),
   };
 }
 

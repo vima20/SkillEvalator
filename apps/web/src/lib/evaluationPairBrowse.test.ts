@@ -5,6 +5,7 @@ import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
   pairExportEvidenceFromPacked,
+  pairedAdoptionModesFromPacked,
   type PackedEvaluationBrowse,
 } from "./evaluationPairBrowse.js";
 import { officialComparisonExportGate } from "./comparisonExport.js";
@@ -48,6 +49,19 @@ describe("evaluationPairBrowseFromPacked", () => {
     } as PackedEvaluationBrowse);
     expect(out.comparisonProvisional).toEqual({ step: 1, required: 2 });
     expect(out.pairedDisplayMode).toBe("official");
+  });
+
+  it("pairedAdoptionModesFromPacked reads tip legs and meta", () => {
+    const modes = pairedAdoptionModesFromPacked({
+      meta: { mode: "dry-run" },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+    } as PackedEvaluationBrowse);
+    expect(modes).toEqual({
+      metaMode: "dry-run",
+      baselineMode: "official",
+      candidateMode: "official",
+    });
   });
 
   it("pairExportEvidenceFromBrowse includes tip leg modes for export gates", () => {

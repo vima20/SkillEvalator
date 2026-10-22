@@ -8,7 +8,10 @@ import {
   readJsonFile,
   syncStatusFromResult,
 } from "@skillevalator/core";
-import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
+import {
+  evaluationPairBrowseFromPacked,
+  pairedAdoptionModesFromPacked,
+} from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
   evaluationPairPending,
@@ -233,8 +236,6 @@ export function loadRunDetailEvaluationPack(opts: {
     ...(pairPending ? { pairPending } : {}),
     ...(comparisonProvisional ? { comparisonProvisional } : {}),
     ...(comparisonMeta ? { comparisonMeta } : {}),
-    ...(packed?.meta?.mode ? { metaMode: packed.meta.mode } : {}),
-    ...(packed?.baseline?.mode ? { baselineMode: packed.baseline.mode } : {}),
-    ...(packed?.candidate?.mode ? { candidateMode: packed.candidate.mode } : {}),
+    ...pairedAdoptionModesFromPacked(packed),
   };
 }

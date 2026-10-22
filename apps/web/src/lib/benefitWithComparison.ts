@@ -11,6 +11,7 @@ import {
   resolveTipCandidateRunId,
   type EvaluationMeta,
 } from "@/lib/evaluations";
+import { pairedAdoptionModesFromPacked } from "@/lib/evaluationPairBrowse";
 import { evaluationPairPending } from "@/lib/evaluationTipPair";
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 
@@ -80,13 +81,7 @@ export function buildBenefitReportBundle(
       ...(supersededNonTip && tipCandidateRunId
         ? { tipCandidateRunId }
         : {}),
-      ...(meta?.mode !== undefined ? { metaMode: meta.mode } : {}),
-      ...(packed?.baseline?.mode
-        ? { baselineMode: packed.baseline.mode }
-        : {}),
-      ...(packed?.candidate?.mode
-        ? { candidateMode: packed.candidate.mode }
-        : {}),
+      ...(packed ? pairedAdoptionModesFromPacked(packed) : {}),
     }),
     comparison,
     meta,

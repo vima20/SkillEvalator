@@ -30,6 +30,7 @@ import { resultsDir } from "@/lib/paths";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import {
   isPilotFocusParam,
+  pairedEvalDisplayMode,
   pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
@@ -155,7 +156,14 @@ export default async function ComparisonDetailPage({
     comparisonProvisional,
     pairedDisplayMode: pairedDisplayModeFromUi,
   } = pairBrowse;
-  const pairedDisplayMode = pairedDisplayModeFromUi ?? comparison.mode;
+  const pairedDisplayMode =
+    pairedDisplayModeFromUi ??
+    pairedEvalDisplayMode({
+      metaMode: meta.mode,
+      baselineMode: baseline?.mode,
+      candidateMode: candidate?.mode,
+    }) ??
+    comparison.mode;
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficial({
