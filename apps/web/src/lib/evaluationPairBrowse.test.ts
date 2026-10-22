@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createEvaluationPairBrowseCache,
   evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
   type PackedEvaluationBrowse,
 } from "./evaluationPairBrowse.js";
 
@@ -45,6 +46,19 @@ describe("evaluationPairBrowseFromPacked", () => {
     } as PackedEvaluationBrowse);
     expect(out.comparisonProvisional).toEqual({ step: 1, required: 2 });
     expect(out.pairedDisplayMode).toBe("official");
+  });
+
+  it("pairExportEvidenceFromBrowse includes tip leg modes for export gates", () => {
+    const browse = evaluationPairBrowseFromPacked({
+      meta: { mode: "dry-run", smoke: false },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+      comparison: { verdict: "PASS" },
+    } as PackedEvaluationBrowse);
+    const evidence = pairExportEvidenceFromBrowse(browse);
+    expect(evidence.baselineMode).toBe("official");
+    expect(evidence.candidateMode).toBe("official");
+    expect(evidence.metaMode).toBe("dry-run");
   });
 });
 

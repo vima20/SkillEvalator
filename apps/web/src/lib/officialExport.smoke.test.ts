@@ -333,6 +333,41 @@ describe("official export gates smoke", () => {
     ).toBe(false);
   });
 
+  it("export gates allow PASS when comparison.json mode is stale dry-run but tip legs are official", () => {
+    const liveTips = {
+      baselineProduceAttested: true,
+      candidateProduceAttested: true,
+      baselineMode: "official" as const,
+      candidateMode: "official" as const,
+    };
+    const staleComparison = {
+      verdict: "PASS" as const,
+      mode: "dry-run" as const,
+      baselineRunId: "run_b_stale",
+      candidateRunId: "run_c_stale",
+    };
+    expect(comparisonCsvGate(staleComparison, liveTips).ok).toBe(true);
+    expect(
+      runCsvExportGate({
+        result: {
+          runId: "run_c_stale",
+          mode: "official",
+          evaluationId: "eval_stale_mode",
+          status: "ok",
+          capture: { env: { fakeProduce: false, produceAttested: true } },
+        },
+        comparisonVerdict: "PASS",
+        comparisonMode: "dry-run",
+        baselineRunId: "run_b_stale",
+        candidateRunId: "run_c_stale",
+        ...liveTips,
+      }).ok,
+    ).toBe(true);
+    expect(
+      pilotArchiveGate({ comparison: staleComparison, ...liveTips }).ok,
+    ).toBe(true);
+  });
+
   it("dry-run Comparison is denied by all adoption export gates", () => {
     const evaluationId = "eval_smoke_export_dry";
     const baseline = {
