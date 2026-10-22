@@ -70,6 +70,14 @@ export function pairedEvalPreferOfficialFromPacked(
   return pairedEvalPreferOfficial(pairedAdoptionModesFromPacked(packed));
 }
 
+/** List/detail chip mode — tip legs only (not stale comparison.json). */
+export function resolvePairedDisplayModeFromPacked(
+  packed: PackedEvaluationBrowse,
+): string | undefined {
+  if (!packed.comparison) return undefined;
+  return pairedEvalDisplayModeFromPacked(packed);
+}
+
 /** Exported CSV metadata — same resolution as export gates. */
 export function pairedAdoptionComparisonMode(
   comparison: Pick<RunComparison, "mode">,
@@ -127,11 +135,9 @@ export function evaluationPairBrowseFromPacked(
     baseline: packed.baseline,
     candidate: packed.candidate,
   });
-  const {
-    comparisonMeta,
-    pairedDisplayMode,
-    comparisonProvisional,
-  } = comparisonUiFromPacked(packed);
+  const { comparisonMeta, comparisonProvisional } =
+    comparisonUiFromPacked(packed);
+  const pairedDisplayMode = resolvePairedDisplayModeFromPacked(packed);
   return {
     packed,
     tipCandidateRunId,

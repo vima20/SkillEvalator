@@ -8,7 +8,6 @@ import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
-  pairedEvalDisplayModeFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
@@ -73,10 +72,7 @@ export default async function ComparisonListPage({
       pairBrowse.tipCandidateRunId ?? e.candidateRunId;
     const tipBaselineRunId = pairBrowse.tipBaselineRunId ?? e.baselineRunId;
     const displayMode =
-      pairBrowse.pairedDisplayMode ??
-      pairedEvalDisplayModeFromPacked(packed) ??
-      c?.mode ??
-      e.mode;
+      pairBrowse.pairedDisplayMode ?? c?.mode ?? e.mode;
     const { pairEvidence, pairChip, pairBlocked, comparisonMeta } =
       pairBrowse;
     const baselineStatus =

@@ -53,6 +53,16 @@ describe("evaluationPairBrowseFromPacked", () => {
     expect(out.pairedDisplayMode).toBe("official");
   });
 
+  it("pairedDisplayMode ignores stale comparison.json dry-run when tip legs are official", () => {
+    const out = evaluationPairBrowseFromPacked({
+      meta: { mode: "dry-run", smoke: false },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+    } as PackedEvaluationBrowse);
+    expect(out.pairedDisplayMode).toBe("official");
+  });
+
   it("pairedAdoptionModesFromPacked reads tip legs and meta", () => {
     const modes = pairedAdoptionModesFromPacked({
       meta: { mode: "dry-run" },

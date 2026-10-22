@@ -79,7 +79,8 @@ export default async function BenefitIndexPage({
       const verdictChipTone = benefitVerdictChipToneFromComparison({
         recommendation: report.verdict.recommendation,
         comparison,
-        pairedDisplayMode: pairBrowse?.pairedDisplayMode,
+        pairedDisplayMode:
+          pairBrowse?.pairedDisplayMode ?? packed?.meta?.mode,
       });
       return {
         runId: r.runId,

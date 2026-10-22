@@ -17,7 +17,6 @@ import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
-  pairedEvalDisplayModeFromPacked,
   pairedEvalPreferOfficialFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
@@ -151,15 +150,10 @@ export default async function ComparisonDetailPage({
   const downloadBlockReason = downloadGate.ok
     ? null
     : exportGateBlockMessage(downloadGate);
-  const {
-    comparisonMeta,
-    comparisonProvisional,
-    pairedDisplayMode: pairedDisplayModeFromUi,
-  } = pairBrowse;
-  const pairedDisplayMode =
-    pairedDisplayModeFromUi ??
-    pairedEvalDisplayModeFromPacked(packed) ??
-    comparison.mode;
+  const { comparisonMeta, comparisonProvisional, pairedDisplayMode } =
+    pairBrowse;
+  const displayMode =
+    pairedDisplayMode ?? meta.mode ?? comparison.mode;
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);
@@ -181,7 +175,7 @@ export default async function ComparisonDetailPage({
           <h1>Baseline ↔ candidate</h1>
           <p>
             Skill <code>{comparison.evalSkillId}</code> · task set{" "}
-            <code>{comparison.taskSetId}</code> · {pairedDisplayMode} ·{" "}
+            <code>{comparison.taskSetId}</code> · {displayMode} ·{" "}
             <code>{comparison.modelId}</code>
           </p>
         </div>
@@ -287,7 +281,7 @@ export default async function ComparisonDetailPage({
         </p>
       </div>
 
-      {pairedDisplayMode === "dry-run" ? (
+      {displayMode === "dry-run" ? (
         <div className="panel callout-warn">
           <strong>Dry-run only</strong>
           <p>
@@ -335,13 +329,13 @@ export default async function ComparisonDetailPage({
       <section
         className={comparisonVerdictBannerClass({
           verdict: comparison.verdict,
-          displayMode: pairedDisplayMode,
+          displayMode,
           adoptionConfirmation: comparison.adoptionConfirmation,
         })}
       >
         <p className="eyebrow">
           Unikie paired verdict
-          {pairedDisplayMode === "dry-run" ? " · dry-run" : ""}
+          {displayMode === "dry-run" ? " · dry-run" : ""}
         </p>
         <p className="verdict-headline">{verdictHeadline}</p>
         <p className="verdict-decision">
