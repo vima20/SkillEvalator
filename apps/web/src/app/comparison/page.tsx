@@ -8,7 +8,7 @@ import {
   benefitListPairLockedLabel,
   benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
-import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
+import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
 import {
@@ -18,11 +18,7 @@ import {
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
-import {
-  isPilotFocusParam,
-  pairedEvalDisplayMode,
-  withPilotFocus,
-} from "@/lib/pilotFocusHref";
+import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
   listEvaluations,
   loadEvaluationComparison,
@@ -77,25 +73,17 @@ export default async function ComparisonListPage({
       resolveTipCandidateRunId(packed) ?? e.candidateRunId;
     const tipBaselineRunId =
       resolveTipBaselineRunId(packed) ?? e.baselineRunId;
-    // Tip legs beat stale evaluation.json / comparison.mode (same as detail + Dashboard).
-    const displayMode =
-      pairedEvalDisplayMode({
-        metaMode: packed.meta?.mode ?? e.mode,
-        baselineMode: packed.baseline?.mode,
-        candidateMode: packed.candidate?.mode,
-      }) ??
-      c?.mode ??
-      e.mode;
-    const comparisonMeta = comparisonCellMetaFromPacked(
-      c
-        ? {
-            meta: packed.meta ?? { mode: e.mode },
-            baseline: packed.baseline,
-            candidate: packed.candidate,
-            comparison: c,
-          }
-        : null,
-    );
+    const packedForUi = c
+      ? {
+          meta: packed.meta ?? { mode: e.mode },
+          baseline: packed.baseline,
+          candidate: packed.candidate,
+          comparison: c,
+        }
+      : null;
+    const { comparisonMeta, pairedDisplayMode: pairedFromUi } =
+      comparisonUiFromPacked(packedForUi);
+    const displayMode = pairedFromUi ?? c?.mode ?? e.mode;
     const { pairEvidence, pairChip, pairBlocked } =
       benefitPairEvidenceFromPacked({
         tipBaselineRunId,

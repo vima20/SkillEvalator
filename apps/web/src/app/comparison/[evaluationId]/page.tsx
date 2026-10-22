@@ -27,6 +27,7 @@ import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
+import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import {
   isPilotFocusParam,
   pairedEvalPreferOfficial,
@@ -36,16 +37,6 @@ import {
 import { statusBadgeClass } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
-
-function verdictClass(v: string, mode: string): string {
-  // Only official PASS/FAIL get adoption styling (dry-run stays inconclusive).
-  if (v === "PASS" && mode === "official") return "verdict-banner verdict-use";
-  if (v === "FAIL" && mode === "official")
-    return "verdict-banner verdict-do_not_use";
-  if (v === "PASS" || v === "FAIL")
-    return "verdict-banner verdict-inconclusive";
-  return "verdict-banner verdict-inconclusive";
-}
 
 function fmtScore(n: number | null | undefined): string {
   return typeof n === "number" && Number.isFinite(n) ? n.toFixed(3) : "—";
@@ -348,7 +339,11 @@ export default async function ComparisonDetailPage({
       ) : null}
 
       <section
-        className={verdictClass(comparison.verdict, pairedDisplayMode)}
+        className={comparisonVerdictBannerClass({
+          verdict: comparison.verdict,
+          displayMode: pairedDisplayMode,
+          adoptionConfirmation: comparison.adoptionConfirmation,
+        })}
       >
         <p className="eyebrow">
           Unikie paired verdict

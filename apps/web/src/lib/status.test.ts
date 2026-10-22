@@ -49,11 +49,11 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/scorecardUnavailable/);
     expect(list).toMatch(/evaluationTipPairIsActive/);
     // Pending list chip: tip legs beat stale evaluation.json mode.
-    expect(list).toMatch(/pairedEvalDisplayMode/);
+    expect(list).toMatch(/comparisonUiFromPacked/);
     expect(list).toMatch(/comparisonVerdictListLabel/);
     expect(list).toMatch(/adoptionConfirmation/);
     expect(list).toMatch(/downloadsOk = downloadGate\?\.ok === true/);
-    expect(list).toMatch(/comparisonCellMetaFromPacked/);
+    expect(list).toMatch(/comparisonUiFromPacked/);
     expect(list).toMatch(/e\.comparisonMeta\?\.title/);
     // tipActive + result.json → Benefit (waiting); without result → run detail.
     expect(list).toMatch(
@@ -109,6 +109,7 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/Confirm adoption — new official pair/);
     expect(detail).toMatch(/provisionalPass/);
     expect(detail).toMatch(/comparisonUiFromPacked/);
+    expect(detail).toMatch(/comparisonVerdictBannerClass/);
     expect(detail).toMatch(/verdictHeadline/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);
     expect(detail).toMatch(/baselineMode=\{baseline\?\.mode\}/);
@@ -205,6 +206,7 @@ describe("statusBadgeKind", () => {
     expect(benefitList).toMatch(/benefitPairCtaLabel/);
     expect(benefitList).toMatch(/pairPending/);
     expect(benefitList).toMatch(/comparisonUiFromPacked/);
+    expect(benefitList).toMatch(/comparisonMeta\?\.title/);
     expect(list).toMatch(/comparisonVerdictChipTone/);
     expect(benefitList).toMatch(/benefitListVerdictChipLabel/);
     expect(list).toMatch(/provisional/);

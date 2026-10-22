@@ -79,6 +79,18 @@ export function comparisonVerdictChipTone(opts: {
   return "inconclusive";
 }
 
+/** Detail-page verdict banner class (same tone rules as list chips). */
+export function comparisonVerdictBannerClass(opts: {
+  verdict: string;
+  displayMode: string;
+  adoptionConfirmation?: AdoptionConfirmation | null;
+}): string {
+  const tone = comparisonVerdictChipTone(opts);
+  if (tone === "use") return "verdict-banner verdict-use";
+  if (tone === "do_not_use") return "verdict-banner verdict-do_not_use";
+  return "verdict-banner verdict-inconclusive";
+}
+
 /** Benefit list verdict chip — reuse Comparison list label when paired eval is loaded. */
 export function benefitListVerdictChipLabel(opts: {
   recommendation: string;

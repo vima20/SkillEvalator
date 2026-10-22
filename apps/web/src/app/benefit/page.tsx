@@ -259,7 +259,7 @@ export default async function BenefitIndexPage({
                     <td>
                       <span
                         className={`verdict-chip verdict-${r.verdict.recommendation}`}
-                        title={r.verdict.headline}
+                        title={r.comparisonMeta?.title ?? r.verdict.headline}
                       >
                         {benefitListVerdictChipLabel({
                           recommendation: r.verdict.recommendation,
