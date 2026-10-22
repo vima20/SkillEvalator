@@ -9,6 +9,17 @@ import {
 } from "./pilotFocusHref.js";
 
 describe("pilotFocusHref", () => {
+  it("does not import @skillevalator/core barrel (avoids client child_process bundle)", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/pilotFocusHref.ts"),
+      "utf8",
+    );
+    expect(src).not.toMatch(/from "@skillevalator\/core"/);
+    expect(src).toMatch(/@\/lib\/pairedAdoptionMode/);
+  });
+
   it("detects focus=pilot", () => {
     expect(isPilotFocusParam("pilot")).toBe(true);
     expect(isPilotFocusParam(undefined)).toBe(false);

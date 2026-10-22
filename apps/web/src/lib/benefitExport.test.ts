@@ -42,6 +42,18 @@ describe("benefitExportGate", () => {
     ).toBe(true);
   });
 
+  it("allows USE when comparison.json mode is stale but tip legs are official", () => {
+    expect(
+      benefitExportGate({
+        report: officialReport("use"),
+        comparison: tipComparison("PASS", "dry-run"),
+        baselineMode: "official",
+        candidateMode: "official",
+        ...liveTips,
+      }).ok,
+    ).toBe(true);
+  });
+
   it("blocks USE without Comparison / tip candidate", () => {
     const out = benefitExportGate({
       report: officialReport("use"),
