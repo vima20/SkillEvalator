@@ -19,7 +19,7 @@ import {
   resolveTipBaselineRunId,
   resolveTipCandidateRunId,
 } from "@/lib/evaluations";
-import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
+import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
@@ -58,7 +58,9 @@ export default async function RunsPage({
       tipCandidateRunId: string | null;
       pairChip: BenefitListPairChip | null;
       pairBlocked: boolean;
-      comparisonMeta: ReturnType<typeof comparisonCellMetaFromPacked>;
+      comparisonMeta: ReturnType<
+        typeof comparisonUiFromPacked
+      >["comparisonMeta"];
     }
   >();
   const pairFor = (evaluationId: string) => {
@@ -77,7 +79,7 @@ export default async function RunsPage({
         tipCandidateRunId,
         pairChip,
         pairBlocked,
-        comparisonMeta: comparisonCellMetaFromPacked(packed),
+        comparisonMeta: comparisonUiFromPacked(packed).comparisonMeta,
       });
     }
     return pairByEval.get(evaluationId)!;

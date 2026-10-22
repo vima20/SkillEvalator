@@ -91,6 +91,27 @@ export function comparisonVerdictBannerClass(opts: {
   return "verdict-banner verdict-inconclusive";
 }
 
+/** Benefit list chip tone when paired Comparison is on disk. */
+export function benefitVerdictChipToneFromComparison(opts: {
+  recommendation: string;
+  comparison?: {
+    verdict: string;
+    adoptionConfirmation?: AdoptionConfirmation | null;
+  } | null;
+  pairedDisplayMode?: string;
+}): "use" | "do_not_use" | "inconclusive" {
+  if (opts.comparison && opts.pairedDisplayMode) {
+    return comparisonVerdictChipTone({
+      verdict: opts.comparison.verdict,
+      displayMode: opts.pairedDisplayMode,
+      adoptionConfirmation: opts.comparison.adoptionConfirmation,
+    });
+  }
+  if (opts.recommendation === "use") return "use";
+  if (opts.recommendation === "do_not_use") return "do_not_use";
+  return "inconclusive";
+}
+
 /** Benefit list verdict chip — reuse Comparison list label when paired eval is loaded. */
 export function benefitListVerdictChipLabel(opts: {
   recommendation: string;

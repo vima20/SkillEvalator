@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   benefitListVerdictChipLabel,
+  benefitVerdictChipToneFromComparison,
   comparisonVerdictBannerClass,
   comparisonVerdictChipTone,
   comparisonVerdictListLabel,
@@ -13,6 +14,19 @@ describe("comparisonVerdictDisplay", () => {
     expect(isAdoptionConfirmationPending({ step: 1, required: 2 })).toBe(true);
     expect(isAdoptionConfirmationPending({ step: 2, required: 2 })).toBe(false);
     expect(isAdoptionConfirmationPending(null)).toBe(false);
+  });
+
+  it("benefitVerdictChipToneFromComparison defers to Comparison when paired", () => {
+    expect(
+      benefitVerdictChipToneFromComparison({
+        recommendation: "use",
+        comparison: {
+          verdict: "INCONCLUSIVE",
+          adoptionConfirmation: { step: 1, required: 2 },
+        },
+        pairedDisplayMode: "official",
+      }),
+    ).toBe("inconclusive");
   });
 
   it("comparisonVerdictBannerClass matches chip tone for provisional 1/N", () => {

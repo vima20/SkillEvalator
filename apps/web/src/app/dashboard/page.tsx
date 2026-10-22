@@ -9,7 +9,7 @@ import {
   benefitPairEvidenceFromPacked,
   type BenefitListPairChip,
 } from "@/lib/benefitListHints";
-import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
+import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   includeInDashboardLeaderboard,
   includeInDashboardRanking,
@@ -160,7 +160,9 @@ export default async function DashboardPage({
         role: r.result.role ?? "candidate",
         pairChip: pair.pairChip,
         pairBlocked: pair.pairBlocked,
-        comparisonMeta: comparisonCellMetaFromPacked(pair.packed),
+        comparisonMeta: pair.packed
+          ? comparisonUiFromPacked(pair.packed).comparisonMeta
+          : null,
         ...(pairPending ? { pairPending } : {}),
       },
     ];

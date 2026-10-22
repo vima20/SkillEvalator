@@ -11,7 +11,7 @@ import {
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import {
   benefitListVerdictChipLabel,
-  comparisonVerdictChipTone,
+  benefitVerdictChipToneFromComparison,
 } from "@/lib/comparisonVerdictDisplay";
 import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
@@ -92,18 +92,11 @@ export default async function BenefitIndexPage({
         candidate,
         comparison,
       });
-      const verdictChipTone =
-        comparison && comparisonUi.pairedDisplayMode
-          ? comparisonVerdictChipTone({
-              verdict: comparison.verdict,
-              displayMode: comparisonUi.pairedDisplayMode,
-              adoptionConfirmation: comparison.adoptionConfirmation,
-            })
-          : report.verdict.recommendation === "use"
-            ? "use"
-            : report.verdict.recommendation === "do_not_use"
-              ? "do_not_use"
-              : "inconclusive";
+      const verdictChipTone = benefitVerdictChipToneFromComparison({
+        recommendation: report.verdict.recommendation,
+        comparison,
+        pairedDisplayMode: comparisonUi.pairedDisplayMode,
+      });
       return {
         runId: r.runId,
         score: r.result!.score,
