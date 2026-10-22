@@ -215,12 +215,13 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/provisional/);
     expect(dashboard).toMatch(/benefitPairCtaLabel/);
     expect(dashboard).toMatch(/evaluationPairPending/);
-    expect(dashboard).toMatch(/comparisonUiFromPacked/);
+    expect(dashboard).toMatch(/createEvaluationPairBrowseCache/);
+    expect(dashboard).toMatch(/comparisonMeta/);
     const runsList = fs.readFileSync(
       path.join(cwd, "src/app/runs/page.tsx"),
       "utf8",
     );
-    expect(runsList).toMatch(/comparisonUiFromPacked/);
+    expect(runsList).toMatch(/createEvaluationPairBrowseCache/);
     expect(runDetail).toMatch(/benefitPairCtaLabel/);
     expect(runDetail).toMatch(/data\.pairPending/);
     expect(runDetail).toMatch(/runDetailShouldPoll/);

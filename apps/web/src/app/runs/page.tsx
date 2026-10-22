@@ -6,20 +6,11 @@ import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
-  benefitPairEvidenceFromPacked,
-  type BenefitListPairChip,
-} from "@/lib/benefitListHints";
-import {
   candidateLegKind,
   includeInPilotFocusRun,
 } from "@/lib/candidateLeg";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
-import {
-  loadEvaluationComparison,
-  resolveTipBaselineRunId,
-  resolveTipCandidateRunId,
-} from "@/lib/evaluations";
-import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
+import { createEvaluationPairBrowseCache } from "@/lib/evaluationPairBrowse";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
@@ -52,38 +43,8 @@ export default async function RunsPage({
   const pilotFocus = isPilotFocusParam(sp.focus);
 
   healOrphansForBrowse();
-  const pairByEval = new Map<
-    string,
-    {
-      tipCandidateRunId: string | null;
-      pairChip: BenefitListPairChip | null;
-      pairBlocked: boolean;
-      comparisonMeta: ReturnType<
-        typeof comparisonUiFromPacked
-      >["comparisonMeta"];
-    }
-  >();
-  const pairFor = (evaluationId: string) => {
-    if (!pairByEval.has(evaluationId)) {
-      const packed = loadEvaluationComparison(evaluationId);
-      const tipCandidateRunId = resolveTipCandidateRunId(packed);
-      const tipBaselineRunId = resolveTipBaselineRunId(packed);
-      const { pairChip, pairBlocked } = benefitPairEvidenceFromPacked({
-        tipBaselineRunId,
-        tipCandidateRunId,
-        metaSmoke: packed.meta?.smoke === true,
-        baseline: packed.baseline,
-        candidate: packed.candidate,
-      });
-      pairByEval.set(evaluationId, {
-        tipCandidateRunId,
-        pairChip,
-        pairBlocked,
-        comparisonMeta: comparisonUiFromPacked(packed).comparisonMeta,
-      });
-    }
-    return pairByEval.get(evaluationId)!;
-  };
+  const pairBrowse = createEvaluationPairBrowseCache();
+  const pairFor = (evaluationId: string) => pairBrowse.get(evaluationId);
 
   const allRuns = listRuns(resultsDir());
   const hasActive =

@@ -6,19 +6,13 @@ import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import {
   benefitListPairLockedLabel,
   benefitPairCtaLabel,
-  benefitPairEvidenceFromPacked,
   type BenefitListPairChip,
 } from "@/lib/benefitListHints";
-import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   includeInDashboardLeaderboard,
   includeInDashboardRanking,
 } from "@/lib/dashboardLeaderboard";
-import {
-  loadEvaluationComparison,
-  resolveTipBaselineRunId,
-  resolveTipCandidateRunId,
-} from "@/lib/evaluations";
+import { createEvaluationPairBrowseCache } from "@/lib/evaluationPairBrowse";
 import { evaluationPairPending } from "@/lib/evaluationTipPair";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
@@ -74,37 +68,8 @@ export default async function DashboardPage({
     allRuns.some((r) => runIsActive(r.status, !!r.result)) ||
     hasPendingEvaluations();
   const windDownRunIds = listWindDownRunIds(allRuns);
-  // Tip + pair evidence per evaluation — supersede smoke/old retries / siblings.
-  const pairByEval = new Map<
-    string,
-    {
-      tipCandidateRunId: string | null;
-      pairChip: BenefitListPairChip | null;
-      pairBlocked: boolean;
-      packed: ReturnType<typeof loadEvaluationComparison>;
-    }
-  >();
-  const pairFor = (evaluationId: string) => {
-    if (!pairByEval.has(evaluationId)) {
-      const packed = loadEvaluationComparison(evaluationId);
-      const tipCandidateRunId = resolveTipCandidateRunId(packed);
-      const tipBaselineRunId = resolveTipBaselineRunId(packed);
-      const { pairChip, pairBlocked } = benefitPairEvidenceFromPacked({
-        tipBaselineRunId,
-        tipCandidateRunId,
-        metaSmoke: packed.meta?.smoke === true,
-        baseline: packed.baseline,
-        candidate: packed.candidate,
-      });
-      pairByEval.set(evaluationId, {
-        tipCandidateRunId,
-        pairChip,
-        pairBlocked,
-        packed,
-      });
-    }
-    return pairByEval.get(evaluationId)!;
-  };
+  const pairBrowse = createEvaluationPairBrowseCache();
+  const pairFor = (evaluationId: string) => pairBrowse.get(evaluationId);
   // Leaderboard: tip (or unpaired) candidates only — never smoke / superseded.
   // Pilot focus: official tip only (no pair-blocked siblings).
   let boardCount = 0;
@@ -121,7 +86,8 @@ export default async function DashboardPage({
           tipCandidateRunId: null as string | null,
           pairChip: null as BenefitListPairChip | null,
           pairBlocked: false,
-          packed: null as ReturnType<typeof loadEvaluationComparison> | null,
+          packed: null,
+          comparisonMeta: null,
         };
     const pairPending = evaluationPairPending(pair.packed, {
       runId: r.runId,
@@ -160,9 +126,7 @@ export default async function DashboardPage({
         role: r.result.role ?? "candidate",
         pairChip: pair.pairChip,
         pairBlocked: pair.pairBlocked,
-        comparisonMeta: pair.packed
-          ? comparisonUiFromPacked(pair.packed).comparisonMeta
-          : null,
+        comparisonMeta: pair.comparisonMeta,
         ...(pairPending ? { pairPending } : {}),
       },
     ];

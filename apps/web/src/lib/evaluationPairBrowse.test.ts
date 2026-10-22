@@ -1,0 +1,37 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { createEvaluationPairBrowseCache } from "./evaluationPairBrowse.js";
+
+vi.mock("@/lib/evaluations", () => ({
+  loadEvaluationComparison: vi.fn(() => ({
+    meta: { mode: "official", smoke: false },
+    baseline: {
+      mode: "official",
+      capture: { env: { produceAttested: true } },
+    },
+    candidate: {
+      mode: "official",
+      capture: { env: { produceAttested: true } },
+    },
+    comparison: {
+      verdict: "INCONCLUSIVE",
+      adoptionConfirmation: { step: 1, required: 2 },
+    },
+  })),
+  resolveTipCandidateRunId: () => "run_cand",
+  resolveTipBaselineRunId: () => "run_base",
+}));
+
+describe("createEvaluationPairBrowseCache", () => {
+  it("caches comparison meta with provisional 1/N label", async () => {
+    const { loadEvaluationComparison } = await import("@/lib/evaluations.js");
+    const cache = createEvaluationPairBrowseCache();
+    const a = cache.get("eval_a");
+    const b = cache.get("eval_a");
+    expect(loadEvaluationComparison).toHaveBeenCalledTimes(1);
+    expect(a.comparisonMeta?.label).toBe("INCONCLUSIVE · 1/2");
+    expect(a.comparisonMeta?.title).toMatch(/second official pair/i);
+    expect(b.pairBlocked).toBe(false);
+    expect(a.tipCandidateRunId).toBe("run_cand");
+  });
+});
