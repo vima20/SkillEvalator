@@ -143,6 +143,11 @@ describe("resolveExportGetError", () => {
   it("exportGateBlockMessage matches download fail-closed path", () => {
     expect(
       exportGateBlockMessage({
+        errorCode: "benefit_export_provisional_pass",
+      }),
+    ).toMatch(/provisional official PASS/i);
+    expect(
+      exportGateBlockMessage({
         errorCode: "benefit_export_comparison_pass_required",
       }),
     ).toBe(

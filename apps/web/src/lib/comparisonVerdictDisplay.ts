@@ -4,6 +4,17 @@ import type { AdoptionConfirmation } from "@skillevalator/core";
 export const PROVISIONAL_OFFICIAL_PASS_CTA_TITLE =
   "Provisional official PASS — run a second official pair to confirm Benefit USE";
 
+/** Official adoption still awaiting confirming pair(s) on disk. */
+export function isAdoptionConfirmationPending(
+  confirm?: AdoptionConfirmation | null,
+): boolean {
+  return (
+    confirm !== undefined &&
+    confirm !== null &&
+    confirm.step < confirm.required
+  );
+}
+
 /** Provisional official PASS awaiting a second confirming pair. */
 export function isProvisionalOfficialPass(opts: {
   verdict?: string | null;
@@ -14,9 +25,7 @@ export function isProvisionalOfficialPass(opts: {
   return (
     opts.displayMode === "official" &&
     opts.verdict === "INCONCLUSIVE" &&
-    confirm !== undefined &&
-    confirm !== null &&
-    confirm.step < confirm.required
+    isAdoptionConfirmationPending(confirm)
   );
 }
 

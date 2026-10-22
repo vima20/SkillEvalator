@@ -1,4 +1,5 @@
 import type { ComparisonVerdict, RunComparison } from "@skillevalator/core";
+import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 
 export type OfficialComparisonEvidence = {
   metaSmoke?: boolean;
@@ -46,10 +47,9 @@ export function officialComparisonExportGate(
   }
   if (verdict !== "PASS" && verdict !== "FAIL") {
     const confirm = comparison.adoptionConfirmation;
-    const provisional =
-      confirm && confirm.step < confirm.required
-        ? `provisional official PASS ${confirm.step}/${confirm.required}`
-        : null;
+    const provisional = isAdoptionConfirmationPending(confirm)
+      ? `provisional official PASS ${confirm!.step}/${confirm!.required}`
+      : null;
     return {
       ok: false,
       status: 409,

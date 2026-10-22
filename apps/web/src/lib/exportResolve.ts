@@ -61,6 +61,8 @@ const EXPORT_FAIL_CLOSED: Record<string, string> = {
     "benefit export requires this runId to be the Comparison candidateRunId (tip leg)",
   benefit_export_comparison_pass_required:
     "benefit export USE requires official Comparison PASS",
+  benefit_export_provisional_pass:
+    "benefit export USE locked — provisional official PASS (confirm with a second official pair)",
   benefit_export_comparison_fail_required:
     "benefit export DO NOT USE requires official Comparison FAIL",
   benefit_export_not_attested:
@@ -78,6 +80,8 @@ const EXPORT_FAIL_CLOSED: Record<string, string> = {
     "run CSV export requires official Comparison mode",
   run_csv_comparison_not_decisive:
     "run CSV export requires Comparison PASS or FAIL (not INCONCLUSIVE / not ready)",
+  run_csv_provisional_pass:
+    "run CSV export locked — provisional official PASS (confirm with a second official pair)",
   run_csv_not_meta_leg:
     "run CSV export requires this runId to be a current Comparison meta leg",
   run_csv_not_attested:

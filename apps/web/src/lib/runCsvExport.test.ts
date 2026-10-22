@@ -70,6 +70,20 @@ describe("runCsvExportGate", () => {
     if (!meta.ok) expect(meta.errorCode).toBe("run_csv_eval_smoke_forbidden");
   });
 
+  it("blocks PASS when adoption confirmation is still provisional 1/N", () => {
+    const out = runCsvExportGate({
+      result: base,
+      comparisonVerdict: "PASS",
+      comparisonMode: "official",
+      comparisonAdoptionConfirmation: { step: 1, required: 2 },
+      ...tipLegs,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("run_csv_provisional_pass");
+    expect(out.error).toMatch(/provisional official PASS 1\/2/i);
+  });
+
   it("blocks dry-run", () => {
     const out = runCsvExportGate({
       result: { ...base, mode: "dry-run" },

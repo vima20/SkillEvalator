@@ -1,4 +1,9 @@
-import type { ComparisonVerdict, RunResult } from "@skillevalator/core";
+import type {
+  AdoptionConfirmation,
+  ComparisonVerdict,
+  RunResult,
+} from "@skillevalator/core";
+import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 
 /**
  * Per-run CSV can look like pilot evidence. Require official paired Comparison
@@ -20,6 +25,7 @@ export function runCsvExportGate(opts: {
   evaluationId?: string | null;
   comparisonVerdict?: ComparisonVerdict | null;
   comparisonMode?: RunResult["mode"] | null;
+  comparisonAdoptionConfirmation?: AdoptionConfirmation | null;
   baselineRunId?: string | null;
   candidateRunId?: string | null;
   /** Same evidence bar as Comparison CSV / pilot archive. */
@@ -88,6 +94,19 @@ export function runCsvExportGate(opts: {
       errorCode: "run_csv_comparison_not_decisive",
       error:
         "run CSV export requires Comparison PASS or FAIL (not INCONCLUSIVE / not ready)",
+    };
+  }
+  const confirm = opts.comparisonAdoptionConfirmation;
+  if (
+    v === "PASS" &&
+    isAdoptionConfirmationPending(confirm)
+  ) {
+    return {
+      ok: false,
+      status: 409,
+      errorCode: "run_csv_provisional_pass",
+      error:
+        `run CSV export locked — provisional official PASS ${confirm!.step}/${confirm!.required}; confirm with a second independent official pair`,
     };
   }
   const runId = opts.result.runId?.trim();

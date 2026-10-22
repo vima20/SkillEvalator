@@ -4,6 +4,7 @@ import type {
   RunComparison,
   SkillUseVerdict,
 } from "@skillevalator/core";
+import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 
 export type BenefitExportGateOk = { ok: true };
 
@@ -129,7 +130,7 @@ export function benefitExportGate(opts: {
       };
     }
     const confirm = comparison.adoptionConfirmation;
-    if (confirm && confirm.step < confirm.required) {
+    if (isAdoptionConfirmationPending(confirm)) {
       return {
         ok: false,
         status: 409,

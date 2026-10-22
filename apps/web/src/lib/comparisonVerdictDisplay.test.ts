@@ -2,10 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   benefitListVerdictChipLabel,
   comparisonVerdictListLabel,
+  isAdoptionConfirmationPending,
   isProvisionalOfficialPass,
 } from "./comparisonVerdictDisplay.js";
 
 describe("comparisonVerdictDisplay", () => {
+  it("isAdoptionConfirmationPending when step < required", () => {
+    expect(isAdoptionConfirmationPending({ step: 1, required: 2 })).toBe(true);
+    expect(isAdoptionConfirmationPending({ step: 2, required: 2 })).toBe(false);
+    expect(isAdoptionConfirmationPending(null)).toBe(false);
+  });
+
   it("detects provisional official PASS 1/N", () => {
     expect(
       isProvisionalOfficialPass({

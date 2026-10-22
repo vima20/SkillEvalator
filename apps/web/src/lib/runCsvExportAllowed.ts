@@ -29,6 +29,8 @@ function runCsvExportGateForRun(opts: {
     evaluationId,
     comparisonVerdict: packed?.comparison?.verdict ?? null,
     comparisonMode: packed?.comparison?.mode ?? null,
+    comparisonAdoptionConfirmation:
+      packed?.comparison?.adoptionConfirmation ?? null,
     baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
     candidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
     metaSmoke: packed?.meta?.smoke === true,
