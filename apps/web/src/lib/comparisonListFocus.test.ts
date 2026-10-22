@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isPilotNoiseEvaluation } from "./comparisonListFocus.js";
+import { pairedEvalDisplayModeFromPacked } from "./evaluationPairBrowse.js";
 import { pairedEvalDisplayMode } from "./pilotFocusHref.js";
 
 describe("isPilotNoiseEvaluation", () => {
@@ -26,6 +27,12 @@ describe("isPilotNoiseEvaluation", () => {
   });
 
   it("hides stale-meta official when tip legs are dry-run", () => {
+    const fromPacked = pairedEvalDisplayModeFromPacked({
+      meta: { mode: "official" },
+      baseline: { mode: "dry-run" },
+      candidate: { mode: "dry-run" },
+    });
+    expect(fromPacked).toBe("dry-run");
     const displayMode =
       pairedEvalDisplayMode({
         metaMode: "official",

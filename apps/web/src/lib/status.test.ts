@@ -51,6 +51,7 @@ describe("statusBadgeKind", () => {
     // Pending list chip: tip legs beat stale evaluation.json mode.
     expect(list).toMatch(/evaluationPairBrowseFromPacked/);
     expect(list).toMatch(/pairExportEvidenceFromBrowse/);
+    expect(list).toMatch(/pairedEvalDisplayModeFromPacked/);
     expect(list).toMatch(/comparisonVerdictListLabel/);
     expect(list).toMatch(/adoptionConfirmation/);
     expect(list).toMatch(/downloadsOk = downloadGate\?\.ok === true/);
@@ -164,7 +165,7 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/Waiting for Comparison/);
     // Official Benefit unavailable → New run with ?mode=official.
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
-    expect(benefitDetail).toMatch(/pairedEvalPreferOfficial/);
+    expect(benefitDetail).toMatch(/pairedEvalPreferOfficialFromPacked/);
     expect(benefitDetail).toMatch(/provisionalPass/);
     expect(benefitDetail).toMatch(/evaluationPairBrowseFromPacked/);
     expect(benefitDetail).toMatch(/comparisonProvisional/);

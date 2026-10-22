@@ -52,6 +52,6 @@ Kun live-pilotti on ajettu, säilytä vähintään:
 
 Official Comparison vaatii `capture.env.grade=docker_script`, `pipeline.grade=docker_script` ja `allowHostGrade=false` (host grade ei ole adoption-todiste).
 
-**Download pilot archive**, **Comparison CSV**, **run CSV** ja **Benefit CSV** (sama evidence-palkki): official PASS/FAIL, ei dry-run / `evaluation.smoke` / FAKE_PRODUCE / **provisional 1/2**; molemmat tip-jalat `produceAttested=true`. **Official-mode** ratkaistaan tip-jaloista (ei pelkästään `comparison.json`), jotta tip-heal ei avaa exportteja väärällä dry-run-merkinnällä. Archive pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA + baseline/candidate `fakeProduce` / `produceAttested`).
+**Download pilot archive**, **Comparison CSV**, **run CSV** ja **Benefit CSV** (sama evidence-palkki): official PASS/FAIL, ei dry-run / `evaluation.smoke` / FAKE_PRODUCE / **provisional 1/2**; molemmat tip-jalat `produceAttested=true`. **Official-mode** ratkaistaan tip-jaloista (ei pelkästään `comparison.json`), jotta tip-heal ei avaa exportteja väärällä dry-run-merkinnällä. Benefit CSV:n `comparisonMode`-sarake käyttää samaa ratkaisua. Archive pakkaa tip-jalat + `evaluation` + `comparison.json` + `MANIFEST.json` (git SHA + baseline/candidate `fakeProduce` / `produceAttested`).
 
 Official adoption vaatii **kaksi itsenäistä official PASS** -tip-paria (ensimmäinen näkyy provisionaalisena kunnes toinen eri pari vahvistaa — sama sääntö kuin Benefit USE -lukko).
