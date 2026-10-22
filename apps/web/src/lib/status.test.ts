@@ -53,6 +53,8 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/comparisonVerdictListLabel/);
     expect(list).toMatch(/adoptionConfirmation/);
     expect(list).toMatch(/downloadsOk = downloadGate\?\.ok === true/);
+    expect(list).toMatch(/comparisonCellMetaFromPacked/);
+    expect(list).toMatch(/e\.comparisonMeta\?\.title/);
     // tipActive + result.json → Benefit (waiting); without result → run detail.
     expect(list).toMatch(
       /e\.tipActive \?[\s\S]*?e\.candidateHasResult \?[\s\S]*?\/benefit\/\$\{e\.candidateRunId\}[\s\S]*?Benefit · waiting/,

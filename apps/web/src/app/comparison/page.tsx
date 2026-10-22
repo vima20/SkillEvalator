@@ -8,6 +8,7 @@ import {
   benefitListPairLockedLabel,
   benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
+import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
 import { comparisonVerdictListLabel } from "@/lib/comparisonVerdictDisplay";
@@ -73,15 +74,25 @@ export default async function ComparisonListPage({
       resolveTipCandidateRunId(packed) ?? e.candidateRunId;
     const tipBaselineRunId =
       resolveTipBaselineRunId(packed) ?? e.baselineRunId;
-    // Scorecard mode, else tip legs, else meta (stale official meta + dry-run tips).
+    // Tip legs beat stale evaluation.json / comparison.mode (same as detail + Dashboard).
     const displayMode =
-      c?.mode ??
       pairedEvalDisplayMode({
-        metaMode: e.mode,
+        metaMode: packed.meta?.mode ?? e.mode,
         baselineMode: packed.baseline?.mode,
         candidateMode: packed.candidate?.mode,
       }) ??
+      c?.mode ??
       e.mode;
+    const comparisonMeta = comparisonCellMetaFromPacked(
+      c
+        ? {
+            meta: packed.meta ?? { mode: e.mode },
+            baseline: packed.baseline,
+            candidate: packed.candidate,
+            comparison: c,
+          }
+        : null,
+    );
     const { pairEvidence, pairChip, pairBlocked } =
       benefitPairEvidenceFromPacked({
         tipBaselineRunId,
@@ -125,6 +136,7 @@ export default async function ComparisonListPage({
       candidateProduceAttested: pairEvidence.candidateProduceAttested,
       pairChip,
       pairBlocked,
+      comparisonMeta,
       downloadsOk,
       benefitLockedReason:
         downloadGate && !downloadGate.ok
@@ -293,21 +305,14 @@ export default async function ComparisonListPage({
                                 ? "do_not_use"
                                 : "inconclusive"
                           }`}
-                          title={
-                            e.displayMode === "dry-run"
-                              ? "Dry-run — not adoption evidence"
-                              : e.adoptionConfirmation &&
-                                  e.adoptionConfirmation.step <
-                                    e.adoptionConfirmation.required
-                                ? "Provisional official PASS — run a second official pair to confirm"
-                                : undefined
-                          }
+                          title={e.comparisonMeta?.title}
                         >
-                          {comparisonVerdictListLabel({
-                            verdict: e.verdict,
-                            displayMode: e.displayMode,
-                            adoptionConfirmation: e.adoptionConfirmation,
-                          })}
+                          {e.comparisonMeta?.label ??
+                            comparisonVerdictListLabel({
+                              verdict: e.verdict,
+                              displayMode: e.displayMode,
+                              adoptionConfirmation: e.adoptionConfirmation,
+                            })}
                         </span>
                       ) : (
                         "—"
@@ -394,6 +399,7 @@ export default async function ComparisonListPage({
                           )}
                           title={
                             e.benefitLockedReason ??
+                            e.comparisonMeta?.title ??
                             (e.pairBlocked
                               ? "Pair evidence blocked (sibling smoke / unattested) — not adoption"
                               : "Benefit handoff locked until official Comparison PASS/FAIL")
