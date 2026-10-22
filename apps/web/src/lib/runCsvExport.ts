@@ -4,6 +4,7 @@ import type {
   RunResult,
 } from "@skillevalator/core";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
+import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 
 /**
  * Per-run CSV can look like pilot evidence. Require official paired Comparison
@@ -34,6 +35,9 @@ export function runCsvExportGate(opts: {
   candidateFakeProduce?: boolean;
   baselineProduceAttested?: boolean;
   candidateProduceAttested?: boolean;
+  metaMode?: string | null;
+  baselineMode?: RunResult["mode"];
+  candidateMode?: RunResult["mode"];
 }):
   | { ok: true }
   | { ok: false; status: 409; error: string; errorCode: string } {
@@ -78,7 +82,14 @@ export function runCsvExportGate(opts: {
         "run CSV export requires paired evaluationId (baseline↔candidate)",
     };
   }
-  if (opts.comparisonMode !== "official") {
+  const comparisonAdoptionMode =
+    pairedEvaluationAdoptionMode({
+      comparisonMode: opts.comparisonMode ?? undefined,
+      metaMode: opts.metaMode,
+      baselineMode: opts.baselineMode,
+      candidateMode: opts.candidateMode,
+    }) ?? opts.comparisonMode;
+  if (comparisonAdoptionMode !== "official") {
     return {
       ok: false,
       status: 409,

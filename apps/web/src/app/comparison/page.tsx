@@ -5,7 +5,10 @@ import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
-import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
+import {
+  evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
+} from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
 import {
@@ -84,7 +87,10 @@ export default async function ComparisonListPage({
     const tipActive = pending && evaluationTipPairIsActive(packed);
     const scorecardUnavailable = pending && !tipActive;
     const downloadGate = c
-      ? officialComparisonExportGate(c, pairEvidence)
+      ? officialComparisonExportGate(
+          c,
+          pairExportEvidenceFromBrowse(pairBrowse),
+        )
       : null;
     const downloadsOk = downloadGate?.ok === true;
     return {

@@ -1,4 +1,4 @@
-import type { AdoptionConfirmation } from "@skillevalator/core";
+import type { AdoptionConfirmation, RunResult } from "@skillevalator/core";
 
 import {
   benefitPairEvidenceFromPacked,
@@ -18,6 +18,27 @@ export type PackedEvaluationBrowse = ReturnType<
 export type EvaluationPairEvidence = ReturnType<
   typeof benefitPairEvidenceFromPacked
 >["pairEvidence"];
+
+/** Comparison / run CSV export gates — tip modes beat stale comparison.json. */
+export function pairExportEvidenceFromBrowse(
+  entry: EvaluationPairBrowseEntry,
+): EvaluationPairEvidence & {
+  metaMode?: string;
+  baselineMode?: RunResult["mode"];
+  candidateMode?: RunResult["mode"];
+} {
+  const packed = entry.packed;
+  return {
+    ...entry.pairEvidence,
+    ...(packed.meta?.mode ? { metaMode: packed.meta.mode } : {}),
+    ...(packed.baseline?.mode
+      ? { baselineMode: packed.baseline.mode }
+      : {}),
+    ...(packed.candidate?.mode
+      ? { candidateMode: packed.candidate.mode }
+      : {}),
+  };
+}
 
 export type EvaluationPairBrowseEntry = {
   packed: PackedEvaluationBrowse;

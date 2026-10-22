@@ -42,6 +42,9 @@ export function runCsvExportGateForRun(opts: {
       packed?.baseline?.capture?.env?.produceAttested === true,
     candidateProduceAttested:
       packed?.candidate?.capture?.env?.produceAttested === true,
+    metaMode: packed?.meta?.mode,
+    baselineMode: packed?.baseline?.mode,
+    candidateMode: packed?.candidate?.mode,
   });
 }
 

@@ -14,7 +14,10 @@ import {
   formatCaptureGradePolicy,
 } from "@/lib/captureEnvEvidence";
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
-import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
+import {
+  evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
+} from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
@@ -141,7 +144,7 @@ export default async function ComparisonDetailPage({
   const candidateProduceAttested = pairEvidence.candidateProduceAttested;
   const downloadGate = officialComparisonExportGate(
     comparison,
-    pairEvidence,
+    pairExportEvidenceFromBrowse(pairBrowse),
   );
   const showOfficialDownloads = downloadGate.ok;
   const downloadBlockReason = downloadGate.ok

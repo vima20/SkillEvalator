@@ -39,6 +39,9 @@ export function pilotArchiveGate(opts: {
       candidateFakeProduce: opts.candidateFakeProduce,
       baselineProduceAttested: opts.baselineProduceAttested,
       candidateProduceAttested: opts.candidateProduceAttested,
+      metaMode: opts.metaMode,
+      baselineMode: opts.baselineMode,
+      candidateMode: opts.candidateMode,
     },
     "pilot archive download",
   );

@@ -17,6 +17,19 @@ const tipLegs = {
 };
 
 describe("runCsvExportGate", () => {
+  it("allows export when comparison.json mode is stale dry-run but tip legs are official", () => {
+    expect(
+      runCsvExportGate({
+        result: base,
+        comparisonVerdict: "PASS",
+        comparisonMode: "dry-run",
+        baselineMode: "official",
+        candidateMode: "official",
+        ...tipLegs,
+      }).ok,
+    ).toBe(true);
+  });
+
   it("allows official paired PASS/FAIL on meta legs", () => {
     expect(
       runCsvExportGate({

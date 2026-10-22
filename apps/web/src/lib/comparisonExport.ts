@@ -1,5 +1,6 @@
-import type { ComparisonVerdict, RunComparison } from "@skillevalator/core";
+import type { ComparisonVerdict, RunComparison, RunResult } from "@skillevalator/core";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
+import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 
 export type OfficialComparisonEvidence = {
   metaSmoke?: boolean;
@@ -8,6 +9,9 @@ export type OfficialComparisonEvidence = {
   /** Live worker pin — required true on both tip legs for export. */
   baselineProduceAttested?: boolean;
   candidateProduceAttested?: boolean;
+  metaMode?: string | null;
+  baselineMode?: RunResult["mode"];
+  candidateMode?: RunResult["mode"];
 };
 
 export type OfficialComparisonExportDeny = {
@@ -34,13 +38,20 @@ export function officialComparisonExportGate(
     "comparison CSV export",
 ): { ok: true } | OfficialComparisonExportDeny {
   const { verdict, mode } = comparison;
+  const adoptionMode =
+    pairedEvaluationAdoptionMode({
+      comparisonMode: mode,
+      metaMode: evidence.metaMode,
+      baselineMode: evidence.baselineMode,
+      candidateMode: evidence.candidateMode,
+    }) ?? mode;
 
-  if (mode !== "official") {
+  if (adoptionMode !== "official") {
     return {
       ok: false,
       status: 409,
       verdict,
-      mode,
+      mode: adoptionMode,
       errorCode: "comparison_export_not_official",
       error: `${product} requires mode=official (dry-run is not adoption evidence)`,
     };

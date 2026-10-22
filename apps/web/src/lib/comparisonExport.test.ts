@@ -21,6 +21,19 @@ describe("comparisonCsvGate", () => {
     ).toBe(true);
   });
 
+  it("allows PASS when comparison.json is dry-run but tip legs are official", () => {
+    expect(
+      comparisonCsvGate(
+        { verdict: "PASS", mode: "dry-run" },
+        {
+          ...liveTips,
+          baselineMode: "official",
+          candidateMode: "official",
+        },
+      ).ok,
+    ).toBe(true);
+  });
+
   it("blocks dry-run even with PASS", () => {
     const out = comparisonCsvGate({ verdict: "PASS", mode: "dry-run" });
     expect(out.ok).toBe(false);

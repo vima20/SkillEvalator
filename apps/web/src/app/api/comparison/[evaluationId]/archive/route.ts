@@ -57,6 +57,9 @@ export async function GET(
         baseline.capture?.env?.produceAttested === true,
       candidateProduceAttested:
         candidate.capture?.env?.produceAttested === true,
+      metaMode: meta.mode,
+      baselineMode: baseline.mode,
+      candidateMode: candidate.mode,
     });
     if (!gate.ok) {
       return NextResponse.json(
