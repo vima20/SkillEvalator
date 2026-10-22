@@ -8,9 +8,7 @@ import {
   readJsonFile,
   syncStatusFromResult,
 } from "@skillevalator/core";
-import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
-import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
-import { pairedEvalDisplayMode } from "@/lib/pilotFocusHref";
+import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   loadEvaluationComparison,
   resolveTipCandidateRunId,
@@ -228,28 +226,9 @@ export function loadRunDetailEvaluationPack(opts: {
   const loadPacked = opts.loadPacked ?? loadEvaluationComparison;
   const packed = loadPacked(evaluationId);
   const pairPending = evaluationPairPending(packed, { runId: opts.runId });
-  const comparison = packed?.comparison;
-  const displayMode =
-    packed
-      ? pairedEvalDisplayMode({
-          metaMode: packed.meta?.mode,
-          baselineMode: packed.baseline?.mode,
-          candidateMode: packed.candidate?.mode,
-        })
-      : undefined;
-  const comparisonProvisional =
-    comparison &&
-    displayMode &&
-    isProvisionalOfficialPass({
-      verdict: comparison.verdict,
-      displayMode,
-      adoptionConfirmation: comparison.adoptionConfirmation,
-    })
-      ? comparison.adoptionConfirmation
-      : undefined;
-  const comparisonMeta = packed
-    ? comparisonCellMetaFromPacked(packed)
-    : null;
+  const { comparisonMeta, comparisonProvisional } = comparisonUiFromPacked(
+    packed,
+  );
   return {
     evaluationId,
     tipCandidateRunId: packed ? resolveTipCandidateRunId(packed) : null,

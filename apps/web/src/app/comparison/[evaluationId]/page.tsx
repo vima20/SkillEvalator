@@ -208,7 +208,7 @@ export default async function ComparisonDetailPage({
           <h1>Baseline ↔ candidate</h1>
           <p>
             Skill <code>{comparison.evalSkillId}</code> · task set{" "}
-            <code>{comparison.taskSetId}</code> · {comparison.mode} ·{" "}
+            <code>{comparison.taskSetId}</code> · {pairedDisplayMode} ·{" "}
             <code>{comparison.modelId}</code>
           </p>
         </div>

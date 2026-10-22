@@ -48,3 +48,36 @@ export function comparisonCellMetaFromPacked(
   }
   return { label, title };
 }
+
+/** List meta + provisional 1/N for detail pages (Run / Benefit / SSR pack). */
+export function comparisonUiFromPacked(packed: PackedComparison | null): {
+  comparisonMeta: { label: string; title?: string } | null;
+  pairedDisplayMode?: string;
+  comparisonProvisional?: AdoptionConfirmation;
+} {
+  const comparisonMeta = comparisonCellMetaFromPacked(packed);
+  const comparison = packed?.comparison;
+  if (!comparison) {
+    return { comparisonMeta };
+  }
+  const pairedDisplayMode =
+    pairedEvalDisplayMode({
+      metaMode: packed?.meta?.mode,
+      baselineMode: packed?.baseline?.mode,
+      candidateMode: packed?.candidate?.mode,
+    }) ?? undefined;
+  const comparisonProvisional =
+    pairedDisplayMode &&
+    isProvisionalOfficialPass({
+      verdict: comparison.verdict,
+      displayMode: pairedDisplayMode,
+      adoptionConfirmation: comparison.adoptionConfirmation,
+    })
+      ? (comparison.adoptionConfirmation ?? undefined)
+      : undefined;
+  return {
+    comparisonMeta,
+    ...(pairedDisplayMode ? { pairedDisplayMode } : {}),
+    ...(comparisonProvisional ? { comparisonProvisional } : {}),
+  };
+}

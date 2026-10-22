@@ -160,8 +160,8 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(benefitDetail).toMatch(/pairedEvalPreferOfficial/);
     expect(benefitDetail).toMatch(/provisionalPass/);
-    expect(benefitDetail).toMatch(/pairedEvalDisplayMode/);
-    expect(benefitDetail).toMatch(/comparisonCellMetaFromPacked/);
+    expect(benefitDetail).toMatch(/comparisonUiFromPacked/);
+    expect(benefitDetail).toMatch(/comparisonProvisional/);
     expect(benefitDetail).toMatch(/Confirm adoption — new official pair/);
     expect(benefitWait).toMatch(/setInterval/);
     expect(benefitWait).toMatch(/router\.refresh/);

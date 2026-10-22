@@ -10,8 +10,7 @@ import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallout
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
-import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
-import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
+import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
@@ -19,7 +18,6 @@ import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import {
   isPilotFocusParam,
-  pairedEvalDisplayMode,
   pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
@@ -144,25 +142,11 @@ export default async function BenefitReportPage({
     candidateMode:
       candidate?.mode ?? (result.role === "candidate" ? result.mode : undefined),
   });
-  const pairedDisplayMode = pairedEvalDisplayMode({
-    metaMode: meta?.mode,
-    baselineMode: baseline?.mode,
-    candidateMode: candidate?.mode,
-  });
-  const comparisonMeta = comparisonCellMetaFromPacked({
-    meta,
-    baseline,
-    candidate,
-    comparison,
-  });
-  const provisionalPass =
-    Boolean(comparison) &&
-    Boolean(pairedDisplayMode) &&
-    isProvisionalOfficialPass({
-      verdict: comparison?.verdict,
-      displayMode: pairedDisplayMode,
-      adoptionConfirmation: comparison?.adoptionConfirmation,
-    });
+  const {
+    comparisonMeta,
+    comparisonProvisional,
+  } = comparisonUiFromPacked({ meta, baseline, candidate, comparison });
+  const provisionalPass = Boolean(comparisonProvisional);
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
