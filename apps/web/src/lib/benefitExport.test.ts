@@ -16,12 +16,14 @@ const officialReport = (rec: "use" | "do_not_use" | "inconclusive") =>
 const tipComparison = (
   verdict: "PASS" | "FAIL" | "INCONCLUSIVE",
   mode: "official" | "dry-run" = "official",
+  adoptionConfirmation?: { step: number; required: number },
 ) =>
   ({
     verdict,
     mode,
     candidateRunId: tipCand,
     baselineRunId: "run_base",
+    ...(adoptionConfirmation ? { adoptionConfirmation } : {}),
   }) as const;
 
 const liveTips = {
@@ -48,6 +50,21 @@ describe("benefitExportGate", () => {
     expect(out.ok).toBe(false);
     if (out.ok) return;
     expect(out.errorCode).toBe("benefit_export_not_tip_candidate");
+  });
+
+  it("blocks USE when Comparison PASS is still provisional 1/N", () => {
+    const out = benefitExportGate({
+      report: officialReport("use"),
+      comparison: tipComparison("PASS", "official", {
+        step: 1,
+        required: 2,
+      }),
+      ...liveTips,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("benefit_export_provisional_pass");
+    expect(out.error).toMatch(/provisional official PASS 1\/2/i);
   });
 
   it("blocks USE when tip matches but Comparison is not PASS", () => {

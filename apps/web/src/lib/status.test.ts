@@ -105,8 +105,7 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/pairedEvalPreferOfficial/);
     expect(detail).toMatch(/Confirm adoption — new official pair/);
     expect(detail).toMatch(/provisionalPass/);
-    expect(detail).toMatch(/pairedEvalDisplayMode/);
-    expect(detail).toMatch(/comparisonVerdictListLabel/);
+    expect(detail).toMatch(/comparisonUiFromPacked/);
     expect(detail).toMatch(/verdictHeadline/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);
     expect(detail).toMatch(/baselineMode=\{baseline\?\.mode\}/);

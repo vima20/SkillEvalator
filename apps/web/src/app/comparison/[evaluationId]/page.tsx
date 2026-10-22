@@ -26,13 +26,9 @@ import {
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healRunForRead } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
-import {
-  comparisonVerdictListLabel,
-  isProvisionalOfficialPass,
-} from "@/lib/comparisonVerdictDisplay";
+import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   isPilotFocusParam,
-  pairedEvalDisplayMode,
   pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
@@ -169,22 +165,14 @@ export default async function ComparisonDetailPage({
   const downloadBlockReason = downloadGate.ok
     ? null
     : exportGateBlockMessage(downloadGate);
-  const pairedDisplayMode =
-    pairedEvalDisplayMode({
-      metaMode: meta.mode,
-      baselineMode: baseline?.mode,
-      candidateMode: candidate?.mode,
-    }) ?? comparison.mode;
-  const provisionalPass = isProvisionalOfficialPass({
-    verdict: comparison.verdict,
-    displayMode: pairedDisplayMode,
-    adoptionConfirmation: comparison.adoptionConfirmation,
-  });
-  const verdictHeadline = comparisonVerdictListLabel({
-    verdict: comparison.verdict,
-    displayMode: pairedDisplayMode,
-    adoptionConfirmation: comparison.adoptionConfirmation,
-  });
+  const {
+    comparisonMeta,
+    comparisonProvisional,
+    pairedDisplayMode: pairedDisplayModeFromUi,
+  } = comparisonUiFromPacked(packed);
+  const pairedDisplayMode = pairedDisplayModeFromUi ?? comparison.mode;
+  const provisionalPass = Boolean(comparisonProvisional);
+  const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficial({
     metaMode: meta.mode,
     baselineMode: baseline?.mode,

@@ -28,7 +28,11 @@ export function benefitExportGate(opts: {
   };
   comparison?: Pick<
     RunComparison,
-    "verdict" | "mode" | "candidateRunId" | "baselineRunId"
+    | "verdict"
+    | "mode"
+    | "candidateRunId"
+    | "baselineRunId"
+    | "adoptionConfirmation"
   > | null;
   /** Same evidence bar as Comparison CSV / pilot archive. */
   metaSmoke?: boolean;
@@ -122,6 +126,18 @@ export function benefitExportGate(opts: {
         mode,
         error:
           "benefit export USE requires official Comparison PASS",
+      };
+    }
+    const confirm = comparison.adoptionConfirmation;
+    if (confirm && confirm.step < confirm.required) {
+      return {
+        ok: false,
+        status: 409,
+        errorCode: "benefit_export_provisional_pass",
+        recommendation,
+        mode,
+        error:
+          `benefit export USE locked — provisional official PASS ${confirm.step}/${confirm.required}; confirm with a second independent official pair`,
       };
     }
   }
