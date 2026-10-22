@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
+import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
@@ -145,6 +146,7 @@ export default async function BenefitReportPage({
   const {
     comparisonMeta,
     comparisonProvisional,
+    pairedDisplayMode,
   } = comparisonUiFromPacked({ meta, baseline, candidate, comparison });
   const provisionalPass = Boolean(comparisonProvisional);
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
@@ -438,7 +440,15 @@ export default async function BenefitReportPage({
       </section>
 
       <section
-        className={`panel verdict-banner verdict-${report.verdict.recommendation}`}
+        className={`panel ${
+          comparison && pairedDisplayMode
+            ? comparisonVerdictBannerClass({
+                verdict: comparison.verdict,
+                displayMode: pairedDisplayMode,
+                adoptionConfirmation: comparison.adoptionConfirmation,
+              })
+            : `verdict-banner verdict-${report.verdict.recommendation}`
+        }`}
       >
         <p className="eyebrow">Verdict</p>
         <h2 className="verdict-headline">{report.verdict.headline}</h2>

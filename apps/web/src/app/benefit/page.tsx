@@ -9,7 +9,10 @@ import {
   benefitPairEvidenceFromPacked,
 } from "@/lib/benefitListHints";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
-import { benefitListVerdictChipLabel } from "@/lib/comparisonVerdictDisplay";
+import {
+  benefitListVerdictChipLabel,
+  comparisonVerdictChipTone,
+} from "@/lib/comparisonVerdictDisplay";
 import { comparisonUiFromPacked } from "@/lib/dashboardComparisonMeta";
 import {
   candidateLegKind,
@@ -83,6 +86,24 @@ export default async function BenefitIndexPage({
         baseline,
         candidate,
       });
+      const comparisonUi = comparisonUiFromPacked({
+        meta,
+        baseline,
+        candidate,
+        comparison,
+      });
+      const verdictChipTone =
+        comparison && comparisonUi.pairedDisplayMode
+          ? comparisonVerdictChipTone({
+              verdict: comparison.verdict,
+              displayMode: comparisonUi.pairedDisplayMode,
+              adoptionConfirmation: comparison.adoptionConfirmation,
+            })
+          : report.verdict.recommendation === "use"
+            ? "use"
+            : report.verdict.recommendation === "do_not_use"
+              ? "do_not_use"
+              : "inconclusive";
       return {
         runId: r.runId,
         score: r.result!.score,
@@ -96,12 +117,8 @@ export default async function BenefitIndexPage({
         pairChip,
         pairBlocked,
         pairPending,
-        comparisonMeta: comparisonUiFromPacked({
-          meta,
-          baseline,
-          candidate,
-          comparison,
-        }).comparisonMeta,
+        comparisonMeta: comparisonUi.comparisonMeta,
+        verdictChipTone,
       };
     })
     // Tip / unpaired first; waiting / superseded / smoke last.
@@ -258,7 +275,7 @@ export default async function BenefitIndexPage({
                     </td>
                     <td>
                       <span
-                        className={`verdict-chip verdict-${r.verdict.recommendation}`}
+                        className={`verdict-chip verdict-${r.verdictChipTone}`}
                         title={r.comparisonMeta?.title ?? r.verdict.headline}
                       >
                         {benefitListVerdictChipLabel({
