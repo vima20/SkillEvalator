@@ -11,7 +11,10 @@ import {
   type RunResult,
 } from "@skillevalator/core";
 import { benefitExportGate } from "./benefitExport.js";
-import { comparisonCsvGate } from "./comparisonExport.js";
+import {
+  comparisonCsvGate,
+  officialComparisonExportGate,
+} from "./comparisonExport.js";
 import { pilotArchiveGate } from "./pilotArchive.js";
 import { runCsvExportGate } from "./runCsvExport.js";
 
@@ -259,6 +262,78 @@ describe("official export gates smoke", () => {
         baselineRunId: comparison.baselineRunId,
         candidateRunId: comparison.candidateRunId,
         metaSmoke: true,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("provisional official PASS 1/2 denies adoption exports", () => {
+    const liveTips = {
+      baselineProduceAttested: true,
+      candidateProduceAttested: true,
+    };
+    const provisionalInconclusive = {
+      verdict: "INCONCLUSIVE" as const,
+      mode: "official" as const,
+      adoptionConfirmation: { step: 1, required: 2 },
+      baselineRunId: "run_b_prov",
+      candidateRunId: "run_c_prov",
+    };
+    const inconclusiveCmp = officialComparisonExportGate(
+      provisionalInconclusive,
+      liveTips,
+    );
+    expect(inconclusiveCmp.ok).toBe(false);
+    if (!inconclusiveCmp.ok) {
+      expect(inconclusiveCmp.error).toMatch(/provisional official PASS 1\/2/i);
+    }
+
+    const passUnconfirmed = {
+      verdict: "PASS" as const,
+      mode: "official" as const,
+      adoptionConfirmation: { step: 1, required: 2 },
+      baselineRunId: "run_b_prov",
+      candidateRunId: "run_c_prov",
+    };
+    const cmpPass = comparisonCsvGate(passUnconfirmed, liveTips);
+    expect(cmpPass.ok).toBe(false);
+    if (!cmpPass.ok) {
+      expect(cmpPass.errorCode).toBe("comparison_export_provisional_pass");
+    }
+    expect(
+      pilotArchiveGate({ comparison: passUnconfirmed, ...liveTips }).ok,
+    ).toBe(false);
+    const runCsv = runCsvExportGate({
+      result: {
+        runId: "run_c_prov",
+        mode: "official",
+        evaluationId: "eval_prov",
+        status: "ok",
+        capture: { env: { fakeProduce: false, produceAttested: true } },
+      },
+      comparisonVerdict: "PASS",
+      comparisonMode: "official",
+      comparisonAdoptionConfirmation: { step: 1, required: 2 },
+      baselineRunId: "run_b_prov",
+      candidateRunId: "run_c_prov",
+      ...liveTips,
+    });
+    expect(runCsv.ok).toBe(false);
+    if (!runCsv.ok) {
+      expect(runCsv.errorCode).toBe("run_csv_provisional_pass");
+    }
+    expect(
+      benefitExportGate({
+        report: {
+          verdict: {
+            recommendation: "use",
+            headline: "x",
+            decision: "x",
+            rationale: "x",
+          },
+          config: { mode: "official", runId: "run_c_prov" },
+        },
+        comparison: passUnconfirmed,
+        ...liveTips,
       }).ok,
     ).toBe(false);
   });

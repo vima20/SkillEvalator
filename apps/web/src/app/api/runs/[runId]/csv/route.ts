@@ -6,17 +6,11 @@ import {
   runResultToCsv,
 } from "@skillevalator/core";
 import {
-  loadEvaluationComparison,
-  resolveTipBaselineRunId,
-  resolveTipCandidateRunId,
-} from "@/lib/evaluations";
-import {
   EXPORT_FAILED_ERROR,
   EXPORT_INVALID_REQUEST_ERROR,
 } from "@/lib/exportResolve";
-import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { resultsDir } from "@/lib/paths";
-import { runCsvExportGate } from "@/lib/runCsvExport";
+import { runCsvExportGateForRun } from "@/lib/runCsvExportAllowed";
 
 export const dynamic = "force-dynamic";
 
@@ -39,34 +33,7 @@ export async function GET(
       );
     }
     const status = loadRunStatus(root, runId);
-    // Same status → job → result id as run detail pairHarness / retryAdmission.
-    const evaluationId = resolveRunDetailEvaluationId({
-      runId,
-      status,
-      result,
-    });
-    const packed = evaluationId
-      ? loadEvaluationComparison(evaluationId)
-      : null;
-    const gate = runCsvExportGate({
-      result,
-      evaluationId,
-      comparisonVerdict: packed?.comparison?.verdict ?? null,
-      comparisonMode: packed?.comparison?.mode ?? null,
-      comparisonAdoptionConfirmation:
-        packed?.comparison?.adoptionConfirmation ?? null,
-      baselineRunId: packed ? resolveTipBaselineRunId(packed) : null,
-      candidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
-      metaSmoke: packed?.meta?.smoke === true,
-      baselineFakeProduce:
-        packed?.baseline?.capture?.env?.fakeProduce === true,
-      candidateFakeProduce:
-        packed?.candidate?.capture?.env?.fakeProduce === true,
-      baselineProduceAttested:
-        packed?.baseline?.capture?.env?.produceAttested === true,
-      candidateProduceAttested:
-        packed?.candidate?.capture?.env?.produceAttested === true,
-    });
+    const gate = runCsvExportGateForRun({ runId, result, status });
     if (!gate.ok) {
       return NextResponse.json(
         { error: gate.error, errorCode: gate.errorCode },

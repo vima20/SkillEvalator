@@ -11,7 +11,8 @@ import {
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { runCsvExportGate } from "@/lib/runCsvExport";
 
-function runCsvExportGateForRun(opts: {
+/** Shared by GET /api/runs/[runId]/csv and run detail CSV affordance. */
+export function runCsvExportGateForRun(opts: {
   runId: string;
   result: RunResult;
   status?: { evaluationId?: string } | null;
