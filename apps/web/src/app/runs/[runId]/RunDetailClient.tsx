@@ -26,7 +26,6 @@ import {
 import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { benefitPairCtaLabel } from "@/lib/benefitListHints";
-import { PROVISIONAL_OFFICIAL_PASS_CTA_TITLE } from "@/lib/comparisonVerdictDisplay";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
   resolveRunDetailGetError,
@@ -160,6 +159,7 @@ type Payload = {
   /** Same waiting/unavailable gate as Benefit detail / Comparison list. */
   pairPending?: "waiting" | "unavailable";
   comparisonProvisional?: { step: number; required: number };
+  comparisonMeta?: { label: string; title?: string };
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;
@@ -619,8 +619,12 @@ export function RunDetailClient({
                       `/comparison/${resolvedEvaluationId}`,
                       pilotFocus,
                     )}
+                    title={data.comparisonMeta?.title}
                   >
                     Comparison
+                    {data.comparisonMeta
+                      ? ` · ${data.comparisonMeta.label}`
+                      : null}
                   </Link>
                 </>
               ) : null}
@@ -746,9 +750,7 @@ export function RunDetailClient({
             }
             const cta = benefitPairCtaLabel(data.pairPending, {
               detailArrow: true,
-              ...(data.comparisonProvisional
-                ? { comparisonMetaTitle: PROVISIONAL_OFFICIAL_PASS_CTA_TITLE }
-                : {}),
+              comparisonMetaTitle: data.comparisonMeta?.title,
             });
             return (
               <Link

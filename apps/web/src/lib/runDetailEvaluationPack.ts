@@ -8,7 +8,9 @@ import {
   readJsonFile,
   syncStatusFromResult,
 } from "@skillevalator/core";
+import { comparisonCellMetaFromPacked } from "@/lib/dashboardComparisonMeta";
 import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
+import { pairedEvalDisplayMode } from "@/lib/pilotFocusHref";
 import {
   loadEvaluationComparison,
   resolveTipCandidateRunId,
@@ -166,6 +168,8 @@ export type RunDetailEvaluationPack = {
   pairPending?: EvaluationPairPending;
   /** Official Comparison provisional PASS (1/N) — Benefit USE still locked. */
   comparisonProvisional?: { step: number; required: number };
+  /** Verdict chip + tooltip (Runs / Dashboard Comparison column parity). */
+  comparisonMeta?: { label: string; title?: string };
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;
@@ -225,21 +229,34 @@ export function loadRunDetailEvaluationPack(opts: {
   const packed = loadPacked(evaluationId);
   const pairPending = evaluationPairPending(packed, { runId: opts.runId });
   const comparison = packed?.comparison;
+  const displayMode =
+    packed
+      ? pairedEvalDisplayMode({
+          metaMode: packed.meta?.mode,
+          baselineMode: packed.baseline?.mode,
+          candidateMode: packed.candidate?.mode,
+        })
+      : undefined;
   const comparisonProvisional =
     comparison &&
+    displayMode &&
     isProvisionalOfficialPass({
       verdict: comparison.verdict,
-      displayMode: comparison.mode,
+      displayMode,
       adoptionConfirmation: comparison.adoptionConfirmation,
     })
       ? comparison.adoptionConfirmation
       : undefined;
+  const comparisonMeta = packed
+    ? comparisonCellMetaFromPacked(packed)
+    : null;
   return {
     evaluationId,
     tipCandidateRunId: packed ? resolveTipCandidateRunId(packed) : null,
     pairHarness: runDetailPairHarness(packed),
     ...(pairPending ? { pairPending } : {}),
     ...(comparisonProvisional ? { comparisonProvisional } : {}),
+    ...(comparisonMeta ? { comparisonMeta } : {}),
     ...(packed?.meta?.mode ? { metaMode: packed.meta.mode } : {}),
     ...(packed?.baseline?.mode ? { baselineMode: packed.baseline.mode } : {}),
     ...(packed?.candidate?.mode ? { candidateMode: packed.candidate.mode } : {}),

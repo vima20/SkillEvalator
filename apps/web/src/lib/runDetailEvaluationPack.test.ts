@@ -120,6 +120,8 @@ describe("loadRunDetailEvaluationPack", () => {
         >,
     });
     expect(out.comparisonProvisional).toEqual({ step: 1, required: 2 });
+    expect(out.comparisonMeta?.label).toBe("INCONCLUSIVE · 1/2");
+    expect(out.comparisonMeta?.title).toMatch(/second official pair/i);
     expect(out.metaMode).toBe("official");
   });
 
