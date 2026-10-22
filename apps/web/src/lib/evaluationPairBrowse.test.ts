@@ -9,6 +9,7 @@ import {
   pairedAdoptionModesFromPacked,
   pilotArchiveAdoptionFromPacked,
   pairedEvalPreferOfficialFromPacked,
+  resolvedPairedDisplayModeFromBrowse,
   type PackedEvaluationBrowse,
 } from "./evaluationPairBrowse.js";
 import { officialComparisonExportGate } from "./comparisonExport.js";
@@ -88,6 +89,32 @@ describe("evaluationPairBrowseFromPacked", () => {
     expect(evidence.baselineMode).toBe("official");
     expect(evidence.candidateMode).toBe("official");
     expect(evidence.metaMode).toBe("dry-run");
+  });
+
+  it("resolvedPairedDisplayModeFromBrowse resolves from packed when browse omits field", () => {
+    const packed = {
+      meta: { mode: "dry-run", smoke: false },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+    } as PackedEvaluationBrowse;
+    expect(
+      resolvedPairedDisplayModeFromBrowse({
+        packed,
+        tipCandidateRunId: "c",
+        tipBaselineRunId: "b",
+        pairEvidence: {
+          metaSmoke: false,
+          baselineFakeProduce: false,
+          candidateFakeProduce: false,
+          baselineProduceAttested: true,
+          candidateProduceAttested: true,
+        },
+        pairChip: null,
+        pairBlocked: false,
+        comparisonMeta: null,
+      }),
+    ).toBe("official");
   });
 
   it("pilotArchiveAdoptionFromPacked records comparisonJsonMode when disk mode is stale", () => {

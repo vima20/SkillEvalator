@@ -12,7 +12,10 @@ import {
   benefitListVerdictChipLabel,
   benefitVerdictChipToneFromComparison,
 } from "@/lib/comparisonVerdictDisplay";
-import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
+import {
+  evaluationPairBrowseFromPacked,
+  resolvedPairedDisplayModeFromBrowse,
+} from "@/lib/evaluationPairBrowse";
 import {
   candidateLegKind,
   candidateLegLabel,
@@ -80,7 +83,8 @@ export default async function BenefitIndexPage({
         recommendation: report.verdict.recommendation,
         comparison,
         pairedDisplayMode:
-          pairBrowse?.pairedDisplayMode ?? packed?.meta?.mode,
+          resolvedPairedDisplayModeFromBrowse(pairBrowse) ??
+          packed?.meta?.mode,
       });
       return {
         runId: r.runId,

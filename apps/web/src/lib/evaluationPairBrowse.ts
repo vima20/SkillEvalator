@@ -78,6 +78,17 @@ export function resolvePairedDisplayModeFromPacked(
   return pairedEvalDisplayModeFromPacked(packed);
 }
 
+/** Benefit / list rows — browse chip with tip-leg fallback. */
+export function resolvedPairedDisplayModeFromBrowse(
+  entry: EvaluationPairBrowseEntry | null | undefined,
+): string | undefined {
+  if (!entry) return undefined;
+  return (
+    entry.pairedDisplayMode ??
+    resolvePairedDisplayModeFromPacked(entry.packed)
+  );
+}
+
 /** Exported CSV metadata — same resolution as export gates. */
 export function pairedAdoptionComparisonMode(
   comparison: Pick<RunComparison, "mode">,

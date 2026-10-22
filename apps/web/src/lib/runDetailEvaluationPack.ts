@@ -168,6 +168,8 @@ export type RunDetailEvaluationPack = {
   comparisonProvisional?: { step: number; required: number };
   /** Verdict chip + tooltip (Runs / Dashboard Comparison column parity). */
   comparisonMeta?: { label: string; title?: string };
+  /** Tip-leg display mode (not stale comparison.json). */
+  pairedDisplayMode?: string;
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;
@@ -227,8 +229,12 @@ export function loadRunDetailEvaluationPack(opts: {
   const packed = loadPacked(evaluationId);
   const pairPending = evaluationPairPending(packed, { runId: opts.runId });
   const pairBrowse = evaluationPairBrowseFromPacked(packed);
-  const { comparisonMeta, comparisonProvisional, tipCandidateRunId } =
-    pairBrowse;
+  const {
+    comparisonMeta,
+    comparisonProvisional,
+    tipCandidateRunId,
+    pairedDisplayMode,
+  } = pairBrowse;
   return {
     evaluationId,
     tipCandidateRunId,
@@ -236,6 +242,7 @@ export function loadRunDetailEvaluationPack(opts: {
     ...(pairPending ? { pairPending } : {}),
     ...(comparisonProvisional ? { comparisonProvisional } : {}),
     ...(comparisonMeta ? { comparisonMeta } : {}),
+    ...(pairedDisplayMode ? { pairedDisplayMode } : {}),
     ...pairedAdoptionModesFromPacked(packed),
   };
 }

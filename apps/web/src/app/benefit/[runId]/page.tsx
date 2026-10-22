@@ -14,6 +14,7 @@ import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
   pairedEvalPreferOfficialFromPacked,
+  resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
@@ -146,7 +147,8 @@ export default async function BenefitReportPage({
       });
   const comparisonMeta = pairBrowse?.comparisonMeta ?? null;
   const comparisonProvisional = pairBrowse?.comparisonProvisional;
-  const pairedDisplayMode = pairBrowse?.pairedDisplayMode ?? meta?.mode;
+  const pairedDisplayMode =
+    resolvedPairedDisplayModeFromBrowse(pairBrowse) ?? meta?.mode;
   const provisionalPass = Boolean(comparisonProvisional);
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";

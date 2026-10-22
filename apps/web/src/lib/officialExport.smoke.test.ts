@@ -16,6 +16,7 @@ import {
   officialComparisonExportGate,
 } from "./comparisonExport.js";
 import { pilotArchiveGate } from "./pilotArchive.js";
+import { pilotArchiveAdoptionFromPacked } from "./evaluationPairBrowse.js";
 import { runCsvExportGate } from "./runCsvExport.js";
 
 /** Fixture trusted pins (export smoke has no skill-snapshot on disk). */
@@ -376,6 +377,17 @@ describe("official export gates smoke", () => {
         ...liveTips,
       }).ok,
     ).toBe(true);
+    expect(
+      pilotArchiveAdoptionFromPacked({
+        meta: { mode: "dry-run" },
+        baseline: { mode: "official" },
+        candidate: { mode: "official" },
+        comparison: staleComparison,
+      } as never),
+    ).toEqual({
+      adoptionMode: "official",
+      comparisonJsonMode: "dry-run",
+    });
   });
 
   it("dry-run Comparison is denied by all adoption export gates", () => {

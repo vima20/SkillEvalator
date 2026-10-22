@@ -168,6 +168,7 @@ describe("statusBadgeKind", () => {
     // Official Benefit unavailable → New run with ?mode=official.
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(benefitDetail).toMatch(/pairedEvalPreferOfficialFromPacked/);
+    expect(benefitDetail).toMatch(/resolvedPairedDisplayModeFromBrowse/);
     expect(benefitDetail).toMatch(/provisionalPass/);
     expect(benefitDetail).toMatch(/evaluationPairBrowseFromPacked/);
     expect(benefitDetail).toMatch(/comparisonProvisional/);
