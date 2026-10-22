@@ -36,6 +36,8 @@ export function withNewRunHandoff(
   return withPilotFocus(href, pilotFocus);
 }
 
+import { pairedEvaluationAdoptionMode } from "@skillevalator/core";
+
 /**
  * List chip / Pilot noise / re-run handoff: tip legs beat stale evaluation.json
  * (official↔dry-run desync after tip-heal). Official tip wins; else dry-run tip;
@@ -46,22 +48,23 @@ export function pairedEvalDisplayMode(opts: {
   baselineMode?: string | null;
   candidateMode?: string | null;
 }): string | undefined {
-  if (
-    opts.baselineMode === "official" ||
-    opts.candidateMode === "official"
-  ) {
-    return "official";
-  }
-  if (
-    opts.baselineMode === "dry-run" ||
-    opts.candidateMode === "dry-run"
-  ) {
-    return "dry-run";
-  }
-  if (opts.metaMode === "official" || opts.metaMode === "dry-run") {
-    return opts.metaMode;
-  }
-  return opts.metaMode ?? undefined;
+  const baselineMode =
+    opts.baselineMode === "official" || opts.baselineMode === "dry-run"
+      ? opts.baselineMode
+      : undefined;
+  const candidateMode =
+    opts.candidateMode === "official" || opts.candidateMode === "dry-run"
+      ? opts.candidateMode
+      : undefined;
+  return (
+    pairedEvaluationAdoptionMode({
+      metaMode: opts.metaMode,
+      baselineMode,
+      candidateMode,
+    }) ??
+    opts.metaMode ??
+    undefined
+  );
 }
 
 /** Prefer ?mode=official for Comparison / Benefit New-run CTAs. */

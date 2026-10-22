@@ -403,6 +403,32 @@ describe("benefitReport", () => {
     expect(provisional.rating.stars).toBe(4);
   });
 
+  it("applyPairedComparisonGate treats provisional PASS as official when tip legs are official", () => {
+    const result = sample({
+      mode: "official",
+      score: 1,
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      evaluationId: "eval_test",
+    });
+    const verdict = decideSkillUse(result);
+    const rating = rateSkill(result);
+    const provisional = applyPairedComparisonGate({
+      result,
+      verdict,
+      rating,
+      comparison: {
+        ...comparisonStub("INCONCLUSIVE"),
+        mode: "dry-run",
+        adoptionConfirmation: { step: 1, required: 2 },
+      },
+      baselineMode: "official",
+      candidateMode: "official",
+    });
+    expect(provisional.verdict.recommendation).toBe("inconclusive");
+    expect(provisional.verdict.headline).toMatch(/provisional official PASS/i);
+  });
+
   it("applyPairedComparisonGate distinguishes waiting vs unavailable without Comparison", () => {
     const result = sample({
       mode: "official",

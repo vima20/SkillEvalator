@@ -15,6 +15,7 @@ import {
   resolveComparisonLegs,
   resolveEvaluationMetaEvalSkillId,
   resolveEvaluationMetaEvaluationId,
+  pairedEvaluationAdoptionMode,
   resolveEvaluationMetaMode,
   resolvePairedCancelSibling,
 } from "./comparison.js";
@@ -2570,6 +2571,24 @@ describe("compareBaselineCandidate", () => {
     expect(
       c.parity.issues.some((i) => i.includes("evaluation meta")),
     ).toBe(true);
+  });
+
+  it("pairedEvaluationAdoptionMode prefers official tip legs over stale comparison mode", () => {
+    expect(
+      pairedEvaluationAdoptionMode({
+        comparisonMode: "dry-run",
+        metaMode: "dry-run",
+        baselineMode: "official",
+        candidateMode: "official",
+      }),
+    ).toBe("official");
+    expect(
+      pairedEvaluationAdoptionMode({
+        comparisonMode: "official",
+        baselineMode: "dry-run",
+        candidateMode: "dry-run",
+      }),
+    ).toBe("dry-run");
   });
 
   it("INCONCLUSIVE when legs disagree with evaluation meta mode", () => {

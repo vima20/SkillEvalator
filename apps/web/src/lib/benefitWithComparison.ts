@@ -80,6 +80,13 @@ export function buildBenefitReportBundle(
       ...(supersededNonTip && tipCandidateRunId
         ? { tipCandidateRunId }
         : {}),
+      ...(meta?.mode !== undefined ? { metaMode: meta.mode } : {}),
+      ...(packed?.baseline?.mode
+        ? { baselineMode: packed.baseline.mode }
+        : {}),
+      ...(packed?.candidate?.mode
+        ? { candidateMode: packed.candidate.mode }
+        : {}),
     }),
     comparison,
     meta,

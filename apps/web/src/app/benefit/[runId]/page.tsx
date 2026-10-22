@@ -125,6 +125,9 @@ export default async function BenefitReportPage({
     candidateFakeProduce,
     baselineProduceAttested,
     candidateProduceAttested,
+    metaMode: meta?.mode,
+    baselineMode: baseline?.mode,
+    candidateMode: candidate?.mode,
   });
   const exportAllowed = exportGate.ok;
   const exportBlockReason = exportGate.ok

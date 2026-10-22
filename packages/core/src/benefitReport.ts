@@ -1,4 +1,8 @@
-import type { ComparisonVerdict, RunComparison } from "./comparison.js";
+import {
+  pairedEvaluationAdoptionMode,
+  type ComparisonVerdict,
+  type RunComparison,
+} from "./comparison.js";
 import {
   OFFICIAL_USE_SCORE_FLOOR,
   PASS_SCORE_FLOOR,
@@ -499,9 +503,21 @@ export function applyPairedComparisonGate(opts: {
    * Superseded non-tip legs must not get waiting/unavailable copy.
    */
   tipCandidateRunId?: string | null;
+  /** Tip-heal: legs override stale comparison.json mode for adoption gates. */
+  metaMode?: string | null;
+  baselineMode?: RunResult["mode"];
+  candidateMode?: RunResult["mode"];
 }): { verdict: BenefitVerdict; rating: BenefitRating } {
   const { result, comparison } = opts;
   let { verdict, rating } = opts;
+  const comparisonAdoptionMode =
+    comparison &&
+    pairedEvaluationAdoptionMode({
+      comparisonMode: comparison.mode,
+      metaMode: opts.metaMode,
+      baselineMode: opts.baselineMode,
+      candidateMode: opts.candidateMode,
+    });
 
   if (result.role === "baseline") {
     // Defense-in-depth: never leave Excellent / USE styling on a baseline leg.
@@ -652,7 +668,7 @@ export function applyPairedComparisonGate(opts: {
   const confirm = comparison.adoptionConfirmation;
   if (
     v === "INCONCLUSIVE" &&
-    comparison.mode === "official" &&
+    comparisonAdoptionMode === "official" &&
     confirm &&
     confirm.step < confirm.required
   ) {
@@ -672,16 +688,16 @@ export function applyPairedComparisonGate(opts: {
     );
     return { verdict, rating };
   }
-  if (v === "PASS" && comparison.mode === "official") {
+  if (v === "PASS" && comparisonAdoptionMode === "official") {
     // Tip PASS: keep score-based USE or DO NOT USE (floor shortfall).
     return { verdict, rating };
   }
-  if (v === "PASS" && comparison.mode !== "official") {
+  if (v === "PASS" && comparisonAdoptionMode !== "official") {
     verdict = {
       recommendation: "inconclusive",
       headline: "INCONCLUSIVE — Comparison PASS is dry-run only",
       decision: "INCONCLUSIVE — official Comparison PASS required",
-      rationale: `Comparison reported PASS but mode is ${comparison.mode} (not official). Benefit USE stays locked until an official paired Comparison PASS.`,
+      rationale: `Comparison reported PASS but paired mode resolves to ${comparisonAdoptionMode ?? comparison.mode} (not official). Benefit USE stays locked until an official paired Comparison PASS.`,
     };
     rating = withUpdatedRecommendation(
       rating,
@@ -692,7 +708,7 @@ export function applyPairedComparisonGate(opts: {
     return { verdict, rating };
   }
 
-  if (v === "FAIL" && comparison.mode === "official") {
+  if (v === "FAIL" && comparisonAdoptionMode === "official") {
     verdict = {
       recommendation: "do_not_use",
       headline: "DO NOT USE — Comparison FAIL",
@@ -713,7 +729,7 @@ export function applyPairedComparisonGate(opts: {
     recommendation: "inconclusive",
     headline: "INCONCLUSIVE — Comparison not decisive",
     decision: "INCONCLUSIVE — Comparison not an adoption verdict yet",
-    rationale: `Comparison for ${result.evaluationId} is ${v}${comparison.mode !== "official" ? ` (${comparison.mode})` : ""} (${comparison.rationale}). Official score cannot unlock Benefit USE / DO NOT USE until Comparison is official PASS or FAIL.`,
+    rationale: `Comparison for ${result.evaluationId} is ${v}${comparisonAdoptionMode !== "official" ? ` (${comparisonAdoptionMode ?? comparison.mode})` : ""} (${comparison.rationale}). Official score cannot unlock Benefit USE / DO NOT USE until Comparison is official PASS or FAIL.`,
   };
   rating = withUpdatedRecommendation(
     rating,
@@ -860,6 +876,9 @@ export function buildBenefitReport(
     comparison?: RunComparison | null;
     pairPending?: BenefitPairPending;
     tipCandidateRunId?: string | null;
+    metaMode?: string | null;
+    baselineMode?: RunResult["mode"];
+    candidateMode?: RunResult["mode"];
   },
 ): BenefitReport {
   const spread = result.scoreSpread ?? 0;
@@ -889,6 +908,9 @@ export function buildBenefitReport(
     ...(opts?.tipCandidateRunId
       ? { tipCandidateRunId: opts.tipCandidateRunId }
       : {}),
+    ...(opts?.metaMode !== undefined ? { metaMode: opts.metaMode } : {}),
+    ...(opts?.baselineMode ? { baselineMode: opts.baselineMode } : {}),
+    ...(opts?.candidateMode ? { candidateMode: opts.candidateMode } : {}),
   });
 
   return {

@@ -2,8 +2,10 @@ import type {
   BenefitReport,
   ComparisonVerdict,
   RunComparison,
+  RunResult,
   SkillUseVerdict,
 } from "@skillevalator/core";
+import { pairedEvaluationAdoptionMode } from "@skillevalator/core";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 
 export type BenefitExportGateOk = { ok: true };
@@ -43,11 +45,22 @@ export function benefitExportGate(opts: {
   candidateFakeProduce?: boolean;
   baselineProduceAttested?: boolean;
   candidateProduceAttested?: boolean;
+  metaMode?: string | null;
+  baselineMode?: RunResult["mode"];
+  candidateMode?: RunResult["mode"];
 }): BenefitExportGateOk | BenefitExportGateDenied {
   const recommendation = opts.report.verdict.recommendation;
   const mode = opts.report.config.mode;
   const runId = opts.report.config.runId;
   const comparison = opts.comparison;
+  const comparisonAdoptionMode =
+    comparison &&
+    pairedEvaluationAdoptionMode({
+      comparisonMode: comparison.mode,
+      metaMode: opts.metaMode,
+      baselineMode: opts.baselineMode,
+      candidateMode: opts.candidateMode,
+    });
 
   if (opts.metaSmoke === true) {
     return {
@@ -116,7 +129,7 @@ export function benefitExportGate(opts: {
   }
   if (recommendation === "use") {
     if (
-      comparison.mode !== "official" ||
+      comparisonAdoptionMode !== "official" ||
       comparison.verdict !== ("PASS" satisfies ComparisonVerdict)
     ) {
       return {
@@ -144,7 +157,7 @@ export function benefitExportGate(opts: {
   }
   if (recommendation === "do_not_use") {
     if (
-      comparison.mode !== "official" ||
+      comparisonAdoptionMode !== "official" ||
       comparison.verdict !== ("FAIL" satisfies ComparisonVerdict)
     ) {
       return {

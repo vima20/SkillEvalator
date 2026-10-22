@@ -310,6 +310,41 @@ export function isEvalRunMode(value: unknown): value is RunResult["mode"] {
 }
 
 /**
+ * Adoption-facing paired mode: tip legs beat stale comparison.json / meta
+ * (official tip wins; else dry-run tip; else comparison.mode; else meta).
+ */
+export function pairedEvaluationAdoptionMode(opts: {
+  metaMode?: string | null;
+  baselineMode?: RunResult["mode"];
+  candidateMode?: RunResult["mode"];
+  comparisonMode?: RunResult["mode"];
+}): RunResult["mode"] | undefined {
+  if (
+    opts.baselineMode === "official" ||
+    opts.candidateMode === "official"
+  ) {
+    return "official";
+  }
+  if (
+    opts.baselineMode === "dry-run" ||
+    opts.candidateMode === "dry-run"
+  ) {
+    return "dry-run";
+  }
+  if (
+    opts.comparisonMode === "official" ||
+    opts.comparisonMode === "dry-run"
+  ) {
+    return opts.comparisonMode;
+  }
+  const meta = typeof opts.metaMode === "string" ? opts.metaMode.trim() : "";
+  if (meta === "official" || meta === "dry-run") {
+    return meta;
+  }
+  return undefined;
+}
+
+/**
  * Resolve evaluation.json mode for Comparison parity.
  * Valid meta.mode wins; missing may be filled from agreeing legs; explicit
  * invalid meta.mode is fail-closed (never silently skipped).
