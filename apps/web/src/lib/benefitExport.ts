@@ -5,7 +5,7 @@ import type {
   RunResult,
   SkillUseVerdict,
 } from "@skillevalator/core";
-import { pairedEvaluationAdoptionMode } from "@skillevalator/core";
+import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 
 export type BenefitExportGateOk = { ok: true };

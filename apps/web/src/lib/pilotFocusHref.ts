@@ -36,7 +36,7 @@ export function withNewRunHandoff(
   return withPilotFocus(href, pilotFocus);
 }
 
-import { pairedEvaluationAdoptionMode } from "@skillevalator/core";
+import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 
 /**
  * List chip / Pilot noise / re-run handoff: tip legs beat stale evaluation.json
