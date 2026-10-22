@@ -160,6 +160,8 @@ type Payload = {
   pairPending?: "waiting" | "unavailable";
   comparisonProvisional?: { step: number; required: number };
   comparisonMeta?: { label: string; title?: string };
+  /** Tip-leg pair mode (not stale comparison.json). */
+  pairedDisplayMode?: string;
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;

@@ -123,6 +123,25 @@ describe("loadRunDetailEvaluationPack", () => {
     expect(out.comparisonMeta?.label).toBe("INCONCLUSIVE · 1/2");
     expect(out.comparisonMeta?.title).toMatch(/second official pair/i);
     expect(out.metaMode).toBe("official");
+    expect(out.pairedDisplayMode).toBe("official");
+  });
+
+  it("pairedDisplayMode follows tip legs when comparison.json mode is stale", () => {
+    const out = loadRunDetailEvaluationPack({
+      runId: "run_cand",
+      status: { evaluationId: "eval_stale" },
+      result: { evaluationId: "eval_stale" },
+      loadPacked: () =>
+        ({
+          meta: { mode: "dry-run", baselineRunId: "run_b", candidateRunId: "run_cand" },
+          comparison: { verdict: "PASS", mode: "dry-run" },
+          baseline: { mode: "official" },
+          candidate: { mode: "official" },
+        }) as ReturnType<
+          typeof import("@/lib/evaluations").loadEvaluationComparison
+        >,
+    });
+    expect(out.pairedDisplayMode).toBe("official");
   });
 
   it("returns null pack when no evaluationId source", () => {

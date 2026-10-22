@@ -51,8 +51,7 @@ describe("statusBadgeKind", () => {
     // Pending list chip: tip legs beat stale evaluation.json mode.
     expect(list).toMatch(/evaluationPairBrowseFromPacked/);
     expect(list).toMatch(/pairExportEvidenceFromBrowse/);
-    expect(list).toMatch(/pairBrowse\.pairedDisplayMode/);
-    expect(list).toMatch(/resolvePairedDisplayModeFromPacked/);
+    expect(list).toMatch(/resolvedPairedDisplayModeFromBrowse\(pairBrowse\)/);
     expect(list).toMatch(/comparisonVerdictListLabel/);
     expect(list).toMatch(/adoptionConfirmation/);
     expect(list).toMatch(/downloadsOk = downloadGate\?\.ok === true/);
@@ -261,6 +260,8 @@ describe("statusBadgeKind", () => {
     );
     expect(runDetailPage).toMatch(/loadPairWaitingWindDownRunIds/);
     expect(runDetailApi).toMatch(/loadPairWaitingWindDownRunIds/);
+    expect(runDetailPage).toMatch(/pairedDisplayMode/);
+    expect(runDetailApi).toMatch(/pairedDisplayMode/);
     // Benefit CTA stays visible while pairPending waiting still polls.
     expect(runDetail).toMatch(/\{result \? \(/);
     expect(runDetail).not.toMatch(/\{result && !polling \?/);
