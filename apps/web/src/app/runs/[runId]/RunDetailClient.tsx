@@ -165,6 +165,7 @@ type Payload = {
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;
+  preferOfficialHandoff?: boolean;
   /**
    * Tip siblings in budget_stop / cancel_requested without result while
    * pairPending=waiting — finalize after shared orphan timeout (Benefit parity).
@@ -386,6 +387,13 @@ export function RunDetailClient({
   const result = data.result;
   const resolvedEvaluationId =
     data.resolvedEvaluationId ?? result?.evaluationId ?? null;
+  const preferOfficialNewRun =
+    data.preferOfficialHandoff ??
+    pairedEvalPreferOfficial({
+      metaMode: data.metaMode,
+      baselineMode: data.baselineMode,
+      candidateMode: data.candidateMode,
+    });
   const cancelRequested = status === "cancel_requested";
   /** Orphan/settling cost-cap — same as POST retry admission + cancelGate. */
   const budgetStopWindDown = isRetryBudgetStopping(status, Boolean(result));
@@ -829,14 +837,7 @@ export function RunDetailClient({
           <div className="action-row" style={{ marginTop: 12 }}>
             <Link
               className="btn btn-primary btn-compact"
-              href={withNewRunHandoff(
-                pilotFocus,
-                pairedEvalPreferOfficial({
-                  metaMode: data.pairedDisplayMode ?? data.metaMode,
-                  baselineMode: data.baselineMode,
-                  candidateMode: data.candidateMode,
-                }),
-              )}
+              href={withNewRunHandoff(pilotFocus, preferOfficialNewRun)}
             >
               Confirm adoption — new official pair
             </Link>

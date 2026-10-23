@@ -56,6 +56,7 @@ export async function GET(
       metaMode,
       baselineMode,
       candidateMode,
+      preferOfficialHandoff,
       csvExportAllowed,
       csvExportBlockReason,
     } = loadRunDetailEvaluationPack({
@@ -93,6 +94,7 @@ export async function GET(
       ...(metaMode ? { metaMode } : {}),
       ...(baselineMode ? { baselineMode } : {}),
       ...(candidateMode ? { candidateMode } : {}),
+      ...(preferOfficialHandoff ? { preferOfficialHandoff: true } : {}),
       ...(pairWindDownRunIds.length > 0 ? { pairWindDownRunIds } : {}),
       resolvedEvaluationId: evaluationId,
       retryAdmission,

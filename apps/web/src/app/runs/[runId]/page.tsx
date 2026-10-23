@@ -99,6 +99,7 @@ export default async function RunDetailPage({
     metaMode,
     baselineMode,
     candidateMode,
+    preferOfficialHandoff,
     csvExportAllowed,
     csvExportBlockReason,
   } = loadRunDetailEvaluationPack({
@@ -141,6 +142,7 @@ export default async function RunDetailPage({
         ...(metaMode ? { metaMode } : {}),
         ...(baselineMode ? { baselineMode } : {}),
         ...(candidateMode ? { candidateMode } : {}),
+        ...(preferOfficialHandoff ? { preferOfficialHandoff: true } : {}),
         ...(pairWindDownRunIds.length > 0 ? { pairWindDownRunIds } : {}),
         resolvedEvaluationId: evaluationId,
         retryAdmission,

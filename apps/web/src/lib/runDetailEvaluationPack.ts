@@ -12,6 +12,7 @@ import {
 import {
   evaluationPairBrowseFromPacked,
   pairedAdoptionModesFromPacked,
+  pairedEvalPreferOfficialFromPacked,
   type EvaluationPairBrowseEntry,
 } from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
@@ -177,6 +178,8 @@ export type RunDetailEvaluationPack = {
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;
+  /** Tip-resolved ?mode=official handoff (Comparison / Benefit parity). */
+  preferOfficialHandoff?: boolean;
   /** Same gate as GET /api/runs/[runId]/csv (computed with one pair browse). */
   csvExportAllowed?: boolean;
   csvExportBlockReason?: string | null;
@@ -268,6 +271,7 @@ export function loadRunDetailEvaluationPack(opts: {
     ...(comparisonMeta ? { comparisonMeta } : {}),
     ...(pairedDisplayMode ? { pairedDisplayMode } : {}),
     ...pairedAdoptionModesFromPacked(packed),
+    preferOfficialHandoff: pairedEvalPreferOfficialFromPacked(packed),
     ...csvFromResult(packed, pairBrowse),
   };
 }

@@ -182,6 +182,18 @@ describe("resolveExportGetError", () => {
         "utf8",
       ),
     ).toMatch(/runCsvExportGateFromPacked/);
+    expect(
+      fs.readFileSync(
+        path.join(cwd, "src/lib/runDetailEvaluationPack.ts"),
+        "utf8",
+      ),
+    ).toMatch(/preferOfficialHandoff: pairedEvalPreferOfficialFromPacked/);
+    expect(
+      fs.readFileSync(
+        path.join(cwd, "src/app/api/runs/[runId]/route.ts"),
+        "utf8",
+      ),
+    ).toMatch(/preferOfficialHandoff/);
     for (const rel of [
       "src/app/benefit/[runId]/page.tsx",
       "src/app/comparison/[evaluationId]/page.tsx",

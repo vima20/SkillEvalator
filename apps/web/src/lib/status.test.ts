@@ -114,7 +114,7 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/comparisonExportContextFromPacked/);
     expect(detail).toMatch(/pairedDisplayMode \} =\s*pairBrowse/);
     expect(detail).toMatch(/const displayMode/);
-    expect(detail).toMatch(/pairedEvalPreferOfficial\(exportEvidence\)/);
+    expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);
     expect(detail).toMatch(/verdictHeadline/);
     expect(detail).toMatch(/mode=\{meta\.mode\}/);

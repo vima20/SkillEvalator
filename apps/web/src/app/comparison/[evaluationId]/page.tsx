@@ -18,7 +18,6 @@ import {
   comparisonExportContextFromPacked,
   pairedEvalPreferOfficialFromPacked,
 } from "@/lib/evaluationPairBrowse";
-import { pairedEvalPreferOfficial } from "@/lib/pilotFocusHref";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
@@ -157,7 +156,7 @@ export default async function ComparisonDetailPage({
   const displayMode = pairedDisplayMode ?? meta.mode ?? "dry-run";
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
-  const preferOfficial = pairedEvalPreferOfficial(exportEvidence);
+  const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);
   const confirmOfficialPairHref = withNewRunHandoff(
     pilotFocus,
     preferOfficial,

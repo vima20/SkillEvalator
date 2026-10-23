@@ -810,6 +810,8 @@ describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
     expect(src).toMatch(/comparisonProvisional/);
     expect(src).toMatch(/comparisonMeta/);
     expect(src).toMatch(/Confirm adoption — new official pair/);
+    expect(src).toMatch(/preferOfficialNewRun/);
+    expect(src).toMatch(/preferOfficialHandoff/);
   });
 });
 

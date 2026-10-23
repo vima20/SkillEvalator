@@ -142,6 +142,7 @@ describe("loadRunDetailEvaluationPack", () => {
         >,
     });
     expect(out.pairedDisplayMode).toBe("official");
+    expect(out.preferOfficialHandoff).toBe(true);
   });
 
   it("csvExportAllowed follows tip-resolved comparison mode when comparison.json is stale", () => {
