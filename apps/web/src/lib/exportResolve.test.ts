@@ -173,6 +173,7 @@ describe("resolveExportGetError", () => {
       "utf8",
     );
     expect(runCsvAllowed).toMatch(/pairExportEvidenceFromBrowse/);
+    expect(runCsvAllowed).toMatch(/pilotArchiveAdoptionFromPacked/);
     for (const rel of [
       "src/app/benefit/[runId]/page.tsx",
       "src/app/comparison/[evaluationId]/page.tsx",

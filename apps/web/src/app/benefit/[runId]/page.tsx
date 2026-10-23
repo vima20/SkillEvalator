@@ -13,7 +13,6 @@ import { StarRating } from "@/components/StarRating";
 import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
-  pairedEvalPreferOfficialFromPacked,
   resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
@@ -136,8 +135,8 @@ export default async function BenefitReportPage({
   // Superseded non-tip must not show waiting/unavailable (adoption follows tip).
   const pairWaiting = !supersededTip && pairPending === "waiting";
   const pairUnavailable = !supersededTip && pairPending === "unavailable";
-  const preferOfficial = packed
-    ? pairedEvalPreferOfficialFromPacked(packed)
+  const preferOfficial = pairBrowse
+    ? pairedEvalPreferOfficial(pairExportEvidence)
     : pairedEvalPreferOfficial({
         metaMode: meta?.mode,
         baselineMode:

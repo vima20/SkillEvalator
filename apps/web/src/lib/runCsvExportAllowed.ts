@@ -2,6 +2,7 @@ import type { RunResult } from "@skillevalator/core";
 import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
+  pilotArchiveAdoptionFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
@@ -32,7 +33,10 @@ export function runCsvExportGateForRun(opts: {
     result: opts.result,
     evaluationId,
     comparisonVerdict: packed?.comparison?.verdict ?? null,
-    comparisonMode: packed?.comparison?.mode ?? null,
+    comparisonMode:
+      packed?.comparison
+        ? pilotArchiveAdoptionFromPacked(packed).adoptionMode
+        : null,
     comparisonAdoptionConfirmation:
       packed?.comparison?.adoptionConfirmation ?? null,
     baselineRunId: pairBrowse?.tipBaselineRunId ?? null,
