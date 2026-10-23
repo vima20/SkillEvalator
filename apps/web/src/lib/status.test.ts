@@ -236,6 +236,9 @@ describe("statusBadgeKind", () => {
     );
     expect(runsList).toMatch(/createEvaluationPairBrowseCache/);
     expect(runsList).toMatch(/listRowAdoptionMode/);
+    expect(runsList).toMatch(
+      /includeInPilotFocusRun\([\s\S]*?mode: listRowAdoptionMode\(pair/,
+    );
     expect(dashboard).toMatch(/listRowAdoptionMode/);
     expect(benefitList).toMatch(/listRowAdoptionMode/);
     expect(runDetail).toMatch(/benefitPairCtaLabel/);

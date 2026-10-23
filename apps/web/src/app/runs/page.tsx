@@ -83,7 +83,7 @@ export default async function RunsPage({
         });
         return includeInPilotFocusRun({
           kind,
-          mode: r.result?.mode,
+          mode: listRowAdoptionMode(pair, r.result?.mode),
           fakeProduce,
           produceAttested,
           hasResult: !!r.result,
