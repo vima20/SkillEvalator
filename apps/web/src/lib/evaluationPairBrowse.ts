@@ -85,7 +85,8 @@ export function resolvedPairedDisplayModeFromBrowse(
   if (!entry) return undefined;
   return (
     entry.pairedDisplayMode ??
-    resolvePairedDisplayModeFromPacked(entry.packed)
+    resolvePairedDisplayModeFromPacked(entry.packed) ??
+    pairedEvalDisplayModeFromPacked(entry.packed)
   );
 }
 
@@ -94,13 +95,7 @@ export function listRowAdoptionMode(
   pairBrowse: EvaluationPairBrowseEntry | null | undefined,
   resultMode?: string | null,
 ): string {
-  if (pairBrowse) {
-    const fromTips =
-      resolvedPairedDisplayModeFromBrowse(pairBrowse) ??
-      pairedEvalDisplayModeFromPacked(pairBrowse.packed);
-    if (fromTips) return fromTips;
-  }
-  return resultMode ?? "—";
+  return resolvedPairedDisplayModeFromBrowse(pairBrowse) ?? resultMode ?? "—";
 }
 
 /** Exported CSV metadata — same resolution as export gates. */

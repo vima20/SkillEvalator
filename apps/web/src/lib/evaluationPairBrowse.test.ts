@@ -122,6 +122,19 @@ describe("evaluationPairBrowseFromPacked", () => {
     ).toBe("official");
   });
 
+  it("resolvedPairedDisplayModeFromBrowse uses tip legs when comparison.json is absent", () => {
+    const packed = {
+      meta: { mode: "dry-run", baselineRunId: "b", candidateRunId: "c" },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+    } as PackedEvaluationBrowse;
+    expect(
+      resolvedPairedDisplayModeFromBrowse(
+        evaluationPairBrowseFromPacked(packed),
+      ),
+    ).toBe("official");
+  });
+
   it("pilotArchiveAdoptionFromPacked records comparisonJsonMode when disk mode is stale", () => {
     const packed = {
       meta: { mode: "dry-run" },
