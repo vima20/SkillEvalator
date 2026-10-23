@@ -185,6 +185,7 @@ describe("evaluationPairBrowseFromPacked", () => {
     } as PackedEvaluationBrowse;
     const browse = evaluationPairBrowseFromPacked(packed);
     const ctx = comparisonExportContextFromPacked(packed);
+    expect(ctx.pairBrowse).toEqual(browse);
     expect(ctx.adoptionMode).toBe("official");
     expect(ctx.comparisonJsonMode).toBe("dry-run");
     expect(ctx.evidence).toEqual(pairExportEvidenceFromBrowse(browse));

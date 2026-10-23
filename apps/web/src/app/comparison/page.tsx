@@ -6,7 +6,7 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
-  comparisonExportContextFromBrowse,
+  comparisonExportContextFromPacked,
   evaluationPairBrowseFromPacked,
   resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
@@ -67,8 +67,10 @@ export default async function ComparisonListPage({
     const packed = loadEvaluationComparison(e.evaluationId);
     const c = packed.comparison;
     const pending = !c;
+    const comparisonExport = c ? comparisonExportContextFromPacked(packed) : null;
     // Prefer Comparison tip legs (then healed meta) so Benefit CTA matches PASS/FAIL.
-    const pairBrowse = evaluationPairBrowseFromPacked(packed);
+    const pairBrowse =
+      comparisonExport?.pairBrowse ?? evaluationPairBrowseFromPacked(packed);
     const tipCandidateRunId =
       pairBrowse.tipCandidateRunId ?? e.candidateRunId;
     const tipBaselineRunId = pairBrowse.tipBaselineRunId ?? e.baselineRunId;
@@ -88,9 +90,6 @@ export default async function ComparisonListPage({
     // Same gate as ComparisonPending / hasPendingEvaluations / Benefit.
     const tipActive = pending && evaluationTipPairIsActive(packed);
     const scorecardUnavailable = pending && !tipActive;
-    const comparisonExport = c
-      ? comparisonExportContextFromBrowse(packed, pairBrowse)
-      : null;
     const downloadGate = c
       ? officialComparisonExportGate(c, comparisonExport!.evidence)
       : null;

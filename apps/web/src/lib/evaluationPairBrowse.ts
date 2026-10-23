@@ -127,12 +127,14 @@ export function comparisonExportContextFromBrowse(
   packed: PackedEvaluationBrowse,
   pairBrowse: EvaluationPairBrowseEntry,
 ): {
+  pairBrowse: EvaluationPairBrowseEntry;
   evidence: ReturnType<typeof pairExportEvidenceFromBrowse>;
   adoptionMode: RunComparison["mode"];
   comparisonJsonMode?: RunComparison["mode"];
 } {
   const adoption = pilotArchiveAdoptionFromPacked(packed);
   return {
+    pairBrowse,
     evidence: pairExportEvidenceFromBrowse(pairBrowse),
     adoptionMode: adoption.adoptionMode,
     ...(adoption.comparisonJsonMode

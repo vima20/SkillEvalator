@@ -12,6 +12,7 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import {
   benefitExportContextFromPacked,
+  pairedEvalPreferOfficialFromPacked,
   resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
@@ -133,8 +134,8 @@ export default async function BenefitReportPage({
   // Superseded non-tip must not show waiting/unavailable (adoption follows tip).
   const pairWaiting = !supersededTip && pairPending === "waiting";
   const pairUnavailable = !supersededTip && pairPending === "unavailable";
-  const preferOfficial = pairBrowse
-    ? pairedEvalPreferOfficial(pairExportEvidence)
+  const preferOfficial = packed
+    ? pairedEvalPreferOfficialFromPacked(packed)
     : pairedEvalPreferOfficial({
         metaMode: meta?.mode,
         baselineMode:

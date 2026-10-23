@@ -49,9 +49,8 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/scorecardUnavailable/);
     expect(list).toMatch(/evaluationTipPairIsActive/);
     // Pending list chip: tip legs beat stale evaluation.json mode.
-    expect(list).toMatch(/evaluationPairBrowseFromPacked/);
-    expect(list).toMatch(/comparisonExportContextFromBrowse/);
-    expect(list).toMatch(/const comparisonExport = c/);
+    expect(list).toMatch(/comparisonExportContextFromPacked/);
+    expect(list).toMatch(/comparisonExport\?\.pairBrowse/);
     expect(list).toMatch(/resolvedPairedDisplayModeFromBrowse\(pairBrowse\)/);
     expect(list).toMatch(/comparisonVerdictListLabel/);
     expect(list).toMatch(/adoptionConfirmation/);
@@ -112,7 +111,7 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/Confirm adoption — new official pair/);
     expect(detail).toMatch(/provisionalPass/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
-    expect(detail).toMatch(/comparisonExportContextFromBrowse/);
+    expect(detail).toMatch(/comparisonExportContextFromPacked/);
     expect(detail).toMatch(/pairedDisplayMode \} =\s*pairBrowse/);
     expect(detail).toMatch(/const displayMode/);
     expect(detail).toMatch(/pairedEvalPreferOfficial\(exportEvidence\)/);
@@ -167,10 +166,8 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/Comparison unavailable/);
     expect(benefitDetail).toMatch(/Waiting for Comparison/);
     // Official Benefit unavailable → New run with ?mode=official.
+    expect(benefitDetail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
-    expect(benefitDetail).toMatch(
-      /pairedEvalPreferOfficial\(pairExportEvidence\)/,
-    );
     expect(benefitDetail).toMatch(/resolvedPairedDisplayModeFromBrowse/);
     expect(benefitDetail).toMatch(/provisionalPass/);
     expect(benefitDetail).toMatch(/benefitExportContextFromPacked/);
