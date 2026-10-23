@@ -8,9 +8,9 @@ import {
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import {
-  pairedAdoptionComparisonMode,
-  pairedAdoptionModesFromPacked,
-  pairExportEvidenceFromPacked,
+  evaluationPairBrowseFromPacked,
+  pairExportEvidenceFromBrowse,
+  pilotArchiveAdoptionFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import {
   EXPORT_FAILED_ERROR,
@@ -43,7 +43,10 @@ export async function GET(
       status,
     });
     const format = new URL(req.url).searchParams.get("format");
-    const pairEvidence = packed ? pairExportEvidenceFromPacked(packed) : {};
+    const pairBrowse = packed ? evaluationPairBrowseFromPacked(packed) : null;
+    const pairEvidence = pairBrowse
+      ? pairExportEvidenceFromBrowse(pairBrowse)
+      : {};
     const gate = benefitExportGate({
       report,
       comparison,
@@ -78,10 +81,7 @@ export async function GET(
           comparisonVerdict: comparison?.verdict,
           comparisonMode:
             comparison && packed
-              ? pairedAdoptionComparisonMode(
-                  comparison,
-                  pairedAdoptionModesFromPacked(packed),
-                )
+              ? pilotArchiveAdoptionFromPacked(packed).adoptionMode
               : comparison?.mode,
           comparisonLift: comparison?.lift,
           fakeProduce: result.capture?.env?.fakeProduce === true,

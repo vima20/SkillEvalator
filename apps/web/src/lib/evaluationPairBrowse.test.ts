@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  comparisonExportContextFromPacked,
   createEvaluationPairBrowseCache,
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
@@ -144,6 +145,30 @@ describe("evaluationPairBrowseFromPacked", () => {
       ),
     ).toBe("official");
     expect(pairedEvalPreferOfficialFromPacked(packed)).toBe(true);
+  });
+
+  it("comparisonExportContextFromPacked shares one browse for gate and adoption mode", () => {
+    const packed = {
+      meta: { mode: "dry-run", smoke: false },
+      baseline: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      candidate: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+    } as PackedEvaluationBrowse;
+    const browse = evaluationPairBrowseFromPacked(packed);
+    const ctx = comparisonExportContextFromPacked(packed);
+    expect(ctx.adoptionMode).toBe("official");
+    expect(ctx.comparisonJsonMode).toBe("dry-run");
+    expect(ctx.evidence).toEqual(pairExportEvidenceFromBrowse(browse));
+    expect(
+      officialComparisonExportGate(packed.comparison!, ctx.evidence).ok,
+    ).toBe(true);
+    expect(pairExportEvidenceFromPacked(packed, browse)).toEqual(ctx.evidence);
   });
 
   it("pairExportEvidenceFromPacked feeds official export gate (stale comparison mode)", () => {

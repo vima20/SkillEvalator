@@ -115,8 +115,30 @@ export function pairExportEvidenceFromBrowse(
 /** APIs: one browse pass for export gates (tip modes beat stale comparison.json). */
 export function pairExportEvidenceFromPacked(
   packed: PackedEvaluationBrowse,
+  browse?: EvaluationPairBrowseEntry,
 ): ReturnType<typeof pairExportEvidenceFromBrowse> {
-  return pairExportEvidenceFromBrowse(evaluationPairBrowseFromPacked(packed));
+  return pairExportEvidenceFromBrowse(
+    browse ?? evaluationPairBrowseFromPacked(packed),
+  );
+}
+
+/** Comparison CSV / pilot archive — single browse for gate evidence + adoption mode. */
+export function comparisonExportContextFromPacked(
+  packed: PackedEvaluationBrowse,
+): {
+  evidence: ReturnType<typeof pairExportEvidenceFromBrowse>;
+  adoptionMode: RunComparison["mode"];
+  comparisonJsonMode?: RunComparison["mode"];
+} {
+  const pairBrowse = evaluationPairBrowseFromPacked(packed);
+  const adoption = pilotArchiveAdoptionFromPacked(packed);
+  return {
+    evidence: pairExportEvidenceFromBrowse(pairBrowse),
+    adoptionMode: adoption.adoptionMode,
+    ...(adoption.comparisonJsonMode
+      ? { comparisonJsonMode: adoption.comparisonJsonMode }
+      : {}),
+  };
 }
 
 /** Archive zip: resolved adoption mode + optional stale comparison.json mode. */

@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, comparisonToCsv } from "@skillevalator/core";
 import { comparisonCsvGate } from "@/lib/comparisonExport";
-import {
-  pairExportEvidenceFromPacked,
-  pilotArchiveAdoptionFromPacked,
-} from "@/lib/evaluationPairBrowse";
+import { comparisonExportContextFromPacked } from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
   EXPORT_FAILED_ERROR,
@@ -37,10 +34,8 @@ export async function GET(
         { status: 404 },
       );
     }
-    const gate = comparisonCsvGate(
-      comparison,
-      pairExportEvidenceFromPacked(packed),
-    );
+    const exportCtx = comparisonExportContextFromPacked(packed);
+    const gate = comparisonCsvGate(comparison, exportCtx.evidence);
     if (!gate.ok) {
       return NextResponse.json(
         {
@@ -54,7 +49,7 @@ export async function GET(
       );
     }
     const csv = comparisonToCsv(comparison, {
-      adoptionMode: pilotArchiveAdoptionFromPacked(packed).adoptionMode,
+      adoptionMode: exportCtx.adoptionMode,
       baselineFakeProduce: baseline?.capture?.env?.fakeProduce === true,
       baselineProduceAttested:
         baseline?.capture?.env?.produceAttested === true,

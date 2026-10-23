@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertSafeId, findRepoRoot } from "@skillevalator/core";
-import {
-  pairExportEvidenceFromPacked,
-  pilotArchiveAdoptionFromPacked,
-} from "@/lib/evaluationPairBrowse";
+import { comparisonExportContextFromPacked } from "@/lib/evaluationPairBrowse";
 import {
   loadEvaluationComparison,
   resolveTipBaselineRunId,
@@ -52,9 +49,10 @@ export async function GET(
     const candidateRunId =
       resolveTipCandidateRunId(packed) ?? meta.candidateRunId;
 
+    const exportCtx = comparisonExportContextFromPacked(packed);
     const gate = pilotArchiveGate({
       comparison,
-      ...pairExportEvidenceFromPacked(packed),
+      ...exportCtx.evidence,
     });
     if (!gate.ok) {
       return NextResponse.json(
@@ -85,7 +83,7 @@ export async function GET(
         candidateProduceAttested:
           candidate.capture?.env?.produceAttested === true,
       },
-      adoptionMode: pilotArchiveAdoptionFromPacked(packed).adoptionMode,
+      adoptionMode: exportCtx.adoptionMode,
     });
 
     return new NextResponse(new Uint8Array(zip), {

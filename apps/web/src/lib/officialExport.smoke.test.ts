@@ -412,7 +412,7 @@ describe("official export gates smoke", () => {
         rationale: "",
         parity: { ok: true, issues: [] },
         perTask: [],
-      } as RunComparison,
+      } as unknown as RunComparison,
       { adoptionMode: adoption.adoptionMode },
     );
     const dataLine = csv.trim().split("\n")[1]!;

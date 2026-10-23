@@ -17,8 +17,8 @@ import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
-  pairedEvalPreferOfficialFromPacked,
 } from "@/lib/evaluationPairBrowse";
+import { pairedEvalPreferOfficial } from "@/lib/pilotFocusHref";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
@@ -138,13 +138,14 @@ export default async function ComparisonDetailPage({
   const capture = comparison.capture;
   const pairBrowse = evaluationPairBrowseFromPacked(packed);
   const { pairEvidence, pairChip, pairBlocked } = pairBrowse;
+  const exportEvidence = pairExportEvidenceFromBrowse(pairBrowse);
   const baselineFakeProduce = pairEvidence.baselineFakeProduce;
   const candidateFakeProduce = pairEvidence.candidateFakeProduce;
   const baselineProduceAttested = pairEvidence.baselineProduceAttested;
   const candidateProduceAttested = pairEvidence.candidateProduceAttested;
   const downloadGate = officialComparisonExportGate(
     comparison,
-    pairExportEvidenceFromBrowse(pairBrowse),
+    exportEvidence,
   );
   const showOfficialDownloads = downloadGate.ok;
   const downloadBlockReason = downloadGate.ok
@@ -155,7 +156,7 @@ export default async function ComparisonDetailPage({
   const displayMode = pairedDisplayMode ?? meta.mode ?? "dry-run";
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
-  const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);
+  const preferOfficial = pairedEvalPreferOfficial(exportEvidence);
   const confirmOfficialPairHref = withNewRunHandoff(
     pilotFocus,
     preferOfficial,

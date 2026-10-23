@@ -243,15 +243,13 @@ describe("resolveExportGetError", () => {
     );
     expect(cmp).toMatch(/export_evaluation_meta_missing/);
     expect(cmp).toMatch(/export_comparison_not_ready/);
-    expect(cmp).toMatch(/pairExportEvidenceFromPacked/);
-    expect(cmp).toMatch(/pilotArchiveAdoptionFromPacked/);
+    expect(cmp).toMatch(/comparisonExportContextFromPacked/);
     const archive = fs.readFileSync(
       path.join(cwd, "src/app/api/comparison/[evaluationId]/archive/route.ts"),
       "utf8",
     );
-    expect(archive).toMatch(/pairExportEvidenceFromPacked/);
-    expect(archive).toMatch(/pilotArchiveAdoptionFromPacked/);
-    expect(benefit).toMatch(/pairExportEvidenceFromPacked/);
-    expect(benefit).toMatch(/pairedAdoptionComparisonMode/);
+    expect(archive).toMatch(/comparisonExportContextFromPacked/);
+    expect(benefit).toMatch(/pairExportEvidenceFromBrowse/);
+    expect(benefit).toMatch(/pilotArchiveAdoptionFromPacked/);
   });
 });
