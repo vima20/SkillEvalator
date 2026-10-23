@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  benefitExportContextFromPacked,
+  comparisonExportContextFromBrowse,
   comparisonExportContextFromPacked,
   createEvaluationPairBrowseCache,
   evaluationPairBrowseFromPacked,
@@ -147,6 +149,26 @@ describe("evaluationPairBrowseFromPacked", () => {
     expect(pairedEvalPreferOfficialFromPacked(packed)).toBe(true);
   });
 
+  it("benefitExportContextFromPacked shares one browse for gate and CSV comparisonMode", () => {
+    const packed = {
+      meta: { mode: "dry-run", smoke: false },
+      baseline: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      candidate: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+    } as PackedEvaluationBrowse;
+    const ctx = benefitExportContextFromPacked(packed);
+    expect(ctx.comparisonMode).toBe("official");
+    expect(ctx.evidence).toEqual(
+      pairExportEvidenceFromBrowse(ctx.pairBrowse),
+    );
+  });
+
   it("comparisonExportContextFromPacked shares one browse for gate and adoption mode", () => {
     const packed = {
       meta: { mode: "dry-run", smoke: false },
@@ -165,6 +187,7 @@ describe("evaluationPairBrowseFromPacked", () => {
     expect(ctx.adoptionMode).toBe("official");
     expect(ctx.comparisonJsonMode).toBe("dry-run");
     expect(ctx.evidence).toEqual(pairExportEvidenceFromBrowse(browse));
+    expect(comparisonExportContextFromBrowse(packed, browse)).toEqual(ctx);
     expect(
       officialComparisonExportGate(packed.comparison!, ctx.evidence).ok,
     ).toBe(true);

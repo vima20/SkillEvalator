@@ -255,7 +255,6 @@ describe("resolveExportGetError", () => {
       "utf8",
     );
     expect(archive).toMatch(/comparisonExportContextFromPacked/);
-    expect(benefit).toMatch(/pairExportEvidenceFromBrowse/);
-    expect(benefit).toMatch(/pairedAdoptionComparisonMode/);
+    expect(benefit).toMatch(/benefitExportContextFromPacked/);
   });
 });

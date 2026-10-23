@@ -11,8 +11,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import {
-  evaluationPairBrowseFromPacked,
-  pairExportEvidenceFromBrowse,
+  benefitExportContextFromPacked,
   resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
@@ -114,10 +113,9 @@ export default async function BenefitReportPage({
     status: statusFile,
   });
   const markdown = benefitReportToMarkdown(report);
-  const pairBrowse = packed ? evaluationPairBrowseFromPacked(packed) : null;
-  const pairExportEvidence = pairBrowse
-    ? pairExportEvidenceFromBrowse(pairBrowse)
-    : {};
+  const benefitExport = packed ? benefitExportContextFromPacked(packed) : null;
+  const pairBrowse = benefitExport?.pairBrowse ?? null;
+  const pairExportEvidence = benefitExport?.evidence ?? {};
   const exportGate = benefitExportGate({
     report,
     comparison,

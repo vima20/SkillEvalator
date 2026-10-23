@@ -122,21 +122,52 @@ export function pairExportEvidenceFromPacked(
   );
 }
 
-/** Comparison CSV / pilot archive — single browse for gate evidence + adoption mode. */
-export function comparisonExportContextFromPacked(
+/** Comparison export when pairBrowse is already computed (SSR list/detail). */
+export function comparisonExportContextFromBrowse(
   packed: PackedEvaluationBrowse,
+  pairBrowse: EvaluationPairBrowseEntry,
 ): {
   evidence: ReturnType<typeof pairExportEvidenceFromBrowse>;
   adoptionMode: RunComparison["mode"];
   comparisonJsonMode?: RunComparison["mode"];
 } {
-  const pairBrowse = evaluationPairBrowseFromPacked(packed);
   const adoption = pilotArchiveAdoptionFromPacked(packed);
   return {
     evidence: pairExportEvidenceFromBrowse(pairBrowse),
     adoptionMode: adoption.adoptionMode,
     ...(adoption.comparisonJsonMode
       ? { comparisonJsonMode: adoption.comparisonJsonMode }
+      : {}),
+  };
+}
+
+/** Comparison CSV / pilot archive — single browse for gate evidence + adoption mode. */
+export function comparisonExportContextFromPacked(
+  packed: PackedEvaluationBrowse,
+): ReturnType<typeof comparisonExportContextFromBrowse> {
+  const pairBrowse = evaluationPairBrowseFromPacked(packed);
+  return comparisonExportContextFromBrowse(packed, pairBrowse);
+}
+
+/** Benefit export API / detail — single browse for gate evidence + CSV comparisonMode. */
+export function benefitExportContextFromPacked(
+  packed: PackedEvaluationBrowse,
+  browse?: EvaluationPairBrowseEntry,
+): {
+  pairBrowse: EvaluationPairBrowseEntry;
+  evidence: ReturnType<typeof pairExportEvidenceFromBrowse>;
+  comparisonMode?: RunComparison["mode"];
+} {
+  const pairBrowse = browse ?? evaluationPairBrowseFromPacked(packed);
+  const evidence = pairExportEvidenceFromBrowse(pairBrowse);
+  const comparison = packed.comparison;
+  return {
+    pairBrowse,
+    evidence,
+    ...(comparison
+      ? {
+          comparisonMode: pairedAdoptionComparisonMode(comparison, evidence),
+        }
       : {}),
   };
 }

@@ -15,8 +15,8 @@ import {
 } from "@/lib/captureEnvEvidence";
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
+  comparisonExportContextFromBrowse,
   evaluationPairBrowseFromPacked,
-  pairExportEvidenceFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { pairedEvalPreferOfficial } from "@/lib/pilotFocusHref";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
@@ -138,7 +138,10 @@ export default async function ComparisonDetailPage({
   const capture = comparison.capture;
   const pairBrowse = evaluationPairBrowseFromPacked(packed);
   const { pairEvidence, pairChip, pairBlocked } = pairBrowse;
-  const exportEvidence = pairExportEvidenceFromBrowse(pairBrowse);
+  const { evidence: exportEvidence } = comparisonExportContextFromBrowse(
+    packed,
+    pairBrowse,
+  );
   const baselineFakeProduce = pairEvidence.baselineFakeProduce;
   const candidateFakeProduce = pairEvidence.candidateFakeProduce;
   const baselineProduceAttested = pairEvidence.baselineProduceAttested;

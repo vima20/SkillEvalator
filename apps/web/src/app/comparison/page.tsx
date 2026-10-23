@@ -6,8 +6,8 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
+  comparisonExportContextFromBrowse,
   evaluationPairBrowseFromPacked,
-  pairExportEvidenceFromBrowse,
   resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
@@ -91,7 +91,7 @@ export default async function ComparisonListPage({
     const downloadGate = c
       ? officialComparisonExportGate(
           c,
-          pairExportEvidenceFromBrowse(pairBrowse),
+          comparisonExportContextFromBrowse(packed, pairBrowse).evidence,
         )
       : null;
     const downloadsOk = downloadGate?.ok === true;

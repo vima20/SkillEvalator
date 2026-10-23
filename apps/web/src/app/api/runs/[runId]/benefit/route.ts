@@ -7,11 +7,7 @@ import {
 } from "@skillevalator/core";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
-import {
-  evaluationPairBrowseFromPacked,
-  pairExportEvidenceFromBrowse,
-  pairedAdoptionComparisonMode,
-} from "@/lib/evaluationPairBrowse";
+import { benefitExportContextFromPacked } from "@/lib/evaluationPairBrowse";
 import {
   EXPORT_FAILED_ERROR,
   EXPORT_INVALID_REQUEST_ERROR,
@@ -43,15 +39,14 @@ export async function GET(
       status,
     });
     const format = new URL(req.url).searchParams.get("format");
-    const pairBrowse = packed ? evaluationPairBrowseFromPacked(packed) : null;
-    const pairEvidence = pairBrowse
-      ? pairExportEvidenceFromBrowse(pairBrowse)
-      : {};
+    const benefitExport = packed
+      ? benefitExportContextFromPacked(packed)
+      : null;
     const gate = benefitExportGate({
       report,
       comparison,
       fakeProduce: result.capture?.env?.fakeProduce === true,
-      ...pairEvidence,
+      ...(benefitExport?.evidence ?? {}),
     });
     if (format === "md" || format === "markdown" || format === "csv") {
       if (!gate.ok) {
@@ -80,9 +75,7 @@ export async function GET(
         benefitReportToCsv(report, {
           comparisonVerdict: comparison?.verdict,
           comparisonMode:
-            comparison && pairBrowse
-              ? pairedAdoptionComparisonMode(comparison, pairEvidence)
-              : comparison?.mode,
+            benefitExport?.comparisonMode ?? comparison?.mode,
           comparisonLift: comparison?.lift,
           fakeProduce: result.capture?.env?.fakeProduce === true,
           produceAttested: result.capture?.env?.produceAttested === true,
