@@ -106,6 +106,21 @@ describe("pilotFocusHref", () => {
     }
   });
 
+  it("Nav and brand use listNewRunHref for New run home", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const cwd = process.cwd();
+    expect(
+      fs.readFileSync(path.join(cwd, "src/components/Nav.tsx"), "utf8"),
+    ).toMatch(/item\.href === "\/"/);
+    expect(
+      fs.readFileSync(path.join(cwd, "src/components/Nav.tsx"), "utf8"),
+    ).toMatch(/listNewRunHref\(pilotFocus\)/);
+    expect(
+      fs.readFileSync(path.join(cwd, "src/components/BrandLink.tsx"), "utf8"),
+    ).toMatch(/listNewRunHref\(pilotFocus\)/);
+  });
+
   it("empty-skills New run surfaces ?mode=official until skills exist", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");

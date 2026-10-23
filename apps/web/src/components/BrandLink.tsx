@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import { isPilotFocusParam, listNewRunHref } from "@/lib/pilotFocusHref";
 
 function BrandLinkInner(opts: {
   children: ReactNode;
@@ -17,7 +17,7 @@ function BrandLinkInner(opts: {
   return (
     <Link
       className={opts.className}
-      href={withPilotFocus("/", pilotFocus)}
+      href={listNewRunHref(pilotFocus)}
       aria-label={opts["aria-label"]}
     >
       {opts.children}

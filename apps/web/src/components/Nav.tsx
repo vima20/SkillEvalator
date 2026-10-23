@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  listNewRunHref,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 
 const items = [
   { href: "/", label: "New run", match: (p: string) => p === "/" },
@@ -42,7 +46,11 @@ function NavLinks() {
         return (
           <Link
             key={item.href}
-            href={withPilotFocus(item.href, pilotFocus)}
+            href={
+              item.href === "/"
+                ? listNewRunHref(pilotFocus)
+                : withPilotFocus(item.href, pilotFocus)
+            }
             aria-current={current ? "page" : undefined}
           >
             {item.label}
