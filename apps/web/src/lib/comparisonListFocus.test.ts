@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { isPilotNoiseEvaluation } from "./comparisonListFocus.js";
-import { pairedEvalDisplayModeFromPacked } from "./evaluationPairBrowse.js";
+import {
+  evaluationPairBrowseFromPacked,
+  listRowAdoptionMode,
+  pairedEvalDisplayModeFromPacked,
+  type PackedEvaluationBrowse,
+} from "./evaluationPairBrowse.js";
 import { pairedEvalDisplayMode } from "./pilotFocusHref.js";
 
 describe("isPilotNoiseEvaluation", () => {
@@ -105,5 +110,17 @@ describe("isPilotNoiseEvaluation", () => {
         candidateProduceAttested: true,
       }),
     ).toBe(false);
+  });
+
+  it("pending rows use tip mode so official pairs stay in pilot focus", () => {
+    const packed = {
+      meta: { mode: "dry-run", baselineRunId: "b", candidateRunId: "c" },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+    } as PackedEvaluationBrowse;
+    const browse = evaluationPairBrowseFromPacked(packed);
+    const displayMode = listRowAdoptionMode(browse, "dry-run");
+    expect(displayMode).toBe("official");
+    expect(isPilotNoiseEvaluation({ displayMode, verdict: null })).toBe(false);
   });
 });

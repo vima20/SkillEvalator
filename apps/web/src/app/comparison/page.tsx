@@ -8,7 +8,7 @@ import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   comparisonExportContextFromPacked,
   evaluationPairBrowseFromPacked,
-  resolvedPairedDisplayModeFromBrowse,
+  listRowAdoptionMode,
 } from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import { isPilotNoiseEvaluation } from "@/lib/comparisonListFocus";
@@ -78,9 +78,7 @@ export default async function ComparisonListPage({
     const tipCandidateRunId =
       pairBrowse.tipCandidateRunId ?? e.candidateRunId;
     const tipBaselineRunId = pairBrowse.tipBaselineRunId ?? e.baselineRunId;
-    const displayMode = c
-      ? (resolvedPairedDisplayModeFromBrowse(pairBrowse) ?? "dry-run")
-      : e.mode;
+    const displayMode = listRowAdoptionMode(pairBrowse, e.mode);
     const { pairEvidence, pairChip, pairBlocked, comparisonMeta } =
       pairBrowse;
     const baselineStatus =
