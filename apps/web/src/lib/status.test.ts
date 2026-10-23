@@ -235,6 +235,9 @@ describe("statusBadgeKind", () => {
       "utf8",
     );
     expect(runsList).toMatch(/createEvaluationPairBrowseCache/);
+    expect(runsList).toMatch(/listRowAdoptionMode/);
+    expect(dashboard).toMatch(/listRowAdoptionMode/);
+    expect(benefitList).toMatch(/listRowAdoptionMode/);
     expect(runDetail).toMatch(/benefitPairCtaLabel/);
     expect(runDetail).toMatch(/data\.pairPending/);
     expect(runDetail).toMatch(/runDetailShouldPoll/);

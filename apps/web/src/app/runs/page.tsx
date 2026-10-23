@@ -14,7 +14,11 @@ import {
   listNewRunHref,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
-import { createEvaluationPairBrowseCache } from "@/lib/evaluationPairBrowse";
+import {
+  createEvaluationPairBrowseCache,
+  listRowAdoptionMode,
+  resolvedPairedDisplayModeFromBrowse,
+} from "@/lib/evaluationPairBrowse";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
@@ -184,6 +188,19 @@ export default async function RunsPage({
                   const hintLabel = runsListHintLabel(hint);
                   const pairChip = pair?.pairChip ?? null;
                   const comparisonMeta = pair?.comparisonMeta ?? null;
+                  const resolvedPairMode = resolvedPairedDisplayModeFromBrowse(
+                    pair,
+                  );
+                  const adoptionMode = listRowAdoptionMode(
+                    pair,
+                    r.result?.mode,
+                  );
+                  const adoptionModeTitle =
+                    resolvedPairMode &&
+                    r.result?.mode &&
+                    resolvedPairMode !== r.result.mode
+                      ? `result.json mode is ${r.result.mode}; tip pair adoption mode is ${resolvedPairMode}`
+                      : undefined;
                   return (
                     <tr key={r.runId}>
                       <td>
@@ -239,7 +256,9 @@ export default async function RunsPage({
                           "—"
                         )}
                       </td>
-                      <td className="col-hide-sm">{r.result?.mode ?? "—"}</td>
+                      <td className="col-hide-sm">
+                        <span title={adoptionModeTitle}>{adoptionMode}</span>
+                      </td>
                       <td>
                         <strong>{r.result?.score ?? "—"}</strong>
                       </td>

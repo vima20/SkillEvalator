@@ -89,6 +89,18 @@ export function resolvedPairedDisplayModeFromBrowse(
   );
 }
 
+/** Runs / Dashboard / Benefit rows — tip legs beat stale result.json mode. */
+export function listRowAdoptionMode(
+  pairBrowse: EvaluationPairBrowseEntry | null | undefined,
+  resultMode?: string | null,
+): string {
+  return (
+    resolvedPairedDisplayModeFromBrowse(pairBrowse) ??
+    resultMode ??
+    "—"
+  );
+}
+
 /** Exported CSV metadata — same resolution as export gates. */
 export function pairedAdoptionComparisonMode(
   comparison: Pick<RunComparison, "mode">,

@@ -14,6 +14,7 @@ import {
 } from "@/lib/comparisonVerdictDisplay";
 import {
   benefitExportContextFromPacked,
+  listRowAdoptionMode,
   resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import {
@@ -92,10 +93,11 @@ export default async function BenefitIndexPage({
           resolvedPairedDisplayModeFromBrowse(pairBrowse) ??
           packed?.meta?.mode,
       });
+      const adoptionMode = listRowAdoptionMode(pairBrowse, r.result!.mode);
       return {
         runId: r.runId,
         score: r.result!.score,
-        mode: r.result!.mode,
+        mode: adoptionMode,
         evaluationId: resolvedId ?? undefined,
         verdict: report.verdict,
         rating: report.rating,

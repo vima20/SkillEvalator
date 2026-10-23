@@ -12,7 +12,10 @@ import {
   includeInDashboardLeaderboard,
   includeInDashboardRanking,
 } from "@/lib/dashboardLeaderboard";
-import { createEvaluationPairBrowseCache } from "@/lib/evaluationPairBrowse";
+import {
+  createEvaluationPairBrowseCache,
+  listRowAdoptionMode,
+} from "@/lib/evaluationPairBrowse";
 import { evaluationPairPending } from "@/lib/evaluationTipPair";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
@@ -84,27 +87,20 @@ export default async function DashboardPage({
       runId: r.runId,
       result: r.result,
     });
-    const pair = evaluationId
-      ? pairFor(evaluationId)
-      : {
-          tipCandidateRunId: null as string | null,
-          pairChip: null as BenefitListPairChip | null,
-          pairBlocked: false,
-          packed: null,
-          comparisonMeta: null,
-        };
-    const pairPending = evaluationPairPending(pair.packed, {
-      runId: r.runId,
-    });
+    const pair = evaluationId ? pairFor(evaluationId) : null;
+    const adoptionMode = listRowAdoptionMode(pair, r.result.mode);
+    const pairPending = pair?.packed
+      ? evaluationPairPending(pair.packed, { runId: r.runId })
+      : undefined;
     const baseOpts = {
       runId: r.runId,
       role: r.result.role,
       fakeProduce: r.result.capture?.env?.fakeProduce === true,
       produceAttested: r.result.capture?.env?.produceAttested === true,
       evaluationId: evaluationId ?? undefined,
-      tipCandidateRunId: pair.tipCandidateRunId,
-      mode: r.result.mode,
-      pairBlocked: pair.pairBlocked,
+      tipCandidateRunId: pair?.tipCandidateRunId ?? null,
+      mode: adoptionMode,
+      pairBlocked: pair?.pairBlocked ?? false,
     };
     if (!includeInDashboardLeaderboard({ ...baseOpts, pilotFocus: false })) {
       return [];
@@ -122,15 +118,15 @@ export default async function DashboardPage({
         score: r.result.score,
         modelId: r.result.modelId,
         taskSetId: r.result.taskSetId,
-        mode: r.result.mode,
+        mode: adoptionMode,
         githubUrl: r.result.evalSkillGithubUrl,
         skillId: r.result.evalSkillId,
         skillVersion: r.result.evalSkillVersion,
         evaluationId: evaluationId ?? undefined,
         role: r.result.role ?? "candidate",
-        pairChip: pair.pairChip,
-        pairBlocked: pair.pairBlocked,
-        comparisonMeta: pair.comparisonMeta,
+        pairChip: pair?.pairChip ?? null,
+        pairBlocked: pair?.pairBlocked ?? false,
+        comparisonMeta: pair?.comparisonMeta ?? null,
         ...(pairPending ? { pairPending } : {}),
       },
     ];

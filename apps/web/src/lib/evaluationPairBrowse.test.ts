@@ -12,6 +12,7 @@ import {
   pairedAdoptionComparisonMode,
   pairedAdoptionModesFromPacked,
   pilotArchiveAdoptionFromPacked,
+  listRowAdoptionMode,
   pairedEvalPreferOfficialFromPacked,
   resolvedPairedDisplayModeFromBrowse,
   type PackedEvaluationBrowse,
@@ -168,6 +169,18 @@ describe("evaluationPairBrowseFromPacked", () => {
     expect(ctx.comparisonMode).toBe("official");
     expect(ctx.evidence).toEqual(pairExportEvidenceFromBrowse(browse));
     expect(benefitExportContextFromBrowse(packed, browse)).toEqual(ctx);
+  });
+
+  it("listRowAdoptionMode prefers tip legs over stale result.json", () => {
+    const packed = {
+      meta: { mode: "dry-run", smoke: false },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+    } as PackedEvaluationBrowse;
+    const browse = evaluationPairBrowseFromPacked(packed);
+    expect(listRowAdoptionMode(browse, "dry-run")).toBe("official");
+    expect(listRowAdoptionMode(null, "dry-run")).toBe("dry-run");
   });
 
   it("comparisonExportContextFromPacked shares one browse for gate and adoption mode", () => {
