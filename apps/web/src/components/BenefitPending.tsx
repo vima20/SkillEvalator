@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
 import {
   isPilotFocusParam,
+  pairedEvalDisplayMode,
   pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
@@ -72,6 +73,14 @@ function BenefitPendingInner({
       baselineMode,
       candidateMode,
     });
+  const adoptionMode =
+    pairedEvalDisplayMode({
+      metaMode: mode,
+      baselineMode,
+      candidateMode,
+    }) ??
+    mode ??
+    "—";
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [budgetTimedOut, setBudgetTimedOut] = useState(false);
@@ -148,6 +157,20 @@ function BenefitPendingInner({
     <>
       <h1 style={{ marginBottom: 16 }}>{pageHeading}</h1>
       <div className="panel">
+      <dl className="meta-list" style={{ marginBottom: 16 }}>
+        <div>
+          <dt>Run</dt>
+          <dd>
+            <code>{runId}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Adoption mode</dt>
+          <dd>
+            <code>{adoptionMode}</code>
+          </dd>
+        </div>
+      </dl>
       <div className="empty-state">
         <div className="empty-state-mark" aria-hidden="true" />
         <h2>

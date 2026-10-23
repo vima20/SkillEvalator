@@ -91,6 +91,10 @@ describe("statusBadgeKind", () => {
     );
     // Detail H1 follows client pending gate (orphan-timeout), not SSR tipActive.
     expect(detail).toMatch(/H1 lives in ComparisonPending/);
+    expect(detail).toMatch(/pendingAdoptionMode/);
+    expect(detail).toMatch(
+      /listRowAdoptionMode\(\s*evaluationPairBrowseFromPacked\(packed\),\s*meta\.mode/,
+    );
     const pendingUi = fs.readFileSync(
       path.join(cwd, "src/components/ComparisonPending.tsx"),
       "utf8",
@@ -147,6 +151,8 @@ describe("statusBadgeKind", () => {
     expect(benefitPendingUi).toMatch(/Open run — Cancel \/ Resend cancel/);
     expect(benefitPendingUi).toMatch(/orphanStuckFromFinalizePayload/);
     expect(benefitPendingUi).toMatch(/preferOfficialHandoff/);
+    expect(benefitPendingUi).toMatch(/pairedEvalDisplayMode/);
+    expect(benefitPendingUi).toMatch(/Adoption mode/);
     expect(benefitPendingUi).toMatch(
       /withNewRunHandoff\(pilotFocus, preferOfficial\)/,
     );
@@ -184,6 +190,7 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(benefitDetail).toMatch(/listRowAdoptionMode/);
     expect(benefitDetail).toMatch(/\{pairedDisplayMode\}/);
+    expect(benefitDetail).toMatch(/pendingAdoptionMode/);
     expect(benefitDetail).toMatch(/configModeLabel/);
     expect(benefitDetail).toMatch(/tip pair adoption mode/);
     expect(benefitDetail).toMatch(/provisionalPass/);

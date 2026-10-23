@@ -12,6 +12,7 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import {
   benefitExportContextFromPacked,
+  evaluationPairBrowseFromPacked,
   listRowAdoptionMode,
   pairedEvalPreferOfficialFromPacked,
 } from "@/lib/evaluationPairBrowse";
@@ -91,6 +92,12 @@ export default async function BenefitReportPage({
     const pendingPacked = pendingEvaluationId
       ? loadEvaluationComparison(pendingEvaluationId)
       : null;
+    const pendingAdoptionMode = pendingPacked
+      ? listRowAdoptionMode(
+          evaluationPairBrowseFromPacked(pendingPacked),
+          pendingPacked.meta?.mode,
+        )
+      : "—";
     return (
       <div>
         <header className="page-header">
@@ -101,6 +108,7 @@ export default async function BenefitReportPage({
             <span aria-hidden="true"> / </span>
             {runId}
           </p>
+          <p className="run-subtitle">{pendingAdoptionMode}</p>
         </header>
         {/* H1 lives in BenefitPending so orphan-timeout updates the title. */}
         <BenefitPending

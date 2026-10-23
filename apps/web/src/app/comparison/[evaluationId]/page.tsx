@@ -16,6 +16,7 @@ import {
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   comparisonExportContextFromPacked,
+  evaluationPairBrowseFromPacked,
   listRowAdoptionMode,
   pairedEvalPreferOfficialFromPacked,
 } from "@/lib/evaluationPairBrowse";
@@ -107,6 +108,10 @@ export default async function ComparisonDetailPage({
     candidate?.status;
 
   if (!comparison || !baseline || !candidate) {
+    const pendingAdoptionMode = listRowAdoptionMode(
+      evaluationPairBrowseFromPacked(packed),
+      meta.mode,
+    );
     return (
       <div>
         <header className="page-header">
@@ -117,6 +122,7 @@ export default async function ComparisonDetailPage({
             <span aria-hidden="true"> / </span>
             {evaluationId}
           </p>
+          <p className="run-subtitle">{pendingAdoptionMode}</p>
         </header>
         {/* H1 lives in ComparisonPending so orphan-timeout updates the title. */}
         <ComparisonPending
