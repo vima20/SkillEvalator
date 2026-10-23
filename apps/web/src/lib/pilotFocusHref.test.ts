@@ -106,6 +106,17 @@ describe("pilotFocusHref", () => {
     }
   });
 
+  it("PilotFocusToggle enables official mode on New run page", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(process.cwd(), "src/components/PilotFocusToggle.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/listNewRunHref\(true\)/);
+    expect(src).toMatch(/opts\.pathname === "\/"/);
+  });
+
   it("Nav and brand use listNewRunHref for New run home", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { listNewRunHref } from "@/lib/pilotFocusHref";
 
 export type PilotFocusPath =
   | "/"
@@ -42,10 +43,15 @@ export function PilotFocusToggle(opts: {
       </Link>
     );
   }
+  const enableHref =
+    opts.pathname === "/" && !isDetail
+      ? listNewRunHref(true)
+      : `${base}?focus=pilot`;
+
   return (
     <Link
       className="btn btn-ghost btn-compact"
-      href={`${base}?focus=pilot`}
+      href={enableHref}
       title={title}
     >
       Pilot focus

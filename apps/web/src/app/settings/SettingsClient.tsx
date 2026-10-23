@@ -14,6 +14,7 @@ import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { tryResolveAuthApiError } from "@/lib/authResolve";
 import {
   isPilotFocusParam,
+  listNewRunHref,
   withNewRunHandoff,
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
@@ -542,7 +543,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           <p className="hint">
             Read-only. Edit <code>SKILL.md</code> under{" "}
             <code>{s.paths.evalSkillsDir}</code> or re-import via{" "}
-            <Link href={withPilotFocus("/", pilotFocus)}>New run</Link>{" "}
+            <Link href={listNewRunHref(pilotFocus)}>New run</Link>{" "}
             Find/Receive — then start a new evaluation (Retry keeps the pinned
             snapshot).
           </p>
