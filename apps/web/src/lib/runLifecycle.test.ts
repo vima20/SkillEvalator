@@ -812,6 +812,8 @@ describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
     expect(src).toMatch(/Confirm adoption — new official pair/);
     expect(src).toMatch(/preferOfficialNewRun/);
     expect(src).toMatch(/preferOfficialHandoff/);
+    expect(src).toMatch(/pairPending === "unavailable"/);
+    expect(src).toMatch(/Comparison unavailable/);
   });
 });
 

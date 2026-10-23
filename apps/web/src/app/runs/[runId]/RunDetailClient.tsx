@@ -815,6 +815,44 @@ export function RunDetailClient({
         />
       ) : null}
 
+      {data.pairPending === "unavailable" && result ? (
+        <div className="panel callout-warn" style={{ marginTop: "1rem" }}>
+          <strong>Comparison unavailable</strong>
+          <p>
+            Tip legs finished without a usable paired scorecard — adoption stays{" "}
+            <strong>INCONCLUSIVE</strong>, not PASS / USE.
+            {resolvedEvaluationId ? (
+              <>
+                {" "}
+                <Link
+                  href={withPilotFocus(
+                    `/comparison/${resolvedEvaluationId}`,
+                    pilotFocus,
+                  )}
+                >
+                  Open Comparison
+                </Link>{" "}
+                or{" "}
+                <Link href={withNewRunHandoff(pilotFocus, preferOfficialNewRun)}>
+                  start a new baseline↔candidate run
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                {" "}
+                <Link
+                  href={withNewRunHandoff(pilotFocus, preferOfficialNewRun)}
+                >
+                  Start a new baseline↔candidate run
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        </div>
+      ) : null}
+
       {data.comparisonProvisional && resolvedEvaluationId ? (
         <div className="panel callout-warn" style={{ marginTop: "1rem" }}>
           <strong>
