@@ -171,6 +171,14 @@ export default async function BenefitReportPage({
     result.mode ?? meta?.mode,
   );
   const provisionalPass = Boolean(comparisonProvisional);
+  const configModeLabel =
+    pairedDisplayMode !== "—" ? pairedDisplayMode : report.config.mode;
+  const configModeTitle =
+    pairedDisplayMode !== "—" &&
+    report.config.mode &&
+    pairedDisplayMode !== report.config.mode
+      ? `result.json mode is ${report.config.mode}; tip pair adoption mode is ${pairedDisplayMode}`
+      : undefined;
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
@@ -569,7 +577,7 @@ export default async function BenefitReportPage({
           <div>
             <dt>Mode</dt>
             <dd>
-              <code>{report.config.mode}</code>
+              <code title={configModeTitle}>{configModeLabel}</code>
             </dd>
           </div>
           <div>

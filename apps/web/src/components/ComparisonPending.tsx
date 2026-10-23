@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
 import {
   isPilotFocusParam,
+  pairedEvalDisplayMode,
   pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
@@ -103,6 +104,14 @@ function ComparisonPendingInner({
       baselineMode,
       candidateMode,
     });
+  const adoptionMode =
+    pairedEvalDisplayMode({
+      metaMode: mode,
+      baselineMode,
+      candidateMode,
+    }) ??
+    mode ??
+    "—";
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
@@ -272,6 +281,12 @@ function ComparisonPendingInner({
           <dt>Evaluation</dt>
           <dd>
             <code>{evaluationId}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Adoption mode</dt>
+          <dd>
+            <code>{adoptionMode}</code>
           </dd>
         </div>
       </dl>

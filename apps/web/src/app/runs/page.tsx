@@ -17,7 +17,6 @@ import {
 import {
   createEvaluationPairBrowseCache,
   listRowAdoptionMode,
-  resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
@@ -188,18 +187,15 @@ export default async function RunsPage({
                   const hintLabel = runsListHintLabel(hint);
                   const pairChip = pair?.pairChip ?? null;
                   const comparisonMeta = pair?.comparisonMeta ?? null;
-                  const resolvedPairMode = resolvedPairedDisplayModeFromBrowse(
-                    pair,
-                  );
                   const adoptionMode = listRowAdoptionMode(
                     pair,
                     r.result?.mode,
                   );
                   const adoptionModeTitle =
-                    resolvedPairMode &&
                     r.result?.mode &&
-                    resolvedPairMode !== r.result.mode
-                      ? `result.json mode is ${r.result.mode}; tip pair adoption mode is ${resolvedPairMode}`
+                    adoptionMode !== r.result.mode &&
+                    adoptionMode !== "—"
+                      ? `result.json mode is ${r.result.mode}; tip pair adoption mode is ${adoptionMode}`
                       : undefined;
                   return (
                     <tr key={r.runId}>
