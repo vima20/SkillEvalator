@@ -21,7 +21,10 @@ export function isPilotNoiseEvaluation(opts: {
   baselineHasResult?: boolean;
   /** True when candidate tip result.json is on disk. */
   candidateHasResult?: boolean;
+  /** Sibling tip smoke / unattested — same hide rule as Runs / Benefit pilot focus. */
+  pairBlocked?: boolean;
 }): boolean {
+  if (opts.pairBlocked === true) return true;
   if (opts.smoke === true) return true;
   if (opts.baselineFakeProduce === true) return true;
   if (opts.candidateFakeProduce === true) return true;

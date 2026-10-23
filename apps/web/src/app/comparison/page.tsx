@@ -133,6 +133,7 @@ export default async function ComparisonListPage({
         candidateProduceAttested: pairEvidence.candidateProduceAttested,
         baselineHasResult: Boolean(packed.baseline),
         candidateHasResult: Boolean(packed.candidate),
+        pairBlocked,
       }),
     };
   });

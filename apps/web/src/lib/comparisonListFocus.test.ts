@@ -58,6 +58,16 @@ describe("isPilotNoiseEvaluation", () => {
     ).toBe(false);
   });
 
+  it("hides pair-blocked sibling evidence in pilot focus", () => {
+    expect(
+      isPilotNoiseEvaluation({
+        displayMode: "official",
+        verdict: "PASS",
+        pairBlocked: true,
+      }),
+    ).toBe(true);
+  });
+
   it("hides dry-run, smoke meta, FAKE_PRODUCE, and official INCONCLUSIVE", () => {
     expect(isPilotNoiseEvaluation({ displayMode: "dry-run" })).toBe(true);
     expect(

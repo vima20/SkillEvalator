@@ -29,6 +29,12 @@ describe("statusBadgeKind", () => {
       path.join(cwd, "src/app/comparison/page.tsx"),
       "utf8",
     );
+    const comparisonFocus = fs.readFileSync(
+      path.join(cwd, "src/lib/comparisonListFocus.ts"),
+      "utf8",
+    );
+    expect(comparisonFocus).toMatch(/pairBlocked === true/);
+    expect(list).toMatch(/pairBlocked,/);
     const detail = fs.readFileSync(
       path.join(cwd, "src/app/comparison/[evaluationId]/page.tsx"),
       "utf8",
