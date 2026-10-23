@@ -17,6 +17,7 @@ import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   comparisonExportContextFromPacked,
   pairedEvalPreferOfficialFromPacked,
+  resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
 import {
@@ -151,9 +152,9 @@ export default async function ComparisonDetailPage({
   const downloadBlockReason = downloadGate.ok
     ? null
     : exportGateBlockMessage(downloadGate);
-  const { comparisonMeta, comparisonProvisional, pairedDisplayMode } =
-    pairBrowse;
-  const displayMode = pairedDisplayMode ?? meta.mode ?? "dry-run";
+  const { comparisonMeta, comparisonProvisional } = pairBrowse;
+  const displayMode =
+    resolvedPairedDisplayModeFromBrowse(pairBrowse) ?? "dry-run";
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);

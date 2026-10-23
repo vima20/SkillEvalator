@@ -112,7 +112,7 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/provisionalPass/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonExportContextFromPacked/);
-    expect(detail).toMatch(/pairedDisplayMode \} =\s*pairBrowse/);
+    expect(detail).toMatch(/resolvedPairedDisplayModeFromBrowse\(pairBrowse\)/);
     expect(detail).toMatch(/const displayMode/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);
@@ -276,6 +276,8 @@ describe("statusBadgeKind", () => {
     expect(runDetail).toMatch(
       /metaMode: data\.pairedDisplayMode \?\? data\.metaMode/,
     );
+    expect(runDetail).toMatch(/adoptionModeLabel/);
+    expect(runDetail).toMatch(/tip pair adoption mode/);
     // Benefit CTA stays visible while pairPending waiting still polls.
     expect(runDetail).toMatch(/\{result \? \(/);
     expect(runDetail).not.toMatch(/\{result && !polling \?/);

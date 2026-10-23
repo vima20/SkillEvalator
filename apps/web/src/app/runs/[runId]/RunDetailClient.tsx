@@ -390,10 +390,21 @@ export function RunDetailClient({
   const preferOfficialNewRun =
     data.preferOfficialHandoff ??
     pairedEvalPreferOfficial({
-      metaMode: data.metaMode,
+      metaMode: data.pairedDisplayMode ?? data.metaMode,
       baselineMode: data.baselineMode,
       candidateMode: data.candidateMode,
     });
+  const adoptionModeLabel =
+    result && data.pairedDisplayMode
+      ? data.pairedDisplayMode
+      : result?.mode;
+  const adoptionModeTitle =
+    result &&
+    data.pairedDisplayMode &&
+    result.mode &&
+    data.pairedDisplayMode !== result.mode
+      ? `result.json mode is ${result.mode}; tip pair adoption mode is ${data.pairedDisplayMode}`
+      : undefined;
   const cancelRequested = status === "cancel_requested";
   /** Orphan/settling cost-cap — same as POST retry admission + cancelGate. */
   const budgetStopWindDown = isRetryBudgetStopping(status, Boolean(result));
@@ -619,7 +630,8 @@ export function RunDetailClient({
           </h1>
           {result ? (
             <p className="run-subtitle">
-              <code>{runId}</code> · {result.mode}
+              <code>{runId}</code> ·{" "}
+              <span title={adoptionModeTitle}>{adoptionModeLabel}</span>
               {resolvedEvaluationId ? (
                 <>
                   {" "}
@@ -1072,7 +1084,9 @@ export function RunDetailClient({
             </div>
             <div className="stat">
               <span className="stat-label">Mode</span>
-              <span className="stat-value">{result.mode}</span>
+              <span className="stat-value" title={adoptionModeTitle}>
+                {adoptionModeLabel}
+              </span>
             </div>
             <div className="stat">
               <span className="stat-label">Cost</span>
