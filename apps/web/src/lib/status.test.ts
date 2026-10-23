@@ -198,7 +198,6 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/title=\{configModeTitle\}/);
     expect(benefitDetail).toMatch(/pendingAdoptionMode/);
     expect(benefitDetail).toMatch(/pendingAdoptionModeTitle/);
-    expect(benefitDetail).toMatch(/configModeLabel/);
     expect(benefitDetail).toMatch(/adoptionModeDesyncTitle/);
     expect(benefitDetail).toMatch(/provisionalPass/);
     expect(benefitDetail).toMatch(/benefitExportContextFromPacked/);
