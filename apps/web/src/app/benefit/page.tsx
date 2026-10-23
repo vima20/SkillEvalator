@@ -15,7 +15,6 @@ import {
 import {
   benefitExportContextFromPacked,
   listRowAdoptionMode,
-  resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import {
   candidateLegKind,
@@ -86,14 +85,12 @@ export default async function BenefitIndexPage({
       const pairBrowse = packed
         ? benefitExportContextFromPacked(packed).pairBrowse
         : null;
+      const adoptionMode = listRowAdoptionMode(pairBrowse, r.result!.mode);
       const verdictChipTone = benefitVerdictChipToneFromComparison({
         recommendation: report.verdict.recommendation,
         comparison,
-        pairedDisplayMode:
-          resolvedPairedDisplayModeFromBrowse(pairBrowse) ??
-          packed?.meta?.mode,
+        pairedDisplayMode: adoptionMode,
       });
-      const adoptionMode = listRowAdoptionMode(pairBrowse, r.result!.mode);
       return {
         runId: r.runId,
         score: r.result!.score,

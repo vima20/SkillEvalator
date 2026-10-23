@@ -12,8 +12,8 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import {
   benefitExportContextFromPacked,
+  listRowAdoptionMode,
   pairedEvalPreferOfficialFromPacked,
-  resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
@@ -166,8 +166,10 @@ export default async function BenefitReportPage({
       });
   const comparisonMeta = pairBrowse?.comparisonMeta ?? null;
   const comparisonProvisional = pairBrowse?.comparisonProvisional;
-  const pairedDisplayMode =
-    resolvedPairedDisplayModeFromBrowse(pairBrowse) ?? meta?.mode;
+  const pairedDisplayMode = listRowAdoptionMode(
+    pairBrowse,
+    result.mode ?? meta?.mode,
+  );
   const provisionalPass = Boolean(comparisonProvisional);
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
