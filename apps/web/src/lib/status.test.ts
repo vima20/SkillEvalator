@@ -94,6 +94,7 @@ describe("statusBadgeKind", () => {
     // Detail H1 follows client pending gate (orphan-timeout), not SSR tipActive.
     expect(detail).toMatch(/H1 lives in ComparisonPending/);
     expect(detail).toMatch(/pendingAdoptionMode/);
+    expect(detail).toMatch(/pendingAdoptionModeTitle/);
     expect(detail).toMatch(
       /listRowAdoptionMode\(\s*evaluationPairBrowseFromPacked\(packed\),\s*meta\.mode/,
     );
@@ -195,6 +196,7 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/listRowAdoptionMode/);
     expect(benefitDetail).toMatch(/\{pairedDisplayMode\}/);
     expect(benefitDetail).toMatch(/pendingAdoptionMode/);
+    expect(benefitDetail).toMatch(/pendingAdoptionModeTitle/);
     expect(benefitDetail).toMatch(/configModeLabel/);
     expect(benefitDetail).toMatch(/adoptionModeDesyncTitle/);
     expect(benefitDetail).toMatch(/provisionalPass/);

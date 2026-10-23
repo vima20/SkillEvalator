@@ -99,6 +99,12 @@ export default async function BenefitReportPage({
           pendingPacked.meta?.mode,
         )
       : "—";
+    const pendingAdoptionModeTitle = pendingPacked
+      ? adoptionModeDesyncTitle(
+          pendingAdoptionMode,
+          pendingPacked.meta?.mode,
+        )
+      : undefined;
     return (
       <div>
         <header className="page-header">
@@ -109,7 +115,9 @@ export default async function BenefitReportPage({
             <span aria-hidden="true"> / </span>
             {runId}
           </p>
-          <p className="run-subtitle">{pendingAdoptionMode}</p>
+          <p className="run-subtitle">
+            <span title={pendingAdoptionModeTitle}>{pendingAdoptionMode}</span>
+          </p>
         </header>
         {/* H1 lives in BenefitPending so orphan-timeout updates the title. */}
         <BenefitPending

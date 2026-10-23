@@ -113,6 +113,10 @@ export default async function ComparisonDetailPage({
       evaluationPairBrowseFromPacked(packed),
       meta.mode,
     );
+    const pendingAdoptionModeTitle = adoptionModeDesyncTitle(
+      pendingAdoptionMode,
+      meta.mode,
+    );
     return (
       <div>
         <header className="page-header">
@@ -123,7 +127,9 @@ export default async function ComparisonDetailPage({
             <span aria-hidden="true"> / </span>
             {evaluationId}
           </p>
-          <p className="run-subtitle">{pendingAdoptionMode}</p>
+          <p className="run-subtitle">
+            <span title={pendingAdoptionModeTitle}>{pendingAdoptionMode}</span>
+          </p>
         </header>
         {/* H1 lives in ComparisonPending so orphan-timeout updates the title. */}
         <ComparisonPending
