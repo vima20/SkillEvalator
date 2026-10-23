@@ -19,7 +19,11 @@ import {
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  listNewRunHref,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import {
   listEvaluations,
   loadEvaluationComparison,
@@ -174,7 +178,7 @@ export default async function ComparisonListPage({
           {pilotFocus ? null : <ClearSmokeNoise />}
           <Link
             className="btn btn-primary"
-            href={withPilotFocus("/", pilotFocus)}
+            href={listNewRunHref(pilotFocus)}
           >
             New evaluation
           </Link>
@@ -205,7 +209,7 @@ export default async function ComparisonListPage({
             }
             actionHref={
               allEvaluations.length === 0
-                ? withPilotFocus("/", pilotFocus)
+                ? listNewRunHref(pilotFocus)
                 : "/comparison"
             }
             actionLabel={

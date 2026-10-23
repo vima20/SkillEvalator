@@ -36,6 +36,11 @@ export function withNewRunHandoff(
   return withPilotFocus(href, pilotFocus);
 }
 
+/** List/dashboard header New run — pilot focus keeps ?mode=official (Settings Ready parity). */
+export function listNewRunHref(pilotFocus: boolean): string {
+  return withNewRunHandoff(pilotFocus, pilotFocus);
+}
+
 import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 
 /**

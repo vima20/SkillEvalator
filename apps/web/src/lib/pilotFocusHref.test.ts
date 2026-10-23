@@ -3,6 +3,7 @@ import {
   isOfficialModeParam,
   isPilotFocusParam,
   pairedEvalDisplayMode,
+  listNewRunHref,
   pairedEvalPreferOfficial,
   withNewRunHandoff,
   withPilotFocus,
@@ -83,6 +84,26 @@ describe("pilotFocusHref", () => {
         candidateMode: "dry-run",
       }),
     ).toBe(false);
+  });
+
+  it("listNewRunHref adds official mode when pilot focus is on", () => {
+    expect(listNewRunHref(false)).toBe("/");
+    expect(listNewRunHref(true)).toBe("/?mode=official&focus=pilot");
+  });
+
+  it("list pages wire listNewRunHref for header New run", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const cwd = process.cwd();
+    for (const rel of [
+      "src/app/dashboard/page.tsx",
+      "src/app/runs/page.tsx",
+      "src/app/benefit/page.tsx",
+      "src/app/comparison/page.tsx",
+    ]) {
+      const src = fs.readFileSync(path.join(cwd, rel), "utf8");
+      expect(src).toMatch(/listNewRunHref\(pilotFocus\)/);
+    }
   });
 
   it("empty-skills New run surfaces ?mode=official until skills exist", async () => {

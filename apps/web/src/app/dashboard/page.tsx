@@ -17,7 +17,11 @@ import { evaluationPairPending } from "@/lib/evaluationTipPair";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  listNewRunHref,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { listWindDownRunIds, runIsActive } from "@/lib/status";
 
@@ -185,7 +189,7 @@ export default async function DashboardPage({
           />
           <Link
             className="btn btn-primary"
-            href={withPilotFocus("/", pilotFocus)}
+            href={listNewRunHref(pilotFocus)}
           >
             New run
           </Link>
@@ -225,9 +229,7 @@ export default async function DashboardPage({
                 : "Leaderboard tips are dry-run, unpaired, or pair-blocked. Show all rows, or run an official live-attested pair."
             }
             actionHref={
-              boardCount === 0
-                ? withPilotFocus("/", pilotFocus)
-                : "/dashboard"
+              boardCount === 0 ? listNewRunHref(pilotFocus) : "/dashboard"
             }
             actionLabel={boardCount === 0 ? "Start a run" : "Show all rows"}
           />

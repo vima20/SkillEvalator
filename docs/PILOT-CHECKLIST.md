@@ -29,7 +29,7 @@ Käytä tätä ennen Unikie-official baseline↔candidate -ajoa. Smoke (`npm run
 
 ## 4. Tuloksen tulkinta
 
-- [ ] UI:ssa **Pilot focus** (`?focus=pilot`): New run / Settings / Nav / unlock säilyttää focuksen; Runs / Benefit / Dashboard piilottaa smoke / not_attested / superseded / dry-run / **pair-blocked** (sibling FAKE tai unattested); Comparison piilottaa dry-run / smoke / FAKE / unattested / official INCONCLUSIVE; Dashboard **#1**-ranking jättää pair-blocked tipit pois (rivit voivat näkyä ilman focusta)
+- [ ] UI:ssa **Pilot focus** (`?focus=pilot`): New run / Settings / Nav / unlock säilyttää focuksen; listojen (Runs / Benefit / Comparison / Dashboard) **New run** avaa `/?mode=official&focus=pilot` (ei hiljaista dry-runia); Runs / Benefit / Dashboard piilottaa smoke / not_attested / superseded / dry-run / **pair-blocked** (sibling FAKE tai unattested); Comparison piilottaa dry-run / smoke / FAKE / unattested / official INCONCLUSIVE; Dashboard **#1**-ranking jättää pair-blocked tipit pois (rivit voivat näkyä ilman focusta)
 - [ ] Capture: molemmat tip-jalat **Live produce attested** (`produceAttested`)
 - [ ] Tarvittaessa Runs tai Comparison → **Clear smoke noise** (poistaa smoke-kasvit diskiltä; ei koske live official -arkistoa)
 - [ ] Official Comparison **PASS** vain jos candidate ≥ USE floor ja lift ≥ kynnys ([ACCEPTANCE.md](./ACCEPTANCE.md))

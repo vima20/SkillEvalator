@@ -8,7 +8,11 @@ import {
 import { EmptyState } from "@/components/EmptyState";
 import { healRunForRead } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  listNewRunHref,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import {
   loadPairWaitingWindDownRunIds,
   loadRunDetailEvaluationPack,
@@ -80,7 +84,7 @@ export default async function RunDetailPage({
           <EmptyState
             title="No status or result"
             body="Nothing exists for this run id yet. Start a new evaluation or open an existing run."
-            actionHref={withPilotFocus("/", pilotFocus)}
+            actionHref={listNewRunHref(pilotFocus)}
             actionLabel="Start a run"
           />
         </div>

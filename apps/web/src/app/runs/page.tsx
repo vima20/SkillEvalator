@@ -9,7 +9,11 @@ import {
   candidateLegKind,
   includeInPilotFocusRun,
 } from "@/lib/candidateLeg";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  listNewRunHref,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import { createEvaluationPairBrowseCache } from "@/lib/evaluationPairBrowse";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
@@ -116,7 +120,7 @@ export default async function RunsPage({
           <ClearOldRuns />
           <Link
             className="btn btn-primary"
-            href={withPilotFocus("/", pilotFocus)}
+            href={listNewRunHref(pilotFocus)}
           >
             New run
           </Link>
@@ -137,9 +141,7 @@ export default async function RunsPage({
                 : "All visible rows are smoke, not_attested, superseded, dry-run, FAKE_PRODUCE, or pair-blocked. Show all rows to inspect them."
             }
             actionHref={
-              allRuns.length === 0
-                ? withPilotFocus("/", pilotFocus)
-                : "/runs"
+              allRuns.length === 0 ? listNewRunHref(pilotFocus) : "/runs"
             }
             actionLabel={allRuns.length === 0 ? "Start a run" : "Show all rows"}
           />

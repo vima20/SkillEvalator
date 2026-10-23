@@ -26,7 +26,11 @@ import {
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  listNewRunHref,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
 import { listWindDownRunIds, runIsActive } from "@/lib/status";
 
@@ -156,7 +160,7 @@ export default async function BenefitIndexPage({
           />
           <Link
             className="btn btn-primary"
-            href={withPilotFocus("/", pilotFocus)}
+            href={listNewRunHref(pilotFocus)}
           >
             New run
           </Link>
@@ -201,9 +205,7 @@ export default async function BenefitIndexPage({
                 : "All candidate rows are smoke, not_attested, superseded, dry-run, FAKE_PRODUCE, or pair-blocked. Show all rows to inspect them."
             }
             actionHref={
-              allRuns.length === 0
-                ? withPilotFocus("/", pilotFocus)
-                : "/benefit"
+              allRuns.length === 0 ? listNewRunHref(pilotFocus) : "/benefit"
             }
             actionLabel={
               allRuns.length === 0 ? "Start a run" : "Show all rows"
