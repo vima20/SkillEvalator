@@ -172,8 +172,13 @@ describe("resolveExportGetError", () => {
       path.join(cwd, "src/lib/runCsvExportAllowed.ts"),
       "utf8",
     );
-    expect(runCsvAllowed).toMatch(/pairExportEvidenceFromBrowse/);
-    expect(runCsvAllowed).toMatch(/pilotArchiveAdoptionFromPacked/);
+    expect(runCsvAllowed).toMatch(/runCsvExportGateFromPacked/);
+    expect(
+      fs.readFileSync(
+        path.join(cwd, "src/lib/runDetailEvaluationPack.ts"),
+        "utf8",
+      ),
+    ).toMatch(/runCsvExportGateFromPacked/);
     for (const rel of [
       "src/app/benefit/[runId]/page.tsx",
       "src/app/comparison/[evaluationId]/page.tsx",

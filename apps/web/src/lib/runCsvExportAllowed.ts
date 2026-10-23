@@ -1,16 +1,12 @@
 import type { RunResult } from "@skillevalator/core";
-import {
-  evaluationPairBrowseFromPacked,
-  pairExportEvidenceFromBrowse,
-  pilotArchiveAdoptionFromPacked,
-} from "@/lib/evaluationPairBrowse";
+import { evaluationPairBrowseFromPacked } from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 import {
   EXPORT_RESULT_NOT_READY,
   exportGateBlockMessage,
 } from "@/lib/exportResolve";
 import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
-import { runCsvExportGate } from "@/lib/runCsvExport";
+import { runCsvExportGateFromPacked } from "@/lib/runCsvExport";
 
 /** Shared by GET /api/runs/[runId]/csv and run detail CSV affordance. */
 export function runCsvExportGateForRun(opts: {
@@ -29,19 +25,11 @@ export function runCsvExportGateForRun(opts: {
   const pairBrowse = packed
     ? evaluationPairBrowseFromPacked(packed)
     : null;
-  return runCsvExportGate({
+  return runCsvExportGateFromPacked({
     result: opts.result,
     evaluationId,
-    comparisonVerdict: packed?.comparison?.verdict ?? null,
-    comparisonMode:
-      packed?.comparison
-        ? pilotArchiveAdoptionFromPacked(packed).adoptionMode
-        : null,
-    comparisonAdoptionConfirmation:
-      packed?.comparison?.adoptionConfirmation ?? null,
-    baselineRunId: pairBrowse?.tipBaselineRunId ?? null,
-    candidateRunId: pairBrowse?.tipCandidateRunId ?? null,
-    ...(pairBrowse ? pairExportEvidenceFromBrowse(pairBrowse) : {}),
+    packed,
+    pairBrowse,
   });
 }
 

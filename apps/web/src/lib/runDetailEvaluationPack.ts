@@ -7,12 +7,16 @@ import {
   loadRunStatus,
   readJsonFile,
   syncStatusFromResult,
+  type RunResult,
 } from "@skillevalator/core";
 import {
   evaluationPairBrowseFromPacked,
   pairedAdoptionModesFromPacked,
+  type EvaluationPairBrowseEntry,
 } from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
+import { exportGateBlockMessage } from "@/lib/exportResolve";
+import { runCsvExportGateFromPacked } from "@/lib/runCsvExport";
 import {
   evaluationPairPending,
   type EvaluationPairPending,
@@ -173,6 +177,9 @@ export type RunDetailEvaluationPack = {
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;
+  /** Same gate as GET /api/runs/[runId]/csv (computed with one pair browse). */
+  csvExportAllowed?: boolean;
+  csvExportBlockReason?: string | null;
 };
 
 /**
@@ -218,11 +225,28 @@ export function loadRunDetailEvaluationPack(opts: {
   >;
 }): RunDetailEvaluationPack {
   const evaluationId = resolveRunDetailEvaluationId(opts);
+  const csvFromResult = (
+    packed: ReturnType<typeof loadEvaluationComparison> | null,
+    pairBrowse: EvaluationPairBrowseEntry | null,
+  ) => {
+    if (!opts.result || !("mode" in opts.result)) return {};
+    const gate = runCsvExportGateFromPacked({
+      result: opts.result as RunResult,
+      evaluationId,
+      packed,
+      pairBrowse,
+    });
+    return {
+      csvExportAllowed: gate.ok,
+      csvExportBlockReason: gate.ok ? null : exportGateBlockMessage(gate),
+    };
+  };
   if (!evaluationId) {
     return {
       evaluationId: null,
       tipCandidateRunId: null,
       pairHarness: null,
+      ...csvFromResult(null, null),
     };
   }
   const loadPacked = opts.loadPacked ?? loadEvaluationComparison;
@@ -244,5 +268,6 @@ export function loadRunDetailEvaluationPack(opts: {
     ...(comparisonMeta ? { comparisonMeta } : {}),
     ...(pairedDisplayMode ? { pairedDisplayMode } : {}),
     ...pairedAdoptionModesFromPacked(packed),
+    ...csvFromResult(packed, pairBrowse),
   };
 }

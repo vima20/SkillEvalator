@@ -7,10 +7,6 @@ import {
 import { healRunForFinalize, healRunForRead } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import {
-  runCsvExportAllowed,
-  runCsvExportBlockReason,
-} from "@/lib/runCsvExportAllowed";
-import {
   loadPairWaitingWindDownRunIds,
   loadRunDetailEvaluationPack,
 } from "@/lib/runDetailEvaluationPack";
@@ -60,6 +56,8 @@ export async function GET(
       metaMode,
       baselineMode,
       candidateMode,
+      csvExportAllowed,
+      csvExportBlockReason,
     } = loadRunDetailEvaluationPack({
       runId,
       result,
@@ -84,12 +82,8 @@ export async function GET(
       status,
       result,
       hasLiveJob: hasLiveJobFile(jobsDir(), runId),
-      csvExportAllowed: runCsvExportAllowed({ runId, result, status }),
-      csvExportBlockReason: runCsvExportBlockReason({
-        runId,
-        result,
-        status,
-      }),
+      csvExportAllowed: csvExportAllowed ?? false,
+      csvExportBlockReason: csvExportBlockReason ?? null,
       tipCandidateRunId,
       pairHarness,
       ...(pairPending ? { pairPending } : {}),

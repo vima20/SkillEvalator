@@ -4,6 +4,12 @@ import type {
   RunResult,
 } from "@skillevalator/core";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
+import {
+  pairExportEvidenceFromBrowse,
+  pilotArchiveAdoptionFromPacked,
+  type EvaluationPairBrowseEntry,
+  type PackedEvaluationBrowse,
+} from "@/lib/evaluationPairBrowse";
 import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 
 /**
@@ -147,4 +153,29 @@ export function runCsvExportGate(opts: {
     };
   }
   return { ok: true };
+}
+
+/** Run CSV gate from an already-loaded evaluation pack (one pair browse). */
+export function runCsvExportGateFromPacked(opts: {
+  result: RunResult;
+  evaluationId: string | null;
+  packed: PackedEvaluationBrowse | null;
+  pairBrowse: EvaluationPairBrowseEntry | null;
+}):
+  | { ok: true }
+  | { ok: false; status: 409; error: string; errorCode: string } {
+  return runCsvExportGate({
+    result: opts.result,
+    evaluationId: opts.evaluationId,
+    comparisonVerdict: opts.packed?.comparison?.verdict ?? null,
+    comparisonMode:
+      opts.packed?.comparison
+        ? pilotArchiveAdoptionFromPacked(opts.packed).adoptionMode
+        : null,
+    comparisonAdoptionConfirmation:
+      opts.packed?.comparison?.adoptionConfirmation ?? null,
+    baselineRunId: opts.pairBrowse?.tipBaselineRunId ?? null,
+    candidateRunId: opts.pairBrowse?.tipCandidateRunId ?? null,
+    ...(opts.pairBrowse ? pairExportEvidenceFromBrowse(opts.pairBrowse) : {}),
+  });
 }

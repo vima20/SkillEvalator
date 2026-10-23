@@ -10,10 +10,6 @@ import { healRunForRead } from "@/lib/healOrphans";
 import { jobsDir, resultsDir } from "@/lib/paths";
 import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
 import {
-  runCsvExportAllowed,
-  runCsvExportBlockReason,
-} from "@/lib/runCsvExportAllowed";
-import {
   loadPairWaitingWindDownRunIds,
   loadRunDetailEvaluationPack,
 } from "@/lib/runDetailEvaluationPack";
@@ -103,6 +99,8 @@ export default async function RunDetailPage({
     metaMode,
     baselineMode,
     candidateMode,
+    csvExportAllowed,
+    csvExportBlockReason,
   } = loadRunDetailEvaluationPack({
     runId,
     result,
@@ -131,12 +129,8 @@ export default async function RunDetailPage({
         runId,
         status,
         result,
-        csvExportAllowed: runCsvExportAllowed({ runId, result, status }),
-        csvExportBlockReason: runCsvExportBlockReason({
-          runId,
-          result,
-          status,
-        }),
+        csvExportAllowed: csvExportAllowed ?? false,
+        csvExportBlockReason: csvExportBlockReason ?? null,
         tipCandidateRunId,
         pairHarness,
         hasLiveJob: hasLiveJobFile(jobsDir(), runId),

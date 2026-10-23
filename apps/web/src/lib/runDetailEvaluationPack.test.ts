@@ -144,6 +144,40 @@ describe("loadRunDetailEvaluationPack", () => {
     expect(out.pairedDisplayMode).toBe("official");
   });
 
+  it("csvExportAllowed follows tip-resolved comparison mode when comparison.json is stale", () => {
+    const out = loadRunDetailEvaluationPack({
+      runId: "run_cand",
+      status: { evaluationId: "eval_stale" },
+      result: {
+        runId: "run_cand",
+        evaluationId: "eval_stale",
+        mode: "official",
+        status: "ok",
+        capture: { env: { fakeProduce: false, produceAttested: true } },
+      } as import("@skillevalator/core").RunResult,
+      loadPacked: () =>
+        ({
+          meta: {
+            mode: "dry-run",
+            baselineRunId: "run_b",
+            candidateRunId: "run_cand",
+          },
+          comparison: { verdict: "PASS", mode: "dry-run" },
+          baseline: {
+            mode: "official",
+            capture: { env: { produceAttested: true } },
+          },
+          candidate: {
+            mode: "official",
+            capture: { env: { produceAttested: true } },
+          },
+        }) as ReturnType<
+          typeof import("@/lib/evaluations").loadEvaluationComparison
+        >,
+    });
+    expect(out.csvExportAllowed).toBe(true);
+  });
+
   it("returns null pack when no evaluationId source", () => {
     expect(
       loadRunDetailEvaluationPack({

@@ -264,6 +264,10 @@ describe("statusBadgeKind", () => {
     expect(runDetailApi).toMatch(/loadPairWaitingWindDownRunIds/);
     expect(runDetailPage).toMatch(/pairedDisplayMode/);
     expect(runDetailApi).toMatch(/pairedDisplayMode/);
+    expect(runDetailPage).toMatch(/csvExportAllowed \?\? false/);
+    expect(runDetailPage).not.toMatch(/runCsvExportAllowed/);
+    expect(runDetailApi).toMatch(/csvExportAllowed \?\? false/);
+    expect(runDetailApi).not.toMatch(/runCsvExportAllowed/);
     expect(runDetail).toMatch(
       /metaMode: data\.pairedDisplayMode \?\? data\.metaMode/,
     );
