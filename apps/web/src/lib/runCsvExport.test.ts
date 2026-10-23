@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { runCsvExportGate } from "./runCsvExport.js";
+import {
+  evaluationPairBrowseFromPacked,
+  type PackedEvaluationBrowse,
+} from "./evaluationPairBrowse.js";
+import { runCsvExportGate, runCsvExportGateFromPacked } from "./runCsvExport.js";
 
 const base = {
   runId: "run_cand",
@@ -162,5 +166,35 @@ describe("runCsvExportGate", () => {
     });
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.errorCode).toBe("run_csv_not_meta_leg");
+  });
+});
+
+describe("runCsvExportGateFromPacked", () => {
+  it("allows export when packed comparison.json is stale dry-run", () => {
+    const packed = {
+      meta: {
+        mode: "dry-run",
+        baselineRunId: "run_base",
+        candidateRunId: "run_cand",
+      },
+      comparison: { verdict: "PASS", mode: "dry-run" },
+      baseline: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      candidate: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+    } as PackedEvaluationBrowse;
+    const pairBrowse = evaluationPairBrowseFromPacked(packed);
+    expect(
+      runCsvExportGateFromPacked({
+        result: base as import("@skillevalator/core").RunResult,
+        evaluationId: "eval_stale",
+        packed,
+        pairBrowse,
+      }).ok,
+    ).toBe(true);
   });
 });

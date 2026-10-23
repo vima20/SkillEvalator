@@ -256,6 +256,6 @@ describe("resolveExportGetError", () => {
     );
     expect(archive).toMatch(/comparisonExportContextFromPacked/);
     expect(benefit).toMatch(/pairExportEvidenceFromBrowse/);
-    expect(benefit).toMatch(/pilotArchiveAdoptionFromPacked/);
+    expect(benefit).toMatch(/pairedAdoptionComparisonMode/);
   });
 });

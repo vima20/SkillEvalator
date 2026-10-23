@@ -10,7 +10,7 @@ import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import {
   evaluationPairBrowseFromPacked,
   pairExportEvidenceFromBrowse,
-  pilotArchiveAdoptionFromPacked,
+  pairedAdoptionComparisonMode,
 } from "@/lib/evaluationPairBrowse";
 import {
   EXPORT_FAILED_ERROR,
@@ -80,8 +80,8 @@ export async function GET(
         benefitReportToCsv(report, {
           comparisonVerdict: comparison?.verdict,
           comparisonMode:
-            comparison && packed
-              ? pilotArchiveAdoptionFromPacked(packed).adoptionMode
+            comparison && pairBrowse
+              ? pairedAdoptionComparisonMode(comparison, pairEvidence)
               : comparison?.mode,
           comparisonLift: comparison?.lift,
           fakeProduce: result.capture?.env?.fakeProduce === true,
