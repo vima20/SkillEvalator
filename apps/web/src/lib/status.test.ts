@@ -194,7 +194,8 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(benefitDetail).toMatch(/listRowAdoptionMode/);
-    expect(benefitDetail).toMatch(/\{pairedDisplayMode\}/);
+    expect(benefitDetail).toMatch(/configModeLabel/);
+    expect(benefitDetail).toMatch(/title=\{configModeTitle\}/);
     expect(benefitDetail).toMatch(/pendingAdoptionMode/);
     expect(benefitDetail).toMatch(/pendingAdoptionModeTitle/);
     expect(benefitDetail).toMatch(/configModeLabel/);

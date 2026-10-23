@@ -235,7 +235,7 @@ export default async function BenefitReportPage({
           <h1>{report.title}</h1>
           <p>{report.generatedAt}</p>
           <p className="run-subtitle">
-            {pairedDisplayMode}
+            <span title={configModeTitle}>{configModeLabel}</span>
             {resolvedEvaluationId ? (
               <>
                 {" · "}
