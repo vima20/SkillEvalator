@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  benefitExportContextFromBrowse,
   benefitExportContextFromPacked,
   comparisonExportContextFromBrowse,
   comparisonExportContextFromPacked,
@@ -162,11 +163,11 @@ describe("evaluationPairBrowseFromPacked", () => {
       },
       comparison: { verdict: "PASS", mode: "dry-run" },
     } as PackedEvaluationBrowse;
+    const browse = evaluationPairBrowseFromPacked(packed);
     const ctx = benefitExportContextFromPacked(packed);
     expect(ctx.comparisonMode).toBe("official");
-    expect(ctx.evidence).toEqual(
-      pairExportEvidenceFromBrowse(ctx.pairBrowse),
-    );
+    expect(ctx.evidence).toEqual(pairExportEvidenceFromBrowse(browse));
+    expect(benefitExportContextFromBrowse(packed, browse)).toEqual(ctx);
   });
 
   it("comparisonExportContextFromPacked shares one browse for gate and adoption mode", () => {

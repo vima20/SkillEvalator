@@ -88,11 +88,11 @@ export default async function ComparisonListPage({
     // Same gate as ComparisonPending / hasPendingEvaluations / Benefit.
     const tipActive = pending && evaluationTipPairIsActive(packed);
     const scorecardUnavailable = pending && !tipActive;
+    const comparisonExport = c
+      ? comparisonExportContextFromBrowse(packed, pairBrowse)
+      : null;
     const downloadGate = c
-      ? officialComparisonExportGate(
-          c,
-          comparisonExportContextFromBrowse(packed, pairBrowse).evidence,
-        )
+      ? officialComparisonExportGate(c, comparisonExport!.evidence)
       : null;
     const downloadsOk = downloadGate?.ok === true;
     return {

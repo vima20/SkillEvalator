@@ -51,6 +51,7 @@ describe("statusBadgeKind", () => {
     // Pending list chip: tip legs beat stale evaluation.json mode.
     expect(list).toMatch(/evaluationPairBrowseFromPacked/);
     expect(list).toMatch(/comparisonExportContextFromBrowse/);
+    expect(list).toMatch(/const comparisonExport = c/);
     expect(list).toMatch(/resolvedPairedDisplayModeFromBrowse\(pairBrowse\)/);
     expect(list).toMatch(/comparisonVerdictListLabel/);
     expect(list).toMatch(/adoptionConfirmation/);

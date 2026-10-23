@@ -20,6 +20,7 @@ import {
 import { pilotArchiveGate } from "./pilotArchive.js";
 import {
   benefitExportContextFromPacked,
+  comparisonExportContextFromPacked,
   pilotArchiveAdoptionFromPacked,
 } from "./evaluationPairBrowse.js";
 import { runCsvExportGate } from "./runCsvExport.js";
@@ -422,6 +423,9 @@ describe("official export gates smoke", () => {
     expect(dataLine).toContain("official");
     expect(dataLine).not.toMatch(/,dry-run,/);
     expect(benefitExportContextFromPacked(packed).comparisonMode).toBe(
+      "official",
+    );
+    expect(comparisonExportContextFromPacked(packed as never).adoptionMode).toBe(
       "official",
     );
   });

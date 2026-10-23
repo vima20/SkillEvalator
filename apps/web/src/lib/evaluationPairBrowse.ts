@@ -149,16 +149,15 @@ export function comparisonExportContextFromPacked(
   return comparisonExportContextFromBrowse(packed, pairBrowse);
 }
 
-/** Benefit export API / detail — single browse for gate evidence + CSV comparisonMode. */
-export function benefitExportContextFromPacked(
+/** Benefit export when pairBrowse is already computed (SSR detail). */
+export function benefitExportContextFromBrowse(
   packed: PackedEvaluationBrowse,
-  browse?: EvaluationPairBrowseEntry,
+  pairBrowse: EvaluationPairBrowseEntry,
 ): {
   pairBrowse: EvaluationPairBrowseEntry;
   evidence: ReturnType<typeof pairExportEvidenceFromBrowse>;
   comparisonMode?: RunComparison["mode"];
 } {
-  const pairBrowse = browse ?? evaluationPairBrowseFromPacked(packed);
   const evidence = pairExportEvidenceFromBrowse(pairBrowse);
   const comparison = packed.comparison;
   return {
@@ -170,6 +169,15 @@ export function benefitExportContextFromPacked(
         }
       : {}),
   };
+}
+
+/** Benefit export API / detail — single browse for gate evidence + CSV comparisonMode. */
+export function benefitExportContextFromPacked(
+  packed: PackedEvaluationBrowse,
+  browse?: EvaluationPairBrowseEntry,
+): ReturnType<typeof benefitExportContextFromBrowse> {
+  const pairBrowse = browse ?? evaluationPairBrowseFromPacked(packed);
+  return benefitExportContextFromBrowse(packed, pairBrowse);
 }
 
 /** Archive zip: resolved adoption mode + optional stale comparison.json mode. */
