@@ -181,6 +181,17 @@ describe("evaluationPairBrowseFromPacked", () => {
     const browse = evaluationPairBrowseFromPacked(packed);
     expect(listRowAdoptionMode(browse, "dry-run")).toBe("official");
     expect(listRowAdoptionMode(null, "dry-run")).toBe("dry-run");
+    const pendingPacked = {
+      meta: { mode: "dry-run", baselineRunId: "b", candidateRunId: "c" },
+      baseline: { mode: "official" },
+      candidate: { mode: "official" },
+    } as PackedEvaluationBrowse;
+    expect(
+      listRowAdoptionMode(
+        evaluationPairBrowseFromPacked(pendingPacked),
+        "dry-run",
+      ),
+    ).toBe("official");
   });
 
   it("comparisonExportContextFromPacked shares one browse for gate and adoption mode", () => {

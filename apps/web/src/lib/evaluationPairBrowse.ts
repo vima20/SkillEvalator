@@ -94,11 +94,13 @@ export function listRowAdoptionMode(
   pairBrowse: EvaluationPairBrowseEntry | null | undefined,
   resultMode?: string | null,
 ): string {
-  return (
-    resolvedPairedDisplayModeFromBrowse(pairBrowse) ??
-    resultMode ??
-    "—"
-  );
+  if (pairBrowse) {
+    const fromTips =
+      resolvedPairedDisplayModeFromBrowse(pairBrowse) ??
+      pairedEvalDisplayModeFromPacked(pairBrowse.packed);
+    if (fromTips) return fromTips;
+  }
+  return resultMode ?? "—";
 }
 
 /** Exported CSV metadata — same resolution as export gates. */
