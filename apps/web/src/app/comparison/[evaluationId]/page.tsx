@@ -17,6 +17,7 @@ import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   comparisonExportContextFromBrowse,
   evaluationPairBrowseFromPacked,
+  pairedEvalPreferOfficialFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import { pairedEvalPreferOfficial } from "@/lib/pilotFocusHref";
 import { officialComparisonExportGate } from "@/lib/comparisonExport";
@@ -130,6 +131,7 @@ export default async function ComparisonDetailPage({
           mode={meta.mode}
           baselineMode={baseline?.mode}
           candidateMode={candidate?.mode}
+          preferOfficialHandoff={pairedEvalPreferOfficialFromPacked(packed)}
         />
       </div>
     );

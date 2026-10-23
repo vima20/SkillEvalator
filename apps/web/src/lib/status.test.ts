@@ -108,9 +108,10 @@ describe("statusBadgeKind", () => {
     // Official unavailable re-run keeps ?mode=official (Benefit / Settings parity).
     expect(pendingUi).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(pendingUi).toMatch(/pairedEvalPreferOfficial/);
+    expect(pendingUi).toMatch(/preferOfficialHandoff/);
     expect(detail).toMatch(/Confirm adoption — new official pair/);
     expect(detail).toMatch(/provisionalPass/);
-    expect(detail).toMatch(/evaluationPairBrowseFromPacked/);
+    expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonExportContextFromBrowse/);
     expect(detail).toMatch(/pairedDisplayMode \} =\s*pairBrowse/);
     expect(detail).toMatch(/const displayMode/);
@@ -215,7 +216,7 @@ describe("statusBadgeKind", () => {
     );
     expect(benefitList).toMatch(/benefitPairCtaLabel/);
     expect(benefitList).toMatch(/pairPending/);
-    expect(benefitList).toMatch(/evaluationPairBrowseFromPacked/);
+    expect(benefitList).toMatch(/benefitExportContextFromPacked/);
     expect(benefitList).toMatch(/comparisonMeta\?\.title/);
     expect(benefitList).toMatch(/verdictChipTone/);
     expect(benefitList).toMatch(/benefitVerdictChipToneFromComparison/);

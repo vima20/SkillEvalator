@@ -13,7 +13,7 @@ import {
   benefitVerdictChipToneFromComparison,
 } from "@/lib/comparisonVerdictDisplay";
 import {
-  evaluationPairBrowseFromPacked,
+  benefitExportContextFromPacked,
   resolvedPairedDisplayModeFromBrowse,
 } from "@/lib/evaluationPairBrowse";
 import {
@@ -78,7 +78,9 @@ export default async function BenefitIndexPage({
         evaluationId: resolvedId ?? undefined,
         tipCandidateRunId,
       }) as CandidateLegKind;
-      const pairBrowse = packed ? evaluationPairBrowseFromPacked(packed) : null;
+      const pairBrowse = packed
+        ? benefitExportContextFromPacked(packed).pairBrowse
+        : null;
       const verdictChipTone = benefitVerdictChipToneFromComparison({
         recommendation: report.verdict.recommendation,
         comparison,

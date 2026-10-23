@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  comparisonExportContextFromBrowse,
   evaluationPairBrowseFromPacked,
   type PackedEvaluationBrowse,
 } from "./evaluationPairBrowse.js";
@@ -188,6 +189,8 @@ describe("runCsvExportGateFromPacked", () => {
       },
     } as PackedEvaluationBrowse;
     const pairBrowse = evaluationPairBrowseFromPacked(packed);
+    const exportCtx = comparisonExportContextFromBrowse(packed, pairBrowse);
+    expect(exportCtx.adoptionMode).toBe("official");
     expect(
       runCsvExportGateFromPacked({
         result: base as import("@skillevalator/core").RunResult,

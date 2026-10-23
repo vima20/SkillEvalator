@@ -59,6 +59,8 @@ type ComparisonPendingProps = {
   /** Tip leg modes (Benefit parity: official handoff if any is official). */
   baselineMode?: "dry-run" | "official" | string;
   candidateMode?: "dry-run" | "official" | string;
+  /** SSR: tip-resolved handoff (overrides meta-only mode props). */
+  preferOfficialHandoff?: boolean;
 };
 
 export function ComparisonPending(props: ComparisonPendingProps) {
@@ -90,14 +92,17 @@ function ComparisonPendingInner({
   mode,
   baselineMode,
   candidateMode,
+  preferOfficialHandoff,
   pilotFocus,
 }: ComparisonPendingProps & { pilotFocus: boolean }) {
   // Tip legs beat stale evaluation.json mode (official↔dry-run desync).
-  const preferOfficial = pairedEvalPreferOfficial({
-    metaMode: mode,
-    baselineMode,
-    candidateMode,
-  });
+  const preferOfficial =
+    preferOfficialHandoff ??
+    pairedEvalPreferOfficial({
+      metaMode: mode,
+      baselineMode,
+      candidateMode,
+    });
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
