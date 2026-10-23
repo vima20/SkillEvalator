@@ -20,7 +20,9 @@ import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { healRunForRead } from "@/lib/healOrphans";
+import { loadEvaluationComparison } from "@/lib/evaluations";
 import { resultsDir } from "@/lib/paths";
+import { resolveRunDetailEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
   isPilotFocusParam,
   pairedEvalPreferOfficial,
@@ -81,6 +83,14 @@ export default async function BenefitReportPage({
   }
 
   if (!result) {
+    const pendingEvaluationId = resolveRunDetailEvaluationId({
+      runId,
+      status: statusFile,
+      result: null,
+    });
+    const pendingPacked = pendingEvaluationId
+      ? loadEvaluationComparison(pendingEvaluationId)
+      : null;
     return (
       <div>
         <header className="page-header">
@@ -93,7 +103,18 @@ export default async function BenefitReportPage({
           </p>
         </header>
         {/* H1 lives in BenefitPending so orphan-timeout updates the title. */}
-        <BenefitPending runId={runId} status={runStatus} />
+        <BenefitPending
+          runId={runId}
+          status={runStatus}
+          mode={pendingPacked?.meta?.mode}
+          baselineMode={pendingPacked?.baseline?.mode}
+          candidateMode={pendingPacked?.candidate?.mode}
+          preferOfficialHandoff={
+            pendingPacked
+              ? pairedEvalPreferOfficialFromPacked(pendingPacked)
+              : undefined
+          }
+        />
       </div>
     );
   }

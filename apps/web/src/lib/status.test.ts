@@ -138,6 +138,10 @@ describe("statusBadgeKind", () => {
     expect(benefitPendingUi).toMatch(/stillWaiting \|\| orphanStuck/);
     expect(benefitPendingUi).toMatch(/Open run — Cancel \/ Resend cancel/);
     expect(benefitPendingUi).toMatch(/orphanStuckFromFinalizePayload/);
+    expect(benefitPendingUi).toMatch(/preferOfficialHandoff/);
+    expect(benefitPendingUi).toMatch(
+      /withNewRunHandoff\(pilotFocus, preferOfficial\)/,
+    );
     expect(benefitPendingUi).toMatch(/if \(windDown\)/);
     expect(benefitPendingUi).toMatch(
       /do not fake orphan stuck|Transport\/HTTP failure/,
@@ -166,6 +170,8 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/Comparison unavailable/);
     expect(benefitDetail).toMatch(/Waiting for Comparison/);
     // Official Benefit unavailable → New run with ?mode=official.
+    expect(benefitDetail).toMatch(/resolveRunDetailEvaluationId/);
+    expect(benefitDetail).toMatch(/pairedEvalPreferOfficialFromPacked\(pendingPacked\)/);
     expect(benefitDetail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(benefitDetail).toMatch(/withNewRunHandoff\(pilotFocus, preferOfficial\)/);
     expect(benefitDetail).toMatch(/resolvedPairedDisplayModeFromBrowse/);

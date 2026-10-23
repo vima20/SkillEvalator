@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
-import { isPilotFocusParam, withPilotFocus } from "@/lib/pilotFocusHref";
+import {
+  isPilotFocusParam,
+  pairedEvalPreferOfficial,
+  withNewRunHandoff,
+  withPilotFocus,
+} from "@/lib/pilotFocusHref";
 import {
   runDetailFinalizeOrphansPath,
   WIND_DOWN_ORPHAN_MS,
@@ -18,6 +23,12 @@ import {
 export function BenefitPending(props: {
   runId: string;
   status?: string | null;
+  /** Tip leg modes (official handoff if any is official). */
+  mode?: "dry-run" | "official" | string;
+  baselineMode?: "dry-run" | "official" | string;
+  candidateMode?: "dry-run" | "official" | string;
+  /** SSR: tip-resolved handoff (overrides meta-only mode props). */
+  preferOfficialHandoff?: boolean;
 }) {
   return (
     <Suspense fallback={<BenefitPendingInner {...props} pilotFocus={false} />}>
@@ -40,12 +51,27 @@ function BenefitPendingWithFocus(props: {
 function BenefitPendingInner({
   runId,
   status,
+  mode,
+  baselineMode,
+  candidateMode,
+  preferOfficialHandoff,
   pilotFocus,
 }: {
   runId: string;
   status?: string | null;
+  mode?: "dry-run" | "official" | string;
+  baselineMode?: "dry-run" | "official" | string;
+  candidateMode?: "dry-run" | "official" | string;
+  preferOfficialHandoff?: boolean;
   pilotFocus: boolean;
 }) {
+  const preferOfficial =
+    preferOfficialHandoff ??
+    pairedEvalPreferOfficial({
+      metaMode: mode,
+      baselineMode,
+      candidateMode,
+    });
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [budgetTimedOut, setBudgetTimedOut] = useState(false);
@@ -198,6 +224,14 @@ function BenefitPendingInner({
               ? "Open run — Cancel / Resend cancel"
               : "Open run"}
           </Link>
+          {unavailable ? (
+            <Link
+              className="btn btn-ghost btn-compact"
+              href={withNewRunHandoff(pilotFocus, preferOfficial)}
+            >
+              Start a new baseline↔candidate run
+            </Link>
+          ) : null}
         </div>
       </div>
       </div>
