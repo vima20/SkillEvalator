@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { StarRating } from "@/components/StarRating";
 import {
+  adoptionModeDesyncTitle,
   benefitExportContextFromPacked,
   evaluationPairBrowseFromPacked,
   listRowAdoptionMode,
@@ -181,12 +182,10 @@ export default async function BenefitReportPage({
   const provisionalPass = Boolean(comparisonProvisional);
   const configModeLabel =
     pairedDisplayMode !== "—" ? pairedDisplayMode : report.config.mode;
-  const configModeTitle =
-    pairedDisplayMode !== "—" &&
-    report.config.mode &&
-    pairedDisplayMode !== report.config.mode
-      ? `result.json mode is ${report.config.mode}; tip pair adoption mode is ${pairedDisplayMode}`
-      : undefined;
+  const configModeTitle = adoptionModeDesyncTitle(
+    pairedDisplayMode,
+    report.config.mode,
+  );
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;

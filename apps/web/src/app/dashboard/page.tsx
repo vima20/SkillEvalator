@@ -13,6 +13,7 @@ import {
   includeInDashboardRanking,
 } from "@/lib/dashboardLeaderboard";
 import {
+  adoptionModeDesyncTitle,
   createEvaluationPairBrowseCache,
   listRowAdoptionMode,
 } from "@/lib/evaluationPairBrowse";
@@ -36,6 +37,7 @@ type Row = {
   modelId: string;
   taskSetId: string;
   mode: string;
+  modeTitle?: string;
   githubUrl?: string;
   skillId: string;
   skillVersion: string;
@@ -89,6 +91,7 @@ export default async function DashboardPage({
     });
     const pair = evaluationId ? pairFor(evaluationId) : null;
     const adoptionMode = listRowAdoptionMode(pair, r.result.mode);
+    const modeTitle = adoptionModeDesyncTitle(adoptionMode, r.result.mode);
     const pairPending = pair?.packed
       ? evaluationPairPending(pair.packed, { runId: r.runId })
       : undefined;
@@ -119,6 +122,7 @@ export default async function DashboardPage({
         modelId: r.result.modelId,
         taskSetId: r.result.taskSetId,
         mode: adoptionMode,
+        ...(modeTitle ? { modeTitle } : {}),
         githubUrl: r.result.evalSkillGithubUrl,
         skillId: r.result.evalSkillId,
         skillVersion: r.result.evalSkillVersion,
@@ -421,7 +425,9 @@ export default async function DashboardPage({
                               <div className="cell-meta">{r.pairChip}</div>
                             ) : null}
                           </td>
-                          <td>{r.mode}</td>
+                          <td>
+                            <span title={r.modeTitle}>{r.mode}</span>
+                          </td>
                           <td>
                             <strong>{r.score ?? "—"}</strong>
                           </td>

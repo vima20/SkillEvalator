@@ -13,6 +13,7 @@ import {
   benefitVerdictChipToneFromComparison,
 } from "@/lib/comparisonVerdictDisplay";
 import {
+  adoptionModeDesyncTitle,
   benefitExportContextFromPacked,
   listRowAdoptionMode,
 } from "@/lib/evaluationPairBrowse";
@@ -86,6 +87,10 @@ export default async function BenefitIndexPage({
         ? benefitExportContextFromPacked(packed).pairBrowse
         : null;
       const adoptionMode = listRowAdoptionMode(pairBrowse, r.result!.mode);
+      const modeTitle = adoptionModeDesyncTitle(
+        adoptionMode,
+        r.result!.mode,
+      );
       const verdictChipTone = benefitVerdictChipToneFromComparison({
         recommendation: report.verdict.recommendation,
         comparison,
@@ -95,6 +100,7 @@ export default async function BenefitIndexPage({
         runId: r.runId,
         score: r.result!.score,
         mode: adoptionMode,
+        modeTitle,
         evaluationId: resolvedId ?? undefined,
         verdict: report.verdict,
         rating: report.rating,
@@ -231,7 +237,8 @@ export default async function BenefitIndexPage({
                         {r.runId}
                       </Link>
                       <div className="cell-meta">
-                        {r.mode} · {candidateLegLabel(r.kind)} ·{" "}
+                        <span title={r.modeTitle}>{r.mode}</span> ·{" "}
+                        {candidateLegLabel(r.kind)} ·{" "}
                         {r.rating.starsDisplay} {r.rating.grade}
                         {r.evaluationId ? (
                           <>

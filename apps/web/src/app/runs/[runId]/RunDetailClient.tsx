@@ -25,6 +25,7 @@ import {
 } from "@/lib/pilotFocusHref";
 import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
+import { adoptionModeDesyncTitle } from "@/lib/evaluationPairBrowse";
 import { benefitPairCtaLabel } from "@/lib/benefitListHints";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
@@ -406,13 +407,10 @@ export function RunDetailClient({
     result && data.pairedDisplayMode
       ? data.pairedDisplayMode
       : result?.mode;
-  const adoptionModeTitle =
-    result &&
-    data.pairedDisplayMode &&
-    result.mode &&
-    data.pairedDisplayMode !== result.mode
-      ? `result.json mode is ${result.mode}; tip pair adoption mode is ${data.pairedDisplayMode}`
-      : undefined;
+  const adoptionModeTitle = adoptionModeDesyncTitle(
+    data.pairedDisplayMode,
+    result?.mode,
+  );
   const cancelRequested = status === "cancel_requested";
   /** Orphan/settling cost-cap — same as POST retry admission + cancelGate. */
   const budgetStopWindDown = isRetryBudgetStopping(status, Boolean(result));

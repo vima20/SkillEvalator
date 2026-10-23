@@ -192,7 +192,7 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/\{pairedDisplayMode\}/);
     expect(benefitDetail).toMatch(/pendingAdoptionMode/);
     expect(benefitDetail).toMatch(/configModeLabel/);
-    expect(benefitDetail).toMatch(/tip pair adoption mode/);
+    expect(benefitDetail).toMatch(/adoptionModeDesyncTitle/);
     expect(benefitDetail).toMatch(/provisionalPass/);
     expect(benefitDetail).toMatch(/benefitExportContextFromPacked/);
     expect(benefitDetail).toMatch(/comparisonProvisional/);
@@ -258,6 +258,9 @@ describe("statusBadgeKind", () => {
       /includeInPilotFocusRun\([\s\S]*?mode: listRowAdoptionMode\(pair/,
     );
     expect(dashboard).toMatch(/listRowAdoptionMode/);
+    expect(dashboard).toMatch(/adoptionModeDesyncTitle/);
+    expect(benefitList).toMatch(/modeTitle/);
+    expect(runsList).toMatch(/adoptionModeDesyncTitle/);
     expect(benefitList).toMatch(/listRowAdoptionMode/);
     expect(benefitList).toMatch(/pairedDisplayMode: adoptionMode/);
     expect(runDetail).toMatch(/benefitPairCtaLabel/);
@@ -302,7 +305,7 @@ describe("statusBadgeKind", () => {
       /metaMode: data\.pairedDisplayMode \?\? data\.metaMode/,
     );
     expect(runDetail).toMatch(/adoptionModeLabel/);
-    expect(runDetail).toMatch(/tip pair adoption mode/);
+    expect(runDetail).toMatch(/adoptionModeDesyncTitle/);
     // Benefit CTA stays visible while pairPending waiting still polls.
     expect(runDetail).toMatch(/\{result \? \(/);
     expect(runDetail).not.toMatch(/\{result && !polling \?/);

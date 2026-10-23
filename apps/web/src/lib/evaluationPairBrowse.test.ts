@@ -12,6 +12,7 @@ import {
   pairedAdoptionComparisonMode,
   pairedAdoptionModesFromPacked,
   pilotArchiveAdoptionFromPacked,
+  adoptionModeDesyncTitle,
   listRowAdoptionMode,
   pairedEvalPreferOfficialFromPacked,
   resolvedPairedDisplayModeFromBrowse,
@@ -205,6 +206,11 @@ describe("evaluationPairBrowseFromPacked", () => {
         "dry-run",
       ),
     ).toBe("official");
+    expect(adoptionModeDesyncTitle("official", "dry-run")).toMatch(
+      /tip pair adoption mode is official/,
+    );
+    expect(adoptionModeDesyncTitle("official", "official")).toBeUndefined();
+    expect(adoptionModeDesyncTitle("—", "dry-run")).toBeUndefined();
   });
 
   it("comparisonExportContextFromPacked shares one browse for gate and adoption mode", () => {

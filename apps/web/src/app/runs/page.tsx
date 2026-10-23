@@ -15,6 +15,7 @@ import {
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
 import {
+  adoptionModeDesyncTitle,
   createEvaluationPairBrowseCache,
   listRowAdoptionMode,
 } from "@/lib/evaluationPairBrowse";
@@ -191,12 +192,10 @@ export default async function RunsPage({
                     pair,
                     r.result?.mode,
                   );
-                  const adoptionModeTitle =
-                    r.result?.mode &&
-                    adoptionMode !== r.result.mode &&
-                    adoptionMode !== "—"
-                      ? `result.json mode is ${r.result.mode}; tip pair adoption mode is ${adoptionMode}`
-                      : undefined;
+                  const adoptionModeTitle = adoptionModeDesyncTitle(
+                    adoptionMode,
+                    r.result?.mode,
+                  );
                   return (
                     <tr key={r.runId}>
                       <td>
