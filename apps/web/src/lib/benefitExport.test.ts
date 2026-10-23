@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { benefitExportGate } from "./benefitExport.js";
+import {
+  benefitExportContextFromPacked,
+  type PackedEvaluationBrowse,
+} from "./evaluationPairBrowse.js";
 
 const tipCand = "run_tip";
 const officialReport = (rec: "use" | "do_not_use" | "inconclusive") =>
@@ -50,6 +54,30 @@ describe("benefitExportGate", () => {
         baselineMode: "official",
         candidateMode: "official",
         ...liveTips,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("benefitExportContextFromPacked aligns gate and CSV comparisonMode on stale disk", () => {
+    const packed = {
+      meta: { mode: "dry-run", smoke: false },
+      baseline: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      candidate: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      comparison: tipComparison("PASS", "dry-run"),
+    } as PackedEvaluationBrowse;
+    const ctx = benefitExportContextFromPacked(packed);
+    expect(ctx.comparisonMode).toBe("official");
+    expect(
+      benefitExportGate({
+        report: officialReport("use"),
+        comparison: packed.comparison,
+        ...ctx.evidence,
       }).ok,
     ).toBe(true);
   });

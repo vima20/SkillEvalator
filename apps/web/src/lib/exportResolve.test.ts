@@ -174,6 +174,9 @@ describe("resolveExportGetError", () => {
     );
     expect(runCsvAllowed).toMatch(/runCsvExportGateFromPacked/);
     expect(
+      fs.readFileSync(path.join(cwd, "src/lib/runCsvExport.ts"), "utf8"),
+    ).toMatch(/comparisonExportContextFromBrowse/);
+    expect(
       fs.readFileSync(
         path.join(cwd, "src/lib/runDetailEvaluationPack.ts"),
         "utf8",
