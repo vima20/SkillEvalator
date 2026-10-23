@@ -6,6 +6,7 @@ import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
+  adoptionModeDesyncTitle,
   comparisonExportContextFromPacked,
   evaluationPairBrowseFromPacked,
   listRowAdoptionMode,
@@ -79,6 +80,7 @@ export default async function ComparisonListPage({
       pairBrowse.tipCandidateRunId ?? e.candidateRunId;
     const tipBaselineRunId = pairBrowse.tipBaselineRunId ?? e.baselineRunId;
     const displayMode = listRowAdoptionMode(pairBrowse, e.mode);
+    const displayModeTitle = adoptionModeDesyncTitle(displayMode, e.mode);
     const { pairEvidence, pairChip, pairBlocked, comparisonMeta } =
       pairBrowse;
     const baselineStatus =
@@ -105,6 +107,7 @@ export default async function ComparisonListPage({
       adoptionConfirmation: c?.adoptionConfirmation ?? null,
       lift: c?.lift ?? null,
       displayMode,
+      displayModeTitle,
       baselineStatus,
       candidateStatus,
       baselineHasResult,
@@ -247,7 +250,9 @@ export default async function ComparisonListPage({
                     </td>
                     <td>
                       <code>{e.evalSkillId}</code>
-                      <div className="cell-meta">{e.displayMode}</div>
+                      <div className="cell-meta">
+                        <span title={e.displayModeTitle}>{e.displayMode}</span>
+                      </div>
                     </td>
                     <td>
                       <span className="cell-meta">

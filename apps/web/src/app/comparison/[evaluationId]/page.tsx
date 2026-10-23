@@ -15,6 +15,7 @@ import {
 } from "@/lib/captureEnvEvidence";
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
+  adoptionModeDesyncTitle,
   comparisonExportContextFromPacked,
   evaluationPairBrowseFromPacked,
   listRowAdoptionMode,
@@ -160,6 +161,10 @@ export default async function ComparisonDetailPage({
     : exportGateBlockMessage(downloadGate);
   const { comparisonMeta, comparisonProvisional } = pairBrowse;
   const displayMode = listRowAdoptionMode(pairBrowse, comparison.mode);
+  const displayModeTitle = adoptionModeDesyncTitle(
+    displayMode,
+    comparison.mode,
+  );
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);
@@ -181,7 +186,8 @@ export default async function ComparisonDetailPage({
           <h1>Baseline ↔ candidate</h1>
           <p>
             Skill <code>{comparison.evalSkillId}</code> · task set{" "}
-            <code>{comparison.taskSetId}</code> · {displayMode} ·{" "}
+            <code>{comparison.taskSetId}</code> ·{" "}
+            <span title={displayModeTitle}>{displayMode}</span> ·{" "}
             <code>{comparison.modelId}</code>
           </p>
         </div>
