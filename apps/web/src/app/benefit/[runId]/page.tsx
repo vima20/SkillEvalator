@@ -211,20 +211,24 @@ export default async function BenefitReportPage({
           </p>
           <h1>{report.title}</h1>
           <p>{report.generatedAt}</p>
-          {resolvedEvaluationId ? (
-            <p className="run-subtitle">
-              <Link
-                href={withPilotFocus(
-                  `/comparison/${resolvedEvaluationId}`,
-                  pilotFocus,
-                )}
-                title={comparisonMeta?.title}
-              >
-                Comparison
-                {comparisonMeta ? ` · ${comparisonMeta.label}` : null}
-              </Link>
-            </p>
-          ) : null}
+          <p className="run-subtitle">
+            {pairedDisplayMode}
+            {resolvedEvaluationId ? (
+              <>
+                {" · "}
+                <Link
+                  href={withPilotFocus(
+                    `/comparison/${resolvedEvaluationId}`,
+                    pilotFocus,
+                  )}
+                  title={comparisonMeta?.title}
+                >
+                  Comparison
+                  {comparisonMeta ? ` · ${comparisonMeta.label}` : null}
+                </Link>
+              </>
+            ) : null}
+          </p>
         </div>
         <div className="page-header-actions">
           <PilotFocusToggle
