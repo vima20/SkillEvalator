@@ -185,12 +185,15 @@ function RetryActions({
   retrying,
   retryError,
   blockedReason,
+  newRunHref,
   onRetry,
 }: {
   canRetry: boolean;
   retrying: boolean;
   retryError: string | null;
   blockedReason?: string | null;
+  /** Official pilot: fresh pair when Retry admission is blocked. */
+  newRunHref?: string;
   onRetry: () => void;
 }) {
   return (
@@ -208,6 +211,11 @@ function RetryActions({
       >
         {retrying ? "Retrying…" : "Retry run"}
       </button>
+      {newRunHref ? (
+        <Link className="btn btn-ghost btn-compact" href={newRunHref}>
+          Start new baseline↔candidate run
+        </Link>
+      ) : null}
       {retryError ? (
         <p className="form-error" role="alert">
           {retryError}
@@ -437,6 +445,15 @@ export function RunDetailClient({
     : retryAdmission == null && retryTerminal
       ? "Checking retry admission…"
       : (retryAdmission?.blockedReason ?? null);
+  const retryOfficialNewRunHref =
+    !canRetry &&
+    preferOfficialNewRun &&
+    retryAdmission != null &&
+    Boolean(retryBlockedReason) &&
+    retryBlockedReason !== "Checking retry admission…" &&
+    retryBlockedReason !== RETRY_STILL_FINISHING_ERROR
+      ? withNewRunHandoff(pilotFocus, preferOfficialNewRun)
+      : undefined;
 
   // Terminal: refresh GET so preflight / COST_CAP / Ready update together.
   useEffect(() => {
@@ -1321,6 +1338,7 @@ export function RunDetailClient({
               retrying={retrying}
               retryError={retryError}
               blockedReason={retryBlockedReason}
+              newRunHref={retryOfficialNewRunHref}
               onRetry={() => void onRetry()}
             />
           ) : null}
@@ -1341,6 +1359,7 @@ export function RunDetailClient({
             retrying={retrying}
             retryError={retryError}
             blockedReason={retryBlockedReason}
+            newRunHref={retryOfficialNewRunHref}
             onRetry={() => void onRetry()}
           />
         </div>
@@ -1375,6 +1394,7 @@ export function RunDetailClient({
             retrying={retrying}
             retryError={retryError}
             blockedReason={retryBlockedReason}
+            newRunHref={retryOfficialNewRunHref}
             onRetry={() => void onRetry()}
           />
         </div>

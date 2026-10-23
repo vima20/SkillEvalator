@@ -814,6 +814,8 @@ describe("parseAlsoCancelledRunId / pairedCancelAlsoCopy", () => {
     expect(src).toMatch(/preferOfficialHandoff/);
     expect(src).toMatch(/pairPending === "unavailable"/);
     expect(src).toMatch(/Comparison unavailable/);
+    expect(src).toMatch(/retryOfficialNewRunHref/);
+    expect(src).toMatch(/newRunHref=\{retryOfficialNewRunHref\}/);
   });
 });
 
