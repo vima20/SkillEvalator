@@ -4,6 +4,7 @@ import {
   type RunComparison,
 } from "./comparison.js";
 import {
+  DIFF_STRONG_MAX,
   OFFICIAL_USE_SCORE_FLOOR,
   PASS_SCORE_FLOOR,
 } from "./diffScore.js";
@@ -20,6 +21,17 @@ import {
 
 function taskPassedSoft(score: number | null | undefined): boolean {
   return isUnitScore(score) && score >= PASS_SCORE_FLOOR;
+}
+
+function minUnitPerTaskScore(
+  perTask: RunResult["perTask"],
+): number | null {
+  let min: number | null = null;
+  for (const row of perTask) {
+    if (!isUnitScore(row.score)) continue;
+    min = min === null ? row.score : Math.min(min, row.score);
+  }
+  return min;
 }
 
 function scorecardCoverageIssuesForResult(result: RunResult): string[] {
@@ -218,20 +230,27 @@ export function rateSkill(result: RunResult): BenefitRating {
     // Dry-run never earns 5★ even at a perfect score.
     stars = 4;
   } else {
-    // Official USE gate aligns with decideSkillUse + Comparison PASS.
-    stars = 5;
+    const minTask = minUnitPerTaskScore(result.perTask);
+    const maxDiff = result.subscores?.maxDiffRatio;
+    const goldenQuality =
+      minTask !== null &&
+      minTask >= OFFICIAL_USE_SCORE_FLOOR &&
+      (maxDiff === undefined || maxDiff <= DIFF_STRONG_MAX);
+    stars = goldenQuality ? 5 : 4;
   }
 
   const grade = gradeForStars(stars);
   const scoreTxt = score === null ? "—" : score.toFixed(2);
   const spread = result.scoreSpread ?? 0;
   const meanDiffRatio = result.subscores?.meanDiffRatio;
+  const maxDiffRatio = result.subscores?.maxDiffRatio;
   const label =
     score === null
       ? "Fail"
       : labelForScore(score, {
           scoreSpread: spread,
           ...(typeof meanDiffRatio === "number" ? { meanDiffRatio } : {}),
+          ...(typeof maxDiffRatio === "number" ? { maxDiffRatio } : {}),
         });
   const costTxt = `$${result.costUsd.toFixed(4)}`;
   const latencyTxt = `${Math.round(result.latencyMs / 1000)} s`;

@@ -66,16 +66,19 @@ function taskPassedSoft(score: number | null | undefined): boolean {
   return isUnitScore(score) && score >= PASS_SCORE_FLOOR;
 }
 
-/** taskIds-based soft-pass counts (missing rows count as not passed). */
+/** taskIds-based pass counts (missing rows count as not passed). */
 export function taskScorecardPassCounts(
   taskIds: string[],
   perTask: TaskScorecardRow[],
+  opts?: { passFloor?: number },
 ): { passed: number; total: number; failedTaskIds: string[] } {
+  const floor = opts?.passFloor ?? PASS_SCORE_FLOOR;
   const byId = new Map(perTask.map((t) => [t.taskId, t]));
   const total = taskIds.length;
-  const failedTaskIds = taskIds.filter(
-    (id) => !taskPassedSoft(byId.get(id)?.score),
-  );
+  const failedTaskIds = taskIds.filter((id) => {
+    const score = byId.get(id)?.score;
+    return !isUnitScore(score) || score < floor;
+  });
   return { passed: total - failedTaskIds.length, total, failedTaskIds };
 }
 
@@ -222,6 +225,8 @@ export type LabelScoreOpts = {
   scoreSpread?: number;
   /** Mean normalized edit distance vs expected (0 = identical). */
   meanDiffRatio?: number;
+  /** Worst-task diff vs expected — Strong needs this ≤ DIFF_STRONG_MAX when set. */
+  maxDiffRatio?: number;
 };
 
 /**
@@ -246,8 +251,10 @@ export function labelForScore(
   const spreadOk =
     opts.scoreSpread !== undefined && opts.scoreSpread <= 0.05;
   const diffOk =
-    opts.meanDiffRatio === undefined ||
-    opts.meanDiffRatio <= DIFF_STRONG_MAX;
+    (opts.meanDiffRatio === undefined ||
+      opts.meanDiffRatio <= DIFF_STRONG_MAX) &&
+    (opts.maxDiffRatio === undefined ||
+      opts.maxDiffRatio <= DIFF_STRONG_MAX);
   if (score >= 0.99 && spreadOk && diffOk) return "Strong";
   return "Pass";
 }

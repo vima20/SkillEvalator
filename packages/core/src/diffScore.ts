@@ -71,18 +71,29 @@ export function textDiffRatio(a: string, b: string, maxChars = 8_000): number {
 }
 
 /**
- * Soft score from grade pass/fail + closeness to expected.
- * Fail → 0. Pass with measured diff → 0.8…1.0 (closer → higher).
- * Pass without a usable diff (null / non-finite) → PASS_SCORE_FLOOR only —
- * missing expected is not treated as identical-to-expected.
+ * Soft score from grade pass/fail + closeness to golden expected output.
+ * Fail → 0. Pass without diff → PASS_SCORE_FLOOR (tests passed, no golden).
+ * Pass with diff ≤ DIFF_STRONG_MAX → OFFICIAL_USE_SCORE_FLOOR…1.0 (near-golden).
+ * Pass with larger diff → PASS_SCORE_FLOOR…(USE−ε) — tests ok but fix drifts.
  */
 export function scoreFromGradeAndDiff(
   gradeOk: boolean,
   diffRatio: number | null,
 ): number {
   if (!gradeOk) return 0;
-  if (diffRatio === null || !Number.isFinite(diffRatio)) return PASS_SCORE_FLOOR;
-  const closeness = 1 - Math.min(1, Math.max(0, diffRatio));
-  return Math.round((PASS_SCORE_FLOOR + (1 - PASS_SCORE_FLOOR) * closeness) * 1000) /
-    1000;
+  if (diffRatio === null || !Number.isFinite(diffRatio)) {
+    return PASS_SCORE_FLOOR;
+  }
+  const d = Math.min(1, Math.max(0, diffRatio));
+  if (d <= DIFF_STRONG_MAX) {
+    const t = 1 - d / DIFF_STRONG_MAX;
+    const score =
+      OFFICIAL_USE_SCORE_FLOOR + (1 - OFFICIAL_USE_SCORE_FLOOR) * t;
+    return Math.round(score * 1000) / 1000;
+  }
+  const drift = (d - DIFF_STRONG_MAX) / (1 - DIFF_STRONG_MAX);
+  const capBelowUse = OFFICIAL_USE_SCORE_FLOOR - 0.001;
+  const score =
+    PASS_SCORE_FLOOR + (capBelowUse - PASS_SCORE_FLOOR) * (1 - drift);
+  return Math.round(score * 1000) / 1000;
 }

@@ -301,15 +301,15 @@ describe("applyOfficialPassConfirmationPolicy", () => {
 });
 
 describe("officialAdoptionTaskGate", () => {
-  it("requires every candidate task to soft-pass", () => {
+  it("requires every candidate task at USE floor (near-golden)", () => {
     const candidate = sample({
       runId: "c",
       role: "candidate",
-      score: 0.85,
+      score: 0.995,
       mode: "official",
       taskIds: ["bug-01"],
       perTask: [
-        { taskId: "bug-01", score: 0.85, status: "ok", scriptResults: [] },
+        { taskId: "bug-01", score: 0.995, status: "ok", scriptResults: [] },
       ],
     });
     const gate = officialAdoptionTaskGate({
@@ -318,7 +318,7 @@ describe("officialAdoptionTaskGate", () => {
       improvements: 1,
     });
     expect(gate.ok).toBe(true);
-    candidate.perTask[0]!.score = 0.75;
+    candidate.perTask[0]!.score = 0.85;
     const blocked = officialAdoptionTaskGate({
       candidate,
       regressions: 0,
@@ -326,7 +326,7 @@ describe("officialAdoptionTaskGate", () => {
     });
     expect(blocked.ok).toBe(false);
     if (!blocked.ok) {
-      expect(blocked.rationale).toMatch(/soft-pass/i);
+      expect(blocked.rationale).toMatch(/USE floor/i);
     }
   });
 });

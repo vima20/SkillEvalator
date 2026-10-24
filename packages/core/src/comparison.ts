@@ -74,14 +74,15 @@ export function officialAdoptionTaskGate(opts: {
   const { failedTaskIds, total } = taskScorecardPassCounts(
     candidate.taskIds,
     candidate.perTask,
+    { passFloor: OFFICIAL_USE_SCORE_FLOOR },
   );
   if (total > 0 && failedTaskIds.length > 0) {
     return {
       ok: false,
       rationale:
-        `Candidate soft-passed ${total - failedTaskIds.length}/${total} tasks (≥${PASS_SCORE_FLOOR.toFixed(2)}). ` +
+        `Candidate cleared ${total - failedTaskIds.length}/${total} tasks at USE floor (≥${OFFICIAL_USE_SCORE_FLOOR.toFixed(2)} — near-golden expected). ` +
         `Below floor: ${failedTaskIds.join(", ")}. ` +
-        `Official PASS needs the skill to clear every declared task, not only a strong aggregate.`,
+        `Official PASS needs every task to match golden quality, not only a strong average.`,
     };
   }
   return { ok: true };

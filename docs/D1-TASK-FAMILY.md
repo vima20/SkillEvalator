@@ -31,7 +31,7 @@ SQL ja KH+RAG siirretään **jatkokehitykseen** (ei MVP-laajuutta).
 - Baseline = neutraali prompt (ei SKILL.md)  
 - Candidate = valittu eval-skill (`SKILL.md`)  
 - Official: `gpt-4.1-mini`, ≥3 toistoa  
-- Comparison official PASS: lift ≥ +5 pp ja candidate score ≥ 0.99 (Benefit USE -floor); soft-pass ≥ 0.8 on vain dry-run / exploratory  
+- Comparison official PASS: lift ≥ +5 pp, candidate score ≥ 0.99, ja **jokainen tehtävä** ≥ 0.99 (golden-expected-läheisyys); pisteytys: grade pass + diff → 0.8 vain tutkimus, ≥0.99 vain lähes identtinen expected  
 - Dry-run Comparison: INCONCLUSIVE (ei adoption PASS/FAIL)  
 
 ## Hyväksyntä

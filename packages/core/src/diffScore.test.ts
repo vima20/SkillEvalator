@@ -77,6 +77,16 @@ describe("scoreFromGradeAndDiff", () => {
     expect(s).toBe(0.8);
   });
 
+  it("caps below USE floor when tests pass but output drifts from expected", () => {
+    expect(scoreFromGradeAndDiff(true, 0.2)).toBeLessThan(0.99);
+    expect(scoreFromGradeAndDiff(true, 0.2)).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it("maps near-identical output to USE floor and above", () => {
+    expect(scoreFromGradeAndDiff(true, 0)).toBe(1);
+    expect(scoreFromGradeAndDiff(true, DIFF_STRONG_MAX)).toBe(0.99);
+  });
+
   it("treats null / non-finite diff as pass floor, not full credit", () => {
     expect(scoreFromGradeAndDiff(true, null)).toBe(0.8);
     expect(scoreFromGradeAndDiff(true, Number.NaN)).toBe(0.8);

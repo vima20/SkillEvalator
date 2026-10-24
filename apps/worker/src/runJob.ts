@@ -951,6 +951,8 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       diffVals.length > 0
         ? diffVals.reduce((a, b) => a + b, 0) / diffVals.length
         : undefined;
+    const maxDiffRatio =
+      diffVals.length > 0 ? Math.max(...diffVals) : undefined;
 
     let status: RunResult["status"];
     if (stop) status = stop;
@@ -1000,6 +1002,7 @@ export async function runJob(job: JobManifest): Promise<RunResult> {
       score: stop ? null : agg.score,
       subscores: {
         ...(meanDiffRatio !== undefined ? { meanDiffRatio } : {}),
+        ...(maxDiffRatio !== undefined ? { maxDiffRatio } : {}),
       },
       rationale:
         role === "baseline"
