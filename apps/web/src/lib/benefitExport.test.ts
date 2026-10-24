@@ -73,6 +73,7 @@ describe("benefitExportGate", () => {
     } as PackedEvaluationBrowse;
     const ctx = benefitExportContextFromPacked(packed);
     expect(ctx.comparisonMode).toBe("official");
+    expect(ctx.comparisonJsonMode).toBe("dry-run");
     expect(
       benefitExportGate({
         report: officialReport("use"),

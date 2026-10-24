@@ -32,6 +32,7 @@ In the UI, **Settings** shows `pilotReady`, preflight, adoption rules, git SHA, 
 - **Settings Ready** ≠ Comparison PASS / Benefit USE — same blockers gate official enqueue (API key, Docker, worker, unset `FAKE_PRODUCE` + `ALLOW_HOST_GRADE`, auth, no orphan `.running.json`).
 - **`?focus=pilot`**: hides smoke / not_attested / dry-run noise on lists; New run / Settings / Nav keep the focus.
 - Live official pins **`produceAttested=true`** on both tip legs. CSV / Benefit / pilot archive reject smoke, FAKE, and unattested tips.
+- List/detail **mode** follows tip legs (`listRowAdoptionMode`), not stale `result.json` / `evaluation.json` alone; hover tooltip when disk labels disagree. Stale `comparison.json` mode shows a warning on Comparison / Benefit / run detail (same as archive `comparisonJsonMode`).
 - Optional: `WEB_AUTH_TOKEN` + `OFFICIAL_REQUIRES_WEB_AUTH=true` for pilot lock-down.
 
 ## Models
