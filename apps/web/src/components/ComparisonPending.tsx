@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
+import { adoptionModeDesyncTitle } from "@/lib/evaluationPairBrowse";
 import {
   isPilotFocusParam,
   pairedEvalDisplayMode,
@@ -112,6 +113,7 @@ function ComparisonPendingInner({
     }) ??
     mode ??
     "—";
+  const adoptionModeTitle = adoptionModeDesyncTitle(adoptionMode, mode);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [baselineBudgetTimedOut, setBaselineBudgetTimedOut] = useState(false);
@@ -286,7 +288,7 @@ function ComparisonPendingInner({
         <div>
           <dt>Adoption mode</dt>
           <dd>
-            <code>{adoptionMode}</code>
+            <code title={adoptionModeTitle}>{adoptionMode}</code>
           </dd>
         </div>
       </dl>

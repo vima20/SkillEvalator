@@ -123,6 +123,7 @@ describe("statusBadgeKind", () => {
     expect(pendingUi).toMatch(/preferOfficialHandoff/);
     expect(pendingUi).toMatch(/pairedEvalDisplayMode/);
     expect(pendingUi).toMatch(/Adoption mode/);
+    expect(pendingUi).toMatch(/adoptionModeDesyncTitle/);
     expect(detail).toMatch(/Confirm adoption — new official pair/);
     expect(detail).toMatch(/provisionalPass/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
@@ -158,6 +159,7 @@ describe("statusBadgeKind", () => {
     expect(benefitPendingUi).toMatch(/preferOfficialHandoff/);
     expect(benefitPendingUi).toMatch(/pairedEvalDisplayMode/);
     expect(benefitPendingUi).toMatch(/Adoption mode/);
+    expect(benefitPendingUi).toMatch(/adoptionModeDesyncTitle/);
     expect(benefitPendingUi).toMatch(
       /withNewRunHandoff\(pilotFocus, preferOfficial\)/,
     );
