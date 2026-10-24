@@ -131,6 +131,8 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/listRowAdoptionMode\(pairBrowse, meta\.mode\)/);
     expect(detail).toMatch(/displayModeTitle/);
     expect(detail).toMatch(/adoptionModeDesyncTitle/);
+    expect(detail).toMatch(/comparisonJsonMode/);
+    expect(detail).toMatch(/Stale comparison\.json mode on disk/);
     expect(detail).toMatch(/const displayMode/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);

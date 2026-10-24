@@ -150,8 +150,11 @@ export default async function ComparisonDetailPage({
   }
 
   const capture = comparison.capture;
-  const { pairBrowse, evidence: exportEvidence } =
-    comparisonExportContextFromPacked(packed);
+  const {
+    pairBrowse,
+    evidence: exportEvidence,
+    comparisonJsonMode,
+  } = comparisonExportContextFromPacked(packed);
   const { pairEvidence, pairChip, pairBlocked } = pairBrowse;
   const baselineFakeProduce = pairEvidence.baselineFakeProduce;
   const candidateFakeProduce = pairEvidence.candidateFakeProduce;
@@ -302,6 +305,18 @@ export default async function ComparisonDetailPage({
           <p>
             Dry-run paired results stay INCONCLUSIVE for adoption (no PASS/FAIL).
             CSV export is locked until mode=official.
+          </p>
+        </div>
+      ) : null}
+
+      {comparisonJsonMode ? (
+        <div className="panel callout-warn">
+          <strong>Stale comparison.json mode on disk</strong>
+          <p>
+            Adoption mode is <code>{displayMode}</code> from tip legs; stored{" "}
+            <code>comparison.json</code> mode is still{" "}
+            <code>{comparisonJsonMode}</code>. Exports and UI gates use tip
+            resolution (same as <code>MANIFEST</code> in pilot archive).
           </p>
         </div>
       ) : null}
