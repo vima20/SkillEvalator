@@ -162,6 +162,13 @@ describe("resolveExportGetError", () => {
         error: "run CSV export requires paired evaluationId (baseline↔candidate)",
       }),
     ).toMatch(/paired evaluationId/);
+    expect(
+      exportGateBlockMessage({
+        errorCode: "run_csv_comparison_not_official",
+        adoptionMode: "official",
+        comparisonJsonMode: "dry-run",
+      }),
+    ).toContain("comparison.json on disk: dry-run");
   });
 
   it("SSR surfaces use exportGateBlockMessage", async () => {

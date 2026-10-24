@@ -9,6 +9,48 @@ export type ExportGetErrorBody = {
   errorCode?: string;
 };
 
+/** Optional 409 metadata from adoption export routes (pilot debugging). */
+export type ExportErrorPilotModeFields = {
+  adoptionMode?: string;
+  comparisonMode?: string;
+  comparisonJsonMode?: string;
+  mode?: string;
+};
+
+/** Append tip / disk mode context when API includes pilot metadata. */
+export function exportErrorPilotModeHint(
+  body: ExportErrorPilotModeFields | unknown,
+): string {
+  if (!body || typeof body !== "object") return "";
+  const rec = body as ExportErrorPilotModeFields;
+  const adoption =
+    typeof rec.adoptionMode === "string"
+      ? rec.adoptionMode
+      : typeof rec.comparisonMode === "string"
+        ? rec.comparisonMode
+        : undefined;
+  const disk =
+    typeof rec.comparisonJsonMode === "string"
+      ? rec.comparisonJsonMode
+      : undefined;
+  const resultMode = typeof rec.mode === "string" ? rec.mode : undefined;
+
+  const parts: string[] = [];
+  if (adoption) parts.push(`tip adoption mode: ${adoption}`);
+  if (disk && disk !== adoption) {
+    parts.push(`comparison.json on disk: ${disk}`);
+  }
+  if (
+    resultMode &&
+    resultMode !== adoption &&
+    (!disk || resultMode !== disk)
+  ) {
+    parts.push(`result mode: ${resultMode}`);
+  }
+  if (!parts.length) return "";
+  return ` — ${parts.join("; ")}`;
+}
+
 /** Same product labels as officialComparisonExportGate. */
 export type ComparisonExportProduct =
   | "comparison CSV export"
@@ -141,17 +183,15 @@ export function resolveExportGetError(
  * (prefer gate.error, fail-closed on errorCode alone).
  */
 export function exportGateBlockMessage(
-  gate: {
-    error?: string;
-    errorCode?: string;
-  },
+  gate: ExportGetErrorBody & ExportErrorPilotModeFields,
   opts?: ResolveExportGetErrorOpts,
 ): string {
-  return resolveExportGetError(
+  const base = resolveExportGetError(
     { error: gate.error, errorCode: gate.errorCode },
     "Adoption export locked",
     opts,
   );
+  return base + exportErrorPilotModeHint(gate);
 }
 
 /** Run-detail CSV span when block reason is missing (should be rare). */

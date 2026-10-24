@@ -2,6 +2,7 @@ import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { tryResolveAuthApiError } from "@/lib/authResolve";
 import {
   comparisonExportProductFromHref,
+  exportErrorPilotModeHint,
   resolveExportDownloadFetchError,
   resolveExportGetError,
   type ComparisonExportProduct,
@@ -37,7 +38,12 @@ export function exportErrorFromJsonBody(
   const errorCode =
     typeof rec.errorCode === "string" ? rec.errorCode : undefined;
   if (!error?.trim() && !errorCode) return null;
-  return resolveExportGetError({ error, errorCode }, statusFallback, opts);
+  const base = resolveExportGetError(
+    { error, errorCode },
+    statusFallback,
+    opts,
+  );
+  return base + exportErrorPilotModeHint(body);
 }
 
 export type DownloadExportResult =

@@ -52,6 +52,33 @@ describe("exportErrorFromJsonBody", () => {
     ).toMatch(/^pilot archive download requires produceAttested/);
   });
 
+  it("appends pilot mode metadata from 409 JSON bodies", () => {
+    expect(
+      exportErrorFromJsonBody(
+        {
+          errorCode: "run_csv_comparison_not_official",
+          mode: "dry-run",
+          adoptionMode: "official",
+          comparisonJsonMode: "dry-run",
+        },
+        "Download failed (409)",
+      ),
+    ).toBe(
+      "run CSV export requires official Comparison mode — tip adoption mode: official; comparison.json on disk: dry-run",
+    );
+    expect(
+      exportErrorFromJsonBody(
+        {
+          error: "benefit export requires mode=official",
+          comparisonMode: "official",
+          comparisonJsonMode: "dry-run",
+        },
+      ),
+    ).toBe(
+      "benefit export requires mode=official — tip adoption mode: official; comparison.json on disk: dry-run",
+    );
+  });
+
   it("downloadExport uses exportErrorFromJsonBody", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
