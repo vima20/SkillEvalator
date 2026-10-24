@@ -55,6 +55,8 @@ describe("statusBadgeKind", () => {
     expect(list).toMatch(/scorecardUnavailable/);
     expect(list).toMatch(/evaluationTipPairIsActive/);
     // Pending list chip: tip legs beat stale evaluation.json mode.
+    expect(list).toMatch(/goldenTaskPassCounts/);
+    expect(list).toMatch(/goldenTasksListTitle/);
     expect(list).toMatch(/comparisonExportContextFromPacked/);
     expect(list).toMatch(/listRowAdoptionMode\(pairBrowse, e\.mode\)/);
     expect(list).toMatch(/adoptionModeDesyncTitle/);

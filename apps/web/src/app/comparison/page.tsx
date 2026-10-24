@@ -18,6 +18,10 @@ import {
   comparisonVerdictListLabel,
 } from "@/lib/comparisonVerdictDisplay";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
+import {
+  goldenTaskPassCounts,
+  goldenTasksListTitle,
+} from "@/lib/scorecardGolden";
 import { healOrphansForBrowse } from "@/lib/healOrphans";
 import { resultsDir } from "@/lib/paths";
 import {
@@ -94,6 +98,12 @@ export default async function ComparisonListPage({
     // Same gate as ComparisonPending / hasPendingEvaluations / Benefit.
     const tipActive = pending && evaluationTipPairIsActive(packed);
     const scorecardUnavailable = pending && !tipActive;
+    const candidateGolden = packed.candidate
+      ? goldenTaskPassCounts(
+          packed.candidate.taskIds,
+          packed.candidate.perTask,
+        )
+      : null;
     const downloadGate = c
       ? officialComparisonExportGate(c, comparisonExport!.evidence)
       : null;
@@ -125,6 +135,8 @@ export default async function ComparisonListPage({
         downloadGate && !downloadGate.ok
           ? exportGateBlockMessage(downloadGate)
           : null,
+      candidateGoldenPassed: candidateGolden?.goldenPassed ?? 0,
+      candidateGoldenTotal: candidateGolden?.total ?? 0,
       noise: isPilotNoiseEvaluation({
         smoke: e.smoke,
         displayMode,
@@ -307,6 +319,18 @@ export default async function ComparisonListPage({
                       {e.lift !== null
                         ? `${e.lift >= 0 ? "+" : ""}${(e.lift * 100).toFixed(1)} pp`
                         : "—"}
+                      {e.candidateGoldenTotal > 0 ? (
+                        <div
+                          className="cell-meta"
+                          title={goldenTasksListTitle(
+                            e.candidateGoldenPassed,
+                            e.candidateGoldenTotal,
+                          )}
+                        >
+                          golden {e.candidateGoldenPassed}/
+                          {e.candidateGoldenTotal}
+                        </div>
+                      ) : null}
                     </td>
                     <td>{formatCreated(e.createdAt)}</td>
                     <td>

@@ -196,6 +196,7 @@ describe("buildPilotArchiveZip", () => {
         dirty: false,
       },
       adoptionMode: "official",
+      candidateGolden: { passed: 2, total: 3 },
     });
     const zipPath = path.join(root, "out.zip");
     fs.writeFileSync(zipPath, zip);
@@ -209,8 +210,15 @@ describe("buildPilotArchiveZip", () => {
     expect(tar.status).toBe(0);
     const manifest = JSON.parse(
       fs.readFileSync(path.join(extractDir, "MANIFEST.json"), "utf8"),
-    ) as { mode: string; comparisonJsonMode?: string };
+    ) as {
+      mode: string;
+      comparisonJsonMode?: string;
+      candidateTasksGoldenPassed?: number;
+      candidateTasksGoldenTotal?: number;
+    };
     expect(manifest.mode).toBe("official");
     expect(manifest.comparisonJsonMode).toBe("dry-run");
+    expect(manifest.candidateTasksGoldenPassed).toBe(2);
+    expect(manifest.candidateTasksGoldenTotal).toBe(3);
   });
 });

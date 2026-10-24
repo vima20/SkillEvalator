@@ -115,6 +115,8 @@ export function buildPilotArchiveZip(opts: {
   };
   /** Resolved from tip legs — may differ from comparison.json on disk. */
   adoptionMode?: RunComparison["mode"];
+  /** Candidate tip scorecard golden task count (official adoption bar). */
+  candidateGolden?: { passed: number; total: number };
 }): Buffer {
   const evaluationId = assertSafeId(opts.evaluationId, "evaluationId");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "se-pilot-archive-"));
@@ -161,6 +163,12 @@ export function buildPilotArchiveZip(opts: {
         opts.tipEvidence?.candidateProduceAttested === true ||
         opts.comparison.capture?.env?.produceAttested === true,
       build: opts.build,
+      ...(opts.candidateGolden && opts.candidateGolden.total > 0
+        ? {
+            candidateTasksGoldenPassed: opts.candidateGolden.passed,
+            candidateTasksGoldenTotal: opts.candidateGolden.total,
+          }
+        : {}),
       notes:
         "Live official tip legs only. Not Cursor/KH adoption proof — produce→grade on locked task set.",
     };

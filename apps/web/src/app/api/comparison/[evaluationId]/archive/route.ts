@@ -11,6 +11,7 @@ import {
   EXPORT_FAILED_ERROR,
   EXPORT_INVALID_REQUEST_ERROR,
 } from "@/lib/exportResolve";
+import { goldenTaskPassCounts } from "@skillevalator/core/scorecardGolden";
 import {
   buildPilotArchiveZip,
   pilotArchiveGate,
@@ -71,6 +72,10 @@ export async function GET(
     }
 
     const root = findRepoRoot(process.cwd());
+    const candidateGolden = goldenTaskPassCounts(
+      candidate.taskIds,
+      candidate.perTask,
+    );
     const zip = buildPilotArchiveZip({
       resultsDir: resultsDir(),
       evaluationId,
@@ -88,6 +93,14 @@ export async function GET(
           candidate.capture?.env?.produceAttested === true,
       },
       adoptionMode: exportCtx.adoptionMode,
+      ...(candidateGolden.total > 0
+        ? {
+            candidateGolden: {
+              passed: candidateGolden.goldenPassed,
+              total: candidateGolden.total,
+            },
+          }
+        : {}),
     });
 
     return new NextResponse(new Uint8Array(zip), {
