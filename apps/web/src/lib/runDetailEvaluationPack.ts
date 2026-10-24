@@ -10,10 +10,10 @@ import {
   type RunResult,
 } from "@skillevalator/core";
 import {
+  comparisonExportContextFromBrowse,
   evaluationPairBrowseFromPacked,
   pairedAdoptionModesFromPacked,
   pairedEvalPreferOfficialFromPacked,
-  pilotArchiveAdoptionFromPacked,
   type EvaluationPairBrowseEntry,
 } from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
@@ -266,7 +266,7 @@ export function loadRunDetailEvaluationPack(opts: {
     pairedDisplayMode,
   } = pairBrowse;
   const comparisonJsonMode = packed.comparison
-    ? pilotArchiveAdoptionFromPacked(packed).comparisonJsonMode
+    ? comparisonExportContextFromBrowse(packed, pairBrowse).comparisonJsonMode
     : undefined;
   return {
     evaluationId,

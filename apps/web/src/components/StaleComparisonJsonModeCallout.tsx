@@ -7,7 +7,7 @@ export function StaleComparisonJsonModeCallout({
   comparisonJsonMode: string;
 }) {
   return (
-    <div className="panel callout-warn">
+    <div className="panel callout-warn" style={{ marginTop: "1rem" }}>
       <strong>Stale comparison.json mode on disk</strong>
       <p>
         Adoption mode is <code>{adoptionMode}</code> from tip legs; stored{" "}
