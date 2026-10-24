@@ -44,9 +44,8 @@ export function listNewRunHref(pilotFocus: boolean): string {
 import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 
 /**
- * List chip / Pilot noise / re-run handoff: tip legs beat stale evaluation.json
- * (official↔dry-run desync after tip-heal). Official tip wins; else dry-run tip;
- * else meta mode.
+ * List chip / Pilot noise / re-run handoff: agreeing tip legs beat stale meta;
+ * mixed tip modes fail-closed to dry-run; else meta mode.
  */
 export function pairedEvalDisplayMode(opts: {
   metaMode?: string | null;

@@ -23,6 +23,16 @@ describe("pairedEvaluationAdoptionMode", () => {
     ).toBe("dry-run");
   });
 
+  it("fail-closes mixed tip leg modes (does not launder stale comparison.json)", () => {
+    expect(
+      pairedEvaluationAdoptionMode({
+        comparisonMode: "official",
+        baselineMode: "official",
+        candidateMode: "dry-run",
+      }),
+    ).toBe("dry-run");
+  });
+
   it("falls back to comparison then meta", () => {
     expect(
       pairedEvaluationAdoptionMode({

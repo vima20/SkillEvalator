@@ -11,16 +11,17 @@ export function pairedEvaluationAdoptionMode(opts: {
   candidateMode?: EvalRunMode;
   comparisonMode?: EvalRunMode;
 }): EvalRunMode | undefined {
-  if (
-    opts.baselineMode === "official" ||
-    opts.candidateMode === "official"
-  ) {
+  const { baselineMode, candidateMode } = opts;
+  if (baselineMode && candidateMode) {
+    if (baselineMode !== candidateMode) {
+      return "dry-run";
+    }
+    return baselineMode;
+  }
+  if (baselineMode === "official" || candidateMode === "official") {
     return "official";
   }
-  if (
-    opts.baselineMode === "dry-run" ||
-    opts.candidateMode === "dry-run"
-  ) {
+  if (baselineMode === "dry-run" || candidateMode === "dry-run") {
     return "dry-run";
   }
   if (

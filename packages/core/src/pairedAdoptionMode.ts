@@ -2,8 +2,9 @@
 export type EvalRunMode = "dry-run" | "official";
 
 /**
- * Adoption-facing paired mode: tip legs beat stale comparison.json / meta
- * (official tip wins; else dry-run tip; else comparison.mode; else meta).
+ * Adoption-facing paired mode: agreeing tip legs beat stale comparison.json /
+ * meta. When both tips are present they must match; mixed legs fail-closed to
+ * dry-run. Single tip may still promote official/dry-run while the pair loads.
  */
 export function pairedEvaluationAdoptionMode(opts: {
   metaMode?: string | null;
@@ -11,16 +12,17 @@ export function pairedEvaluationAdoptionMode(opts: {
   candidateMode?: EvalRunMode;
   comparisonMode?: EvalRunMode;
 }): EvalRunMode | undefined {
-  if (
-    opts.baselineMode === "official" ||
-    opts.candidateMode === "official"
-  ) {
+  const { baselineMode, candidateMode } = opts;
+  if (baselineMode && candidateMode) {
+    if (baselineMode !== candidateMode) {
+      return "dry-run";
+    }
+    return baselineMode;
+  }
+  if (baselineMode === "official" || candidateMode === "official") {
     return "official";
   }
-  if (
-    opts.baselineMode === "dry-run" ||
-    opts.candidateMode === "dry-run"
-  ) {
+  if (baselineMode === "dry-run" || candidateMode === "dry-run") {
     return "dry-run";
   }
   if (
