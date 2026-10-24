@@ -172,6 +172,12 @@ describe("comparisonToCsv", () => {
       candidateProduceAttested: true,
     });
     expect(withTips).toContain("baselineProduceAttested");
+    const goldenCsv = comparisonToCsv(cmp, {
+      candidatePerTask: [{ taskId: "bug-01", diffRatio: 0 }],
+    });
+    expect(goldenCsv).toContain("candidateTasksGoldenPassed");
+    expect(goldenCsv).toContain("candidateGoldenQuality");
+    expect(goldenCsv).toContain("golden");
   });
 
   it("exports candidate Capture commit and license", () => {
@@ -222,8 +228,12 @@ describe("comparisonToCsv", () => {
       sample({ runId: "c", role: "candidate", score: 0.9 }),
     );
     const csv = comparisonToCsv(cmp);
+    const header = csv.split("\n")[0]!;
     const dataLine = csv.trim().split("\n")[1]!;
-    expect(dataLine.endsWith(",")).toBe(true);
+    expect(header).toContain("commit");
+    expect(dataLine.split(",").length).toBe(header.split(",").length);
+    const commitIdx = header.split(",").indexOf("commit");
+    expect(dataLine.split(",")[commitIdx]).toBe("");
   });
 
   it("exports parityIssues when INCONCLUSIVE", () => {

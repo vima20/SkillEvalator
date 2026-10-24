@@ -1,6 +1,11 @@
 import type { BenefitReport } from "./benefitReport.js";
 import type { RunComparison } from "./comparison.js";
 import type { RunResult } from "./schema.js";
+import {
+  goldenQualityChip,
+  goldenTaskPassCounts,
+  taskGoldenQuality,
+} from "./scorecardGolden.js";
 
 function csvEscape(value: string | number | boolean | null | undefined): string {
   if (value === null || value === undefined) return "";
@@ -98,6 +103,11 @@ export type ComparisonCsvTipEvidence = {
   baselineProduceAttested?: boolean;
   candidateFakeProduce?: boolean;
   candidateProduceAttested?: boolean;
+  /** Candidate leg rows — enables diff + golden quality columns (scores stay on comparison.perTask). */
+  candidatePerTask?: Array<{
+    taskId: string;
+    diffRatio?: number | null;
+  }>;
 };
 
 /** Task-level regression CSV for a paired comparison. */
@@ -132,8 +142,23 @@ export function comparisonToCsv(
     "baselineProduceAttested",
     "candidateFakeProduce",
     "candidateProduceAttested",
+    "candidateTasksGoldenPassed",
+    "candidateTasksGoldenTotal",
+    "candidateDiffRatio",
+    "candidateGoldenQuality",
   ]);
   const lines = [header];
+  const candidateDiffById = new Map(
+    (tips.candidatePerTask ?? []).map((t) => [t.taskId, t.diffRatio]),
+  );
+  const goldenRows = (comparison.perTask ?? []).map((t) => ({
+    taskId: t.taskId,
+    score: t.candidateScore,
+    diffRatio: candidateDiffById.get(t.taskId),
+  }));
+  const goldenTaskIds = goldenRows.map((r) => r.taskId);
+  const { goldenPassed: candidateTasksGoldenPassed, total: candidateTasksGoldenTotal } =
+    goldenTaskPassCounts(goldenTaskIds, goldenRows);
   const modeCell = tips.adoptionMode ?? comparison.mode;
   const common = [
     comparison.evaluationId,
@@ -158,6 +183,14 @@ export function comparisonToCsv(
   ] as const;
 
   for (const t of comparison.perTask ?? []) {
+    const candidateDiffRatio = candidateDiffById.get(t.taskId);
+    const candidateGoldenQuality = taskGoldenQuality({
+      score: t.candidateScore,
+      diffRatio: candidateDiffRatio,
+    });
+    const candidateGoldenCell =
+      goldenQualityChip(candidateGoldenQuality) ??
+      (candidateGoldenQuality === "golden" ? "golden" : candidateGoldenQuality);
     lines.push(
       row([
         ...common,
@@ -174,6 +207,10 @@ export function comparisonToCsv(
         comparison.parity.ok,
         parityIssues,
         ...captureCells,
+        candidateTasksGoldenPassed,
+        candidateTasksGoldenTotal,
+        typeof candidateDiffRatio === "number" ? candidateDiffRatio : "",
+        candidateGoldenCell,
       ]),
     );
   }
@@ -194,6 +231,10 @@ export function comparisonToCsv(
         comparison.parity.ok,
         parityIssues,
         ...captureCells,
+        candidateTasksGoldenPassed,
+        candidateTasksGoldenTotal,
+        "",
+        "",
       ]),
     );
   }

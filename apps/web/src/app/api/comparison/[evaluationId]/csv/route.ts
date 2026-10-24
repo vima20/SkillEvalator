@@ -60,6 +60,10 @@ export async function GET(
       candidateFakeProduce: candidate?.capture?.env?.fakeProduce === true,
       candidateProduceAttested:
         candidate?.capture?.env?.produceAttested === true,
+      candidatePerTask: candidate?.perTask?.map((t) => ({
+        taskId: t.taskId,
+        diffRatio: t.diffRatio,
+      })),
     });
     return new NextResponse(csv, {
       status: 200,

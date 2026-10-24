@@ -284,6 +284,7 @@ describe("resolveExportGetError", () => {
     expect(cmp).toMatch(/comparisonExportContextFromPacked/);
     expect(cmp).toMatch(/adoptionMode: exportCtx\.adoptionMode/);
     expect(cmp).toMatch(/comparisonJsonMode: exportCtx\.comparisonJsonMode/);
+    expect(cmp).toMatch(/candidatePerTask:/);
     expect(benefit).toMatch(/comparisonMode: benefitExport\.comparisonMode/);
     expect(benefit).toMatch(
       /comparisonJsonMode: benefitExport\.comparisonJsonMode/,
