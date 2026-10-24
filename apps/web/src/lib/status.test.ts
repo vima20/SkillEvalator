@@ -203,7 +203,7 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/pendingAdoptionMode/);
     expect(benefitDetail).toMatch(/pendingAdoptionModeTitle/);
     expect(benefitDetail).toMatch(/adoptionModeDesyncTitle/);
-    expect(benefitDetail).toMatch(/pilotArchiveAdoptionFromPacked/);
+    expect(benefitDetail).toMatch(/benefitExport\?\.comparisonJsonMode/);
     expect(benefitDetail).toMatch(/StaleComparisonJsonModeCallout/);
     expect(benefitDetail).toMatch(/provisionalPass/);
     expect(benefitDetail).toMatch(/benefitExportContextFromPacked/);

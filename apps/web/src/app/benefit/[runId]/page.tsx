@@ -17,7 +17,6 @@ import {
   evaluationPairBrowseFromPacked,
   listRowAdoptionMode,
   pairedEvalPreferOfficialFromPacked,
-  pilotArchiveAdoptionFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
@@ -196,10 +195,7 @@ export default async function BenefitReportPage({
     pairedDisplayMode,
     report.config.mode,
   );
-  const comparisonJsonMode =
-    packed?.comparison
-      ? pilotArchiveAdoptionFromPacked(packed).comparisonJsonMode
-      : undefined;
+  const comparisonJsonMode = benefitExport?.comparisonJsonMode;
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;

@@ -178,16 +178,20 @@ export function benefitExportContextFromBrowse(
   pairBrowse: EvaluationPairBrowseEntry;
   evidence: ReturnType<typeof pairExportEvidenceFromBrowse>;
   comparisonMode?: RunComparison["mode"];
+  comparisonJsonMode?: RunComparison["mode"];
 } {
   const evidence = pairExportEvidenceFromBrowse(pairBrowse);
   const comparison = packed.comparison;
+  if (!comparison) {
+    return { pairBrowse, evidence };
+  }
+  const adoption = pilotArchiveAdoptionFromPacked(packed);
   return {
     pairBrowse,
     evidence,
-    ...(comparison
-      ? {
-          comparisonMode: pairedAdoptionComparisonMode(comparison, evidence),
-        }
+    comparisonMode: adoption.adoptionMode,
+    ...(adoption.comparisonJsonMode
+      ? { comparisonJsonMode: adoption.comparisonJsonMode }
       : {}),
   };
 }
