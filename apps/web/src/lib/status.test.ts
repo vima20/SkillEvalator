@@ -128,7 +128,7 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/provisionalPass/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonExportContextFromPacked/);
-    expect(detail).toMatch(/listRowAdoptionMode\(pairBrowse, comparison\.mode\)/);
+    expect(detail).toMatch(/listRowAdoptionMode\(pairBrowse, meta\.mode\)/);
     expect(detail).toMatch(/displayModeTitle/);
     expect(detail).toMatch(/adoptionModeDesyncTitle/);
     expect(detail).toMatch(/const displayMode/);

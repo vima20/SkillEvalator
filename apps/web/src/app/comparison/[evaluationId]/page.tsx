@@ -166,11 +166,8 @@ export default async function ComparisonDetailPage({
     ? null
     : exportGateBlockMessage(downloadGate);
   const { comparisonMeta, comparisonProvisional } = pairBrowse;
-  const displayMode = listRowAdoptionMode(pairBrowse, comparison.mode);
-  const displayModeTitle = adoptionModeDesyncTitle(
-    displayMode,
-    comparison.mode,
-  );
+  const displayMode = listRowAdoptionMode(pairBrowse, meta.mode);
+  const displayModeTitle = adoptionModeDesyncTitle(displayMode, meta.mode);
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);
