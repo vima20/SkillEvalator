@@ -1,5 +1,12 @@
 import Link from "next/link";
 import { goldenTaskPassCounts } from "@skillevalator/core/scorecardGolden";
+import {
+  formatDiffRatioPct,
+  goldenQualityChip,
+  goldenQualityTitle,
+  goldenTasksListTitle,
+  taskGoldenQuality,
+} from "@/lib/scorecardGolden";
 import { syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { StaleComparisonJsonModeCallout } from "@/components/StaleComparisonJsonModeCallout";
@@ -176,6 +183,9 @@ export default async function ComparisonDetailPage({
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);
+  const candidateDiffByTaskId = new Map(
+    candidate.perTask.map((t) => [t.taskId, t.diffRatio]),
+  );
   const candidateGolden = goldenTaskPassCounts(
     candidate.taskIds,
     candidate.perTask,
@@ -250,6 +260,7 @@ export default async function ComparisonDetailPage({
                 className="btn btn-ghost"
                 href={`/api/comparison/${encodeURIComponent(evaluationId)}/csv`}
                 filename={`${evaluationId}-comparison.csv`}
+                title="Per-task deltas; candidateDiffRatio and candidateGoldenQuality columns match Benefit CSV golden rules"
               >
                 Download CSV
               </ExportDownloadButton>
@@ -429,7 +440,10 @@ export default async function ComparisonDetailPage({
             <div>
               <dt>Candidate tasks golden</dt>
               <dd
-                title="Per-task score ≥ 0.99 and diff vs expected ≤ 8%"
+                title={goldenTasksListTitle(
+                  candidateGolden.goldenPassed,
+                  candidateGolden.total,
+                )}
               >
                 {candidateGolden.goldenPassed}/{candidateGolden.total}
               </dd>
@@ -607,18 +621,49 @@ export default async function ComparisonDetailPage({
                   <th>Task</th>
                   <th>Baseline</th>
                   <th>Candidate</th>
+                  <th>Diff</th>
+                  <th>Quality</th>
                   <th>Delta</th>
                   <th>Flag</th>
                 </tr>
               </thead>
               <tbody>
-                {comparison.perTask.map((t) => (
+                {comparison.perTask.map((t) => {
+                  const diffRatio = candidateDiffByTaskId.get(t.taskId);
+                  const quality = taskGoldenQuality({
+                    score: t.candidateScore,
+                    diffRatio,
+                  });
+                  const chip = goldenQualityChip(quality);
+                  return (
                   <tr key={t.taskId}>
                     <td>
                       <code>{t.taskId}</code>
                     </td>
                     <td>{fmtScore(t.baselineScore)}</td>
                     <td>{fmtScore(t.candidateScore)}</td>
+                    <td>
+                      {typeof diffRatio === "number"
+                        ? formatDiffRatioPct(diffRatio)
+                        : "—"}
+                    </td>
+                    <td>
+                      {chip ? (
+                        <span
+                          className="cell-meta"
+                          title={goldenQualityTitle(quality)}
+                        >
+                          {chip}
+                        </span>
+                      ) : (
+                        <span
+                          className="cell-meta"
+                          title={goldenQualityTitle("golden")}
+                        >
+                          golden
+                        </span>
+                      )}
+                    </td>
                     <td>
                       {t.delta !== null
                         ? `${t.delta >= 0 ? "+" : ""}${t.delta.toFixed(3)}`
@@ -632,7 +677,8 @@ export default async function ComparisonDetailPage({
                           : "flat"}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

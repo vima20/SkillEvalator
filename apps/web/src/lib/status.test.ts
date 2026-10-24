@@ -137,6 +137,8 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/StaleComparisonJsonModeCallout/);
     expect(detail).toMatch(/goldenTaskPassCounts/);
     expect(detail).toMatch(/Candidate tasks golden/);
+    expect(detail).toMatch(/taskGoldenQuality/);
+    expect(detail).toMatch(/candidateDiffRatio and candidateGoldenQuality/);
     expect(detail).toMatch(/const displayMode/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);
