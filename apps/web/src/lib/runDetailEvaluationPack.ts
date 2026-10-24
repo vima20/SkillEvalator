@@ -13,6 +13,7 @@ import {
   evaluationPairBrowseFromPacked,
   pairedAdoptionModesFromPacked,
   pairedEvalPreferOfficialFromPacked,
+  pilotArchiveAdoptionFromPacked,
   type EvaluationPairBrowseEntry,
 } from "@/lib/evaluationPairBrowse";
 import { loadEvaluationComparison } from "@/lib/evaluations";
@@ -175,6 +176,8 @@ export type RunDetailEvaluationPack = {
   comparisonMeta?: { label: string; title?: string };
   /** Tip-leg display mode (not stale comparison.json). */
   pairedDisplayMode?: string;
+  /** When on-disk comparison.json mode lags tip resolution. */
+  comparisonJsonMode?: string;
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;
@@ -262,6 +265,9 @@ export function loadRunDetailEvaluationPack(opts: {
     tipCandidateRunId,
     pairedDisplayMode,
   } = pairBrowse;
+  const comparisonJsonMode = packed.comparison
+    ? pilotArchiveAdoptionFromPacked(packed).comparisonJsonMode
+    : undefined;
   return {
     evaluationId,
     tipCandidateRunId,
@@ -270,6 +276,7 @@ export function loadRunDetailEvaluationPack(opts: {
     ...(comparisonProvisional ? { comparisonProvisional } : {}),
     ...(comparisonMeta ? { comparisonMeta } : {}),
     ...(pairedDisplayMode ? { pairedDisplayMode } : {}),
+    ...(comparisonJsonMode ? { comparisonJsonMode } : {}),
     ...pairedAdoptionModesFromPacked(packed),
     preferOfficialHandoff: pairedEvalPreferOfficialFromPacked(packed),
     ...csvFromResult(packed, pairBrowse),

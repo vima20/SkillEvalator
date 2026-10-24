@@ -318,6 +318,11 @@ describe("statusBadgeKind", () => {
     );
     expect(runDetail).toMatch(/adoptionModeLabel/);
     expect(runDetail).toMatch(/adoptionModeDesyncTitle/);
+    expect(runDetail).toMatch(/StaleComparisonJsonModeCallout/);
+    expect(runDetailPage).toMatch(/comparisonJsonMode/);
+    expect(runDetailApi).toMatch(/comparisonJsonMode/);
+    expect(detail).toMatch(/StaleComparisonJsonModeCallout/);
+    expect(benefitDetail).toMatch(/StaleComparisonJsonModeCallout/);
     // Benefit CTA stays visible while pairPending waiting still polls.
     expect(runDetail).toMatch(/\{result \? \(/);
     expect(runDetail).not.toMatch(/\{result && !polling \?/);

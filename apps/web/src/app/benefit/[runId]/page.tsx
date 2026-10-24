@@ -6,6 +6,7 @@ import {
 } from "@skillevalator/core";
 import { BenefitPairWaitingRefresh } from "@/components/BenefitPairWaitingRefresh";
 import { BenefitPending } from "@/components/BenefitPending";
+import { StaleComparisonJsonModeCallout } from "@/components/StaleComparisonJsonModeCallout";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
@@ -314,15 +315,10 @@ export default async function BenefitReportPage({
       ) : null}
 
       {comparisonJsonMode ? (
-        <div className="panel callout-warn">
-          <strong>Stale comparison.json mode on disk</strong>
-          <p>
-            Adoption mode is <code>{pairedDisplayMode}</code> from tip legs;
-            stored <code>comparison.json</code> mode is still{" "}
-            <code>{comparisonJsonMode}</code>. Exports and UI gates use tip
-            resolution (same as <code>MANIFEST</code> in pilot archive).
-          </p>
-        </div>
+        <StaleComparisonJsonModeCallout
+          adoptionMode={pairedDisplayMode}
+          comparisonJsonMode={comparisonJsonMode}
+        />
       ) : null}
 
       {!showHarness && result.capture?.env?.fakeProduce === true ? (

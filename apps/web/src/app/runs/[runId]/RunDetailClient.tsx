@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
+import { StaleComparisonJsonModeCallout } from "@/components/StaleComparisonJsonModeCallout";
 import { ExportDownloadButton } from "@/components/ExportDownloadButton";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import {
@@ -163,6 +164,7 @@ type Payload = {
   comparisonMeta?: { label: string; title?: string };
   /** Tip-leg pair mode (not stale comparison.json). */
   pairedDisplayMode?: string;
+  comparisonJsonMode?: string;
   metaMode?: string;
   baselineMode?: string;
   candidateMode?: string;
@@ -839,6 +841,13 @@ export function RunDetailClient({
           baselineRunId={data.pairHarness.baselineRunId}
           candidateRunId={data.pairHarness.candidateRunId}
           pilotFocus={pilotFocus}
+        />
+      ) : null}
+
+      {data.comparisonJsonMode && adoptionModeLabel ? (
+        <StaleComparisonJsonModeCallout
+          adoptionMode={adoptionModeLabel}
+          comparisonJsonMode={data.comparisonJsonMode}
         />
       ) : null}
 

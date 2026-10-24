@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
+import { StaleComparisonJsonModeCallout } from "@/components/StaleComparisonJsonModeCallout";
 import { EmptyState } from "@/components/EmptyState";
 import { ComparisonHarnessCallouts } from "@/components/ComparisonHarnessCallouts";
 import {
@@ -310,15 +311,10 @@ export default async function ComparisonDetailPage({
       ) : null}
 
       {comparisonJsonMode ? (
-        <div className="panel callout-warn">
-          <strong>Stale comparison.json mode on disk</strong>
-          <p>
-            Adoption mode is <code>{displayMode}</code> from tip legs; stored{" "}
-            <code>comparison.json</code> mode is still{" "}
-            <code>{comparisonJsonMode}</code>. Exports and UI gates use tip
-            resolution (same as <code>MANIFEST</code> in pilot archive).
-          </p>
-        </div>
+        <StaleComparisonJsonModeCallout
+          adoptionMode={displayMode}
+          comparisonJsonMode={comparisonJsonMode}
+        />
       ) : null}
 
       <ComparisonHarnessCallouts

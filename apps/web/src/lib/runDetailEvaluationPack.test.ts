@@ -142,6 +142,7 @@ describe("loadRunDetailEvaluationPack", () => {
         >,
     });
     expect(out.pairedDisplayMode).toBe("official");
+    expect(out.comparisonJsonMode).toBe("dry-run");
     expect(out.preferOfficialHandoff).toBe(true);
   });
 
