@@ -222,7 +222,6 @@ describe("runCsvExportGateFromPacked", () => {
     const out = runCsvExportGateFromPacked({
       result: {
         ...base,
-        mode: "dry-run",
         runId: "run_cand",
         evaluationId: "eval_stale",
       } as import("@skillevalator/core").RunResult,
@@ -235,6 +234,6 @@ describe("runCsvExportGateFromPacked", () => {
     expect(out.errorCode).toBe("run_csv_comparison_not_decisive");
     expect(out.adoptionMode).toBe("official");
     expect(out.comparisonJsonMode).toBe("dry-run");
-    expect(out.resultMode).toBe("dry-run");
+    expect(out.resultMode).toBe("official");
   });
 });
