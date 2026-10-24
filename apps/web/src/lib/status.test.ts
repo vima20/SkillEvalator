@@ -323,6 +323,7 @@ describe("statusBadgeKind", () => {
     expect(runDetail).toMatch(/adoptionModeLabel/);
     expect(runDetail).toMatch(/adoptionModeDesyncTitle/);
     expect(runDetail).toMatch(/goldenTaskPassCounts/);
+    expect(runDetail).toMatch(/maxDiffRatio/);
     expect(runDetail).toMatch(/taskGoldenQuality/);
     expect(runDetail).toMatch(/StaleComparisonJsonModeCallout/);
     expect(runDetailPage).toMatch(/comparisonJsonMode/);

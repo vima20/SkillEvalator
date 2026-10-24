@@ -268,5 +268,8 @@ describe("benefitReportToCsv", () => {
     expect(csv).toContain("PASS");
     expect(csv).toContain("r1");
     expect(csv).toContain("bug-01");
+    expect(csv).toContain("tasksGoldenPassed");
+    expect(csv).toContain("taskDiffRatio");
+    expect(csv).toContain("taskGoldenQuality");
   });
 });

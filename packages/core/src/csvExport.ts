@@ -230,10 +230,13 @@ export function benefitReportToCsv(
     "scoreSpread",
     "tasksPassed",
     "tasksTotal",
+    "tasksGoldenPassed",
     "taskId",
     "taskScore",
+    "taskDiffRatio",
     "taskStatus",
     "taskLabel",
+    "taskGoldenQuality",
     "costUsd",
     "latencyMs",
     "status",
@@ -255,6 +258,13 @@ export function benefitReportToCsv(
           },
         ];
   for (const t of tasks) {
+    const diffRatio =
+      "diffRatio" in t && typeof t.diffRatio === "number" ? t.diffRatio : "";
+    const goldenQuality =
+      "goldenQuality" in t
+        ? (t.goldenChip ??
+          (t.goldenQuality === "golden" ? "golden" : t.goldenQuality))
+        : "";
     lines.push(
       row([
         report.config.runId,
@@ -275,10 +285,13 @@ export function benefitReportToCsv(
         report.scorecard.scoreSpread,
         report.scorecard.tasksPassed,
         report.scorecard.tasksTotal,
+        report.scorecard.tasksGoldenPassed,
         t.taskId,
         t.score,
+        diffRatio,
         t.status,
         t.label,
+        goldenQuality,
         report.cost.costUsd,
         report.cost.latencyMs,
         report.cost.status,

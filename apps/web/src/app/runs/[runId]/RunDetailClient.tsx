@@ -1137,6 +1137,17 @@ export function RunDetailClient({
                 {goldenCounts.goldenPassed}/{goldenCounts.total}
               </span>
             </div>
+            {typeof result.subscores?.maxDiffRatio === "number" ? (
+              <div className="stat">
+                <span className="stat-label">Max diff</span>
+                <span
+                  className="stat-value"
+                  title="Worst per-task distance vs golden expected (official Strong ≤ 8%)"
+                >
+                  {formatDiffRatioPct(result.subscores.maxDiffRatio)}
+                </span>
+              </div>
+            ) : null}
             <div className="stat">
               <span className="stat-label">Mode</span>
               <span className="stat-value" title={adoptionModeTitle}>
