@@ -22,6 +22,7 @@ import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
+import { goldenQualityTitle } from "@/lib/scorecardGolden";
 import { healRunForRead } from "@/lib/healOrphans";
 import { loadEvaluationComparison } from "@/lib/evaluations";
 import { resultsDir } from "@/lib/paths";
@@ -558,9 +559,18 @@ export default async function BenefitReportPage({
           </span>
         </div>
         <div className="stat">
-          <span className="stat-label">Tasks</span>
+          <span className="stat-label">Tasks soft-pass</span>
           <span className="stat-value">
             {report.scorecard.tasksPassed}/{report.scorecard.tasksTotal}
+          </span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Tasks golden</span>
+          <span
+            className="stat-value"
+            title="Per-task score ≥ 0.99 and diff vs expected ≤ 8% (official adoption bar)"
+          >
+            {report.scorecard.tasksGoldenPassed}/{report.scorecard.tasksTotal}
           </span>
         </div>
       </div>
@@ -573,8 +583,10 @@ export default async function BenefitReportPage({
               <tr>
                 <th>Task</th>
                 <th>Score</th>
+                <th>Diff</th>
                 <th>Status</th>
                 <th>Label</th>
+                <th>Quality</th>
               </tr>
             </thead>
             <tbody>
@@ -585,10 +597,32 @@ export default async function BenefitReportPage({
                   </td>
                   <td>{t.score ?? "—"}</td>
                   <td>
+                    {typeof t.diffRatio === "number"
+                      ? `${(t.diffRatio * 100).toFixed(1)}%`
+                      : "—"}
+                  </td>
+                  <td>
                     <span className={statusBadgeClass(t.status)}>{t.status}</span>
                   </td>
                   <td>
                     <strong>{t.label}</strong>
+                  </td>
+                  <td>
+                    {t.goldenChip ? (
+                      <span
+                        className="cell-meta"
+                        title={goldenQualityTitle(t.goldenQuality)}
+                      >
+                        {t.goldenChip}
+                      </span>
+                    ) : (
+                      <span
+                        className="cell-meta"
+                        title={goldenQualityTitle("golden")}
+                      >
+                        golden
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

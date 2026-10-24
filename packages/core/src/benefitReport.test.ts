@@ -355,6 +355,8 @@ describe("benefitReport", () => {
     expect(report.rating.summary).toMatch(/Official passed/i);
     expect(report.rating.review).not.toMatch(/short of USE/i);
     expect(report.rating.review).not.toMatch(/Do not adopt the skill yet/i);
+    expect(report.scorecard.tasksGoldenPassed).toBe(1);
+    expect(report.scorecard.perTask[0]?.goldenQuality).toBe("golden");
   });
 
   it("applyPairedComparisonGate keeps USE on PASS only", () => {

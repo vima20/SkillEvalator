@@ -14,6 +14,7 @@ export * from "./results.js";
 export * from "./benefitReport.js";
 export * from "./jobQueueFs.js";
 export * from "./diffScore.js";
+export * from "./scorecardGolden.js";
 export * from "./costEstimate.js";
 export * from "./retryDedup.js";
 export * from "./evalRole.js";

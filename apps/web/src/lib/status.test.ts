@@ -200,6 +200,8 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/listRowAdoptionMode/);
     expect(benefitDetail).toMatch(/configModeLabel/);
     expect(benefitDetail).toMatch(/title=\{configModeTitle\}/);
+    expect(benefitDetail).toMatch(/tasksGoldenPassed/);
+    expect(benefitDetail).toMatch(/goldenQualityTitle/);
     expect(benefitDetail).toMatch(/pendingAdoptionMode/);
     expect(benefitDetail).toMatch(/pendingAdoptionModeTitle/);
     expect(benefitDetail).toMatch(/adoptionModeDesyncTitle/);
@@ -318,6 +320,8 @@ describe("statusBadgeKind", () => {
     );
     expect(runDetail).toMatch(/adoptionModeLabel/);
     expect(runDetail).toMatch(/adoptionModeDesyncTitle/);
+    expect(runDetail).toMatch(/goldenTaskPassCounts/);
+    expect(runDetail).toMatch(/taskGoldenQuality/);
     expect(runDetail).toMatch(/StaleComparisonJsonModeCallout/);
     expect(runDetailPage).toMatch(/comparisonJsonMode/);
     expect(runDetailApi).toMatch(/comparisonJsonMode/);

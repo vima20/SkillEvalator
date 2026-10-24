@@ -10,6 +10,12 @@ import {
 } from "./diffScore.js";
 import type { RunResult } from "./schema.js";
 import {
+  goldenQualityChip,
+  goldenTaskPassCounts,
+  taskGoldenQuality,
+  type TaskGoldenQuality,
+} from "./scorecardGolden.js";
+import {
   isUnitScore,
   labelForScore,
   listScorecardTaskIds,
@@ -52,8 +58,14 @@ function scorecardPerTaskRows(result: RunResult): BenefitReport["scorecard"]["pe
         score: null,
         status: "missing",
         label: "Fail" as const,
+        goldenQuality: "missing" as TaskGoldenQuality,
+        goldenChip: goldenQualityChip("missing")!,
       };
     }
+    const quality = taskGoldenQuality({
+      score: t.score,
+      diffRatio: t.diffRatio,
+    });
     return {
       taskId,
       score: t.score,
@@ -63,6 +75,11 @@ function scorecardPerTaskRows(result: RunResult): BenefitReport["scorecard"]["pe
           ? { meanDiffRatio: t.diffRatio, scoreSpread: 0 }
           : {}),
       }),
+      ...(typeof t.diffRatio === "number" ? { diffRatio: t.diffRatio } : {}),
+      goldenQuality: quality,
+      ...(goldenQualityChip(quality)
+        ? { goldenChip: goldenQualityChip(quality)! }
+        : {}),
     };
   });
 }
@@ -131,11 +148,15 @@ export type BenefitReport = {
     scoreSpread: number;
     tasksPassed: number;
     tasksTotal: number;
+    tasksGoldenPassed: number;
     perTask: Array<{
       taskId: string;
       score: number | null;
       status: string;
       label: ScoreLabel;
+      diffRatio?: number;
+      goldenQuality: TaskGoldenQuality;
+      goldenChip?: string;
     }>;
   };
   harnessChecks: {
@@ -902,9 +923,11 @@ export function buildBenefitReport(
 ): BenefitReport {
   const spread = result.scoreSpread ?? 0;
   const meanDiffRatio = result.subscores?.meanDiffRatio;
+  const maxDiffRatio = result.subscores?.maxDiffRatio;
   const labelOpts = {
     scoreSpread: spread,
     ...(typeof meanDiffRatio === "number" ? { meanDiffRatio } : {}),
+    ...(typeof maxDiffRatio === "number" ? { maxDiffRatio } : {}),
   };
   const coverageIssues = scorecardCoverageIssuesForResult(result);
   const scorecardBroken = coverageIssues.length > 0;
@@ -915,6 +938,10 @@ export function buildBenefitReport(
   const scorecardScore = scorecardBroken ? null : result.score;
   const perTask = scorecardPerTaskRows(result);
   const { passed: tasksPassed, total: tasksTotal } = taskScorecardPassCounts(
+    result.taskIds,
+    result.perTask,
+  );
+  const { goldenPassed: tasksGoldenPassed } = goldenTaskPassCounts(
     result.taskIds,
     result.perTask,
   );
@@ -963,6 +990,7 @@ export function buildBenefitReport(
       scoreSpread: spread,
       tasksPassed,
       tasksTotal,
+      tasksGoldenPassed,
       perTask,
     },
     harnessChecks: {

@@ -27,6 +27,13 @@ import {
 import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
 import { adoptionModeDesyncTitle } from "@/lib/evaluationPairBrowse";
+import {
+  formatDiffRatioPct,
+  goldenQualityChip,
+  goldenQualityTitle,
+  goldenTaskPassCounts,
+  taskGoldenQuality,
+} from "@/lib/scorecardGolden";
 import { benefitPairCtaLabel } from "@/lib/benefitListHints";
 import { benefitCtaHint } from "@/lib/runDetailHints";
 import {
@@ -604,6 +611,9 @@ export function RunDetailClient({
   const { passed, total } = result
     ? taskScorecardPassCounts(taskIds, result.perTask)
     : { passed: 0, total: 0 };
+  const goldenCounts = result
+    ? goldenTaskPassCounts(taskIds, result.perTask)
+    : { goldenPassed: 0, softPassed: 0, total: 0 };
   const displayScore = scorecardBroken ? null : (result?.score ?? null);
   const scorecardRows = result
     ? listScorecardTaskIds(taskIds, result.perTask).map((taskId) => {
@@ -1092,18 +1102,39 @@ export function RunDetailClient({
               </p>
             </div>
           ) : null}
-          <div className="stat-strip stat-strip-5">
+          {!scorecardBroken &&
+          result.mode === "official" &&
+          goldenCounts.goldenPassed < goldenCounts.total ? (
+            <div className="panel callout-warn" style={{ marginBottom: 12 }}>
+              <strong>Not all tasks are golden</strong>
+              <p style={{ marginBottom: 0 }}>
+                Official adoption needs every task ≥ 0.99 and within 8% of
+                expected output. Golden {goldenCounts.goldenPassed}/
+                {goldenCounts.total} — open Benefit for per-task diff.
+              </p>
+            </div>
+          ) : null}
+          <div className="stat-strip">
             <div className="stat">
-              <span className="stat-label">Tasks passed</span>
+              <span className="stat-label">Tasks soft-pass</span>
               <span
                 className="stat-value"
                 title={
                   scorecardBroken
                     ? "Counted against declared taskIds (missing ≠ passed)"
-                    : undefined
+                    : "Score ≥ 0.8 per declared task"
                 }
               >
                 {passed}/{total}
+              </span>
+            </div>
+            <div className="stat">
+              <span className="stat-label">Tasks golden</span>
+              <span
+                className="stat-value"
+                title="Score ≥ 0.99 and diff vs expected ≤ 8%"
+              >
+                {goldenCounts.goldenPassed}/{goldenCounts.total}
               </span>
             </div>
             <div className="stat">
@@ -1155,27 +1186,52 @@ export function RunDetailClient({
                       <th>Score</th>
                       <th>Diff</th>
                       <th>Status</th>
+                      <th>Quality</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {scorecardRows.map((t) => (
-                      <tr key={t.taskId}>
-                        <td>
-                          <code>{t.taskId}</code>
-                        </td>
-                        <td>{t.score ?? "—"}</td>
-                        <td>
-                          {typeof t.diffRatio === "number"
-                            ? `${(t.diffRatio * 100).toFixed(1)}%`
-                            : "—"}
-                        </td>
-                        <td>
-                          <span className={statusBadgeClass(t.status)}>
-                            {t.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {scorecardRows.map((t) => {
+                      const quality = taskGoldenQuality({
+                        score: t.score,
+                        diffRatio: t.diffRatio,
+                      });
+                      const chip = goldenQualityChip(quality);
+                      return (
+                        <tr key={t.taskId}>
+                          <td>
+                            <code>{t.taskId}</code>
+                          </td>
+                          <td>{t.score ?? "—"}</td>
+                          <td>
+                            {typeof t.diffRatio === "number"
+                              ? formatDiffRatioPct(t.diffRatio)
+                              : "—"}
+                          </td>
+                          <td>
+                            <span className={statusBadgeClass(t.status)}>
+                              {t.status}
+                            </span>
+                          </td>
+                          <td>
+                            {chip ? (
+                              <span
+                                className="cell-meta"
+                                title={goldenQualityTitle(quality)}
+                              >
+                                {chip}
+                              </span>
+                            ) : (
+                              <span
+                                className="cell-meta"
+                                title={goldenQualityTitle("golden")}
+                              >
+                                golden
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

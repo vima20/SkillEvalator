@@ -30,6 +30,10 @@
       "types": "./dist/scoring.d.ts",
       "import": "./dist/scoring.js"
     },
+    "./scorecardGolden": {
+      "types": "./dist/scorecardGolden.d.ts",
+      "import": "./dist/scorecardGolden.js"
+    },
     "./pairedAdoptionMode": {
       "types": "./dist/pairedAdoptionMode.d.ts",
       "import": "./dist/pairedAdoptionMode.js"
