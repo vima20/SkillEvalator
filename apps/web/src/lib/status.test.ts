@@ -133,6 +133,8 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/adoptionModeDesyncTitle/);
     expect(detail).toMatch(/comparisonJsonMode/);
     expect(detail).toMatch(/StaleComparisonJsonModeCallout/);
+    expect(detail).toMatch(/goldenTaskPassCounts/);
+    expect(detail).toMatch(/Candidate tasks golden/);
     expect(detail).toMatch(/const displayMode/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);

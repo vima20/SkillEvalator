@@ -214,6 +214,8 @@ describe("benefitReport", () => {
     expect(md).toContain("### Recommendation");
     expect(md).toContain("INCONCLUSIVE");
     expect(md).toMatch(/not proof of Cursor\/KH/i);
+    expect(md).toMatch(/Tasks golden/);
+    expect(md).toMatch(/\| Quality \|/);
   });
 
   it("gives 5 stars only on official pass with Comparison PASS", () => {

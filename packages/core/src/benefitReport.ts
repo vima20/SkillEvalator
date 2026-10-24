@@ -1080,13 +1080,19 @@ export function benefitReportToMarkdown(report: BenefitReport): string {
     "",
     `- Label: **${s.label}**`,
     `- Score: **${s.score ?? "—"}** (spread ${s.scoreSpread.toFixed(4)})`,
-    `- Tasks: ${s.tasksPassed}/${s.tasksTotal} passed`,
+    `- Tasks soft-pass: ${s.tasksPassed}/${s.tasksTotal}`,
+    `- Tasks golden: ${s.tasksGoldenPassed}/${s.tasksTotal}`,
     "",
-    "| Task | Score | Status | Label |",
-    "| --- | --- | --- | --- |",
-    ...s.perTask.map(
-      (t) => `| ${t.taskId} | ${t.score ?? "—"} | ${t.status} | ${t.label} |`,
-    ),
+    "| Task | Score | Diff | Status | Label | Quality |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...s.perTask.map((t) => {
+      const diff =
+        typeof t.diffRatio === "number"
+          ? `${(t.diffRatio * 100).toFixed(1)}%`
+          : "—";
+      const quality = t.goldenChip ?? "golden";
+      return `| ${t.taskId} | ${t.score ?? "—"} | ${diff} | ${t.status} | ${t.label} | ${quality} |`;
+    }),
     "",
     "## Harness checks",
     "",

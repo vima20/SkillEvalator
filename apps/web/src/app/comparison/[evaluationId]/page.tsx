@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { goldenTaskPassCounts } from "@skillevalator/core/scorecardGolden";
 import { syncStatusFromResult } from "@skillevalator/core";
 import { ComparisonPending } from "@/components/ComparisonPending";
 import { StaleComparisonJsonModeCallout } from "@/components/StaleComparisonJsonModeCallout";
@@ -175,6 +176,10 @@ export default async function ComparisonDetailPage({
   const provisionalPass = Boolean(comparisonProvisional);
   const verdictHeadline = comparisonMeta?.label ?? comparison.verdict;
   const preferOfficial = pairedEvalPreferOfficialFromPacked(packed);
+  const candidateGolden = goldenTaskPassCounts(
+    candidate.taskIds,
+    candidate.perTask,
+  );
   const confirmOfficialPairHref = withNewRunHandoff(
     pilotFocus,
     preferOfficial,
@@ -275,9 +280,10 @@ export default async function ComparisonDetailPage({
           <strong>{comparison.verdict}</strong> here is the paired lift gate
           (baseline↔candidate). Official PASS also needs candidate score ≥
           0.99 (Benefit USE floor), lift ≥ +5 pp, repeat scoreSpread ≤0.05 on
-          both legs, no per-task regressions vs baseline, every candidate task
-          soft-pass (≥0.8), and two independent official PASS pairs (1/2
-          provisional). Benefit USE needs confirmed official PASS; DO NOT USE
+          both legs, no per-task regressions vs baseline, every candidate task at
+          the USE floor (≥0.99, near-golden expected — see scorecard below), and
+          two independent official PASS pairs (1/2 provisional). Benefit USE
+          needs confirmed official PASS; DO NOT USE
           needs official FAIL
           {showOfficialDownloads ? (
             <>
@@ -390,6 +396,24 @@ export default async function ComparisonDetailPage({
         </div>
       ) : null}
 
+      {displayMode === "official" &&
+      candidateGolden.goldenPassed < candidateGolden.total ? (
+        <div className="panel callout-warn" style={{ marginTop: "1rem" }}>
+          <strong>Candidate tasks not all golden</strong>
+          <p style={{ marginBottom: 0 }}>
+            Official PASS needs every candidate task ≥ 0.99 and within 8% of
+            golden expected ({candidateGolden.goldenPassed}/
+            {candidateGolden.total} golden). Open{" "}
+            <Link
+              href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}
+            >
+              candidate run
+            </Link>{" "}
+            or Benefit for per-task diff.
+          </p>
+        </div>
+      ) : null}
+
       <div className="split" style={{ marginTop: "1.25rem" }}>
         <div className="panel">
           <h2>Scorecard</h2>
@@ -401,6 +425,14 @@ export default async function ComparisonDetailPage({
             <div>
               <dt>Candidate score</dt>
               <dd>{fmtScore(comparison.candidateScore)}</dd>
+            </div>
+            <div>
+              <dt>Candidate tasks golden</dt>
+              <dd
+                title="Per-task score ≥ 0.99 and diff vs expected ≤ 8%"
+              >
+                {candidateGolden.goldenPassed}/{candidateGolden.total}
+              </dd>
             </div>
             <div>
               <dt>Lift</dt>
