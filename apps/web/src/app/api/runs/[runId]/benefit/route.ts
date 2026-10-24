@@ -56,6 +56,12 @@ export async function GET(
             errorCode: gate.errorCode,
             recommendation: gate.recommendation,
             ...(gate.mode ? { mode: gate.mode } : {}),
+            ...(benefitExport?.comparisonMode
+              ? { comparisonMode: benefitExport.comparisonMode }
+              : {}),
+            ...(benefitExport?.comparisonJsonMode
+              ? { comparisonJsonMode: benefitExport.comparisonJsonMode }
+              : {}),
           },
           { status: gate.status },
         );

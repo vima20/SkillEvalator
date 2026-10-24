@@ -43,6 +43,10 @@ export async function GET(
           errorCode: gate.errorCode,
           verdict: gate.verdict,
           mode: gate.mode,
+          adoptionMode: exportCtx.adoptionMode,
+          ...(exportCtx.comparisonJsonMode
+            ? { comparisonJsonMode: exportCtx.comparisonJsonMode }
+            : {}),
           rationale: comparison.rationale,
         },
         { status: gate.status },

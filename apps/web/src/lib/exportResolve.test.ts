@@ -273,11 +273,18 @@ describe("resolveExportGetError", () => {
     expect(cmp).toMatch(/export_evaluation_meta_missing/);
     expect(cmp).toMatch(/export_comparison_not_ready/);
     expect(cmp).toMatch(/comparisonExportContextFromPacked/);
+    expect(cmp).toMatch(/adoptionMode: exportCtx\.adoptionMode/);
+    expect(cmp).toMatch(/comparisonJsonMode: exportCtx\.comparisonJsonMode/);
+    expect(benefit).toMatch(/comparisonMode: benefitExport\.comparisonMode/);
+    expect(benefit).toMatch(
+      /comparisonJsonMode: benefitExport\.comparisonJsonMode/,
+    );
     const archive = fs.readFileSync(
       path.join(cwd, "src/app/api/comparison/[evaluationId]/archive/route.ts"),
       "utf8",
     );
     expect(archive).toMatch(/comparisonExportContextFromPacked/);
+    expect(archive).toMatch(/adoptionMode: exportCtx\.adoptionMode/);
     expect(benefit).toMatch(/benefitExportContextFromPacked/);
   });
 });
