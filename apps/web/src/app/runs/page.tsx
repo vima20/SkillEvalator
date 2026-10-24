@@ -24,6 +24,10 @@ import { resultsDir } from "@/lib/paths";
 import { hasPendingEvaluations } from "@/lib/pendingEvaluations";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
 import {
+  goldenTaskPassCounts,
+  goldenTasksListTitle,
+} from "@/lib/scorecardGolden";
+import {
   candidateRunsListHint,
   runsListHintLabel,
 } from "@/lib/runsListHints";
@@ -196,6 +200,12 @@ export default async function RunsPage({
                     adoptionMode,
                     r.result?.mode,
                   );
+                  const golden = r.result
+                    ? goldenTaskPassCounts(
+                        r.result.taskIds,
+                        r.result.perTask,
+                      )
+                    : null;
                   return (
                     <tr key={r.runId}>
                       <td>
@@ -256,6 +266,17 @@ export default async function RunsPage({
                       </td>
                       <td>
                         <strong>{r.result?.score ?? "—"}</strong>
+                        {golden && golden.total > 0 ? (
+                          <div
+                            className="cell-meta"
+                            title={goldenTasksListTitle(
+                              golden.goldenPassed,
+                              golden.total,
+                            )}
+                          >
+                            golden {golden.goldenPassed}/{golden.total}
+                          </div>
+                        ) : null}
                       </td>
                       <td>
                         {r.result?.evalSkillGithubUrl ? (

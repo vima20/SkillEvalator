@@ -268,6 +268,8 @@ describe("statusBadgeKind", () => {
       path.join(cwd, "src/app/runs/page.tsx"),
       "utf8",
     );
+    expect(runsList).toMatch(/goldenTaskPassCounts/);
+    expect(runsList).toMatch(/goldenTasksListTitle/);
     expect(runsList).toMatch(/createEvaluationPairBrowseCache/);
     expect(runsList).toMatch(/listRowAdoptionMode/);
     expect(runsList).toMatch(

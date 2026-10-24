@@ -112,6 +112,10 @@ type Result = {
     completionTokens: number;
     totalTokens: number;
   };
+  subscores?: {
+    meanDiffRatio?: number;
+    maxDiffRatio?: number;
+  };
   capture?: {
     githubUrl?: string;
     promptHash?: string;
