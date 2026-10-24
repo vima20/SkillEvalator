@@ -190,6 +190,14 @@ describe("resolveExportGetError", () => {
     ).toMatch(/preferOfficialHandoff: pairedEvalPreferOfficialFromPacked/);
     expect(
       fs.readFileSync(
+        path.join(cwd, "src/lib/runDetailEvaluationPack.ts"),
+        "utf8",
+      ),
+    ).toMatch(
+      /comparisonExportContextFromBrowse\(packed, pairBrowse\)\.comparisonJsonMode/,
+    );
+    expect(
+      fs.readFileSync(
         path.join(cwd, "src/app/api/runs/[runId]/route.ts"),
         "utf8",
       ),
