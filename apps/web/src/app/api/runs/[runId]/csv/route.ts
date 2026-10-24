@@ -36,7 +36,15 @@ export async function GET(
     const gate = runCsvExportGateForRun({ runId, result, status });
     if (!gate.ok) {
       return NextResponse.json(
-        { error: gate.error, errorCode: gate.errorCode },
+        {
+          error: gate.error,
+          errorCode: gate.errorCode,
+          ...(gate.resultMode ? { mode: gate.resultMode } : {}),
+          ...(gate.adoptionMode ? { adoptionMode: gate.adoptionMode } : {}),
+          ...(gate.comparisonJsonMode
+            ? { comparisonJsonMode: gate.comparisonJsonMode }
+            : {}),
+        },
         { status: gate.status },
       );
     }

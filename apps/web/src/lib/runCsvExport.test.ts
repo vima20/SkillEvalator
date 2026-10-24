@@ -200,4 +200,41 @@ describe("runCsvExportGateFromPacked", () => {
       }).ok,
     ).toBe(true);
   });
+
+  it("409 carries tip adoption metadata when export is blocked", () => {
+    const packed = {
+      meta: {
+        mode: "dry-run",
+        baselineRunId: "run_base",
+        candidateRunId: "run_cand",
+      },
+      comparison: { verdict: "INCONCLUSIVE", mode: "dry-run" },
+      baseline: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      candidate: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+    } as PackedEvaluationBrowse;
+    const pairBrowse = evaluationPairBrowseFromPacked(packed);
+    const out = runCsvExportGateFromPacked({
+      result: {
+        ...base,
+        mode: "dry-run",
+        runId: "run_cand",
+        evaluationId: "eval_stale",
+      } as import("@skillevalator/core").RunResult,
+      evaluationId: "eval_stale",
+      packed,
+      pairBrowse,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("run_csv_comparison_not_decisive");
+    expect(out.adoptionMode).toBe("official");
+    expect(out.comparisonJsonMode).toBe("dry-run");
+    expect(out.resultMode).toBe("dry-run");
+  });
 });

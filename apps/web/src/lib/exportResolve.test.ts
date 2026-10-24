@@ -261,6 +261,8 @@ describe("resolveExportGetError", () => {
     );
     expect(runCsv).toMatch(/export_result_not_ready/);
     expect(runCsv).toMatch(/runCsvExportGateForRun/);
+    expect(runCsv).toMatch(/adoptionMode: gate\.adoptionMode/);
+    expect(runCsv).toMatch(/comparisonJsonMode: gate\.comparisonJsonMode/);
     const benefit = fs.readFileSync(
       path.join(cwd, "src/app/api/runs/[runId]/benefit/route.ts"),
       "utf8",

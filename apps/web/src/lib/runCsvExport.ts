@@ -155,19 +155,28 @@ export function runCsvExportGate(opts: {
 }
 
 /** Run CSV gate from an already-loaded evaluation pack (one pair browse). */
+export type RunCsvExportGateDenied = {
+  ok: false;
+  status: 409;
+  error: string;
+  errorCode: string;
+  /** result.json mode (may differ from tip adoptionMode). */
+  resultMode?: RunResult["mode"];
+  adoptionMode?: string;
+  comparisonJsonMode?: string;
+};
+
 export function runCsvExportGateFromPacked(opts: {
   result: RunResult;
   evaluationId: string | null;
   packed: PackedEvaluationBrowse | null;
   pairBrowse: EvaluationPairBrowseEntry | null;
-}):
-  | { ok: true }
-  | { ok: false; status: 409; error: string; errorCode: string } {
+}): { ok: true } | RunCsvExportGateDenied {
   const exportCtx =
     opts.packed && opts.pairBrowse
       ? comparisonExportContextFromBrowse(opts.packed, opts.pairBrowse)
       : null;
-  return runCsvExportGate({
+  const gate = runCsvExportGate({
     result: opts.result,
     evaluationId: opts.evaluationId,
     comparisonVerdict: opts.packed?.comparison?.verdict ?? null,
@@ -178,4 +187,13 @@ export function runCsvExportGateFromPacked(opts: {
     candidateRunId: opts.pairBrowse?.tipCandidateRunId ?? null,
     ...(exportCtx?.evidence ?? {}),
   });
+  if (gate.ok) return gate;
+  return {
+    ...gate,
+    resultMode: opts.result.mode,
+    ...(exportCtx?.adoptionMode ? { adoptionMode: exportCtx.adoptionMode } : {}),
+    ...(exportCtx?.comparisonJsonMode
+      ? { comparisonJsonMode: exportCtx.comparisonJsonMode }
+      : {}),
+  };
 }
