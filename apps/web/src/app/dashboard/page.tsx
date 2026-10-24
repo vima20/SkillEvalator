@@ -27,6 +27,10 @@ import {
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
+import {
+  goldenTaskPassCounts,
+  goldenTasksListTitle,
+} from "@/lib/scorecardGolden";
 import { listWindDownRunIds, runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +51,8 @@ type Row = {
   pairBlocked: boolean;
   pairPending?: "waiting" | "unavailable";
   comparisonMeta: { label: string; title?: string } | null;
+  tasksGoldenPassed?: number;
+  tasksTotal?: number;
 };
 
 /** Same fixed task set + model → compare different skill implementations. */
@@ -115,6 +121,10 @@ export default async function DashboardPage({
     ) {
       return [];
     }
+    const golden = goldenTaskPassCounts(
+      r.result.taskIds,
+      r.result.perTask,
+    );
     return [
       {
         runId: r.runId,
@@ -132,6 +142,12 @@ export default async function DashboardPage({
         pairBlocked: pair?.pairBlocked ?? false,
         comparisonMeta: pair?.comparisonMeta ?? null,
         ...(pairPending ? { pairPending } : {}),
+        ...(golden.total > 0
+          ? {
+              tasksGoldenPassed: golden.goldenPassed,
+              tasksTotal: golden.total,
+            }
+          : {}),
       },
     ];
   });
@@ -430,6 +446,19 @@ export default async function DashboardPage({
                           </td>
                           <td>
                             <strong>{r.score ?? "—"}</strong>
+                            {typeof r.tasksTotal === "number" &&
+                            r.tasksTotal > 0 ? (
+                              <div
+                                className="cell-meta"
+                                title={goldenTasksListTitle(
+                                  r.tasksGoldenPassed ?? 0,
+                                  r.tasksTotal,
+                                )}
+                              >
+                                golden {r.tasksGoldenPassed ?? 0}/
+                                {r.tasksTotal}
+                              </div>
+                            ) : null}
                           </td>
                           <td>
                             {(() => {

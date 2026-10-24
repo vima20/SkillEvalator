@@ -273,10 +273,14 @@ describe("statusBadgeKind", () => {
     expect(runsList).toMatch(
       /includeInPilotFocusRun\([\s\S]*?mode: listRowAdoptionMode\(pair/,
     );
+    expect(dashboard).toMatch(/goldenTaskPassCounts/);
+    expect(dashboard).toMatch(/goldenTasksListTitle/);
     expect(dashboard).toMatch(/listRowAdoptionMode/);
     expect(dashboard).toMatch(/adoptionModeDesyncTitle/);
     expect(benefitList).toMatch(/modeTitle/);
     expect(runsList).toMatch(/adoptionModeDesyncTitle/);
+    expect(benefitList).toMatch(/goldenTasksListTitle/);
+    expect(benefitList).toMatch(/tasksGoldenPassed/);
     expect(benefitList).toMatch(/listRowAdoptionMode/);
     expect(benefitList).toMatch(/pairedDisplayMode: adoptionMode/);
     expect(runDetail).toMatch(/benefitPairCtaLabel/);

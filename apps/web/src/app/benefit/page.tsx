@@ -33,6 +33,7 @@ import {
   withPilotFocus,
 } from "@/lib/pilotFocusHref";
 import { resolveListRunEvaluationId } from "@/lib/runDetailEvaluationPack";
+import { goldenTasksListTitle } from "@/lib/scorecardGolden";
 import { listWindDownRunIds, runIsActive } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -112,6 +113,8 @@ export default async function BenefitIndexPage({
         pairPending,
         comparisonMeta: pairBrowse?.comparisonMeta ?? null,
         verdictChipTone,
+        tasksGoldenPassed: report.scorecard.tasksGoldenPassed,
+        tasksTotal: report.scorecard.tasksTotal,
       };
     })
     // Tip / unpaired first; waiting / superseded / smoke last.
@@ -278,6 +281,17 @@ export default async function BenefitIndexPage({
                     </td>
                     <td>
                       <strong>{r.score ?? "—"}</strong>
+                      {r.tasksTotal > 0 ? (
+                        <div
+                          className="cell-meta"
+                          title={goldenTasksListTitle(
+                            r.tasksGoldenPassed,
+                            r.tasksTotal,
+                          )}
+                        >
+                          golden {r.tasksGoldenPassed}/{r.tasksTotal}
+                        </div>
+                      ) : null}
                     </td>
                     <td>
                       {r.kind === "smoke" ? (
