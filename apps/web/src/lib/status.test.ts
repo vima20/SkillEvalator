@@ -132,7 +132,7 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/displayModeTitle/);
     expect(detail).toMatch(/adoptionModeDesyncTitle/);
     expect(detail).toMatch(/comparisonJsonMode/);
-    expect(detail).toMatch(/Stale comparison\.json mode on disk/);
+    expect(detail).toMatch(/StaleComparisonJsonModeCallout/);
     expect(detail).toMatch(/const displayMode/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);
@@ -204,7 +204,7 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/pendingAdoptionModeTitle/);
     expect(benefitDetail).toMatch(/adoptionModeDesyncTitle/);
     expect(benefitDetail).toMatch(/pilotArchiveAdoptionFromPacked/);
-    expect(benefitDetail).toMatch(/Stale comparison\.json mode on disk/);
+    expect(benefitDetail).toMatch(/StaleComparisonJsonModeCallout/);
     expect(benefitDetail).toMatch(/provisionalPass/);
     expect(benefitDetail).toMatch(/benefitExportContextFromPacked/);
     expect(benefitDetail).toMatch(/comparisonProvisional/);
@@ -321,8 +321,6 @@ describe("statusBadgeKind", () => {
     expect(runDetail).toMatch(/StaleComparisonJsonModeCallout/);
     expect(runDetailPage).toMatch(/comparisonJsonMode/);
     expect(runDetailApi).toMatch(/comparisonJsonMode/);
-    expect(detail).toMatch(/StaleComparisonJsonModeCallout/);
-    expect(benefitDetail).toMatch(/StaleComparisonJsonModeCallout/);
     // Benefit CTA stays visible while pairPending waiting still polls.
     expect(runDetail).toMatch(/\{result \? \(/);
     expect(runDetail).not.toMatch(/\{result && !polling \?/);
