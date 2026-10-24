@@ -16,6 +16,7 @@ import {
   evaluationPairBrowseFromPacked,
   listRowAdoptionMode,
   pairedEvalPreferOfficialFromPacked,
+  pilotArchiveAdoptionFromPacked,
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
@@ -194,6 +195,10 @@ export default async function BenefitReportPage({
     pairedDisplayMode,
     report.config.mode,
   );
+  const comparisonJsonMode =
+    packed?.comparison
+      ? pilotArchiveAdoptionFromPacked(packed).comparisonJsonMode
+      : undefined;
   const newRunHref = withNewRunHandoff(pilotFocus, preferOfficial);
   const harnessBaselineId = tipBaselineRunId ?? meta?.baselineRunId ?? "";
   const harnessCandidateId = tipCandidateRunId ?? meta?.candidateRunId ?? runId;
@@ -306,7 +311,21 @@ export default async function BenefitReportPage({
           candidateRunId={harnessCandidateId}
           pilotFocus={pilotFocus}
         />
-      ) : result.capture?.env?.fakeProduce === true ? (
+      ) : null}
+
+      {comparisonJsonMode ? (
+        <div className="panel callout-warn">
+          <strong>Stale comparison.json mode on disk</strong>
+          <p>
+            Adoption mode is <code>{pairedDisplayMode}</code> from tip legs;
+            stored <code>comparison.json</code> mode is still{" "}
+            <code>{comparisonJsonMode}</code>. Exports and UI gates use tip
+            resolution (same as <code>MANIFEST</code> in pilot archive).
+          </p>
+        </div>
+      ) : null}
+
+      {!showHarness && result.capture?.env?.fakeProduce === true ? (
         <div className="panel callout-warn">
           <strong>Smoke harness (FAKE_PRODUCE)</strong>
           <p>
@@ -314,7 +333,7 @@ export default async function BenefitReportPage({
             model produce for Benefit USE / DO NOT USE.
           </p>
         </div>
-      ) : result.capture?.env?.produceAttested !== true ? (
+      ) : !showHarness && result.capture?.env?.produceAttested !== true ? (
         <div className="panel callout-warn">
           <strong>Not produce-attested</strong>
           <p>
