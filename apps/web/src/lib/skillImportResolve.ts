@@ -14,6 +14,7 @@ export type SkillImportErrorCode =
   | "skill_import_lock_busy"
   | "skill_import_path_not_found"
   | "skill_import_unsafe_archive"
+  | "skill_import_harness_missing"
   | "skill_import_failed";
 
 export type SkillImportPostErrorBody = {
@@ -35,6 +36,8 @@ export const SKILL_IMPORT_PATH_NOT_FOUND = "path not found in repo";
 export const SKILL_IMPORT_UNSAFE_ARCHIVE =
   "archive rejected (unsafe paths or file types)";
 export const SKILL_IMPORT_INVALID_REQUEST = "invalid request";
+export const SKILL_IMPORT_HARNESS_MISSING =
+  "Agent skill wrap needs eval-skills/code-debugging-eval on disk (cde-v1 harness)";
 export const SKILL_IMPORT_FAILED = "Import failed";
 
 const FAIL_CLOSED: Record<SkillImportErrorCode, string> = {
@@ -48,6 +51,7 @@ const FAIL_CLOSED: Record<SkillImportErrorCode, string> = {
   skill_import_lock_busy: SKILL_IMPORT_LOCK_BUSY,
   skill_import_path_not_found: SKILL_IMPORT_PATH_NOT_FOUND,
   skill_import_unsafe_archive: SKILL_IMPORT_UNSAFE_ARCHIVE,
+  skill_import_harness_missing: SKILL_IMPORT_HARNESS_MISSING,
   skill_import_failed: SKILL_IMPORT_FAILED,
 };
 
@@ -70,6 +74,9 @@ export function classifySkillImportError(message: string): {
   }
   if (error.includes("empty archive")) {
     return { status: 400, errorCode: "skill_import_empty_archive", error };
+  }
+  if (error.includes("Agent skill import needs")) {
+    return { status: 500, errorCode: "skill_import_harness_missing", error };
   }
   if (error.includes("No skills found") || error.includes("No SkillEvalator")) {
     return { status: 400, errorCode: "skill_import_no_skills_found", error };

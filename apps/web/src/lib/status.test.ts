@@ -619,3 +619,32 @@ describe("comparisonPendingState", () => {
     expect(g.orphanStuck).toBe(false);
   });
 });
+
+describe("skill import UI wires", () => {
+  it("surfaces agent wrap in Settings, New run, and API list", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const cwd = process.cwd();
+    const settings = fs.readFileSync(
+      path.join(cwd, "src/app/settings/SettingsClient.tsx"),
+      "utf8",
+    );
+    const newRun = fs.readFileSync(path.join(cwd, "src/app/NewRunForm.tsx"), "utf8");
+    const page = fs.readFileSync(path.join(cwd, "src/app/page.tsx"), "utf8");
+    const skillsApi = fs.readFileSync(
+      path.join(cwd, "src/app/api/skills/route.ts"),
+      "utf8",
+    );
+    const snapshot = fs.readFileSync(
+      path.join(cwd, "src/lib/settingsSnapshot.ts"),
+      "utf8",
+    );
+    expect(settings).toMatch(/agent wrap/);
+    expect(settings).toMatch(/wrappedFromAgentSkill/);
+    expect(newRun).toMatch(/agent wrap · cde-v1/);
+    expect(newRun).toMatch(/wrappedFromAgentSkill/);
+    expect(page).toMatch(/enrichSkillsWithImportMeta/);
+    expect(skillsApi).toMatch(/enrichSkillsWithImportMeta/);
+    expect(snapshot).toMatch(/readSkillImportMeta/);
+  });
+});

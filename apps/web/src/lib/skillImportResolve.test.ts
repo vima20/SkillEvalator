@@ -21,6 +21,16 @@ describe("classifySkillImportError", () => {
       },
     );
     expect(
+      classifySkillImportError(
+        "Agent skill import needs eval-skills/code-debugging-eval on disk (cde-v1 harness)",
+      ),
+    ).toEqual({
+      status: 500,
+      errorCode: "skill_import_harness_missing",
+      error:
+        "Agent skill import needs eval-skills/code-debugging-eval on disk (cde-v1 harness)",
+    });
+    expect(
       classifySkillImportError("No skills found — need fixtures/manifest.json or SKILL.md"),
     ).toMatchObject({
       status: 400,

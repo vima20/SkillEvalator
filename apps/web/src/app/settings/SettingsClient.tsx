@@ -544,8 +544,8 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             Read-only. Edit <code>SKILL.md</code> under{" "}
             <code>{s.paths.evalSkillsDir}</code> or re-import via{" "}
             <Link href={listNewRunHref(pilotFocus)}>New run</Link>{" "}
-            Find/Receive — then start a new evaluation (Retry keeps the pinned
-            snapshot).
+            Find/Receive (eval package or plain SKILL.md) — then start a new
+            evaluation (Retry keeps the pinned snapshot).
           </p>
           {s.skills.rows.length === 0 ? (
             <p className="hint">

@@ -9,6 +9,7 @@ Jos repossa tai zipissä on kansio **`SKILL.md`** ilman `fixtures/manifest.json`
 - tehtäväperhe **`cde-v1`** (code debugging, 8 tehtävää — sama kuin MVP [D1](./D1-TASK-FAMILY.md));
 - `fixtures/manifest.json` + `scripts/grade.js` kopioitu paikallisesta `eval-skills/code-debugging-eval`;
 - `.import.json` merkitään `wrappedFromAgentSkill: true`.
+- UI: **Settings → Skills on disk** badge `agent wrap`, New run skill-valikossa `(agent wrap · cde-v1)`.
 
 **Rajoitus:** promptti arvioidaan **debug-tehtävillä**, ei skillin omalla tehtävämaailmalla. Oma perhe vaatii täyden eval-paketin (alla). GitHub-URL voi osoittaa skill-kansioon tai `blob/.../SKILL.md` (import käyttää parent-kansiota).
 
