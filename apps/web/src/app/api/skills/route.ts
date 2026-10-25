@@ -71,10 +71,9 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
+      const wrapField = form.get("wrapProfile");
       const wrapProfile = normalizeAgentSkillWrapProfile(
-        typeof form.get("wrapProfile") === "string"
-          ? form.get("wrapProfile")
-          : undefined,
+        typeof wrapField === "string" ? wrapField : undefined,
       );
       const imported = importSkillsFromZip({
         zipBytes: buf,
