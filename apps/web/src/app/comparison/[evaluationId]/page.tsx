@@ -414,13 +414,23 @@ export default async function ComparisonDetailPage({
           <p style={{ marginBottom: 0 }}>
             Official PASS needs every candidate task ≥ 0.99 and within 8% of
             golden expected ({candidateGolden.goldenPassed}/
-            {candidateGolden.total} golden). Open{" "}
+            {candidateGolden.total} golden). See the per-task table below
+            {showOfficialDownloads
+              ? " or export Comparison CSV (golden audit columns)"
+              : ""}
+            ; open{" "}
             <Link
               href={withPilotFocus(`/runs/${candidateRunId}`, pilotFocus)}
             >
               candidate run
             </Link>{" "}
-            or Benefit for per-task diff.
+            or{" "}
+            <Link
+              href={withPilotFocus(`/benefit/${candidateRunId}`, pilotFocus)}
+            >
+              Benefit
+            </Link>{" "}
+            for the full scorecard.
           </p>
         </div>
       ) : null}

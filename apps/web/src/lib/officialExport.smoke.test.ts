@@ -163,6 +163,13 @@ describe("official export gates smoke", () => {
       }).ok,
     ).toBe(true);
     expect(comparisonCsvGate(comparison, liveTips).ok).toBe(true);
+    const comparisonCsv = comparisonToCsv(comparison, {
+      adoptionMode: "official",
+      ...liveTips,
+      candidatePerTask: [{ taskId: "bug-01", diffRatio: 0 }],
+    });
+    expect(comparisonCsv).toContain("candidateGoldenQuality");
+    expect(comparisonCsv).toContain("candidateTasksGoldenPassed");
     expect(
       pilotArchiveGate({
         comparison,

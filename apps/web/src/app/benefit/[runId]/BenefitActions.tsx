@@ -15,6 +15,7 @@ export function BenefitActions({
   evaluationId,
   exportAllowed,
   exportBlockReason,
+  comparisonCsvExportAllowed = false,
   pilotFocus = false,
 }: {
   runId: string;
@@ -24,6 +25,8 @@ export function BenefitActions({
   exportAllowed: boolean;
   /** Gate error text when exportAllowed is false (same as API 409). */
   exportBlockReason?: string | null;
+  /** Same gate as Comparison detail CSV (official PASS/FAIL evidence). */
+  comparisonCsvExportAllowed?: boolean;
   pilotFocus?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
@@ -85,8 +88,18 @@ export function BenefitActions({
               href={`/api/runs/${encodeURIComponent(runId)}/benefit?format=csv`}
               filename={`${runId}-benefit.csv`}
             >
-              Download CSV
+              Benefit CSV
             </ExportDownloadButton>
+            {comparisonCsvExportAllowed && evaluationId ? (
+              <ExportDownloadButton
+                className="btn btn-ghost btn-compact"
+                href={`/api/comparison/${encodeURIComponent(evaluationId)}/csv`}
+                filename={`${evaluationId}-comparison.csv`}
+                title="Per-task deltas; candidateDiffRatio and candidateGoldenQuality columns match Benefit CSV golden rules"
+              >
+                Comparison CSV
+              </ExportDownloadButton>
+            ) : null}
           </ExportDownloadRow>
         </>
       ) : (

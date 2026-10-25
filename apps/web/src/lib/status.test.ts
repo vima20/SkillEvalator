@@ -139,6 +139,7 @@ describe("statusBadgeKind", () => {
     expect(detail).toMatch(/Candidate tasks golden/);
     expect(detail).toMatch(/taskGoldenQuality/);
     expect(detail).toMatch(/candidateDiffRatio and candidateGoldenQuality/);
+    expect(detail).toMatch(/per-task table below/);
     expect(detail).toMatch(/const displayMode/);
     expect(detail).toMatch(/pairedEvalPreferOfficialFromPacked\(packed\)/);
     expect(detail).toMatch(/comparisonVerdictBannerClass/);
@@ -215,6 +216,14 @@ describe("statusBadgeKind", () => {
     expect(benefitDetail).toMatch(/StaleComparisonJsonModeCallout/);
     expect(benefitDetail).toMatch(/provisionalPass/);
     expect(benefitDetail).toMatch(/benefitExportContextFromPacked/);
+    expect(benefitDetail).toMatch(/comparisonCsvExportAllowed/);
+    expect(benefitDetail).toMatch(/comparisonCsvGate/);
+    const benefitActions = fs.readFileSync(
+      path.join(cwd, "src/app/benefit/[runId]/BenefitActions.tsx"),
+      "utf8",
+    );
+    expect(benefitActions).toMatch(/Comparison CSV/);
+    expect(benefitActions).toMatch(/candidateGoldenQuality/);
     expect(benefitDetail).toMatch(/comparisonProvisional/);
     expect(benefitDetail).toMatch(/comparisonVerdictBannerClass/);
     expect(benefitDetail).toMatch(/Confirm adoption — new official pair/);

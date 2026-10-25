@@ -20,6 +20,7 @@ import {
 } from "@/lib/evaluationPairBrowse";
 import { comparisonVerdictBannerClass } from "@/lib/comparisonVerdictDisplay";
 import { benefitExportGate } from "@/lib/benefitExport";
+import { comparisonCsvGate } from "@/lib/comparisonExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { exportGateBlockMessage } from "@/lib/exportResolve";
 import { goldenQualityTitle } from "@/lib/scorecardGolden";
@@ -167,6 +168,9 @@ export default async function BenefitReportPage({
   const exportBlockReason = exportGate.ok
     ? null
     : exportGateBlockMessage(exportGate);
+  const comparisonCsvExportAllowed =
+    Boolean(resolvedEvaluationId && comparison) &&
+    comparisonCsvGate(comparison!, pairExportEvidence).ok;
   const supersededTip =
     tipCandidateRunId && tipCandidateRunId !== runId
       ? tipCandidateRunId
@@ -268,6 +272,7 @@ export default async function BenefitReportPage({
             evaluationId={resolvedEvaluationId ?? undefined}
             exportAllowed={exportAllowed}
             exportBlockReason={exportBlockReason}
+            comparisonCsvExportAllowed={comparisonCsvExportAllowed}
             pilotFocus={pilotFocus}
           />
         </div>
