@@ -30,6 +30,8 @@ export type SettingsSkillRow = {
   githubUrl: string;
   license: string;
   commit?: string;
+  /** Imported from plain SKILL.md and auto-wrapped on cde-v1. */
+  wrappedFromAgentSkill?: boolean;
 };
 
 export type SettingsSnapshot = {

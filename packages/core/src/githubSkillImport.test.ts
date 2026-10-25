@@ -10,6 +10,7 @@ import {
   assertExtractSafe,
   importSkillsFromZip,
   parseGitHubSkillUrl,
+  readSkillImportMeta,
 } from "./githubSkillImport.js";
 import { findRepoRoot } from "./paths.js";
 
@@ -241,6 +242,9 @@ describe("importSkillsFromZip", () => {
       fs.readFileSync(path.join(dest, ".import.json"), "utf8"),
     ) as { wrappedFromAgentSkill?: boolean };
     expect(meta.wrappedFromAgentSkill).toBe(true);
+    expect(
+      readSkillImportMeta(path.join(work, "imported"), result.skills[0]!.importId),
+    ).toEqual({ wrappedFromAgentSkill: true, pageUrl: "local-zip:net-skill.zip" });
   });
 
   it("rejects zip with no SKILL.md or manifest", () => {

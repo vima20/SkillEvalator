@@ -32,6 +32,33 @@ export type GitHubSkillRef = {
   pageUrl: string;
 };
 
+/** Read `.import.json` written by Find/Receive (imported skills only). */
+export function readSkillImportMeta(
+  importedSkillsParentDir: string,
+  skillId: string,
+): { wrappedFromAgentSkill?: boolean; pageUrl?: string } | null {
+  try {
+    const root = resolveUnder(
+      importedSkillsParentDir,
+      assertSafeId(skillId, "evalSkillId"),
+    );
+    const metaPath = path.join(root, ".import.json");
+    if (!fs.existsSync(metaPath)) return null;
+    const raw = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
+      wrappedFromAgentSkill?: boolean;
+      pageUrl?: string;
+    };
+    return {
+      ...(raw.wrappedFromAgentSkill === true
+        ? { wrappedFromAgentSkill: true }
+        : {}),
+      ...(typeof raw.pageUrl === "string" ? { pageUrl: raw.pageUrl } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export type ImportedSkillInfo = SkillSummary & {
   importId: string;
   sourcePath: string;

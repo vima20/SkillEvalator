@@ -12,6 +12,7 @@ import {
   findRepoRoot,
   healAllOrphansFs,
   listSkills,
+  readSkillImportMeta,
   resolveDataPaths,
   staleOrphanRunningRunIds,
   type SkillSummary,
@@ -206,7 +207,12 @@ export function loadSettingsSnapshot(opts?: {
   const imported = importedRaw.filter((s) => !importedIds.has(s.id));
   const skillRows = [
     ...toSkillRows(bundled, "eval-skills"),
-    ...toSkillRows(imported, "imported"),
+    ...toSkillRows(imported, "imported").map((row) => {
+      const meta = readSkillImportMeta(data.importedSkillsDir, row.id);
+      return meta?.wrappedFromAgentSkill
+        ? { ...row, wrappedFromAgentSkill: true }
+        : row;
+    }),
   ].sort((a, b) => a.id.localeCompare(b.id));
 
   const webAuth = resolveWebAuthConfig(env.WEB_AUTH_TOKEN);

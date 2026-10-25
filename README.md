@@ -21,7 +21,7 @@ or
 
 Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` gates `/api/*` and pages (redirect to `/unlock` before RSC); the UI sets a `se_auth` cookie after unlock. An empty/whitespace `WEB_AUTH_TOKEN` is **misconfigured** (fail-closed) — set a real secret or remove the var.
 
-CI: `npm run ci` runs unit tests, `typecheck`, `smoke:skills`, `smoke:paired`, `smoke:official`, and `smoke:export`. New Run defaults to **baseline↔candidate**, cost estimate, and **Find/Receive** import (GitHub URL or local `.zip`).
+CI: `npm run ci` runs unit tests, `typecheck`, `smoke:skills`, `smoke:paired`, `smoke:official`, and `smoke:export`. New Run defaults to **baseline↔candidate**, cost estimate, and **Find/Receive** import (GitHub URL or local `.zip`; full eval package or plain **SKILL.md** auto-wrapped on `cde-v1`).
 
 D1 task family: [docs/D1-TASK-FAMILY.md](docs/D1-TASK-FAMILY.md).  
 Oma skill toisesta reposta: [docs/EVAL-SKILL-PACKAGE.md](docs/EVAL-SKILL-PACKAGE.md).  

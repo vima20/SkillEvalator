@@ -581,6 +581,15 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
                             ? "imported"
                             : "eval-skills"}
                         </span>
+                        {sk.wrappedFromAgentSkill ? (
+                          <span
+                            className="badge badge-wait"
+                            style={{ marginLeft: 6 }}
+                            title="Imported SKILL.md auto-wrapped on cde-v1 code-debugging tasks"
+                          >
+                            agent wrap
+                          </span>
+                        ) : null}
                       </td>
                       <td>
                         <code>{sk.taskSetId}</code>

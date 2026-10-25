@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listSkills } from "@skillevalator/core";
+import { enrichSkillsWithImportMeta } from "@/lib/skillListEnrich";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { skillsDirs } from "@/lib/paths";
@@ -20,7 +21,7 @@ export default async function NewRunPage({
   const sp = await searchParams;
   const pilotFocus = isPilotFocusParam(sp.focus);
   const preferOfficial = isOfficialModeParam(sp.mode);
-  const skills = listSkills(skillsDirs());
+  const skills = enrichSkillsWithImportMeta(listSkills(skillsDirs()));
 
   return (
     <div>

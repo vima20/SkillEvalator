@@ -375,6 +375,7 @@ export function NewRunForm({
             {skills.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.id}
+                {s.wrappedFromAgentSkill ? " (agent wrap · cde-v1)" : ""}
               </option>
             ))}
           </select>

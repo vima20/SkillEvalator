@@ -7,6 +7,7 @@ import {
   listSkills,
 } from "@skillevalator/core";
 import { importedSkillsDir, skillsDir, skillsDirs } from "@/lib/paths";
+import { enrichSkillsWithImportMeta } from "@/lib/skillListEnrich";
 import {
   SKILL_IMPORT_FILE_REQUIRED,
   SKILL_IMPORT_INVALID_REQUEST,
@@ -22,7 +23,9 @@ const ImportBody = z.object({
 });
 
 export async function GET() {
-  return NextResponse.json({ skills: listSkills(skillsDirs()) });
+  return NextResponse.json({
+    skills: enrichSkillsWithImportMeta(listSkills(skillsDirs())),
+  });
 }
 
 /**
