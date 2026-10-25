@@ -268,7 +268,7 @@ export default async function ComparisonDetailPage({
                 className="btn btn-ghost"
                 href={`/api/comparison/${encodeURIComponent(evaluationId)}/archive`}
                 filename={`${evaluationId}-pilot-archive.zip`}
-                title="Zip tip legs + evaluation + MANIFEST (git SHA)"
+                title="Zip tip legs, evaluation, comparison.json, MANIFEST (tip mode, git SHA, candidateTasksGoldenPassed/Total)"
               >
                 Download pilot archive
               </ExportDownloadButton>

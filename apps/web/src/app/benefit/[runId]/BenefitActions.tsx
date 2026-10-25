@@ -91,14 +91,24 @@ export function BenefitActions({
               Benefit CSV
             </ExportDownloadButton>
             {comparisonCsvExportAllowed && evaluationId ? (
-              <ExportDownloadButton
-                className="btn btn-ghost btn-compact"
-                href={`/api/comparison/${encodeURIComponent(evaluationId)}/csv`}
-                filename={`${evaluationId}-comparison.csv`}
-                title="Per-task deltas; candidateDiffRatio and candidateGoldenQuality columns match Benefit CSV golden rules"
-              >
-                Comparison CSV
-              </ExportDownloadButton>
+              <>
+                <ExportDownloadButton
+                  className="btn btn-ghost btn-compact"
+                  href={`/api/comparison/${encodeURIComponent(evaluationId)}/csv`}
+                  filename={`${evaluationId}-comparison.csv`}
+                  title="Per-task deltas; candidateDiffRatio and candidateGoldenQuality columns match Benefit CSV golden rules"
+                >
+                  Comparison CSV
+                </ExportDownloadButton>
+                <ExportDownloadButton
+                  className="btn btn-ghost btn-compact"
+                  href={`/api/comparison/${encodeURIComponent(evaluationId)}/archive`}
+                  filename={`${evaluationId}-pilot-archive.zip`}
+                  title="Zip tip legs, evaluation, comparison.json, MANIFEST (tip mode, git SHA, candidateTasksGoldenPassed/Total)"
+                >
+                  Pilot archive
+                </ExportDownloadButton>
+              </>
             ) : null}
           </ExportDownloadRow>
         </>
