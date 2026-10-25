@@ -24,6 +24,7 @@ Open http://127.0.0.1:30001 (bound to loopback only). Optional `WEB_AUTH_TOKEN` 
 CI: `npm run ci` runs unit tests, `typecheck`, `smoke:skills`, `smoke:paired`, `smoke:official`, and `smoke:export`. New Run defaults to **baseline↔candidate**, cost estimate, and **Find/Receive** import (GitHub URL or local `.zip`).
 
 D1 task family: [docs/D1-TASK-FAMILY.md](docs/D1-TASK-FAMILY.md).  
+Oma skill toisesta reposta: [docs/EVAL-SKILL-PACKAGE.md](docs/EVAL-SKILL-PACKAGE.md).  
 Live pilot: [docs/PILOT-CHECKLIST.md](docs/PILOT-CHECKLIST.md) · acceptance: [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).  
 In the UI, **Settings** shows `pilotReady`, preflight, adoption rules, git SHA, and the job queue.
 

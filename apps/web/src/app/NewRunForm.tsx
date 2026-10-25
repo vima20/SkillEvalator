@@ -391,7 +391,15 @@ export function NewRunForm({
           <p className="hint">
             Import a skill package (fixtures/manifest.json) into{" "}
             <code>data/imported-skills</code> — GitHub URL (ref/commit) or a
-            local <code>.zip</code> (offline / USB demo).
+            local <code>.zip</code> (offline / USB demo). Package layout:{" "}
+            <a
+              href="https://github.com/vima20/SkillEvalator/blob/main/docs/EVAL-SKILL-PACKAGE.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              eval-skill package guide
+            </a>
+            .
           </p>
           <div className="action-row" style={{ marginTop: 8, flexWrap: "wrap" }}>
             <button
