@@ -30,7 +30,15 @@ import {
   listRowAdoptionMode,
   pairedEvalPreferOfficialFromPacked,
 } from "@/lib/evaluationPairBrowse";
-import { officialComparisonExportGate } from "@/lib/comparisonExport";
+import {
+  COMPARISON_CSV_DOWNLOAD_TITLE,
+  PILOT_ARCHIVE_DOWNLOAD_TITLE,
+  comparisonCsvDownloadFilename,
+  comparisonCsvExportHref,
+  officialComparisonExportGate,
+  pilotArchiveDownloadFilename,
+  pilotArchiveExportHref,
+} from "@/lib/comparisonExport";
 import {
   loadEvaluationComparison,
   resolveTipBaselineRunId,
@@ -258,17 +266,17 @@ export default async function ComparisonDetailPage({
             <ExportDownloadRow>
               <ExportDownloadButton
                 className="btn btn-ghost"
-                href={`/api/comparison/${encodeURIComponent(evaluationId)}/csv`}
-                filename={`${evaluationId}-comparison.csv`}
-                title="Per-task deltas; candidateDiffRatio and candidateGoldenQuality columns match Benefit CSV golden rules"
+                href={comparisonCsvExportHref(evaluationId)}
+                filename={comparisonCsvDownloadFilename(evaluationId)}
+                title={COMPARISON_CSV_DOWNLOAD_TITLE}
               >
                 Download CSV
               </ExportDownloadButton>
               <ExportDownloadButton
                 className="btn btn-ghost"
-                href={`/api/comparison/${encodeURIComponent(evaluationId)}/archive`}
-                filename={`${evaluationId}-pilot-archive.zip`}
-                title="Zip tip legs, evaluation, comparison.json, MANIFEST (tip mode, git SHA, candidateTasksGoldenPassed/Total)"
+                href={pilotArchiveExportHref(evaluationId)}
+                filename={pilotArchiveDownloadFilename(evaluationId)}
+                title={PILOT_ARCHIVE_DOWNLOAD_TITLE}
               >
                 Download pilot archive
               </ExportDownloadButton>

@@ -6,6 +6,14 @@ import {
   ExportDownloadButton,
   ExportDownloadRow,
 } from "@/components/ExportDownloadButton";
+import {
+  COMPARISON_CSV_DOWNLOAD_TITLE,
+  PILOT_ARCHIVE_DOWNLOAD_TITLE,
+  comparisonCsvDownloadFilename,
+  comparisonCsvExportHref,
+  pilotArchiveDownloadFilename,
+  pilotArchiveExportHref,
+} from "@/lib/comparisonExport";
 import { EXPORT_BENEFIT_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 
@@ -94,17 +102,17 @@ export function BenefitActions({
               <>
                 <ExportDownloadButton
                   className="btn btn-ghost btn-compact"
-                  href={`/api/comparison/${encodeURIComponent(evaluationId)}/csv`}
-                  filename={`${evaluationId}-comparison.csv`}
-                  title="Per-task deltas; candidateDiffRatio and candidateGoldenQuality columns match Benefit CSV golden rules"
+                  href={comparisonCsvExportHref(evaluationId)}
+                  filename={comparisonCsvDownloadFilename(evaluationId)}
+                  title={COMPARISON_CSV_DOWNLOAD_TITLE}
                 >
                   Comparison CSV
                 </ExportDownloadButton>
                 <ExportDownloadButton
                   className="btn btn-ghost btn-compact"
-                  href={`/api/comparison/${encodeURIComponent(evaluationId)}/archive`}
-                  filename={`${evaluationId}-pilot-archive.zip`}
-                  title="Zip tip legs, evaluation, comparison.json, MANIFEST (tip mode, git SHA, candidateTasksGoldenPassed/Total)"
+                  href={pilotArchiveExportHref(evaluationId)}
+                  filename={pilotArchiveDownloadFilename(evaluationId)}
+                  title={PILOT_ARCHIVE_DOWNLOAD_TITLE}
                 >
                   Pilot archive
                 </ExportDownloadButton>

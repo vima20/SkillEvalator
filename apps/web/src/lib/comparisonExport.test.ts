@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  COMPARISON_CSV_DOWNLOAD_TITLE,
+  comparisonCsvExportHref,
   comparisonCsvGate,
+  comparisonEvidenceExportAllowed,
   officialComparisonExportGate,
+  pilotArchiveExportHref,
 } from "./comparisonExport.js";
 import { pilotArchiveGate } from "./pilotArchive.js";
 
@@ -107,5 +111,34 @@ describe("comparisonCsvGate", () => {
       officialComparisonExportGate(comparison, liveTips).ok,
     ).toBe(true);
     expect(officialComparisonExportGate(comparison).ok).toBe(false);
+  });
+});
+
+describe("comparison evidence download helpers", () => {
+  it("builds stable hrefs and filenames", () => {
+    expect(comparisonCsvExportHref("eval_1")).toBe(
+      "/api/comparison/eval_1/csv",
+    );
+    expect(pilotArchiveExportHref("eval_1")).toBe(
+      "/api/comparison/eval_1/archive",
+    );
+    expect(COMPARISON_CSV_DOWNLOAD_TITLE).toContain("candidateGoldenQuality");
+  });
+
+  it("comparisonEvidenceExportAllowed mirrors comparisonCsvGate", () => {
+    const comparison = { verdict: "PASS" as const, mode: "official" as const };
+    expect(
+      comparisonEvidenceExportAllowed("eval_x", comparison, liveTips),
+    ).toBe(true);
+    expect(comparisonEvidenceExportAllowed(null, comparison, liveTips)).toBe(
+      false,
+    );
+    expect(
+      comparisonEvidenceExportAllowed(
+        "eval_x",
+        { verdict: "INCONCLUSIVE", mode: "official" },
+        liveTips,
+      ),
+    ).toBe(false);
   });
 });
