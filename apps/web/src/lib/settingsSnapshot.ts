@@ -210,7 +210,13 @@ export function loadSettingsSnapshot(opts?: {
     ...toSkillRows(imported, "imported").map((row) => {
       const meta = readSkillImportMeta(data.importedSkillsDir, row.id);
       return meta?.wrappedFromAgentSkill
-        ? { ...row, wrappedFromAgentSkill: true }
+        ? {
+            ...row,
+            wrappedFromAgentSkill: true,
+            ...(meta.agentWrapProfile
+              ? { agentWrapProfile: meta.agentWrapProfile }
+              : {}),
+          }
         : row;
     }),
   ].sort((a, b) => a.id.localeCompare(b.id));

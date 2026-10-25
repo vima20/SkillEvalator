@@ -585,7 +585,7 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
                           <span
                             className="badge badge-wait"
                             style={{ marginLeft: 6 }}
-                            title="Imported SKILL.md auto-wrapped on cde-v1 code-debugging tasks"
+                            title={`Imported SKILL.md auto-wrapped on ${sk.agentWrapProfile ?? sk.taskSetId} tasks`}
                           >
                             agent wrap
                           </span>

@@ -5,6 +5,7 @@ import {
   importSkillsFromGitHub,
   importSkillsFromZip,
   listSkills,
+  normalizeAgentSkillWrapProfile,
 } from "@skillevalator/core";
 import { importedSkillsDir, skillsDir, skillsDirs } from "@/lib/paths";
 import { enrichSkillsWithImportMeta } from "@/lib/skillListEnrich";
@@ -20,6 +21,7 @@ export const dynamic = "force-dynamic";
 const ImportBody = z.object({
   url: z.string().min(3),
   ref: z.string().min(1).optional(),
+  wrapProfile: z.enum(["cde-v1", "tge-v1"]).optional(),
 });
 
 export async function GET() {
@@ -69,11 +71,17 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
+      const wrapProfile = normalizeAgentSkillWrapProfile(
+        typeof form.get("wrapProfile") === "string"
+          ? form.get("wrapProfile")
+          : undefined,
+      );
       const imported = importSkillsFromZip({
         zipBytes: buf,
         sourceLabel: name,
         importedSkillsDir: importedSkillsDir(),
         tasksetSearchDirs: [skillsDir()],
+        agentWrapProfile: wrapProfile,
       });
       return NextResponse.json({
         ok: true,
@@ -90,6 +98,7 @@ export async function POST(req: Request) {
       ref: body.ref,
       importedSkillsDir: importedSkillsDir(),
       tasksetSearchDirs: [skillsDir()],
+      agentWrapProfile: normalizeAgentSkillWrapProfile(body.wrapProfile),
     });
     return NextResponse.json({
       ok: true,

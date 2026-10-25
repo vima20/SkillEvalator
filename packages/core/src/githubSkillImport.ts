@@ -8,8 +8,10 @@ import { writeJsonFile } from "./fsJson.js";
 import { assertSafeId, resolveUnder } from "./paths.js";
 import { SkillManifestSchema } from "./schema.js";
 import {
+  type AgentSkillWrapProfile,
   applyAgentSkillHarness,
   findAgentSkillRoots,
+  normalizeAgentSkillWrapProfile,
   resolveAgentSkillHarnessTemplate,
 } from "./agentSkillWrap.js";
 import { loadSkill, type SkillSummary } from "./skill.js";
@@ -36,7 +38,11 @@ export type GitHubSkillRef = {
 export function readSkillImportMeta(
   importedSkillsParentDir: string,
   skillId: string,
-): { wrappedFromAgentSkill?: boolean; pageUrl?: string } | null {
+): {
+  wrappedFromAgentSkill?: boolean;
+  agentWrapProfile?: AgentSkillWrapProfile;
+  pageUrl?: string;
+} | null {
   try {
     const root = resolveUnder(
       importedSkillsParentDir,
@@ -46,11 +52,16 @@ export function readSkillImportMeta(
     if (!fs.existsSync(metaPath)) return null;
     const raw = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
       wrappedFromAgentSkill?: boolean;
+      agentWrapProfile?: string;
       pageUrl?: string;
     };
+    const profile =
+      raw.wrappedFromAgentSkill === true
+        ? normalizeAgentSkillWrapProfile(raw.agentWrapProfile)
+        : undefined;
     return {
       ...(raw.wrappedFromAgentSkill === true
-        ? { wrappedFromAgentSkill: true }
+        ? { wrappedFromAgentSkill: true, agentWrapProfile: profile }
         : {}),
       ...(typeof raw.pageUrl === "string" ? { pageUrl: raw.pageUrl } : {}),
     };
@@ -64,8 +75,9 @@ export type ImportedSkillInfo = SkillSummary & {
   sourcePath: string;
   ref: string;
   pageUrl: string;
-  /** True when import wrapped SKILL.md with the default cde-v1 eval harness. */
+  /** True when import wrapped SKILL.md with a bundled eval harness. */
   wrappedFromAgentSkill?: boolean;
+  agentWrapProfile?: AgentSkillWrapProfile;
 };
 
 /**
@@ -355,7 +367,9 @@ function installSkillsFromSearchRoot(opts: {
   importedSkillsDir: string;
   tasksetSearchDirs?: string[];
   source: InstallSource;
+  agentWrapProfile?: AgentSkillWrapProfile;
 }): ImportedSkillInfo[] {
+  const wrapProfile = normalizeAgentSkillWrapProfile(opts.agentWrapProfile);
   const manifestRoots = findManifestRoots(opts.searchRoot);
   const agentRoots =
     manifestRoots.length === 0
@@ -371,7 +385,10 @@ function installSkillsFromSearchRoot(opts: {
   }
 
   const harnessTemplateDir = wrapAgentSkills
-    ? resolveAgentSkillHarnessTemplate(opts.tasksetSearchDirs ?? [])
+    ? resolveAgentSkillHarnessTemplate(
+        opts.tasksetSearchDirs ?? [],
+        wrapProfile,
+      )
     : null;
 
   fs.mkdirSync(opts.importedSkillsDir, { recursive: true });
@@ -421,6 +438,7 @@ function installSkillsFromSearchRoot(opts: {
             harnessTemplateDir,
             githubUrl,
             commit: opts.source.commit,
+            profile: wrapProfile,
           });
         }
         const manifest = SkillManifestSchema.parse(
@@ -469,7 +487,9 @@ function installSkillsFromSearchRoot(opts: {
         sourcePath,
         pageUrl: opts.source.pageUrl,
         importedAt: new Date().toISOString(),
-        ...(wrapAgentSkills ? { wrappedFromAgentSkill: true } : {}),
+        ...(wrapAgentSkills
+          ? { wrappedFromAgentSkill: true, agentWrapProfile: wrapProfile }
+          : {}),
       });
 
       let loaded: ReturnType<typeof loadSkill>;
@@ -496,7 +516,9 @@ function installSkillsFromSearchRoot(opts: {
         sourcePath,
         ref: opts.source.refLabel,
         pageUrl: opts.source.pageUrl,
-        ...(wrapAgentSkills ? { wrappedFromAgentSkill: true } : {}),
+        ...(wrapAgentSkills
+          ? { wrappedFromAgentSkill: true, agentWrapProfile: wrapProfile }
+          : {}),
       });
     } finally {
       if (lockHeld) releaseWxLock(lockPath);
@@ -516,6 +538,7 @@ export async function importSkillsFromGitHub(opts: {
   /** Extra roots for shared tasksets/ (e.g. local eval-skills). */
   tasksetSearchDirs?: string[];
   ref?: string;
+  agentWrapProfile?: AgentSkillWrapProfile;
 }): Promise<{ ref: GitHubSkillRef; skills: ImportedSkillInfo[] }> {
   const gh = parseGitHubSkillUrl(opts.url, opts.ref ?? "main");
   if (opts.ref) gh.ref = opts.ref;
@@ -540,6 +563,7 @@ export async function importSkillsFromGitHub(opts: {
       contentRoot: repoRoot,
       importedSkillsDir: opts.importedSkillsDir,
       tasksetSearchDirs: opts.tasksetSearchDirs,
+      agentWrapProfile: opts.agentWrapProfile,
       source: {
         makeImportId: (folder) => importIdFor(gh, folder),
         refLabel: gh.ref,
@@ -574,6 +598,7 @@ export function importSkillsFromZip(opts: {
   sourceLabel: string;
   importedSkillsDir: string;
   tasksetSearchDirs?: string[];
+  agentWrapProfile?: AgentSkillWrapProfile;
 }): { sourceLabel: string; skills: ImportedSkillInfo[] } {
   const label = opts.sourceLabel.trim() || "local.zip";
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "se-zip-import-"));
@@ -610,6 +635,7 @@ export function importSkillsFromZip(opts: {
       contentRoot,
       importedSkillsDir: opts.importedSkillsDir,
       tasksetSearchDirs: opts.tasksetSearchDirs,
+      agentWrapProfile: opts.agentWrapProfile,
       source: {
         makeImportId: (folder) => importIdForLocal(folder, label),
         refLabel: "local-zip",

@@ -4,9 +4,14 @@ Tuonti: **New run → Find / Receive** (GitHub tai paikallinen `.zip`).
 
 ### Agent Skill verkosta (vain `SKILL.md`)
 
-Jos repossa tai zipissä on kansio **`SKILL.md`** ilman `fixtures/manifest.json`, import **käärii** skillin automaattisesti:
+Jos repossa tai zipissä on kansio **`SKILL.md`** ilman `fixtures/manifest.json`, import **käärii** skillin automaattisesti. New run → **SKILL.md wrap task family**:
 
-- tehtäväperhe **`cde-v1`** (code debugging, 8 tehtävää — sama kuin MVP [D1](./D1-TASK-FAMILY.md));
+| Profiili | Sisältö |
+| --- | --- |
+| **`cde-v1`** (oletus) | Code debugging — jaettu `eval-skills/tasksets/cde-v1`, 8 tehtävää ([D1](./D1-TASK-FAMILY.md)) |
+| **`tge-v1`** | Test generation — kopioi `test-generation-eval` fixturet skillin alle (6 tehtävää) |
+
+Molemmissa:
 - `fixtures/manifest.json` + `scripts/grade.js` kopioitu paikallisesta `eval-skills/code-debugging-eval`;
 - `.import.json` merkitään `wrappedFromAgentSkill: true`.
 - UI: **Settings → Skills on disk** badge `agent wrap`, New run skill-valikossa `(agent wrap · cde-v1)`.

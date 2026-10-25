@@ -63,4 +63,24 @@ describe("applyAgentSkillHarness", () => {
     expect(manifest.taskIds).toContain("bug-01");
     expect(fs.existsSync(path.join(dest, "scripts", "grade.js"))).toBe(true);
   });
+
+  it("installs tge-v1 fixtures from template", () => {
+    const repo = findRepoRoot(process.cwd());
+    const evalSkills = path.join(repo, "eval-skills");
+    const template = resolveAgentSkillHarnessTemplate([evalSkills], "tge-v1");
+    const dest = mkTemp("se-agent-tge-");
+    fs.writeFileSync(path.join(dest, "SKILL.md"), "# wrapped tge\n", "utf8");
+    applyAgentSkillHarness(dest, {
+      harnessTemplateDir: template,
+      githubUrl: "https://github.com/acme/skills/tree/main/tge-skill",
+      profile: "tge-v1",
+    });
+    expect(fs.existsSync(path.join(dest, "fixtures", "gen-01", "subject"))).toBe(
+      true,
+    );
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(dest, "fixtures", "manifest.json"), "utf8"),
+    ) as { taskSetId: string };
+    expect(manifest.taskSetId).toBe("tge-v1");
+  });
 });

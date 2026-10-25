@@ -30,8 +30,9 @@ export type SettingsSkillRow = {
   githubUrl: string;
   license: string;
   commit?: string;
-  /** Imported from plain SKILL.md and auto-wrapped on cde-v1. */
+  /** Imported from plain SKILL.md and auto-wrapped on a bundled task family. */
   wrappedFromAgentSkill?: boolean;
+  agentWrapProfile?: "cde-v1" | "tge-v1";
 };
 
 export type SettingsSnapshot = {

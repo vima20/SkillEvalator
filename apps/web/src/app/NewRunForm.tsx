@@ -34,6 +34,7 @@ export type SkillOption = {
   license?: string;
   dependencies?: string[];
   wrappedFromAgentSkill?: boolean;
+  agentWrapProfile?: "cde-v1" | "tge-v1";
 };
 
 type PreflightCheck = { ok: boolean; detail: string };
@@ -76,6 +77,9 @@ export function NewRunForm({
     "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
   );
   const [importZip, setImportZip] = useState<File | null>(null);
+  const [importWrapProfile, setImportWrapProfile] = useState<
+    "cde-v1" | "tge-v1"
+  >("cde-v1");
   const [importBusy, setImportBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState(false);
@@ -375,7 +379,9 @@ export function NewRunForm({
             {skills.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.id}
-                {s.wrappedFromAgentSkill ? " (agent wrap · cde-v1)" : ""}
+                {s.wrappedFromAgentSkill
+                  ? ` (agent wrap · ${s.agentWrapProfile ?? s.taskSetId})`
+                  : ""}
               </option>
             ))}
           </select>
@@ -393,8 +399,8 @@ export function NewRunForm({
           <p className="hint">
             Import into <code>data/imported-skills</code> — GitHub URL or local{" "}
             <code>.zip</code>. Full eval package (<code>fixtures/manifest.json</code>)
-            or plain <code>SKILL.md</code> (auto-wrapped on{" "}
-            <code>cde-v1</code> debug tasks). Layout:{" "}
+            or plain <code>SKILL.md</code> (auto-wrapped — pick task family
+            below). Layout:{" "}
             <a
               href="https://github.com/vima20/SkillEvalator/blob/main/docs/EVAL-SKILL-PACKAGE.md"
               target="_blank"
@@ -404,6 +410,28 @@ export function NewRunForm({
             </a>
             .
           </p>
+          <div className="field" style={{ marginTop: 8 }}>
+            <label htmlFor="importWrapProfile">
+              SKILL.md wrap task family (when no manifest)
+            </label>
+            <select
+              id="importWrapProfile"
+              value={importWrapProfile}
+              disabled={importBusy}
+              onChange={(e) =>
+                setImportWrapProfile(
+                  e.target.value === "tge-v1" ? "tge-v1" : "cde-v1",
+                )
+              }
+            >
+              <option value="cde-v1">
+                cde-v1 — code debugging (shared eval-skills/tasksets)
+              </option>
+              <option value="tge-v1">
+                tge-v1 — test generation (copies bundled fixtures)
+              </option>
+            </select>
+          </div>
           <div className="action-row" style={{ marginTop: 8, flexWrap: "wrap" }}>
             <button
               type="button"
@@ -418,7 +446,10 @@ export function NewRunForm({
                     const res = await apiFetch("/api/skills", {
                       method: "POST",
                       headers: { "content-type": "application/json" },
-                      body: JSON.stringify({ url: importUrl.trim() }),
+                      body: JSON.stringify({
+                        url: importUrl.trim(),
+                        wrapProfile: importWrapProfile,
+                      }),
                     });
                     const data = (await res.json()) as {
                       error?: string;
@@ -444,7 +475,7 @@ export function NewRunForm({
                     setMsg(
                       `Imported ${data.skills?.length ?? 0} skill(s) from GitHub` +
                         (wrapped
-                          ? " — SKILL.md wrapped on cde-v1 debug tasks"
+                          ? ` — SKILL.md wrapped on ${importWrapProfile}`
                           : ""),
                     );
                   } catch (err) {
@@ -490,6 +521,7 @@ export function NewRunForm({
                   try {
                     const body = new FormData();
                     body.append("file", importZip, importZip.name);
+                    body.append("wrapProfile", importWrapProfile);
                     const res = await apiFetch("/api/skills", {
                       method: "POST",
                       body,
@@ -518,7 +550,7 @@ export function NewRunForm({
                     setMsg(
                       `Imported ${data.skills?.length ?? 0} skill(s) from ${importZip.name}` +
                         (wrapped
-                          ? " — SKILL.md wrapped on cde-v1 debug tasks"
+                          ? ` — SKILL.md wrapped on ${importWrapProfile}`
                           : ""),
                     );
                     setImportZip(null);

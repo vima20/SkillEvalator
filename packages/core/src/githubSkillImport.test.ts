@@ -244,7 +244,11 @@ describe("importSkillsFromZip", () => {
     expect(meta.wrappedFromAgentSkill).toBe(true);
     expect(
       readSkillImportMeta(path.join(work, "imported"), result.skills[0]!.importId),
-    ).toEqual({ wrappedFromAgentSkill: true, pageUrl: "local-zip:net-skill.zip" });
+    ).toEqual({
+      wrappedFromAgentSkill: true,
+      agentWrapProfile: "cde-v1",
+      pageUrl: "local-zip:net-skill.zip",
+    });
   });
 
   it("rejects zip with no SKILL.md or manifest", () => {

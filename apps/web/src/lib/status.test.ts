@@ -641,7 +641,8 @@ describe("skill import UI wires", () => {
     );
     expect(settings).toMatch(/agent wrap/);
     expect(settings).toMatch(/wrappedFromAgentSkill/);
-    expect(newRun).toMatch(/agent wrap · cde-v1/);
+    expect(newRun).toMatch(/importWrapProfile/);
+    expect(newRun).toMatch(/wrapProfile/);
     expect(newRun).toMatch(/wrappedFromAgentSkill/);
     expect(page).toMatch(/enrichSkillsWithImportMeta/);
     expect(skillsApi).toMatch(/enrichSkillsWithImportMeta/);

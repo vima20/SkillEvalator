@@ -4,12 +4,20 @@ import { readRegularFileUtf8 } from "./fsSafe.js";
 import { writeJsonFile } from "./fsJson.js";
 import type { SkillManifest } from "./schema.js";
 
-/** Default task family when wrapping net / Agent skills (SKILL.md only). Keep in sync with code-debugging-eval. */
-export const AGENT_SKILL_WRAP_TASK_SET_ID = "cde-v1";
+/** Task family used when wrapping plain SKILL.md imports. */
+export type AgentSkillWrapProfile = "cde-v1" | "tge-v1";
 
-const WRAP_MANIFEST_BODY: Omit<SkillManifest, "githubUrl" | "commit"> = {
-  taskSetId: AGENT_SKILL_WRAP_TASK_SET_ID,
-  taskSetDir: AGENT_SKILL_WRAP_TASK_SET_ID,
+export const AGENT_SKILL_WRAP_PROFILES: AgentSkillWrapProfile[] = [
+  "cde-v1",
+  "tge-v1",
+];
+
+/** Default wrap profile (MVP code debugging). */
+export const AGENT_SKILL_WRAP_TASK_SET_ID: AgentSkillWrapProfile = "cde-v1";
+
+const WRAP_MANIFEST_CDE: Omit<SkillManifest, "githubUrl" | "commit"> = {
+  taskSetId: "cde-v1",
+  taskSetDir: "cde-v1",
   license: "UNLICENSED",
   dependencies: ["node"],
   taskIds: [
@@ -35,6 +43,51 @@ const WRAP_MANIFEST_BODY: Omit<SkillManifest, "githubUrl" | "commit"> = {
   },
 };
 
+const WRAP_MANIFEST_TGE: Omit<SkillManifest, "githubUrl" | "commit"> = {
+  taskSetId: "tge-v1",
+  license: "UNLICENSED",
+  dependencies: ["node"],
+  taskIds: ["gen-01", "gen-02", "gen-03", "gen-04", "gen-05", "gen-06"],
+  dryRunIds: ["gen-01", "gen-02", "gen-03"],
+  targetFile: {
+    "gen-01": "test.js",
+    "gen-02": "test.js",
+    "gen-03": "test.js",
+    "gen-04": "test.js",
+    "gen-05": "test.js",
+    "gen-06": "test.js",
+  },
+};
+
+const PROFILE_CONFIG: Record<
+  AgentSkillWrapProfile,
+  {
+    templateSkillId: string;
+    manifestBody: Omit<SkillManifest, "githubUrl" | "commit">;
+    /** Self-contained task fixtures copied from bundled eval-skill (tge). */
+    copyFixtureTasksFromTemplate: boolean;
+  }
+> = {
+  "cde-v1": {
+    templateSkillId: "code-debugging-eval",
+    manifestBody: WRAP_MANIFEST_CDE,
+    copyFixtureTasksFromTemplate: false,
+  },
+  "tge-v1": {
+    templateSkillId: "test-generation-eval",
+    manifestBody: WRAP_MANIFEST_TGE,
+    copyFixtureTasksFromTemplate: true,
+  },
+};
+
+export function normalizeAgentSkillWrapProfile(
+  raw?: string | null,
+): AgentSkillWrapProfile {
+  const v = raw?.trim();
+  if (v === "tge-v1") return "tge-v1";
+  return "cde-v1";
+}
+
 const SKIP_DIR_NAMES = new Set([
   "node_modules",
   ".git",
@@ -49,6 +102,25 @@ const SKIP_DIR_NAMES = new Set([
   "subject",
   "subject-bad",
 ]);
+
+function copyTreeNoSymlinks(src: string, dest: string): void {
+  const st = fs.lstatSync(src);
+  if (st.isSymbolicLink()) {
+    throw new Error(`symlink/junction not allowed: ${path.basename(src)}`);
+  }
+  if (st.isDirectory()) {
+    fs.mkdirSync(dest, { recursive: true });
+    for (const name of fs.readdirSync(src)) {
+      copyTreeNoSymlinks(path.join(src, name), path.join(dest, name));
+    }
+    return;
+  }
+  if (!st.isFile()) {
+    throw new Error(`unsupported file type: ${path.basename(src)}`);
+  }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(src, dest);
+}
 
 function skillMdLooksValid(skillMdPath: string): boolean {
   if (!fs.existsSync(skillMdPath)) return false;
@@ -97,19 +169,21 @@ export function findAgentSkillRoots(
   return found;
 }
 
-/** Bundled code-debugging-eval harness (grade.js) for wrapped imports. */
+/** Bundled eval-skill harness (grade.js + optional fixtures) for wrapped imports. */
 export function resolveAgentSkillHarnessTemplate(
   tasksetSearchDirs: string[],
+  profile: AgentSkillWrapProfile = "cde-v1",
 ): string {
+  const { templateSkillId } = PROFILE_CONFIG[profile];
   for (const dir of tasksetSearchDirs) {
-    const candidate = path.join(dir, "code-debugging-eval");
+    const candidate = path.join(dir, templateSkillId);
     const gradeJs = path.join(candidate, "scripts", "grade.js");
     if (fs.existsSync(gradeJs)) {
       return candidate;
     }
   }
   throw new Error(
-    "Agent skill import needs eval-skills/code-debugging-eval on disk (cde-v1 harness)",
+    `Agent skill import needs eval-skills/${templateSkillId} on disk (${profile} harness)`,
   );
 }
 
@@ -120,12 +194,26 @@ export function applyAgentSkillHarness(
     harnessTemplateDir: string;
     githubUrl: string;
     commit?: string;
+    profile?: AgentSkillWrapProfile;
   },
 ): void {
+  const profile = opts.profile ?? "cde-v1";
+  const config = PROFILE_CONFIG[profile];
   const fixturesDir = path.join(skillDestDir, "fixtures");
   fs.mkdirSync(fixturesDir, { recursive: true });
+
+  if (config.copyFixtureTasksFromTemplate) {
+    const srcFixtures = path.join(opts.harnessTemplateDir, "fixtures");
+    for (const name of fs.readdirSync(srcFixtures)) {
+      if (name === "manifest.json") continue;
+      const src = path.join(srcFixtures, name);
+      if (!fs.statSync(src).isDirectory()) continue;
+      copyTreeNoSymlinks(src, path.join(fixturesDir, name));
+    }
+  }
+
   writeJsonFile(path.join(fixturesDir, "manifest.json"), {
-    ...WRAP_MANIFEST_BODY,
+    ...config.manifestBody,
     githubUrl: opts.githubUrl,
     ...(opts.commit ? { commit: opts.commit } : {}),
   });
