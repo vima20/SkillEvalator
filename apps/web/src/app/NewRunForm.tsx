@@ -33,6 +33,7 @@ export type SkillOption = {
   commit?: string;
   license?: string;
   dependencies?: string[];
+  wrappedFromAgentSkill?: boolean;
 };
 
 type PreflightCheck = { ok: boolean; detail: string };
@@ -389,9 +390,10 @@ export function NewRunForm({
             placeholder="https://github.com/owner/repo/tree/ref/path"
           />
           <p className="hint">
-            Import a skill package (fixtures/manifest.json) into{" "}
-            <code>data/imported-skills</code> — GitHub URL (ref/commit) or a
-            local <code>.zip</code> (offline / USB demo). Package layout:{" "}
+            Import into <code>data/imported-skills</code> — GitHub URL or local{" "}
+            <code>.zip</code>. Full eval package (<code>fixtures/manifest.json</code>)
+            or plain <code>SKILL.md</code> (auto-wrapped on{" "}
+            <code>cde-v1</code> debug tasks). Layout:{" "}
             <a
               href="https://github.com/vima20/SkillEvalator/blob/main/docs/EVAL-SKILL-PACKAGE.md"
               target="_blank"
@@ -435,8 +437,14 @@ export function NewRunForm({
                     setSkills(next);
                     const first = data.skills?.[0]?.id;
                     if (first) setEvalSkillId(first);
+                    const wrapped = data.skills?.some(
+                      (s) => s.wrappedFromAgentSkill,
+                    );
                     setMsg(
-                      `Imported ${data.skills?.length ?? 0} skill(s) from GitHub`,
+                      `Imported ${data.skills?.length ?? 0} skill(s) from GitHub` +
+                        (wrapped
+                          ? " — SKILL.md wrapped on cde-v1 debug tasks"
+                          : ""),
                     );
                   } catch (err) {
                     if (err instanceof UnauthorizedError) return;
@@ -503,8 +511,14 @@ export function NewRunForm({
                     setSkills(next);
                     const first = data.skills?.[0]?.id;
                     if (first) setEvalSkillId(first);
+                    const wrapped = data.skills?.some(
+                      (s) => s.wrappedFromAgentSkill,
+                    );
                     setMsg(
-                      `Imported ${data.skills?.length ?? 0} skill(s) from ${importZip.name}`,
+                      `Imported ${data.skills?.length ?? 0} skill(s) from ${importZip.name}` +
+                        (wrapped
+                          ? " — SKILL.md wrapped on cde-v1 debug tasks"
+                          : ""),
                     );
                     setImportZip(null);
                   } catch (err) {

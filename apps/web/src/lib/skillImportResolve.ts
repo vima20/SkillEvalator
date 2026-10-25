@@ -28,7 +28,7 @@ export const SKILL_IMPORT_ARCHIVE_TOO_LARGE = "archive too large";
 export const SKILL_IMPORT_EMPTY_ARCHIVE = "empty archive";
 export const SKILL_IMPORT_GITHUB_URL_INVALID = "invalid GitHub URL";
 export const SKILL_IMPORT_NO_SKILLS_FOUND =
-  "No SkillEvalator skills found (need fixtures/manifest.json)";
+  "No skills found (need fixtures/manifest.json or SKILL.md)";
 export const SKILL_IMPORT_LOCK_BUSY =
   "import already in progress — try again shortly";
 export const SKILL_IMPORT_PATH_NOT_FOUND = "path not found in repo";
@@ -71,7 +71,7 @@ export function classifySkillImportError(message: string): {
   if (error.includes("empty archive")) {
     return { status: 400, errorCode: "skill_import_empty_archive", error };
   }
-  if (error.includes("No SkillEvalator")) {
+  if (error.includes("No skills found") || error.includes("No SkillEvalator")) {
     return { status: 400, errorCode: "skill_import_no_skills_found", error };
   }
   if (error.includes("path not found in repo")) {

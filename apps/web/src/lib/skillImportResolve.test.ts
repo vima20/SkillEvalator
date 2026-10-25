@@ -21,7 +21,7 @@ describe("classifySkillImportError", () => {
       },
     );
     expect(
-      classifySkillImportError("No SkillEvalator skills found (need fixtures)"),
+      classifySkillImportError("No skills found — need fixtures/manifest.json or SKILL.md"),
     ).toMatchObject({
       status: 400,
       errorCode: "skill_import_no_skills_found",

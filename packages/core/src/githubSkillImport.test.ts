@@ -11,6 +11,7 @@ import {
   importSkillsFromZip,
   parseGitHubSkillUrl,
 } from "./githubSkillImport.js";
+import { findRepoRoot } from "./paths.js";
 
 const temps: string[] = [];
 
@@ -213,11 +214,40 @@ describe("importSkillsFromZip", () => {
     ).toThrow(/empty archive/);
   });
 
-  it("rejects zip without SkillEvalator manifest", () => {
+  it("wraps zip with only SKILL.md using bundled cde-v1 harness", () => {
+    const work = mkTemp("se-zip-agent-");
+    const repo = findRepoRoot(process.cwd());
+    const evalSkills = path.join(repo, "eval-skills");
+    const pkg = path.join(work, "pkg", "net-skill");
+    fs.mkdirSync(pkg, { recursive: true });
+    fs.writeFileSync(path.join(pkg, "SKILL.md"), "# agent skill from zip\n", "utf8");
+    const zipPath = path.join(work, "net-skill.zip");
+    zipDir(path.join(work, "pkg"), zipPath);
+
+    const result = importSkillsFromZip({
+      zipPath,
+      sourceLabel: "net-skill.zip",
+      importedSkillsDir: path.join(work, "imported"),
+      tasksetSearchDirs: [evalSkills],
+    });
+    expect(result.skills).toHaveLength(1);
+    expect(result.skills[0]!.wrappedFromAgentSkill).toBe(true);
+    expect(result.skills[0]!.taskSetId).toBe("cde-v1");
+    const dest = path.join(work, "imported", result.skills[0]!.importId);
+    expect(fs.existsSync(path.join(dest, "fixtures", "manifest.json"))).toBe(
+      true,
+    );
+    const meta = JSON.parse(
+      fs.readFileSync(path.join(dest, ".import.json"), "utf8"),
+    ) as { wrappedFromAgentSkill?: boolean };
+    expect(meta.wrappedFromAgentSkill).toBe(true);
+  });
+
+  it("rejects zip with no SKILL.md or manifest", () => {
     const work = mkTemp("se-zip-nom-");
     const pkg = path.join(work, "pkg", "plain");
     fs.mkdirSync(pkg, { recursive: true });
-    fs.writeFileSync(path.join(pkg, "SKILL.md"), "# plain\n", "utf8");
+    fs.writeFileSync(path.join(pkg, "README.md"), "nothing\n", "utf8");
     const zipPath = path.join(work, "plain.zip");
     zipDir(path.join(work, "pkg"), zipPath);
 
@@ -227,7 +257,7 @@ describe("importSkillsFromZip", () => {
         sourceLabel: "plain.zip",
         importedSkillsDir: path.join(work, "imported"),
       }),
-    ).toThrow(/No SkillEvalator skills found/);
+    ).toThrow(/No skills found/);
   });
 
   it("steals a stale .importing lock after crash", () => {

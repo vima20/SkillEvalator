@@ -7,6 +7,11 @@ import { releaseWxLock, tryAcquireWxLock } from "./fsSafe.js";
 import { writeJsonFile } from "./fsJson.js";
 import { assertSafeId, resolveUnder } from "./paths.js";
 import { SkillManifestSchema } from "./schema.js";
+import {
+  applyAgentSkillHarness,
+  findAgentSkillRoots,
+  resolveAgentSkillHarnessTemplate,
+} from "./agentSkillWrap.js";
 import { loadSkill, type SkillSummary } from "./skill.js";
 
 /** Shared limit for GitHub download and local zip upload. */
@@ -32,6 +37,8 @@ export type ImportedSkillInfo = SkillSummary & {
   sourcePath: string;
   ref: string;
   pageUrl: string;
+  /** True when import wrapped SKILL.md with the default cde-v1 eval harness. */
+  wrappedFromAgentSkill?: boolean;
 };
 
 /**
@@ -322,13 +329,23 @@ function installSkillsFromSearchRoot(opts: {
   tasksetSearchDirs?: string[];
   source: InstallSource;
 }): ImportedSkillInfo[] {
-  const roots = findManifestRoots(opts.searchRoot);
+  const manifestRoots = findManifestRoots(opts.searchRoot);
+  const agentRoots =
+    manifestRoots.length === 0
+      ? findAgentSkillRoots(opts.searchRoot)
+      : [];
+  const roots =
+    manifestRoots.length > 0 ? manifestRoots : agentRoots;
+  const wrapAgentSkills = manifestRoots.length === 0 && agentRoots.length > 0;
   if (roots.length === 0) {
     throw new Error(
-      "No SkillEvalator skills found (need fixtures/manifest.json). " +
-        "Plain Agent Skills (SKILL.md only) cannot be graded until they ship an eval harness.",
+      "No skills found — need fixtures/manifest.json or a directory with SKILL.md",
     );
   }
+
+  const harnessTemplateDir = wrapAgentSkills
+    ? resolveAgentSkillHarnessTemplate(opts.tasksetSearchDirs ?? [])
+    : null;
 
   fs.mkdirSync(opts.importedSkillsDir, { recursive: true });
   const skills: ImportedSkillInfo[] = [];
@@ -365,6 +382,20 @@ function installSkillsFromSearchRoot(opts: {
 
       const manifestPath = path.join(dest, "fixtures", "manifest.json");
       try {
+        if (wrapAgentSkills && harnessTemplateDir) {
+          const fromRepo = opts.source.githubUrlFor?.(sourcePath);
+          const githubUrl =
+            fromRepo && fromRepo.startsWith("https://")
+              ? fromRepo
+              : opts.source.pageUrl.startsWith("https://")
+                ? opts.source.pageUrl
+                : `https://imported.skillevalator.local/${importId}`;
+          applyAgentSkillHarness(dest, {
+            harnessTemplateDir,
+            githubUrl,
+            commit: opts.source.commit,
+          });
+        }
         const manifest = SkillManifestSchema.parse(
           JSON.parse(fs.readFileSync(manifestPath, "utf8")),
         );
@@ -411,6 +442,7 @@ function installSkillsFromSearchRoot(opts: {
         sourcePath,
         pageUrl: opts.source.pageUrl,
         importedAt: new Date().toISOString(),
+        ...(wrapAgentSkills ? { wrappedFromAgentSkill: true } : {}),
       });
 
       let loaded: ReturnType<typeof loadSkill>;
@@ -437,6 +469,7 @@ function installSkillsFromSearchRoot(opts: {
         sourcePath,
         ref: opts.source.refLabel,
         pageUrl: opts.source.pageUrl,
+        ...(wrapAgentSkills ? { wrappedFromAgentSkill: true } : {}),
       });
     } finally {
       if (lockHeld) releaseWxLock(lockPath);

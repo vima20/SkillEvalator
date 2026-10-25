@@ -1,8 +1,18 @@
 # Eval-skill-paketti — minimi ja tuonti
 
-SkillEvalator ei aja mitä tahansa **Agent Skill** -tiedostoa verkosta. Tarvitaan **eval-harness**: `fixtures/manifest.json`, `SKILL.md`, tehtäväfixturet ja `scripts/grade.js`. Tuonti: **New run → Find / Receive** (GitHub tai paikallinen `.zip`).
+Tuonti: **New run → Find / Receive** (GitHub tai paikallinen `.zip`).
 
-Pelkkä `SKILL.md` ilman harnessia hylätään (`No SkillEvalator skills found`).
+### Agent Skill verkosta (vain `SKILL.md`)
+
+Jos repossa tai zipissä on kansio **`SKILL.md`** ilman `fixtures/manifest.json`, import **käärii** skillin automaattisesti:
+
+- tehtäväperhe **`cde-v1`** (code debugging, 8 tehtävää — sama kuin MVP [D1](./D1-TASK-FAMILY.md));
+- `fixtures/manifest.json` + `scripts/grade.js` kopioitu paikallisesta `eval-skills/code-debugging-eval`;
+- `.import.json` merkitään `wrappedFromAgentSkill: true`.
+
+**Rajoitus:** promptti arvioidaan **debug-tehtävillä**, ei skillin omalla tehtävämaailmalla. Oma perhe vaatii täyden eval-paketin (alla). GitHub-URL voi osoittaa skill-kansioon tai `blob/.../SKILL.md` (import käyttää parent-kansiota).
+
+Täysi eval-paketti (oma tehtäväsetti) — edelleen suositeltu tuotantotarkkuuteen:
 
 ## Kaksi rakennetta
 
