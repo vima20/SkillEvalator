@@ -1,6 +1,6 @@
 import type { AdoptionConfirmation } from "@skillevalator/core";
 
-import { isProvisionalOfficialPass } from "./comparisonVerdictDisplay.js";
+import { isProvisionalOfficialPass } from "@/lib/comparisonVerdictDisplay";
 
 /** Smoke plants, dry-run, unattested tips, and non-decisive official — not handoff. */
 export function isPilotNoiseEvaluation(opts: {
