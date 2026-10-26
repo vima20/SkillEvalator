@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   benefitReportToCsv,
   benefitReportToMarkdown,
+  comparisonAdoptionVerdict,
   loadRunResult,
   loadRunStatus,
 } from "@skillevalator/core";
@@ -79,7 +80,12 @@ export async function GET(
     if (format === "csv") {
       return new NextResponse(
         benefitReportToCsv(report, {
-          comparisonVerdict: comparison?.verdict,
+          comparisonVerdict: comparison
+            ? comparisonAdoptionVerdict(
+                comparison,
+                benefitExport?.comparisonMode ?? comparison.mode,
+              )
+            : undefined,
           comparisonMode:
             benefitExport?.comparisonMode ?? comparison?.mode,
           comparisonLift: comparison?.lift,

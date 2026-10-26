@@ -1,7 +1,8 @@
-import type {
-  AdoptionConfirmation,
-  ComparisonVerdict,
-  RunResult,
+import {
+  comparisonAdoptionVerdict,
+  type AdoptionConfirmation,
+  type ComparisonVerdict,
+  type RunResult,
 } from "@skillevalator/core";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 import {
@@ -176,10 +177,16 @@ export function runCsvExportGateFromPacked(opts: {
     opts.packed && opts.pairBrowse
       ? comparisonExportContextFromBrowse(opts.packed, opts.pairBrowse)
       : null;
+  const comparison = opts.packed?.comparison;
   const gate = runCsvExportGate({
     result: opts.result,
     evaluationId: opts.evaluationId,
-    comparisonVerdict: opts.packed?.comparison?.verdict ?? null,
+    comparisonVerdict: comparison
+      ? comparisonAdoptionVerdict(
+          comparison,
+          exportCtx?.adoptionMode ?? comparison.mode,
+        )
+      : null,
     comparisonMode: exportCtx?.adoptionMode ?? null,
     comparisonAdoptionConfirmation:
       opts.packed?.comparison?.adoptionConfirmation ?? null,

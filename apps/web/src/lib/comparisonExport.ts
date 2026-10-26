@@ -1,4 +1,9 @@
-import type { ComparisonVerdict, RunComparison, RunResult } from "@skillevalator/core";
+import {
+  comparisonAdoptionVerdict,
+  type ComparisonVerdict,
+  type RunComparison,
+  type RunResult,
+} from "@skillevalator/core";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 
@@ -37,7 +42,7 @@ export function officialComparisonExportGate(
   product: "comparison CSV export" | "pilot archive download" =
     "comparison CSV export",
 ): { ok: true } | OfficialComparisonExportDeny {
-  const { verdict, mode } = comparison;
+  const { mode } = comparison;
   const adoptionMode =
     pairedEvaluationAdoptionMode({
       comparisonMode: mode,
@@ -45,18 +50,19 @@ export function officialComparisonExportGate(
       baselineMode: evidence.baselineMode,
       candidateMode: evidence.candidateMode,
     }) ?? mode;
+  const adoptionVerdict = comparisonAdoptionVerdict(comparison, adoptionMode);
 
   if (adoptionMode !== "official") {
     return {
       ok: false,
       status: 409,
-      verdict,
+      verdict: adoptionVerdict,
       mode: adoptionMode,
       errorCode: "comparison_export_not_official",
       error: `${product} requires mode=official (dry-run is not adoption evidence)`,
     };
   }
-  if (verdict !== "PASS" && verdict !== "FAIL") {
+  if (adoptionVerdict !== "PASS" && adoptionVerdict !== "FAIL") {
     const confirm = comparison.adoptionConfirmation;
     const provisional = isAdoptionConfirmationPending(confirm)
       ? `provisional official PASS ${confirm!.step}/${confirm!.required}`
@@ -64,34 +70,21 @@ export function officialComparisonExportGate(
     return {
       ok: false,
       status: 409,
-      verdict,
+      verdict: adoptionVerdict,
       mode,
-      errorCode: "comparison_export_inconclusive",
+      errorCode: provisional
+        ? "comparison_export_provisional_pass"
+        : "comparison_export_inconclusive",
       error: provisional
         ? `${product} locked — ${provisional}; confirm with a second independent official pair before export`
         : `${product} requires PASS or FAIL verdict (not INCONCLUSIVE)`,
-    };
-  }
-  const pendingConfirm = comparison.adoptionConfirmation;
-  if (
-    verdict === "PASS" &&
-    isAdoptionConfirmationPending(pendingConfirm)
-  ) {
-    return {
-      ok: false,
-      status: 409,
-      verdict,
-      mode,
-      errorCode: "comparison_export_provisional_pass",
-      error:
-        `${product} locked — provisional official PASS ${pendingConfirm!.step}/${pendingConfirm!.required}; confirm with a second independent official pair before export`,
     };
   }
   if (evidence.metaSmoke === true) {
     return {
       ok: false,
       status: 409,
-      verdict,
+      verdict: adoptionVerdict,
       mode,
       errorCode: "comparison_export_smoke_forbidden",
       error: `${product} rejects evaluation.smoke=true (fixture plant)`,
@@ -101,7 +94,7 @@ export function officialComparisonExportGate(
     return {
       ok: false,
       status: 409,
-      verdict,
+      verdict: adoptionVerdict,
       mode,
       errorCode: "comparison_export_fake_produce_forbidden",
       error: `${product} rejects FAKE_PRODUCE tip legs (not live evidence)`,
@@ -114,7 +107,7 @@ export function officialComparisonExportGate(
     return {
       ok: false,
       status: 409,
-      verdict,
+      verdict: adoptionVerdict,
       mode,
       errorCode: "comparison_export_not_attested",
       error: `${product} requires produceAttested=true on both tip legs`,

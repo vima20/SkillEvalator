@@ -1,5 +1,8 @@
 import type { BenefitReport } from "./benefitReport.js";
-import type { RunComparison } from "./comparison.js";
+import {
+  comparisonAdoptionVerdict,
+  type RunComparison,
+} from "./comparison.js";
 import type { RunResult } from "./schema.js";
 import {
   goldenQualityChip,
@@ -160,6 +163,7 @@ export function comparisonToCsv(
   const { goldenPassed: candidateTasksGoldenPassed, total: candidateTasksGoldenTotal } =
     goldenTaskPassCounts(goldenTaskIds, goldenRows);
   const modeCell = tips.adoptionMode ?? comparison.mode;
+  const adoptionVerdict = comparisonAdoptionVerdict(comparison, modeCell);
   const common = [
     comparison.evaluationId,
     comparison.evalSkillId,
@@ -202,7 +206,7 @@ export function comparisonToCsv(
         t.improvement,
         t.baselineStatus,
         t.candidateStatus,
-        comparison.verdict,
+        adoptionVerdict,
         comparison.lift,
         comparison.parity.ok,
         parityIssues,
@@ -221,12 +225,12 @@ export function comparisonToCsv(
         "",
         comparison.baselineScore,
         comparison.candidateScore,
-        comparison.lift,
+        "",
         false,
         false,
         comparison.baselineStatus,
         comparison.candidateStatus,
-        comparison.verdict,
+        adoptionVerdict,
         comparison.lift,
         comparison.parity.ok,
         parityIssues,

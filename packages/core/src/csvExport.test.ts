@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildBenefitReport } from "./benefitReport.js";
-import { compareBaselineCandidate } from "./comparison.js";
+import {
+  applyOfficialPassConfirmationPolicy,
+  compareBaselineCandidate,
+} from "./comparison.js";
 import {
   benefitReportToCsv,
   comparisonToCsv,
@@ -249,6 +252,60 @@ describe("comparisonToCsv", () => {
     const csv = comparisonToCsv(cmp);
     expect(csv).toContain("INCONCLUSIVE");
     expect(csv).toContain("modelId mismatch");
+  });
+
+  it("verdict column is INCONCLUSIVE for provisional official PASS (not raw PASS)", () => {
+    const baseline = sample({
+      runId: "b",
+      role: "baseline",
+      score: 0.9,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      scoreSpread: 0,
+      capture: officialCapture("baseline"),
+    });
+    const candidate = sample({
+      runId: "c",
+      role: "candidate",
+      score: 1,
+      mode: "official",
+      modelId: "gpt-4.1-mini",
+      repeats: 3,
+      scoreSpread: 0,
+      perTask: [
+        {
+          taskId: "bug-01",
+          score: 1,
+          status: "ok",
+          scriptResults: [],
+          tokens: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+        },
+      ],
+      capture: officialCapture("candidate"),
+    });
+    const rawPass = compareBaselineCandidate(baseline, candidate, {
+      expectedGradeHash: TRUSTED_GRADE_HASH,
+      expectedBaselinePromptHash: "baselinehash0001",
+      expectedCandidatePromptHash: "candidatehash0002",
+      expectedBaselineEvalSkillVersion: "abc",
+      expectedCandidateEvalSkillVersion: "abc",
+      expectedBaselinePromptKind: "baseline_neutral" as const,
+      expectedCandidatePromptKind: "skill_md" as const,
+      expectedTaskSetId: "cde-v1",
+      expectedTaskIds: ["bug-01"],
+      expectedBaselineJob: jobAttestationFromRunResult(baseline)!,
+      expectedCandidateJob: jobAttestationFromRunResult(candidate)!,
+    });
+    expect(rawPass.verdict).toBe("PASS");
+    const provisional = applyOfficialPassConfirmationPolicy(rawPass, null)
+      .comparison;
+    expect(provisional.verdict).toBe("INCONCLUSIVE");
+    const csv = comparisonToCsv(provisional, { adoptionMode: "official" });
+    const header = csv.split("\n")[0]!;
+    const dataLine = csv.trim().split("\n")[1]!;
+    const verdictIdx = header.split(",").indexOf("verdict");
+    expect(dataLine.split(",")[verdictIdx]).toBe("INCONCLUSIVE");
   });
 
   it("uses adoptionMode for mode column when tip legs differ from comparison.json", () => {

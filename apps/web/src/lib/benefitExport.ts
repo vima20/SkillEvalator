@@ -1,9 +1,10 @@
-import type {
-  BenefitReport,
-  ComparisonVerdict,
-  RunComparison,
-  RunResult,
-  SkillUseVerdict,
+import {
+  comparisonAdoptionVerdict,
+  type BenefitReport,
+  type ComparisonVerdict,
+  type RunComparison,
+  type RunResult,
+  type SkillUseVerdict,
 } from "@skillevalator/core";
 import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
@@ -61,6 +62,12 @@ export function benefitExportGate(opts: {
       baselineMode: opts.baselineMode,
       candidateMode: opts.candidateMode,
     });
+  const comparisonAdoptionVerdictValue =
+    comparison &&
+    comparisonAdoptionVerdict(
+      comparison,
+      comparisonAdoptionMode ?? comparison.mode,
+    );
 
   if (opts.metaSmoke === true) {
     return {
@@ -128,37 +135,31 @@ export function benefitExportGate(opts: {
     };
   }
   if (recommendation === "use") {
+    const confirm = comparison?.adoptionConfirmation;
     if (
       comparisonAdoptionMode !== "official" ||
-      comparison.verdict !== ("PASS" satisfies ComparisonVerdict)
+      comparisonAdoptionVerdictValue !== ("PASS" satisfies ComparisonVerdict)
     ) {
+      const provisional =
+        isAdoptionConfirmationPending(confirm) && confirm
+          ? `benefit export USE locked — provisional official PASS ${confirm.step}/${confirm.required}; confirm with a second independent official pair`
+          : "benefit export USE requires official Comparison PASS";
       return {
         ok: false,
         status: 409,
-        errorCode: "benefit_export_comparison_pass_required",
+        errorCode: isAdoptionConfirmationPending(confirm)
+          ? "benefit_export_provisional_pass"
+          : "benefit_export_comparison_pass_required",
         recommendation,
         mode,
-        error:
-          "benefit export USE requires official Comparison PASS",
-      };
-    }
-    const confirm = comparison.adoptionConfirmation;
-    if (isAdoptionConfirmationPending(confirm) && confirm) {
-      return {
-        ok: false,
-        status: 409,
-        errorCode: "benefit_export_provisional_pass",
-        recommendation,
-        mode,
-        error:
-          `benefit export USE locked — provisional official PASS ${confirm.step}/${confirm.required}; confirm with a second independent official pair`,
+        error: provisional,
       };
     }
   }
   if (recommendation === "do_not_use") {
     if (
       comparisonAdoptionMode !== "official" ||
-      comparison.verdict !== ("FAIL" satisfies ComparisonVerdict)
+      comparisonAdoptionVerdictValue !== ("FAIL" satisfies ComparisonVerdict)
     ) {
       return {
         ok: false,

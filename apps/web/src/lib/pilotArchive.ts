@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   assertSafeId,
+  comparisonAdoptionVerdict,
   type RunComparison,
   writeJsonFile,
 } from "@skillevalator/core";
@@ -137,6 +138,10 @@ export function buildPilotArchiveZip(opts: {
     stageRunDir(opts.resultsDir, opts.candidateRunId, staging, "candidate");
 
     const adoptionMode = opts.adoptionMode ?? opts.comparison.mode;
+    const adoptionVerdict = comparisonAdoptionVerdict(
+      opts.comparison,
+      adoptionMode,
+    );
     const manifest = {
       kind: "skillevalator-pilot-archive",
       version: 1,
@@ -148,7 +153,7 @@ export function buildPilotArchiveZip(opts: {
       ...(adoptionMode !== opts.comparison.mode
         ? { comparisonJsonMode: opts.comparison.mode }
         : {}),
-      verdict: opts.comparison.verdict,
+      verdict: adoptionVerdict,
       lift: opts.comparison.lift,
       modelId: opts.comparison.modelId,
       baselineRunId: opts.baselineRunId,
