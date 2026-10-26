@@ -1579,6 +1579,87 @@ a.btn {
   border-color: color-mix(in srgb, var(--danger, #c44) 45%, var(--border));
 }
 
+.settings-editor-skill {
+  max-width: 620px;
+  margin: 14px 0 18px;
+}
+
+.settings-editor-field {
+  min-width: 0;
+  margin-top: 14px;
+}
+
+.settings-editor-field > span,
+.settings-editor-criteria h3 {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.settings-editor-field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: 12px/1.55 var(--font-mono, ui-monospace, monospace);
+  tab-size: 2;
+}
+
+.settings-editor-field textarea:focus-visible,
+.settings-editor-skill select:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+
+.settings-editor-criteria {
+  margin-top: 24px;
+}
+
+.settings-editor-criteria h3 {
+  margin: 0 0 6px;
+}
+
+.settings-editor-task {
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+}
+
+.settings-editor-task summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.settings-editor-task summary span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.settings-editor-task-body {
+  padding: 4px 0 16px 18px;
+}
+
+.settings-editor-warning {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--warn);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.settings-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
 .settings-dl {
   margin: 0;
   display: grid;

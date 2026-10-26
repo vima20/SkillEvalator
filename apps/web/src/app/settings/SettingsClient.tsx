@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
+import { SkillEditor } from "./SkillEditor";
 import { apiFetch, UnauthorizedError } from "@/lib/apiFetch";
 import { tryResolveAuthApiError } from "@/lib/authResolve";
 import {
@@ -161,9 +162,9 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
           <p className="eyebrow">Unikie · Pilot config</p>
           <h1>Settings</h1>
           <p>
-            Read-only view of root <code>.env</code> and adoption rules (no
-            secrets). Edit <code>.env</code> and restart web + worker to change
-            env values.
+            Environment values and adoption rules are shown here; secrets are
+            never displayed. Edit <code>.env</code> and restart web + worker to
+            change environment values.
           </p>
         </div>
         <div className="page-header-actions">
@@ -253,6 +254,8 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             .
           </p>
         </section>
+
+        <SkillEditor skills={s.skills.rows} />
 
         <section className="panel settings-panel">
           <h2>Build &amp; queue</h2>
@@ -541,11 +544,12 @@ export function SettingsClient(opts: { initial: SettingsSnapshot }) {
             </span>
           </div>
           <p className="hint">
-            Read-only. Edit <code>SKILL.md</code> under{" "}
-            <code>{s.paths.evalSkillsDir}</code> or re-import via{" "}
+            Edit a skill prompt and its task tests / golden criteria in the
+            editor above. You can also edit files under{" "}
+            <code>{s.paths.evalSkillsDir}</code> directly or re-import via{" "}
             <Link href={listNewRunHref(pilotFocus)}>New run</Link>{" "}
-            Find/Receive (eval package or plain SKILL.md) — then start a new
-            evaluation (Retry keeps the pinned snapshot).
+            Find/Receive. Start a new evaluation after editing; Retry keeps the
+            pinned snapshot.
           </p>
           {s.skills.rows.length === 0 ? (
             <p className="hint">

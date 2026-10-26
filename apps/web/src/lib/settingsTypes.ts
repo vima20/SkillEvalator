@@ -20,7 +20,7 @@ export type SettingsPreflightResult = {
   checkedAt: string;
 };
 
-/** Skill visible on Settings — read-only (edit on disk / re-import). */
+/** Skill visible in Settings, including its prompt and grading criteria editor. */
 export type SettingsSkillRow = {
   id: string;
   source: "eval-skills" | "imported";
