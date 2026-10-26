@@ -73,9 +73,7 @@ export function NewRunForm({
   const [repeats, setRepeats] = useState(1);
   /** Unikie: baseline (neutral) + candidate (SKILL.md) paired evaluation. */
   const [withBaseline, setWithBaseline] = useState(true);
-  const [importUrl, setImportUrl] = useState(
-    "https://github.com/vima20/SkillEvalator/tree/main/eval-skills/code-debugging-eval",
-  );
+  const [importUrl, setImportUrl] = useState("");
   const [importZip, setImportZip] = useState<File | null>(null);
   const [importWrapProfile, setImportWrapProfile] = useState<
     "cde-v1" | "tge-v1"
@@ -388,7 +386,7 @@ export function NewRunForm({
         </div>
 
         <div className="field">
-          <label htmlFor="importUrl">Find / Receive (GitHub or local zip)</label>
+          <label htmlFor="importUrl">Skill GitHub URL</label>
           <input
             id="importUrl"
             type="url"
@@ -467,8 +465,10 @@ export function NewRunForm({
                     }
                     const next = data.allSkills ?? skills;
                     setSkills(next);
-                    const first = data.skills?.[0]?.id;
-                    if (first) setEvalSkillId(first);
+                    const imported = data.skills?.[0];
+                    if (imported) {
+                      setEvalSkillId(imported.id);
+                    }
                     const wrapped = data.skills?.some(
                       (s) => s.wrappedFromAgentSkill,
                     );
@@ -542,8 +542,10 @@ export function NewRunForm({
                     }
                     const next = data.allSkills ?? skills;
                     setSkills(next);
-                    const first = data.skills?.[0]?.id;
-                    if (first) setEvalSkillId(first);
+                    const imported = data.skills?.[0];
+                    if (imported) {
+                      setEvalSkillId(imported.id);
+                    }
                     const wrapped = data.skills?.some(
                       (s) => s.wrappedFromAgentSkill,
                     );
@@ -575,30 +577,6 @@ export function NewRunForm({
                   : "Import zip"}
             </button>
           </div>
-        </div>
-
-        <div className="field">
-          <span className="field-label" id="githubUrlLabel">
-            Skill GitHub URL
-          </span>
-          {selected?.githubUrl ? (
-            <a
-              className="url-field"
-              href={selected.githubUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-labelledby="githubUrlLabel"
-            >
-              {selected.githubUrl}
-            </a>
-          ) : (
-            <div
-              className="url-field url-field-muted"
-              aria-labelledby="githubUrlLabel"
-            >
-              No GitHub URL in skill manifest
-            </div>
-          )}
         </div>
 
         <div className="field">
