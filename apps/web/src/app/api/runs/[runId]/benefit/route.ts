@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import {
   benefitReportToCsv,
   benefitReportToMarkdown,
-  comparisonAdoptionVerdict,
   loadRunResult,
   loadRunStatus,
 } from "@skillevalator/core";
+import { comparisonAdoptionVerdict } from "@skillevalator/core/comparisonAdoptionVerdict";
 import { benefitExportGate } from "@/lib/benefitExport";
 import { buildBenefitReportBundle } from "@/lib/benefitWithComparison";
 import { benefitExportContextFromPacked } from "@/lib/evaluationPairBrowse";

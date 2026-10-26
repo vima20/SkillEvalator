@@ -13,7 +13,7 @@ import {
   comparisonCsvExportHref,
   pilotArchiveDownloadFilename,
   pilotArchiveExportHref,
-} from "@/lib/comparisonExport";
+} from "@/lib/comparisonExportUi";
 import { EXPORT_BENEFIT_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { withPilotFocus } from "@/lib/pilotFocusHref";
 

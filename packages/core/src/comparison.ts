@@ -209,35 +209,9 @@ export function applyOfficialPassConfirmationPolicy(
   };
 }
 
-export type ComparisonVerdict = "PASS" | "FAIL" | "INCONCLUSIVE";
-
-/**
- * Adoption-facing verdict for CSV / MANIFEST / export gates — aligns with UI
- * (INCONCLUSIVE · 1/2, dry-run). Never PASS/FAIL when adoption mode is not
- * official or a confirming official pair is still pending.
- */
-export function comparisonAdoptionVerdict(
-  comparison: Pick<
-    RunComparison,
-    "verdict" | "mode" | "adoptionConfirmation"
-  >,
-  adoptionMode?: RunComparison["mode"],
-): ComparisonVerdict {
-  const mode = adoptionMode ?? comparison.mode;
-  if (mode !== "official") return "INCONCLUSIVE";
-  const confirm = comparison.adoptionConfirmation;
-  if (
-    confirm !== undefined &&
-    confirm !== null &&
-    confirm.step < confirm.required
-  ) {
-    return "INCONCLUSIVE";
-  }
-  if (comparison.verdict !== "PASS" && comparison.verdict !== "FAIL") {
-    return "INCONCLUSIVE";
-  }
-  return comparison.verdict;
-}
+import type { ComparisonVerdict } from "./comparisonAdoptionVerdict.js";
+export type { ComparisonVerdict } from "./comparisonAdoptionVerdict.js";
+export { comparisonAdoptionVerdict } from "./comparisonAdoptionVerdict.js";
 
 export type TaskRegression = {
   taskId: string;

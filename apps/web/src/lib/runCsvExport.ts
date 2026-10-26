@@ -1,9 +1,9 @@
-import {
-  comparisonAdoptionVerdict,
-  type AdoptionConfirmation,
-  type ComparisonVerdict,
-  type RunResult,
+import type {
+  AdoptionConfirmation,
+  ComparisonVerdict,
+  RunResult,
 } from "@skillevalator/core";
+import { comparisonAdoptionVerdict } from "@skillevalator/core/comparisonAdoptionVerdict";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 import {
   comparisonExportContextFromBrowse,

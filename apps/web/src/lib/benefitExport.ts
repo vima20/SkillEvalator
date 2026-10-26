@@ -1,11 +1,11 @@
-import {
-  comparisonAdoptionVerdict,
-  type BenefitReport,
-  type ComparisonVerdict,
-  type RunComparison,
-  type RunResult,
-  type SkillUseVerdict,
+import type {
+  BenefitReport,
+  ComparisonVerdict,
+  RunComparison,
+  RunResult,
+  SkillUseVerdict,
 } from "@skillevalator/core";
+import { comparisonAdoptionVerdict } from "@skillevalator/core/comparisonAdoptionVerdict";
 import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
-import { adoptionModeDesyncTitle } from "@/lib/evaluationPairBrowse";
+import { adoptionModeDesyncTitle } from "@/lib/pairedAdoptionMode";
 import {
   isPilotFocusParam,
   pairedEvalDisplayMode,

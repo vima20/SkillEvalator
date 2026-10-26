@@ -1,9 +1,5 @@
-import {
-  comparisonAdoptionVerdict,
-  type ComparisonVerdict,
-  type RunComparison,
-  type RunResult,
-} from "@skillevalator/core";
+import type { ComparisonVerdict, RunComparison, RunResult } from "@skillevalator/core";
+import { comparisonAdoptionVerdict } from "@skillevalator/core/comparisonAdoptionVerdict";
 import { isAdoptionConfirmationPending } from "@/lib/comparisonVerdictDisplay";
 import { pairedEvaluationAdoptionMode } from "@/lib/pairedAdoptionMode";
 
@@ -136,28 +132,14 @@ export function comparisonCsvGate(
   );
 }
 
-/** UI tooltips for Comparison evidence downloads (CSV + pilot archive). */
-export const COMPARISON_CSV_DOWNLOAD_TITLE =
-  "Per-task deltas; candidateDiffRatio and candidateGoldenQuality columns match Benefit CSV golden rules";
-
-export const PILOT_ARCHIVE_DOWNLOAD_TITLE =
-  "Zip tip legs, evaluation, comparison.json, MANIFEST (tip mode, git SHA, candidateTasksGoldenPassed/Total)";
-
-export function comparisonCsvExportHref(evaluationId: string): string {
-  return `/api/comparison/${encodeURIComponent(evaluationId)}/csv`;
-}
-
-export function pilotArchiveExportHref(evaluationId: string): string {
-  return `/api/comparison/${encodeURIComponent(evaluationId)}/archive`;
-}
-
-export function comparisonCsvDownloadFilename(evaluationId: string): string {
-  return `${evaluationId}-comparison.csv`;
-}
-
-export function pilotArchiveDownloadFilename(evaluationId: string): string {
-  return `${evaluationId}-pilot-archive.zip`;
-}
+export {
+  COMPARISON_CSV_DOWNLOAD_TITLE,
+  PILOT_ARCHIVE_DOWNLOAD_TITLE,
+  comparisonCsvDownloadFilename,
+  comparisonCsvExportHref,
+  pilotArchiveDownloadFilename,
+  pilotArchiveExportHref,
+} from "./comparisonExportUi";
 
 export function comparisonEvidenceExportAllowed(
   evaluationId: string | null | undefined,

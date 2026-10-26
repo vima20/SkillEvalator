@@ -26,7 +26,7 @@ import {
 } from "@/lib/pilotFocusHref";
 import { EXPORT_RUN_CSV_LOCKED_FALLBACK } from "@/lib/exportResolve";
 import { formatRetryCostBlockedReason } from "@/lib/retryCostAdmissionCopy";
-import { adoptionModeDesyncTitle } from "@/lib/evaluationPairBrowse";
+import { adoptionModeDesyncTitle } from "@/lib/pairedAdoptionMode";
 import {
   formatDiffRatioPct,
   goldenQualityChip,

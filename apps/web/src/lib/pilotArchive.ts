@@ -2,12 +2,8 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {
-  assertSafeId,
-  comparisonAdoptionVerdict,
-  type RunComparison,
-  writeJsonFile,
-} from "@skillevalator/core";
+import { assertSafeId, type RunComparison, writeJsonFile } from "@skillevalator/core";
+import { comparisonAdoptionVerdict } from "@skillevalator/core/comparisonAdoptionVerdict";
 import {
   officialComparisonExportGate,
   type OfficialComparisonEvidence,

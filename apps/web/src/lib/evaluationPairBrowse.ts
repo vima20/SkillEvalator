@@ -98,15 +98,7 @@ export function listRowAdoptionMode(
   return resolvedPairedDisplayModeFromBrowse(pairBrowse) ?? resultMode ?? "—";
 }
 
-/** Tooltip when tip adoption mode disagrees with result.json mode. */
-export function adoptionModeDesyncTitle(
-  adoptionMode: string | null | undefined,
-  resultMode?: string | null,
-): string | undefined {
-  if (!adoptionMode || adoptionMode === "—") return undefined;
-  if (!resultMode || adoptionMode === resultMode) return undefined;
-  return `result.json mode is ${resultMode}; tip pair adoption mode is ${adoptionMode}`;
-}
+export { adoptionModeDesyncTitle } from "./pairedAdoptionMode";
 
 /** Exported CSV metadata — same resolution as export gates. */
 export function pairedAdoptionComparisonMode(

@@ -37,6 +37,10 @@
     "./pairedAdoptionMode": {
       "types": "./dist/pairedAdoptionMode.d.ts",
       "import": "./dist/pairedAdoptionMode.js"
+    },
+    "./comparisonAdoptionVerdict": {
+      "types": "./dist/comparisonAdoptionVerdict.d.ts",
+      "import": "./dist/comparisonAdoptionVerdict.js"
     }
   },
   "scripts": {
