@@ -645,7 +645,10 @@ describe("skill import UI wires", () => {
     expect(newRun).toMatch(/wrapProfile/);
     expect(newRun).toMatch(/wrappedFromAgentSkill/);
     expect(page).toMatch(/enrichSkillsWithImportMeta/);
-    expect(skillsApi).toMatch(/enrichSkillsWithImportMeta/);
+    expect(skillsApi).toMatch(/enrichSkillsWithImportMeta\(listSkills/);
+    expect(skillsApi.match(/enrichSkillsWithImportMeta/g)?.length).toBeGreaterThanOrEqual(
+      2,
+    );
     expect(snapshot).toMatch(/readSkillImportMeta/);
   });
 });

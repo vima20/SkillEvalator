@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   applyAgentSkillHarness,
   findAgentSkillRoots,
+  normalizeAgentSkillWrapProfile,
   resolveAgentSkillHarnessTemplate,
 } from "./agentSkillWrap.js";
 import { findRepoRoot } from "./paths.js";
@@ -21,6 +22,15 @@ function mkTemp(prefix: string): string {
   temps.push(d);
   return d;
 }
+
+describe("normalizeAgentSkillWrapProfile", () => {
+  it("defaults unknown values to cde-v1", () => {
+    expect(normalizeAgentSkillWrapProfile(undefined)).toBe("cde-v1");
+    expect(normalizeAgentSkillWrapProfile("")).toBe("cde-v1");
+    expect(normalizeAgentSkillWrapProfile("nope")).toBe("cde-v1");
+    expect(normalizeAgentSkillWrapProfile("tge-v1")).toBe("tge-v1");
+  });
+});
 
 describe("findAgentSkillRoots", () => {
   it("finds SKILL.md folders without manifest", () => {

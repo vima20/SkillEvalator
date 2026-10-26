@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         source: "local-zip",
         sourceLabel: imported.sourceLabel,
         skills: imported.skills,
-        allSkills: listSkills(skillsDirs()),
+        allSkills: enrichSkillsWithImportMeta(listSkills(skillsDirs())),
       });
     }
 
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
       source: "github",
       ref: imported.ref,
       skills: imported.skills,
-      allSkills: listSkills(skillsDirs()),
+      allSkills: enrichSkillsWithImportMeta(listSkills(skillsDirs())),
     });
   } catch (err) {
     if (err instanceof ZodError) {
