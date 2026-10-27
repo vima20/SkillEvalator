@@ -64,6 +64,23 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
     }),
     [oldRun, newRun],
   );
+  const taskOutcomeSummary = comparison?.tasks.reduce(
+    (summary, task) => {
+      const oldStatus = taskStatuses.old.get(task.taskId);
+      const newStatus = taskStatuses.new.get(task.taskId);
+      if (oldStatus === newStatus) {
+        summary.unchanged += 1;
+      } else if (oldStatus === "failed" && newStatus === "ok") {
+        summary.recovered += 1;
+      } else if (oldStatus === "ok" && newStatus === "failed") {
+        summary.newFailures += 1;
+      } else {
+        summary.otherChanges += 1;
+      }
+      return summary;
+    },
+    { recovered: 0, newFailures: 0, otherChanges: 0, unchanged: 0 },
+  );
   const delta = comparison?.scoreDelta ?? null;
 
   return (
@@ -166,6 +183,11 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                   </small>
                 </div>
               </div>
+              {taskOutcomeSummary ? (
+                <p className="hint" aria-live="polite">
+                  Task status changes: {taskOutcomeSummary.recovered} recovered · {taskOutcomeSummary.newFailures} newly failed · {taskOutcomeSummary.otherChanges} other changes · {taskOutcomeSummary.unchanged} unchanged.
+                </p>
+              ) : null}
               <div className="table-scroll">
                 <table className="data-table">
                   <thead><tr><th>Task</th><th>Status (old → new)</th><th>Old score</th><th>New score</th><th>Change</th></tr></thead>
