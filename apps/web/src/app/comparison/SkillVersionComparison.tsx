@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 export type SkillVersionRun = {
@@ -115,9 +116,14 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
       </div>
 
       {runs.length === 0 ? (
-        <p className="hint">
-          No completed live candidate runs yet. Smoke/fake and unattested runs are excluded. Run the skill before and after editing it; each run keeps its own version snapshot.
-        </p>
+        <div>
+          <p className="hint">
+            No completed live candidate runs yet. Smoke/fake and unattested runs are excluded. To compare versions, run the skill once before editing and again after editing. Use the same model, mode, task set, and run settings; a baseline pair is optional.
+          </p>
+          <Link className="btn btn-primary btn-compact" href="/">
+            Start a run
+          </Link>
+        </div>
       ) : (
         <>
           <div className="skill-version-compare-fields">
@@ -168,9 +174,14 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
           </div>
 
           {oldOptions.length === 0 ? (
-            <p className="hint">
-              No two different versions have compatible completed runs. Keep an old run, edit the skill, then start a new candidate run with the same model and task set.
-            </p>
+            <div>
+              <p className="hint">
+                No two different versions have compatible completed runs for this skill. Keep its current run, edit the skill, then start another live run with the same model, mode, task set, and run settings. Single candidate runs are enough; smoke/fake runs are ignored.
+              </p>
+              <Link className="btn btn-primary btn-compact" href="/">
+                Start a run
+              </Link>
+            </div>
           ) : newRun ? (
             <>
               <div className="skill-version-summary">
