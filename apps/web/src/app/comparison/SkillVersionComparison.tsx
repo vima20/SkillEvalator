@@ -210,6 +210,22 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
               <p className="hint">
                 Repeat SD is the standard deviation across repeats; it is shown only when the run recorded it. Runs are matched on model <code>{newRun.modelId}</code>, task set, repeats, decoding, grader, and produce type. This historical run comparison does not create an official adoption PASS.
               </p>
+              <details className="skill-version-settings">
+                <summary>Matched run settings</summary>
+                <dl className="skill-version-settings-grid">
+                  <div><dt>Model</dt><dd><code>{newRun.modelId}</code></dd></div>
+                  <div><dt>Task set</dt><dd><code>{newRun.taskSetId}</code></dd></div>
+                  <div><dt>Tasks</dt><dd>{newRun.taskIds.map((taskId) => <code key={taskId}>{taskId}</code>)}</dd></div>
+                  <div><dt>Mode</dt><dd>{newRun.mode}</dd></div>
+                  <div><dt>Grader</dt><dd>{newRun.grade} · <code title={newRun.gradeHash}>{newRun.gradeHash ? newRun.gradeHash.slice(0, 12) : "unknown"}</code></dd></div>
+                  <div><dt>Repeats</dt><dd>{newRun.repeats}</dd></div>
+                  <div><dt>Temperature</dt><dd>{newRun.temperature}</dd></div>
+                  <div><dt>Top P</dt><dd>{newRun.topP}</dd></div>
+                  <div><dt>Seed</dt><dd>{newRun.seed ?? "—"}</dd></div>
+                  <div><dt>Max output tokens</dt><dd>{newRun.maxOutputTokens ?? "—"}</dd></div>
+                  <div><dt>Produce</dt><dd>Live, attested</dd></div>
+                </dl>
+              </details>
             </>
           ) : null}
         </>

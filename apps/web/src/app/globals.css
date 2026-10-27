@@ -397,6 +397,38 @@ code {
   padding-left: 20px;
 }
 
+.skill-version-settings summary {
+  color: var(--accent-hover);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.skill-version-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 12px 0 0;
+}
+
+.skill-version-settings-grid > div {
+  min-width: 0;
+}
+
+.skill-version-settings-grid dt {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.skill-version-settings-grid dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
 .score-up {
   color: var(--success, #42d6a4);
 }
@@ -407,7 +439,8 @@ code {
 
 @media (max-width: 760px) {
   .skill-version-compare-fields,
-  .skill-version-summary {
+  .skill-version-summary,
+  .skill-version-settings-grid {
     grid-template-columns: 1fr;
   }
 
