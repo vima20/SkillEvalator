@@ -130,6 +130,13 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                 <div><span>Old</span><strong title={oldRun?.skillVersion}>{oldRun?.skillVersion.slice(0, 12)}</strong><small>{oldRun?.runId}</small></div>
                 <div><span>New</span><strong title={newRun.skillVersion}>{newRun.skillVersion.slice(0, 12)}</strong><small>{newRun.runId}</small></div>
                 <div><span>Score change</span><strong className={delta === null ? "" : delta >= 0 ? "score-up" : "score-down"}>{delta === null ? "—" : `${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(1)} pp`}</strong><small>{oldRun?.score?.toFixed(3) ?? "—"} → {newRun.score?.toFixed(3) ?? "—"}</small></div>
+                <div>
+                  <span>Repeat stability</span>
+                  <strong>{oldRun?.repeats ?? "—"} → {newRun.repeats} repeats</strong>
+                  <small>
+                    Repeat SD: {oldRun?.scoreSpread?.toFixed(3) ?? "n/a"} → {newRun.scoreSpread?.toFixed(3) ?? "n/a"} · lower is steadier
+                  </small>
+                </div>
               </div>
               <div className="table-scroll">
                 <table className="data-table">
@@ -148,7 +155,7 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                 </table>
               </div>
               <p className="hint">
-                Matched on model <code>{newRun.modelId}</code>, task set, repeats, decoding, grader, and produce type. This historical run comparison does not create an official adoption PASS.
+                Repeat SD is the standard deviation across repeats; it is shown only when the run recorded it. Runs are matched on model <code>{newRun.modelId}</code>, task set, repeats, decoding, grader, and produce type. This historical run comparison does not create an official adoption PASS.
               </p>
             </>
           ) : null}

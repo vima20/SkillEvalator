@@ -15,6 +15,7 @@ export type SkillVersionRun = {
   seed: number | null;
   maxOutputTokens: number | null;
   score: number | null;
+  scoreSpread?: number | null;
   startedAt: string;
   perTask: Array<{ taskId: string; score: number | null; status: string }>;
 };
@@ -43,6 +44,7 @@ export type SkillVersionRunSource = {
     repeats: number;
     decoding: { temperature: number; top_p: number; seed?: number };
     score: number | null;
+    scoreSpread?: number;
     startedAt: string;
     perTask: Array<{ taskId: string; score: number | null; status: string }>;
   } | null;
@@ -79,6 +81,7 @@ export function toSkillVersionRun(
     seed: result.decoding.seed ?? null,
     maxOutputTokens: result.capture?.env?.maxOutputTokens ?? null,
     score: result.score,
+    scoreSpread: result.scoreSpread ?? null,
     startedAt: result.startedAt,
     perTask: result.perTask.map(({ taskId, score, status }) => ({
       taskId,
