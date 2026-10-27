@@ -20,6 +20,7 @@ function label(run: SkillVersionRun) {
 export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
   const skillIds = useMemo(() => [...new Set(runs.map((run) => run.skillId))].sort(), [runs]);
   const [skillId, setSkillId] = useState(skillIds[0] ?? "");
+  const [selectionReady, setSelectionReady] = useState(false);
   const availableRuns = useMemo(
     () => runs.filter((run) => run.skillId === skillId),
     [runs, skillId],
@@ -35,6 +36,50 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
     () => skillVersionRunComparisonBlockers(availableRuns),
     [availableRuns],
   );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedSkillId = params.get("skill");
+    const restoredSkillId = skillIds.includes(requestedSkillId ?? "")
+      ? requestedSkillId!
+      : skillIds[0] ?? "";
+    const restoredRuns = runs.filter((run) => run.skillId === restoredSkillId);
+    const defaultPair = defaultSkillVersionPair(restoredRuns);
+    const requestedOldRunId = params.get("oldRun");
+    const restoredOldRun =
+      restoredRuns.find((run) => run.runId === requestedOldRunId) ??
+      restoredRuns.find((run) => run.runId === defaultPair.oldId) ??
+      null;
+    const compatibleRuns = restoredOldRun
+      ? compatibleNewVersionRuns(restoredOldRun, restoredRuns)
+      : [];
+    const requestedNewRun = compatibleRuns.find(
+      (run) => run.runId === params.get("newRun"),
+    );
+
+    setSkillId(restoredSkillId);
+    setOldRunId(restoredOldRun?.runId ?? "");
+    setNewRunId(requestedNewRun?.runId ?? compatibleRuns[0]?.runId ?? "");
+    setSelectionReady(true);
+  }, [runs, skillIds]);
+
+  useEffect(() => {
+    if (!selectionReady) return;
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    if (skillId) params.set("skill", skillId);
+    else params.delete("skill");
+    if (oldRunId) params.set("oldRun", oldRunId);
+    else params.delete("oldRun");
+    if (newRunId) params.set("newRun", newRunId);
+    else params.delete("newRun");
+    const query = params.toString();
+    const nextUrl = `${url.pathname}${query ? `?${query}` : ""}${url.hash}`;
+    const currentUrl = `${url.pathname}${url.search}${url.hash}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(window.history.state, "", nextUrl);
+    }
+  }, [selectionReady, skillId, oldRunId, newRunId]);
 
   useEffect(() => {
     const nextSkillId = skillIds.includes(skillId) ? skillId : skillIds[0] ?? "";
@@ -238,6 +283,9 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                   <div><dt>Produce</dt><dd>Live, attested</dd></div>
                 </dl>
               </details>
+              <p className="hint">
+                This selected comparison is saved in the page URL, so you can bookmark or share the pair.
+              </p>
             </>
           ) : null}
         </>
