@@ -21,6 +21,7 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
   const skillIds = useMemo(() => [...new Set(runs.map((run) => run.skillId))].sort(), [runs]);
   const [skillId, setSkillId] = useState(skillIds[0] ?? "");
   const [selectionReady, setSelectionReady] = useState(false);
+  const [changedTasksOnly, setChangedTasksOnly] = useState(false);
   const availableRuns = useMemo(
     () => runs.filter((run) => run.skillId === skillId),
     [runs, skillId],
@@ -126,6 +127,11 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
     },
     { recovered: 0, newFailures: 0, otherChanges: 0, unchanged: 0 },
   );
+  const changedTasks = comparison?.tasks.filter((task) =>
+    task.oldScore !== task.newScore ||
+    taskStatuses.old.get(task.taskId) !== taskStatuses.new.get(task.taskId),
+  ) ?? [];
+  const visibleTasks = changedTasksOnly ? changedTasks : comparison?.tasks ?? [];
   const delta = comparison?.scoreDelta ?? null;
 
   return (
@@ -245,11 +251,22 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                   Task status changes: {taskOutcomeSummary.recovered} recovered · {taskOutcomeSummary.newFailures} newly failed · {taskOutcomeSummary.otherChanges} other changes · {taskOutcomeSummary.unchanged} unchanged.
                 </p>
               ) : null}
+              <div className="skill-version-task-controls">
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={changedTasksOnly}
+                    onChange={(event) => setChangedTasksOnly(event.target.checked)}
+                  />
+                  <span>Only show tasks with score or status changes</span>
+                </label>
+                <small>Showing {visibleTasks.length} of {comparison?.tasks.length ?? 0} tasks</small>
+              </div>
               <div className="table-scroll">
                 <table className="data-table">
                   <thead><tr><th>Task</th><th>Status (old → new)</th><th>Old score</th><th>New score</th><th>Change</th></tr></thead>
                   <tbody>
-                    {comparison?.tasks.map((task) => {
+                    {visibleTasks.map((task) => {
                       const change = task.scoreDelta;
                       const oldStatus = taskStatuses.old.get(task.taskId) ?? "—";
                       const newStatus = taskStatuses.new.get(task.taskId) ?? "—";

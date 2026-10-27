@@ -401,6 +401,18 @@ code {
   padding-left: 20px;
 }
 
+.skill-version-task-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skill-version-task-controls > small {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
 .skill-version-settings summary {
   color: var(--accent-hover);
   cursor: pointer;
