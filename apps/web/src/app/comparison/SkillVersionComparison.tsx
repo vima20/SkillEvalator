@@ -2,71 +2,13 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-
-export type SkillVersionRun = {
-  runId: string;
-  skillId: string;
-  skillVersion: string;
-  taskSetId: string;
-  taskIds: string[];
-  modelId: string;
-  mode: "dry-run" | "official";
-  grade: "docker_script" | "host_script";
-  gradeHash: string;
-  fakeProduce: boolean;
-  repeats: number;
-  temperature: number;
-  topP: number;
-  seed: number | null;
-  maxOutputTokens: number | null;
-  score: number | null;
-  startedAt: string;
-  perTask: Array<{ taskId: string; score: number | null; status: string }>;
-};
-
-function sameTaskIds(a: string[], b: string[]) {
-  return a.length === b.length && [...a].sort().every((id, i) => id === [...b].sort()[i]);
-}
-
-function compatible(a: SkillVersionRun, b: SkillVersionRun) {
-  return (
-    a.runId !== b.runId &&
-    a.skillId === b.skillId &&
-    a.taskSetId === b.taskSetId &&
-    a.modelId === b.modelId &&
-    a.mode === b.mode &&
-    a.grade === b.grade &&
-    a.gradeHash === b.gradeHash &&
-    a.fakeProduce === b.fakeProduce &&
-    a.repeats === b.repeats &&
-    a.temperature === b.temperature &&
-    a.topP === b.topP &&
-    a.seed === b.seed &&
-    a.maxOutputTokens === b.maxOutputTokens &&
-    sameTaskIds(a.taskIds, b.taskIds)
-  );
-}
-
-function isLaterRun(oldRun: SkillVersionRun, newRun: SkillVersionRun) {
-  return Date.parse(newRun.startedAt) > Date.parse(oldRun.startedAt);
-}
-
-function defaultVersionPair(runs: SkillVersionRun[]) {
-  for (let newerIndex = 0; newerIndex < runs.length; newerIndex += 1) {
-    const newer = runs[newerIndex]!;
-    for (let olderIndex = newerIndex + 1; olderIndex < runs.length; olderIndex += 1) {
-      const older = runs[olderIndex]!;
-      if (
-        older.skillVersion !== newer.skillVersion &&
-        compatible(older, newer) &&
-        isLaterRun(older, newer)
-      ) {
-        return { oldId: older.runId, newId: newer.runId };
-      }
-    }
-  }
-  return { oldId: runs[0]?.runId ?? "", newId: "" };
-}
+import {
+  compareSkillVersionRuns,
+  compatibleNewVersionRuns,
+  defaultSkillVersionPair,
+  oldVersionRunOptions,
+  type SkillVersionRun,
+} from "@/lib/skillVersionComparison";
 
 function label(run: SkillVersionRun) {
   const time = new Date(run.startedAt);
@@ -81,28 +23,15 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
     () => runs.filter((run) => run.skillId === skillId),
     [runs, skillId],
   );
-  const initialPair = useMemo(
-    () => defaultVersionPair(availableRuns),
-    [availableRuns],
-  );
+  const initialPair = useMemo(() => defaultSkillVersionPair(availableRuns), [availableRuns]);
   const [oldRunId, setOldRunId] = useState(initialPair.oldId);
   const [newRunId, setNewRunId] = useState(initialPair.newId);
   const oldRun = availableRuns.find((run) => run.runId === oldRunId) ?? null;
-  const newOptions = oldRun
-    ? availableRuns.filter(
-        (run) => run.skillVersion !== oldRun.skillVersion && compatible(oldRun, run) && isLaterRun(oldRun, run),
-      )
-    : [];
+  const newOptions = oldRun ? compatibleNewVersionRuns(oldRun, availableRuns) : [];
   const newRun = newOptions.find((run) => run.runId === newRunId) ?? null;
-  const oldOptions = availableRuns.filter((run) =>
-    availableRuns.some(
-      (other) => other.skillVersion !== run.skillVersion && compatible(run, other) && isLaterRun(run, other),
-    ),
-  );
-  const delta = oldRun && newRun && oldRun.score !== null && newRun.score !== null
-    ? newRun.score - oldRun.score
-    : null;
-  const oldTasks = new Map(oldRun?.perTask.map((task) => [task.taskId, task]) ?? []);
+  const oldOptions = oldVersionRunOptions(availableRuns);
+  const comparison = oldRun && newRun ? compareSkillVersionRuns(oldRun, newRun) : null;
+  const delta = comparison?.scoreDelta ?? null;
 
   return (
     <section className="panel skill-version-compare" aria-labelledby="skill-version-compare-title">
@@ -134,7 +63,7 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                 onChange={(event) => {
                   const nextSkillId = event.target.value;
                   const nextRuns = runs.filter((run) => run.skillId === nextSkillId);
-                  const nextPair = defaultVersionPair(nextRuns);
+                  const nextPair = defaultSkillVersionPair(nextRuns);
                   setSkillId(nextSkillId);
                   setOldRunId(nextPair.oldId);
                   setNewRunId(nextPair.newId);
@@ -151,7 +80,7 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                   const nextOldId = event.target.value;
                   const nextOld = availableRuns.find((run) => run.runId === nextOldId);
                   const nextNew = nextOld
-                    ? availableRuns.find((run) => run.skillVersion !== nextOld.skillVersion && compatible(nextOld, run) && isLaterRun(nextOld, run))
+                    ? compatibleNewVersionRuns(nextOld, availableRuns)[0]
                     : undefined;
                   setOldRunId(nextOldId);
                   setNewRunId(nextNew?.runId ?? "");
@@ -193,13 +122,12 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                 <table className="data-table">
                   <thead><tr><th>Task</th><th>Old score</th><th>New score</th><th>Change</th></tr></thead>
                   <tbody>
-                    {newRun.perTask.map((task) => {
-                      const previous = oldTasks.get(task.taskId)?.score ?? null;
-                      const change = previous !== null && task.score !== null ? task.score - previous : null;
+                    {comparison?.tasks.map((task) => {
+                      const change = task.scoreDelta;
                       return <tr key={task.taskId}>
                         <td><code>{task.taskId}</code></td>
-                        <td>{previous === null ? "—" : previous.toFixed(3)}</td>
-                        <td>{task.score === null ? "—" : task.score.toFixed(3)}</td>
+                        <td>{task.oldScore === null ? "—" : task.oldScore.toFixed(3)}</td>
+                        <td>{task.newScore === null ? "—" : task.newScore.toFixed(3)}</td>
                         <td className={change === null ? "" : change > 0 ? "score-up" : change < 0 ? "score-down" : ""}>{change === null ? "—" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)} pp`}</td>
                       </tr>;
                     })}

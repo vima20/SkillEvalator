@@ -1,0 +1,195 @@
+export type SkillVersionRun = {
+  runId: string;
+  skillId: string;
+  skillVersion: string;
+  taskSetId: string;
+  taskIds: string[];
+  modelId: string;
+  mode: "dry-run" | "official";
+  grade: "docker_script" | "host_script";
+  gradeHash: string;
+  fakeProduce: boolean;
+  repeats: number;
+  temperature: number;
+  topP: number;
+  seed: number | null;
+  maxOutputTokens: number | null;
+  score: number | null;
+  startedAt: string;
+  perTask: Array<{ taskId: string; score: number | null; status: string }>;
+};
+
+export type SkillVersionRunSource = {
+  runId: string;
+  role?: "baseline" | "candidate";
+  result: {
+    status: string;
+    role?: "baseline" | "candidate";
+    evalSkillId: string;
+    evalSkillVersion: string;
+    taskSetId: string;
+    taskIds: string[];
+    modelId: string;
+    mode: "dry-run" | "official";
+    pipeline: { grade: "docker_script" | "host_script" };
+    capture?: {
+      env?: {
+        fakeProduce?: boolean;
+        produceAttested?: boolean;
+        gradeHash?: string;
+        maxOutputTokens?: number;
+      };
+    };
+    repeats: number;
+    decoding: { temperature: number; top_p: number; seed?: number };
+    score: number | null;
+    startedAt: string;
+    perTask: Array<{ taskId: string; score: number | null; status: string }>;
+  } | null;
+};
+
+export function toSkillVersionRun(
+  source: SkillVersionRunSource,
+): SkillVersionRun | null {
+  const result = source.result;
+  if (
+    !result ||
+    result.status !== "ok" ||
+    (result.role ?? source.role) !== "candidate" ||
+    result.capture?.env?.fakeProduce === true ||
+    result.capture?.env?.produceAttested !== true
+  ) {
+    return null;
+  }
+
+  return {
+    runId: source.runId,
+    skillId: result.evalSkillId,
+    skillVersion: result.evalSkillVersion,
+    taskSetId: result.taskSetId,
+    taskIds: result.taskIds,
+    modelId: result.modelId,
+    mode: result.mode,
+    grade: result.pipeline.grade,
+    gradeHash: result.capture?.env?.gradeHash ?? "",
+    fakeProduce: false,
+    repeats: result.repeats,
+    temperature: result.decoding.temperature,
+    topP: result.decoding.top_p,
+    seed: result.decoding.seed ?? null,
+    maxOutputTokens: result.capture?.env?.maxOutputTokens ?? null,
+    score: result.score,
+    startedAt: result.startedAt,
+    perTask: result.perTask.map(({ taskId, score, status }) => ({
+      taskId,
+      score,
+      status,
+    })),
+  };
+}
+
+function sameTaskIds(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((id, index) => id === sortedB[index]);
+}
+
+export function skillVersionRunsAreCompatible(
+  a: SkillVersionRun,
+  b: SkillVersionRun,
+) {
+  return (
+    a.runId !== b.runId &&
+    a.skillId === b.skillId &&
+    a.taskSetId === b.taskSetId &&
+    a.modelId === b.modelId &&
+    a.mode === b.mode &&
+    a.grade === b.grade &&
+    a.gradeHash === b.gradeHash &&
+    a.fakeProduce === b.fakeProduce &&
+    a.repeats === b.repeats &&
+    a.temperature === b.temperature &&
+    a.topP === b.topP &&
+    a.seed === b.seed &&
+    a.maxOutputTokens === b.maxOutputTokens &&
+    sameTaskIds(a.taskIds, b.taskIds)
+  );
+}
+
+function isLaterRun(oldRun: SkillVersionRun, newRun: SkillVersionRun) {
+  return Date.parse(newRun.startedAt) > Date.parse(oldRun.startedAt);
+}
+
+export function defaultSkillVersionPair(runs: SkillVersionRun[]) {
+  const newestFirst = [...runs].sort(
+    (a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt),
+  );
+  for (let newerIndex = 0; newerIndex < newestFirst.length; newerIndex += 1) {
+    const newer = newestFirst[newerIndex]!;
+    for (
+      let olderIndex = newerIndex + 1;
+      olderIndex < newestFirst.length;
+      olderIndex += 1
+    ) {
+      const older = newestFirst[olderIndex]!;
+      if (
+        older.skillVersion !== newer.skillVersion &&
+        skillVersionRunsAreCompatible(older, newer) &&
+        isLaterRun(older, newer)
+      ) {
+        return { oldId: older.runId, newId: newer.runId };
+      }
+    }
+  }
+  return { oldId: newestFirst[0]?.runId ?? "", newId: "" };
+}
+
+export function compatibleNewVersionRuns(
+  oldRun: SkillVersionRun,
+  runs: SkillVersionRun[],
+) {
+  return runs.filter(
+    (run) =>
+      run.skillVersion !== oldRun.skillVersion &&
+      skillVersionRunsAreCompatible(oldRun, run) &&
+      isLaterRun(oldRun, run),
+  );
+}
+
+export function oldVersionRunOptions(runs: SkillVersionRun[]) {
+  return runs.filter((run) => compatibleNewVersionRuns(run, runs).length > 0);
+}
+
+export function compareSkillVersionRuns(
+  oldRun: SkillVersionRun,
+  newRun: SkillVersionRun,
+) {
+  if (
+    oldRun.skillVersion === newRun.skillVersion ||
+    !skillVersionRunsAreCompatible(oldRun, newRun) ||
+    !isLaterRun(oldRun, newRun)
+  ) {
+    return null;
+  }
+
+  const oldTasks = new Map(oldRun.perTask.map((task) => [task.taskId, task]));
+  return {
+    scoreDelta:
+      oldRun.score !== null && newRun.score !== null
+        ? newRun.score - oldRun.score
+        : null,
+    tasks: newRun.perTask.map((task) => {
+      const oldScore = oldTasks.get(task.taskId)?.score ?? null;
+      return {
+        taskId: task.taskId,
+        oldScore,
+        newScore: task.score,
+        scoreDelta:
+          oldScore !== null && task.score !== null
+            ? task.score - oldScore
+            : null,
+      };
+    }),
+  };
+}

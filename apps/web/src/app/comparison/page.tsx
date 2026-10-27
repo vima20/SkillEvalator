@@ -41,6 +41,7 @@ import {
   runIsActive,
   statusBadgeClass,
 } from "@/lib/status";
+import { toSkillVersionRun } from "@/lib/skillVersionComparison";
 
 export const dynamic = "force-dynamic";
 
@@ -69,36 +70,9 @@ export default async function ComparisonListPage({
   const root = resultsDir();
   const allRuns = listRuns(root);
   const versionRuns = allRuns
-    .flatMap(({ runId, result, role }) => {
-      if (
-        !result ||
-        result.status !== "ok" ||
-        (result.role ?? role) !== "candidate" ||
-        result.capture?.env?.fakeProduce === true ||
-        result.capture?.env?.produceAttested !== true
-      ) {
-        return [];
-      }
-      return [{
-        runId,
-        skillId: result.evalSkillId,
-        skillVersion: result.evalSkillVersion,
-        taskSetId: result.taskSetId,
-        taskIds: result.taskIds,
-        modelId: result.modelId,
-        mode: result.mode,
-        grade: result.pipeline.grade,
-        gradeHash: result.capture?.env?.gradeHash ?? "",
-        fakeProduce: false,
-        repeats: result.repeats,
-        temperature: result.decoding.temperature,
-        topP: result.decoding.top_p,
-        seed: result.decoding.seed ?? null,
-        maxOutputTokens: result.capture?.env?.maxOutputTokens ?? null,
-        score: result.score,
-        startedAt: result.startedAt,
-        perTask: result.perTask.map(({ taskId, score, status }) => ({ taskId, score, status })),
-      }];
+    .flatMap((entry) => {
+      const run = toSkillVersionRun(entry);
+      return run ? [run] : [];
     })
     .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
   const hasActiveRuns = allRuns.some((r) =>
