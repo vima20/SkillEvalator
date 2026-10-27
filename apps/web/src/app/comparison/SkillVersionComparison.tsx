@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   compareSkillVersionRuns,
   compatibleNewVersionRuns,
@@ -35,6 +35,27 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
     () => skillVersionRunComparisonBlockers(availableRuns),
     [availableRuns],
   );
+
+  useEffect(() => {
+    const nextSkillId = skillIds.includes(skillId) ? skillId : skillIds[0] ?? "";
+    const nextRuns = runs.filter((run) => run.skillId === nextSkillId);
+    if (nextSkillId !== skillId) setSkillId(nextSkillId);
+
+    const selectedOldRun = nextRuns.find((run) => run.runId === oldRunId);
+    if (!selectedOldRun) {
+      const nextPair = defaultSkillVersionPair(nextRuns);
+      if (oldRunId !== nextPair.oldId) setOldRunId(nextPair.oldId);
+      if (newRunId !== nextPair.newId) setNewRunId(nextPair.newId);
+      return;
+    }
+
+    const compatibleRuns = compatibleNewVersionRuns(selectedOldRun, nextRuns);
+    if (!compatibleRuns.some((run) => run.runId === newRunId)) {
+      const nextNewRunId = compatibleRuns[0]?.runId ?? "";
+      if (newRunId !== nextNewRunId) setNewRunId(nextNewRunId);
+    }
+  }, [runs, skillIds, skillId, oldRunId, newRunId]);
+
   const comparison = oldRun && newRun ? compareSkillVersionRuns(oldRun, newRun) : null;
   const delta = comparison?.scoreDelta ?? null;
 
