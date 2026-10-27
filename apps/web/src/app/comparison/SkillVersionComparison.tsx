@@ -57,6 +57,13 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
   }, [runs, skillIds, skillId, oldRunId, newRunId]);
 
   const comparison = oldRun && newRun ? compareSkillVersionRuns(oldRun, newRun) : null;
+  const taskStatuses = useMemo(
+    () => ({
+      old: new Map(oldRun?.perTask.map((task) => [task.taskId, task.status]) ?? []),
+      new: new Map(newRun?.perTask.map((task) => [task.taskId, task.status]) ?? []),
+    }),
+    [oldRun, newRun],
+  );
   const delta = comparison?.scoreDelta ?? null;
 
   return (
@@ -161,12 +168,15 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
               </div>
               <div className="table-scroll">
                 <table className="data-table">
-                  <thead><tr><th>Task</th><th>Old score</th><th>New score</th><th>Change</th></tr></thead>
+                  <thead><tr><th>Task</th><th>Status (old → new)</th><th>Old score</th><th>New score</th><th>Change</th></tr></thead>
                   <tbody>
                     {comparison?.tasks.map((task) => {
                       const change = task.scoreDelta;
+                      const oldStatus = taskStatuses.old.get(task.taskId) ?? "—";
+                      const newStatus = taskStatuses.new.get(task.taskId) ?? "—";
                       return <tr key={task.taskId}>
                         <td><code>{task.taskId}</code></td>
+                        <td>{oldStatus} → {newStatus}</td>
                         <td>{task.oldScore === null ? "—" : task.oldScore.toFixed(3)}</td>
                         <td>{task.newScore === null ? "—" : task.newScore.toFixed(3)}</td>
                         <td className={change === null ? "" : change > 0 ? "score-up" : change < 0 ? "score-down" : ""}>{change === null ? "—" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)} pp`}</td>
