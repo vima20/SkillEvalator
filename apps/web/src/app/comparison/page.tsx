@@ -70,7 +70,13 @@ export default async function ComparisonListPage({
   const allRuns = listRuns(root);
   const versionRuns = allRuns
     .flatMap(({ runId, result, role }) => {
-      if (!result || result.status !== "ok" || (result.role ?? role) !== "candidate") {
+      if (
+        !result ||
+        result.status !== "ok" ||
+        (result.role ?? role) !== "candidate" ||
+        result.capture?.env?.fakeProduce === true ||
+        result.capture?.env?.produceAttested !== true
+      ) {
         return [];
       }
       return [{
@@ -83,7 +89,7 @@ export default async function ComparisonListPage({
         mode: result.mode,
         grade: result.pipeline.grade,
         gradeHash: result.capture?.env?.gradeHash ?? "",
-        fakeProduce: result.capture?.env?.fakeProduce === true,
+        fakeProduce: false,
         repeats: result.repeats,
         temperature: result.decoding.temperature,
         topP: result.decoding.top_p,

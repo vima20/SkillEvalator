@@ -107,7 +107,7 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
 
       {runs.length === 0 ? (
         <p className="hint">
-          No completed candidate runs yet. Run the skill before and after editing it; each run keeps its own version snapshot.
+          No completed live candidate runs yet. Smoke/fake and unattested runs are excluded. Run the skill before and after editing it; each run keeps its own version snapshot.
         </p>
       ) : (
         <>
