@@ -161,6 +161,52 @@ export function oldVersionRunOptions(runs: SkillVersionRun[]) {
   return runs.filter((run) => compatibleNewVersionRuns(run, runs).length > 0);
 }
 
+/** Summarize why the available runs cannot form an older→newer version pair. */
+export function skillVersionRunComparisonBlockers(runs: SkillVersionRun[]) {
+  const reasons = new Set<string>();
+  let hasDifferentVersions = false;
+  let hasChronologicalPair = false;
+
+  for (let firstIndex = 0; firstIndex < runs.length; firstIndex += 1) {
+    const first = runs[firstIndex]!;
+    for (let secondIndex = firstIndex + 1; secondIndex < runs.length; secondIndex += 1) {
+      const second = runs[secondIndex]!;
+      if (first.skillVersion === second.skillVersion) continue;
+      hasDifferentVersions = true;
+
+      const firstTime = Date.parse(first.startedAt);
+      const secondTime = Date.parse(second.startedAt);
+      const chronological =
+        Number.isFinite(firstTime) &&
+        Number.isFinite(secondTime) &&
+        firstTime !== secondTime;
+      if (chronological) hasChronologicalPair = true;
+
+      if (first.taskSetId !== second.taskSetId) reasons.add("Different task sets");
+      if (!sameTaskIds(first.taskIds, second.taskIds)) reasons.add("Different task IDs");
+      if (first.modelId !== second.modelId) reasons.add("Different models");
+      if (first.grade !== second.grade || first.gradeHash !== second.gradeHash) {
+        reasons.add("Different graders or grader versions");
+      }
+      if (first.mode !== second.mode) reasons.add("Different run modes");
+      if (
+        first.repeats !== second.repeats ||
+        first.temperature !== second.temperature ||
+        first.topP !== second.topP ||
+        first.seed !== second.seed ||
+        first.maxOutputTokens !== second.maxOutputTokens ||
+        first.fakeProduce !== second.fakeProduce
+      ) {
+        reasons.add("Different run settings (repeats or decoding)");
+      }
+    }
+  }
+
+  if (!hasDifferentVersions) return [];
+  if (!hasChronologicalPair) reasons.add("The newer version must have a later run timestamp");
+  return [...reasons];
+}
+
 export function compareSkillVersionRuns(
   oldRun: SkillVersionRun,
   newRun: SkillVersionRun,

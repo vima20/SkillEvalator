@@ -7,6 +7,7 @@ import {
   compatibleNewVersionRuns,
   defaultSkillVersionPair,
   oldVersionRunOptions,
+  skillVersionRunComparisonBlockers,
   type SkillVersionRun,
 } from "@/lib/skillVersionComparison";
 
@@ -30,6 +31,10 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
   const newOptions = oldRun ? compatibleNewVersionRuns(oldRun, availableRuns) : [];
   const newRun = newOptions.find((run) => run.runId === newRunId) ?? null;
   const oldOptions = oldVersionRunOptions(availableRuns);
+  const comparisonBlockers = useMemo(
+    () => skillVersionRunComparisonBlockers(availableRuns),
+    [availableRuns],
+  );
   const comparison = oldRun && newRun ? compareSkillVersionRuns(oldRun, newRun) : null;
   const delta = comparison?.scoreDelta ?? null;
 
@@ -107,6 +112,14 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
               <p className="hint">
                 No two different versions have compatible completed runs for this skill. Keep its current run, edit the skill, then start another live run with the same model, mode, task set, and run settings. Single candidate runs are enough; smoke/fake runs are ignored.
               </p>
+              {comparisonBlockers.length > 0 ? (
+                <div className="hint skill-version-blockers" aria-live="polite">
+                  <strong>Why the available runs cannot be compared:</strong>
+                  <ul>
+                    {comparisonBlockers.map((reason) => <li key={reason}>{reason}</li>)}
+                  </ul>
+                </div>
+              ) : null}
               <Link className="btn btn-primary btn-compact" href="/">
                 Start a run
               </Link>
