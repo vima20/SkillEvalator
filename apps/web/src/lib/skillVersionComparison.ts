@@ -16,6 +16,8 @@ export type SkillVersionRun = {
   maxOutputTokens: number | null;
   score: number | null;
   scoreSpread?: number | null;
+  sourceUrl?: string | null;
+  sourceCommit?: string | null;
   startedAt: string;
   perTask: Array<{ taskId: string; score: number | null; status: string }>;
 };
@@ -28,12 +30,14 @@ export type SkillVersionRunSource = {
     role?: "baseline" | "candidate";
     evalSkillId: string;
     evalSkillVersion: string;
+    evalSkillGithubUrl?: string;
     taskSetId: string;
     taskIds: string[];
     modelId: string;
     mode: "dry-run" | "official";
     pipeline: { grade: "docker_script" | "host_script" };
     capture?: {
+      commit?: string;
       env?: {
         fakeProduce?: boolean;
         produceAttested?: boolean;
@@ -82,6 +86,8 @@ export function toSkillVersionRun(
     maxOutputTokens: result.capture?.env?.maxOutputTokens ?? null,
     score: result.score,
     scoreSpread: result.scoreSpread ?? null,
+    sourceUrl: result.evalSkillGithubUrl ?? null,
+    sourceCommit: result.capture?.commit ?? null,
     startedAt: result.startedAt,
     perTask: result.perTask.map(({ taskId, score, status }) => ({
       taskId,

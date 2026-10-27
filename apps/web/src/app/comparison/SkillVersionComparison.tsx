@@ -172,8 +172,20 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
           ) : newRun ? (
             <>
               <div className="skill-version-summary">
-                <div><span>Old</span><strong title={oldRun?.skillVersion}>{oldRun?.skillVersion.slice(0, 12)}</strong><small>{oldRun?.runId}</small></div>
-                <div><span>New</span><strong title={newRun.skillVersion}>{newRun.skillVersion.slice(0, 12)}</strong><small>{newRun.runId}</small></div>
+                <div>
+                  <span>Old</span>
+                  <strong title={oldRun?.skillVersion}>{oldRun?.skillVersion.slice(0, 12)}</strong>
+                  <small>{oldRun?.runId}</small>
+                  <small title={oldRun?.sourceCommit ?? undefined}>Commit {oldRun?.sourceCommit?.slice(0, 12) ?? "not recorded"}</small>
+                  {oldRun?.sourceUrl ? <a href={oldRun.sourceUrl} target="_blank" rel="noreferrer">GitHub source</a> : null}
+                </div>
+                <div>
+                  <span>New</span>
+                  <strong title={newRun.skillVersion}>{newRun.skillVersion.slice(0, 12)}</strong>
+                  <small>{newRun.runId}</small>
+                  <small title={newRun.sourceCommit ?? undefined}>Commit {newRun.sourceCommit?.slice(0, 12) ?? "not recorded"}</small>
+                  {newRun.sourceUrl ? <a href={newRun.sourceUrl} target="_blank" rel="noreferrer">GitHub source</a> : null}
+                </div>
                 <div><span>Score change</span><strong className={delta === null ? "" : delta >= 0 ? "score-up" : "score-down"}>{delta === null ? "—" : `${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(1)} pp`}</strong><small>{oldRun?.score?.toFixed(3) ?? "—"} → {newRun.score?.toFixed(3) ?? "—"}</small></div>
                 <div>
                   <span>Repeat stability</span>

@@ -392,6 +392,10 @@ code {
   overflow-wrap: anywhere;
 }
 
+.skill-version-summary a {
+  font-size: 12px;
+}
+
 .skill-version-blockers ul {
   margin: 6px 0 0;
   padding-left: 20px;
