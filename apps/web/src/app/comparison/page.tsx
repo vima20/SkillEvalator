@@ -4,6 +4,7 @@ import { ClearSmokeNoise } from "@/components/ClearSmokeNoise";
 import { EmptyState } from "@/components/EmptyState";
 import { PilotFocusToggle } from "@/components/PilotFocusToggle";
 import { RunsAutoRefresh } from "@/components/RunsAutoRefresh";
+import { SkillVersionComparison } from "./SkillVersionComparison";
 import { benefitListPairLockedLabel } from "@/lib/benefitListHints";
 import {
   adoptionModeDesyncTitle,
@@ -67,6 +68,33 @@ export default async function ComparisonListPage({
   healOrphansForBrowse();
   const root = resultsDir();
   const allRuns = listRuns(root);
+  const versionRuns = allRuns
+    .flatMap(({ runId, result, role }) => {
+      if (!result || result.status !== "ok" || (result.role ?? role) !== "candidate") {
+        return [];
+      }
+      return [{
+        runId,
+        skillId: result.evalSkillId,
+        skillVersion: result.evalSkillVersion,
+        taskSetId: result.taskSetId,
+        taskIds: result.taskIds,
+        modelId: result.modelId,
+        mode: result.mode,
+        grade: result.pipeline.grade,
+        gradeHash: result.capture?.env?.gradeHash ?? "",
+        fakeProduce: result.capture?.env?.fakeProduce === true,
+        repeats: result.repeats,
+        temperature: result.decoding.temperature,
+        topP: result.decoding.top_p,
+        seed: result.decoding.seed ?? null,
+        maxOutputTokens: result.capture?.env?.maxOutputTokens ?? null,
+        score: result.score,
+        startedAt: result.startedAt,
+        perTask: result.perTask.map(({ taskId, score, status }) => ({ taskId, score, status })),
+      }];
+    })
+    .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
   const hasActiveRuns = allRuns.some((r) =>
     runIsActive(r.status, !!r.result),
   );
@@ -207,6 +235,8 @@ export default async function ComparisonListPage({
           pairing? Single-leg runs (baseline unchecked) do not appear here.
         </p>
       </div>
+
+      <SkillVersionComparison runs={versionRuns} />
 
       <div className="panel">
         {evaluations.length === 0 ? (

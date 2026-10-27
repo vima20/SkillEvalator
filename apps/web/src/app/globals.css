@@ -321,6 +321,96 @@ code {
   font-size: 14px;
 }
 
+.skill-version-compare {
+  display: grid;
+  gap: 18px;
+  margin: 20px 0;
+  padding: 22px;
+}
+
+.skill-version-compare-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.skill-version-compare-heading h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.skill-version-compare-heading p:last-child {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.skill-version-compare-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.skill-version-compare-fields .field {
+  min-width: 0;
+}
+
+.skill-version-compare-fields select {
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.skill-version-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.skill-version-summary > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.skill-version-summary span,
+.skill-version-summary small {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.skill-version-summary strong {
+  font-size: 1.1rem;
+}
+
+.skill-version-summary small {
+  overflow-wrap: anywhere;
+}
+
+.score-up {
+  color: var(--success, #42d6a4);
+}
+
+.score-down {
+  color: var(--danger, #ff6b7a);
+}
+
+@media (max-width: 760px) {
+  .skill-version-compare-fields,
+  .skill-version-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .skill-version-compare-heading {
+    flex-direction: column;
+  }
+}
+
 .meta-list {
   display: grid;
   gap: 12px;
