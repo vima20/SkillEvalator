@@ -50,6 +50,23 @@ function isLaterRun(oldRun: SkillVersionRun, newRun: SkillVersionRun) {
   return Date.parse(newRun.startedAt) > Date.parse(oldRun.startedAt);
 }
 
+function defaultVersionPair(runs: SkillVersionRun[]) {
+  for (let newerIndex = 0; newerIndex < runs.length; newerIndex += 1) {
+    const newer = runs[newerIndex]!;
+    for (let olderIndex = newerIndex + 1; olderIndex < runs.length; olderIndex += 1) {
+      const older = runs[olderIndex]!;
+      if (
+        older.skillVersion !== newer.skillVersion &&
+        compatible(older, newer) &&
+        isLaterRun(older, newer)
+      ) {
+        return { oldId: older.runId, newId: newer.runId };
+      }
+    }
+  }
+  return { oldId: runs[0]?.runId ?? "", newId: "" };
+}
+
 function label(run: SkillVersionRun) {
   const time = new Date(run.startedAt);
   const date = Number.isNaN(time.getTime()) ? run.startedAt : time.toLocaleString();
@@ -63,18 +80,10 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
     () => runs.filter((run) => run.skillId === skillId),
     [runs, skillId],
   );
-  const initialPair = useMemo(() => {
-    for (let newerIndex = 0; newerIndex < availableRuns.length; newerIndex += 1) {
-      const newer = availableRuns[newerIndex]!;
-      for (let olderIndex = newerIndex + 1; olderIndex < availableRuns.length; olderIndex += 1) {
-        const older = availableRuns[olderIndex]!;
-        if (older.skillVersion !== newer.skillVersion && compatible(older, newer) && isLaterRun(older, newer)) {
-          return { oldId: older.runId, newId: newer.runId };
-        }
-      }
-    }
-    return { oldId: availableRuns[0]?.runId ?? "", newId: "" };
-  }, [availableRuns]);
+  const initialPair = useMemo(
+    () => defaultVersionPair(availableRuns),
+    [availableRuns],
+  );
   const [oldRunId, setOldRunId] = useState(initialPair.oldId);
   const [newRunId, setNewRunId] = useState(initialPair.newId);
   const oldRun = availableRuns.find((run) => run.runId === oldRunId) ?? null;
@@ -119,9 +128,10 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                 onChange={(event) => {
                   const nextSkillId = event.target.value;
                   const nextRuns = runs.filter((run) => run.skillId === nextSkillId);
+                  const nextPair = defaultVersionPair(nextRuns);
                   setSkillId(nextSkillId);
-                  setOldRunId(nextRuns[0]?.runId ?? "");
-                  setNewRunId("");
+                  setOldRunId(nextPair.oldId);
+                  setNewRunId(nextPair.newId);
                 }}
               >
                 {skillIds.map((id) => <option key={id} value={id}>{id}</option>)}
