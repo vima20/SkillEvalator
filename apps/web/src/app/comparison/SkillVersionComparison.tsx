@@ -262,25 +262,33 @@ export function SkillVersionComparison({ runs }: { runs: SkillVersionRun[] }) {
                 </label>
                 <small>Showing {visibleTasks.length} of {comparison?.tasks.length ?? 0} tasks</small>
               </div>
-              <div className="table-scroll">
-                <table className="data-table">
-                  <thead><tr><th>Task</th><th>Status (old → new)</th><th>Old score</th><th>New score</th><th>Change</th></tr></thead>
-                  <tbody>
-                    {visibleTasks.map((task) => {
-                      const change = task.scoreDelta;
-                      const oldStatus = taskStatuses.old.get(task.taskId) ?? "—";
-                      const newStatus = taskStatuses.new.get(task.taskId) ?? "—";
-                      return <tr key={task.taskId}>
-                        <td><code>{task.taskId}</code></td>
-                        <td>{oldStatus} → {newStatus}</td>
-                        <td>{task.oldScore === null ? "—" : task.oldScore.toFixed(3)}</td>
-                        <td>{task.newScore === null ? "—" : task.newScore.toFixed(3)}</td>
-                        <td className={change === null ? "" : change > 0 ? "score-up" : change < 0 ? "score-down" : ""}>{change === null ? "—" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)} pp`}</td>
-                      </tr>;
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {visibleTasks.length === 0 ? (
+                <p className="hint">
+                  {comparison?.tasks.length === 0
+                    ? "No per-task results are available for this run pair."
+                    : "All task scores and statuses are unchanged."}
+                </p>
+              ) : (
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead><tr><th>Task</th><th>Status (old → new)</th><th>Old score</th><th>New score</th><th>Change</th></tr></thead>
+                    <tbody>
+                      {visibleTasks.map((task) => {
+                        const change = task.scoreDelta;
+                        const oldStatus = taskStatuses.old.get(task.taskId) ?? "—";
+                        const newStatus = taskStatuses.new.get(task.taskId) ?? "—";
+                        return <tr key={task.taskId}>
+                          <td><code>{task.taskId}</code></td>
+                          <td>{oldStatus} → {newStatus}</td>
+                          <td>{task.oldScore === null ? "—" : task.oldScore.toFixed(3)}</td>
+                          <td>{task.newScore === null ? "—" : task.newScore.toFixed(3)}</td>
+                          <td className={change === null ? "" : change > 0 ? "score-up" : change < 0 ? "score-down" : ""}>{change === null ? "—" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)} pp`}</td>
+                        </tr>;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               <p className="hint">
                 Repeat SD is the standard deviation across repeats; it is shown only when the run recorded it. Runs are matched on model <code>{newRun.modelId}</code>, task set, repeats, decoding, grader, and produce type. This historical run comparison does not create an official adoption PASS.
               </p>
