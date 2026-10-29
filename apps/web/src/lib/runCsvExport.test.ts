@@ -102,6 +102,20 @@ describe("runCsvExportGate", () => {
     expect(out.error).toMatch(/provisional official PASS 1\/2/i);
   });
 
+  it("blocks disk-shaped provisional INCONCLUSIVE with same provisional lock copy", () => {
+    const out = runCsvExportGate({
+      result: base,
+      comparisonVerdict: "INCONCLUSIVE",
+      comparisonMode: "official",
+      comparisonAdoptionConfirmation: { step: 1, required: 2 },
+      ...tipLegs,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("run_csv_provisional_pass");
+    expect(out.error).toMatch(/provisional official PASS 1\/2/i);
+  });
+
   it("blocks dry-run", () => {
     const out = runCsvExportGate({
       result: { ...base, mode: "dry-run" },
@@ -235,5 +249,39 @@ describe("runCsvExportGateFromPacked", () => {
     expect(out.adoptionMode).toBe("official");
     expect(out.comparisonJsonMode).toBe("dry-run");
     expect(out.resultMode).toBe("official");
+  });
+
+  it("maps packed provisional INCONCLUSIVE to run_csv_provisional_pass (not not_decisive)", () => {
+    const packed = {
+      meta: {
+        mode: "official",
+        baselineRunId: "run_base",
+        candidateRunId: "run_cand",
+      },
+      comparison: {
+        verdict: "INCONCLUSIVE",
+        mode: "official",
+        adoptionConfirmation: { step: 1, required: 2 },
+      },
+      baseline: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+      candidate: {
+        mode: "official",
+        capture: { env: { produceAttested: true } },
+      },
+    } as PackedEvaluationBrowse;
+    const pairBrowse = evaluationPairBrowseFromPacked(packed);
+    const out = runCsvExportGateFromPacked({
+      result: base as import("@skillevalator/core").RunResult,
+      evaluationId: "eval_prov",
+      packed,
+      pairBrowse,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("run_csv_provisional_pass");
+    expect(out.error).toMatch(/provisional official PASS 1\/2/i);
   });
 });

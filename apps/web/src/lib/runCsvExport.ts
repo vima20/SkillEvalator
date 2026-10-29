@@ -104,7 +104,19 @@ export function runCsvExportGate(opts: {
     };
   }
   const v = opts.comparisonVerdict;
+  const confirm = opts.comparisonAdoptionConfirmation;
   if (v !== "PASS" && v !== "FAIL") {
+    // Packed/API path maps provisional 1/N to INCONCLUSIVE via comparisonAdoptionVerdict;
+    // keep the same lock copy as Comparison CSV / Benefit (not generic "not decisive").
+    if (isAdoptionConfirmationPending(confirm) && confirm) {
+      return {
+        ok: false,
+        status: 409,
+        errorCode: "run_csv_provisional_pass",
+        error:
+          `run CSV export locked — provisional official PASS ${confirm.step}/${confirm.required}; confirm with a second independent official pair`,
+      };
+    }
     return {
       ok: false,
       status: 409,
@@ -113,7 +125,6 @@ export function runCsvExportGate(opts: {
         "run CSV export requires Comparison PASS or FAIL (not INCONCLUSIVE / not ready)",
     };
   }
-  const confirm = opts.comparisonAdoptionConfirmation;
   if (
     v === "PASS" &&
     isAdoptionConfirmationPending(confirm)
