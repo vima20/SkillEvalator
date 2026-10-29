@@ -108,6 +108,21 @@ describe("benefitExportGate", () => {
     expect(out.error).toMatch(/provisional official PASS 1\/2/i);
   });
 
+  it("blocks disk-shaped provisional inconclusive with provisional lock copy", () => {
+    const out = benefitExportGate({
+      report: officialReport("inconclusive"),
+      comparison: tipComparison("INCONCLUSIVE", "official", {
+        step: 1,
+        required: 2,
+      }),
+      ...liveTips,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.errorCode).toBe("benefit_export_provisional_pass");
+    expect(out.error).toMatch(/provisional official PASS 1\/2/i);
+  });
+
   it("blocks USE when tip matches but Comparison is not PASS", () => {
     const out = benefitExportGate({
       report: officialReport("use"),

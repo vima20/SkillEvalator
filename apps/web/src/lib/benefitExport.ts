@@ -108,6 +108,20 @@ export function benefitExportGate(opts: {
     };
   }
   if (recommendation === "inconclusive") {
+    // Live buildBenefitReport maps provisional 1/N to inconclusive; keep the same
+    // lock copy as Comparison / run CSV (not generic "not decisive").
+    const confirm = opts.comparison?.adoptionConfirmation;
+    if (isAdoptionConfirmationPending(confirm) && confirm) {
+      return {
+        ok: false,
+        status: 409,
+        errorCode: "benefit_export_provisional_pass",
+        recommendation,
+        mode,
+        error:
+          `benefit export USE locked — provisional official PASS ${confirm.step}/${confirm.required}; confirm with a second independent official pair`,
+      };
+    }
     return {
       ok: false,
       status: 409,
